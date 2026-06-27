@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const { isRoleButton, handleRoleButton } = require('./utils/handleRoleButton');
 
 // 1. สร้างบอท พร้อมระบุ "intents" คือสิทธิ์ที่บอทขอรับข้อมูลจาก Discord
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -39,9 +40,23 @@ client.on('interactionCreate', async interaction => {
     return;
   }
 
-  // --- กรณีที่ 2: กดปุ่ม (เช่นปุ่มของ /builder) ---
+  // --- กรณีที่ 2: กดปุ่ม ---
   if (interaction.isButton()) {
-    // เช็คว่า customId ขึ้นต้นด้วย "builder_" หรือเปล่า ถ้าใช่ ส่งให้ command "builder" จัดการ
+    // rolebtn: = ปุ่มยศบนข้อความที่โพสต์แล้ว (ไม่เกี่ยวกับ builder draft เลย)
+    // ต้องเช็คอันนี้ก่อน builder_ เพราะมี logic แยกต่างหากทั้งหมด
+    if (isRoleButton(interaction.customId)) {
+      try {
+        await handleRoleButton(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนจัดการยศ', ephemeral: true });
+        }
+      }
+      return;
+    }
+
+    // builder_ = ปุ่มใน /builder (ephemeral panel ของ builder)
     if (interaction.customId.startsWith('builder_')) {
       const builderCommand = client.commands.get('builder');
       try {
@@ -78,6 +93,33 @@ client.on('interactionCreate', async interaction => {
         console.error(error);
         await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', ephemeral: true });
       }
+    }
+    return;
+  }
+
+  // --- กรณีที่ 5: เลือกช่องจาก channel select menu (สำหรับปุ่มลิงก์ช่องใน /builder) ---
+  // ChannelSelectMenu เป็น interaction type แยกจาก StringSelectMenu ต้องเช็คต่างหาก
+  if (interaction.isChannelSelectMenu()) {
+    if (interaction.customId.startsWith('builder_')) {
+      const builderCommand = client.commands.get('builder');
+      try {
+        await builderCommand.handleSelectMenu(interaction);
+      } catch (error) {
+        console.error(error);
+        await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกช่อง', ephemeral: true });
+      }
+    }
+    return;
+  }
+
+  // --- กรณีที่ 6: autocomplete (ใช้โดย /builder open และ /builder delete) ---
+  if (interaction.isAutocomplete()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command?.autocomplete) return; // คำสั่งนี้ไม่รองรับ autocomplete
+    try {
+      await command.autocomplete(interaction);
+    } catch (error) {
+      console.error('[autocomplete error]', error);
     }
     return;
   }

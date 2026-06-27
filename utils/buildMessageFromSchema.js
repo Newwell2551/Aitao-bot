@@ -55,6 +55,52 @@ function validateHttpUrl(url, context) {
 }
 
 /**
+ * แปลง emoji string ที่ resolve แล้ว (unicode หรือ <:name:id> / <a:name:id>)
+ * ให้กลายเป็น APIMessageComponentEmoji object ที่ ButtonBuilder.setEmoji() รับได้
+ *
+ * ใช้หลังจากที่ builder.js เรียก resolveCustomEmojis() ไปแล้ว
+ * ดังนั้น input ที่เข้ามาจะเป็น:
+ *   - "<:mail:1234567890>"   → custom emoji (static)
+ *   - "<a:wave:1234567890>"  → custom emoji (animated)
+ *   - "🎭"                   → unicode emoji
+ *
+ * @param {string} emojiStr
+ * @returns {{ name?: string, id?: string, animated?: boolean } | null}
+ */
+function parseButtonEmoji(emojiStr) {
+  if (!emojiStr || typeof emojiStr !== 'string') return null;
+  const trimmed = emojiStr.trim();
+  if (!trimmed) return null;
+
+  // custom emoji: <a:name:id> (animated) หรือ <:name:id> (static)
+  const match = trimmed.match(/^<(a?):([^:]+):(\d+)>$/);
+  if (match) {
+    return {
+      animated: match[1] === 'a',
+      name: match[2],
+      id: match[3],
+    };
+  }
+
+  // ถ้ายังอยู่ในรูป :ชื่อ: แสดงว่า resolveCustomEmojis() หาไม่เจอ custom emoji นั้นใน guild
+  // (พิมพ์ชื่อผิด หรือ emoji ถูกลบออกจากเซิร์ฟเวอร์ไปแล้ว)
+  // ห้ามส่งให้ Discord เพราะ Discord ไม่รู้จัก format นี้ → คืน null เพื่อ skip setEmoji แทนที่จะพัง
+  if (/^:[^\s:]+:$/.test(trimmed)) return null;
+
+  // unicode emoji (เช่น 🎭) — ส่ง name ตรงๆ Discord จะ render ให้เอง
+  return { name: trimmed };
+}
+
+// map string → ButtonStyle enum ใช้ใน section_role_button
+// เก็บเป็น object แทน switch เพราะอ่านง่ายกว่าและรองรับ default ได้ชัดเจน
+const BUTTON_STYLE_MAP = {
+  Primary: ButtonStyle.Primary,
+  Secondary: ButtonStyle.Secondary,
+  Success: ButtonStyle.Success,
+  Danger: ButtonStyle.Danger,
+};
+
+/**
  * แปลง schema (object ธรรมดา) ให้กลายเป็น Discord Components V2 จริง
  *
  * รูปแบบ schema ที่รองรับ:
@@ -194,6 +240,60 @@ function buildMessageFromSchema(schema) {
               .setStyle(ButtonStyle.Link) // ปุ่มลิงก์ตรงๆ ไม่มี interaction ใดๆ กดแล้วเปิด URL เลย
           );
         container.addSectionComponents(sectionWithButton);
+        break;
+      }
+
+      case 'section_role_button': {
+        if (!block.text || !block.buttonLabel || !block.roleId) {
+          throw new Error(
+            `buildMessageFromSchema: blocks[${index}] (section_role_button) ต้องมีทั้ง "text", "buttonLabel" และ "roleId"`
+          );
+        }
+
+        // แปลง buttonStyle string → ButtonStyle enum ถ้าไม่มีหรือไม่รู้จัก ใช้ Primary เป็น default
+        const resolvedStyle = BUTTON_STYLE_MAP[block.buttonStyle] ?? ButtonStyle.Primary;
+
+        const roleButton = new ButtonBuilder()
+          .setLabel(block.buttonLabel)
+          .setCustomId(`rolebtn:${block.roleId}`) // รูปแบบที่ handleRoleButton.js ใช้ดึง roleId
+          .setStyle(resolvedStyle);
+
+        // ถ้ามี buttonEmoji ให้แปลงเป็น emoji object ก่อนส่งเข้า .setEmoji()
+        // (builder.js เรียก resolveCustomEmojis() ไปแล้ว ดังนั้น buttonEmoji จะเป็น
+        //  "<:name:id>" หรือ "🎭" หรือ null ไม่มีทาง เป็น ":ชื่อ:" raw ค้างไว้)
+        if (block.buttonEmoji) {
+          const emoji = parseButtonEmoji(block.buttonEmoji);
+          if (emoji) roleButton.setEmoji(emoji);
+        }
+
+        const sectionWithRoleBtn = new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(block.text)
+          )
+          .setButtonAccessory(roleButton);
+        container.addSectionComponents(sectionWithRoleBtn);
+        break;
+      }
+
+      case 'section_channel_button': {
+        // field เหมือน section_button ทุกอย่าง ต่างแค่ buttonUrl ที่ generate จาก guildId+channelId
+        // แทนที่ผู้ใช้จะพิมพ์ URL เอง บอทสร้างให้อัตโนมัติตอนผู้ใช้เลือกช่องจาก ChannelSelectMenu
+        if (!block.text || !block.buttonLabel || !block.buttonUrl) {
+          throw new Error(
+            `buildMessageFromSchema: blocks[${index}] (section_channel_button) ต้องมีทั้ง "text", "buttonLabel" และ "buttonUrl"`
+          );
+        }
+        const sectionWithChanBtn = new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(block.text)
+          )
+          .setButtonAccessory(
+            new ButtonBuilder()
+              .setLabel(block.buttonLabel)
+              .setURL(block.buttonUrl) // URL รูปแบบ https://discord.com/channels/{guildId}/{channelId}
+              .setStyle(ButtonStyle.Link) // Link = กดแล้วเปิด URL ตรงๆ ไม่มี interaction ใดๆ
+          );
+        container.addSectionComponents(sectionWithChanBtn);
         break;
       }
 
