@@ -1,0 +1,888 @@
+{
+  "common": {
+    "error": {
+      "guild_only": "❌ ใช้ได้เฉพาะในเซิร์ฟเวอร์ครับ"
+    }
+  },
+  "ping": {
+    "response": "🏓 ปิ๊งปอง! ({latency}ms)"
+  },
+  "language": {
+    "changed": "✅ เปลี่ยนภาษาบอทเป็น {lang} แล้วครับ"
+  },
+  "builder": {
+    "panel": {
+      "button": {
+        "add_text": "+ เพิ่มข้อความ",
+        "add_image": "+ เพิ่มรูป",
+        "add_section": "+ เพิ่ม Section",
+        "add_separator": "+ เพิ่มเส้นคั่น",
+        "preview": "ดูตัวอย่าง",
+        "manage": "📋 จัดการบล็อก",
+        "color": "🎨 เลือกสี",
+        "post": "โพสต์"
+      },
+      "empty_state": "ยังไม่มีบล็อกเลยครับ กดปุ่มด้านล่างเพื่อเริ่มสร้าง Layout",
+      "header": "🛠️ Layout Builder"
+    },
+    "block_type": {
+      "text": "ข้อความ",
+      "gallery": "รูปภาพ",
+      "separator": "เส้นคั่น",
+      "section": "ข้อความคู่รูปเล็ก",
+      "section_button": "ข้อความคู่ปุ่มลิงก์",
+      "section_role_button": "ข้อความคู่ปุ่มยศ",
+      "section_channel_button": "ข้อความคู่ปุ่มช่อง",
+      "empty_content": "(ข้อความว่าง)",
+      "no_data": "(ไม่มีข้อมูล)"
+    },
+    "describe": {
+      "gallery_multi": "{count} รูป (เริ่มจาก {url})",
+      "separator_spacing": "ระยะห่าง: {spacing}"
+    },
+    "spacing": {
+      "large": "ใหญ่",
+      "small": "เล็ก"
+    },
+    "manage": {
+      "header": "**📋 จัดการบล็อก**\nเลือกบล็อกที่ต้องการแก้ไขหรือลบจากรายการด้านล่าง",
+      "placeholder": "เลือกบล็อกที่ต้องการแก้ไขหรือลบ",
+      "option_label": "บล็อกที่ {index} • {type}",
+      "back_button": "← กลับ",
+      "empty": "⚠️ ยังไม่มีบล็อกให้จัดการเลยครับ ลองเพิ่มบล็อกก่อนนะ"
+    },
+    "block_action": {
+      "header": "**บล็อกที่ {index} • {typeLabel}**\n{preview}\n\nต้องการทำอะไรกับบล็อกนี้ครับ?",
+      "button": {
+        "edit": "แก้ไข",
+        "delete": "ลบ",
+        "insert": "+ แทรกบล็อกใหม่หลังจากนี้",
+        "move_up": "⬆️ ย้ายขึ้น",
+        "move_down": "⬇️ ย้ายลง"
+      }
+    },
+    "insert_type": {
+      "header": "**+ แทรกบล็อกใหม่**\nเลือกชนิดบล็อกที่จะแทรกเข้าตำแหน่งที่ {position}"
+    },
+    "color": {
+      "header": "**🎨 เลือกสีธีม**\nเลือกสีแถบด้านข้างของ Layout จากตัวเลือกด้านล่าง หรือกำหนดเองก็ได้",
+      "placeholder": "เลือกสีธีม",
+      "custom_label": "🖌️ กำหนดเอง",
+      "custom_description": "พิมพ์ hex code เอง เช่น #FF66AA"
+    },
+    "modal": {
+      "text_content_label": "เนื้อหา (รองรับ markdown)",
+      "text_content_placeholder": "# หัวข้อ\nเนื้อหาตรงนี้...",
+      "image_urls_label": "ลิงก์รูปภาพ (1 บรรทัดต่อ 1 ลิงก์)",
+      "section_text_label": "ข้อความ (รองรับ markdown)",
+      "section_text_placeholder": "ข้อความตรงนี้ (รองรับ markdown)",
+      "section_role_text_placeholder": "ข้อความตรงนี้ (รองรับ markdown) เช่น \"กดเพื่อรับยศสมาชิก\"",
+      "thumbnail_label": "ลิงก์รูปเล็ก (thumbnail)",
+      "button_label_label": "ป้ายชื่อปุ่ม",
+      "button_text_label": "ข้อความบนปุ่ม",
+      "button_url_label": "ลิงก์ปุ่ม (http:// หรือ https://)",
+      "channel_button_placeholder": "เช่น 📢 ไปที่ห้องประกาศ",
+      "role_button_placeholder": "รับยศ",
+      "link_button_placeholder": "เข้าร่วม Discord",
+      "emoji_label": "อิโมจิบนปุ่ม (optional)",
+      "emoji_description": "ใส่ unicode emoji หรือ :ชื่อ: ของ custom emoji ถ้าไม่ต้องการเว้นว่างไว้ได้เลย",
+      "emoji_placeholder": "เช่น 🎭 หรือ :ชื่อ_custom_emoji: (เว้นว่างได้)",
+      "hex_label": "Hex code (รูปแบบ #RRGGBB)",
+      "search_label": "พิมพ์ชื่อหรือส่วนของชื่อ builder",
+      "search_placeholder": "เช่น rules, welcome, ประกาศ",
+      "title": {
+        "edit_text": "แก้ไขข้อความ",
+        "edit_image": "แก้ไขรูป (หลายลิงก์)",
+        "edit_section": "แก้ไขข้อความคู่รูปเล็ก",
+        "edit_section_button": "แก้ไขข้อความคู่ปุ่มลิงก์",
+        "edit_section_channel": "แก้ไขข้อความคู่ปุ่มช่อง",
+        "edit_section_role": "แก้ไขปุ่มยศ",
+        "insert_text": "แทรกข้อความใหม่",
+        "insert_image": "แทรกรูปใหม่ (ใส่ได้หลายลิงก์)",
+        "insert_section": "แทรกข้อความคู่รูปเล็ก",
+        "insert_section_button": "แทรกข้อความคู่ปุ่มลิงก์",
+        "insert_section_role": "แทรกปุ่มยศ (1/3)",
+        "insert_section_channel": "แทรกปุ่มลิงก์ช่อง (1/2)",
+        "add_text": "เพิ่มข้อความ",
+        "add_image": "เพิ่มรูป (ใส่ได้หลายลิงก์)",
+        "add_section": "เพิ่มข้อความคู่รูปเล็ก",
+        "add_section_button": "เพิ่มข้อความคู่ปุ่มลิงก์",
+        "add_section_role": "เพิ่มปุ่มยศ (1/3)",
+        "add_section_channel": "เพิ่มปุ่มลิงก์ช่อง (1/2)",
+        "list_search": "🔍 ค้นหา builder",
+        "color_custom": "กำหนดสีเอง"
+      },
+      "image_url_hint": "ลิงก์ต้องเป็นลิงก์รูปโดยตรง ลงท้ายด้วย .jpg .png .gif หรือ .webp ถ้าไม่แน่ใจ ใช้ /upload-image แทน"
+    },
+    "section_choice": {
+      "header": "**+ เพิ่ม Section**\nเลือกว่าจะให้ Section นี้คู่กับอะไร",
+      "button": {
+        "thumbnail": "🖼️ รูปเล็ก",
+        "link": "🔘 ปุ่มลิงก์",
+        "role": "🎭 ปุ่มยศ",
+        "channel": "📢 ปุ่มลิงก์ช่อง"
+      }
+    },
+    "common": {
+      "back_cancel_button": "← กลับ (ยกเลิก)"
+    },
+    "channel_select": {
+      "placeholder": "เลือกช่องที่ต้องการลิงก์ไป",
+      "header": "**📢 เลือกช่อง**\nเลือกช่องที่ต้องการให้ปุ่มลิงก์ไปครับ\n*(แสดงเฉพาะ text channel และ announcement channel)*"
+    },
+    "role_select": {
+      "placeholder": "เลือกยศ",
+      "header": "**🎭 เลือกยศ**\nเลือกยศที่ต้องการให้ปุ่มนี้ toggle ให้/ถอด\n*(แสดงเฉพาะยศที่บอทจัดการได้)*"
+    },
+    "role_style": {
+      "header": "**🎨 เลือกสีปุ่ม (3/3)**\nกดปุ่มเพื่อเลือกสีที่ต้องการ ปุ่มแต่ละอันแสดงสีจริงให้เห็นก่อนเลือกเลย"
+    },
+    "post": {
+      "select_placeholder": "เลือกช่องที่ต้องการโพสต์",
+      "select_header": "**📤 เลือกช่องปลายทาง**\nจะโพสต์ข้อความนี้ไปที่ช่องไหนดีครับ?\n*(แสดงเฉพาะ text channel และ announcement channel)*",
+      "cancel_button": "← ยกเลิก",
+      "empty_draft": "⚠️ ยังไม่มีบล็อกเลย ลองเพิ่มบล็อกก่อนแล้วค่อยกดโพสต์นะครับ",
+      "build_failed": "❌ โพสต์ไม่สำเร็จครับ: {error}",
+      "channel_not_found": "❌ หาช่องที่เลือกไม่เจอ ลองกด \"โพสต์\" แล้วเลือกช่องใหม่อีกครั้งนะครับ",
+      "send_failed": "❌ ส่งข้อความเข้าช่องนั้นไม่สำเร็จครับ บอทอาจไม่มีสิทธิ์ \"Send Messages\" ในช่องนั้น\nลองแจ้งแอดมินให้ตรวจสอบสิทธิ์ของบอทในช่องนั้นด้วยนะครับ",
+      "success": "✅ โพสต์สำเร็จแล้ว! [กดเพื่อไปดูข้อความ]({url})"
+    },
+    "gallery_error": {
+      "need_one": "⚠️ ต้องมีลิงก์อย่างน้อย 1 รายการครับ",
+      "invalid_header": "❌ พบลิงก์ที่ผิดรูปแบบ:"
+    },
+    "list": {
+      "empty": "**📋 Builder ในเซิร์ฟเวอร์นี้**\n\nยังไม่มี builder เลยครับ\nใช้ `/builder new [ชื่อ]` เพื่อสร้างใหม่",
+      "header_filtered": "**📋 Builder ในเซิร์ฟเวอร์นี้** — แสดง **{shown}** จาก {total} รายการ (ค้นหา: \"{query}\")",
+      "header_all": "**📋 Builder ในเซิร์ฟเวอร์นี้** ({total} รายการ)",
+      "no_results": "\n\nไม่พบ builder ที่ชื่อมีคำว่า \"{query}\" ครับ",
+      "entry_line": "**{index}. {name}** — {count} บล็อก — แก้ล่าสุด {timestamp} โดย <@{userId}>",
+      "select_placeholder": "เลือก builder ที่ต้องการเปิดแก้ไข",
+      "option_description": "{count} บล็อก",
+      "search_button": "🔍 ค้นหา",
+      "reset_button": "← รีเซ็ต",
+      "delete_hint": "`/builder delete [ชื่อ]` — ลบ builder ที่ไม่ต้องการ"
+    },
+    "command": {
+      "name_required": "❌ ชื่อต้องไม่ว่างนะครับ",
+      "already_exists": "⚠️ มี builder ชื่อ **\"{name}\"** อยู่แล้วในเซิร์ฟเวอร์นี้ครับ\nถ้าต้องการแก้ต่อ ใช้ `/builder edit \"{name}\"` ได้เลย\nถ้าต้องการสร้างใหม่จริงๆ ให้ใช้ชื่ออื่นแทนนะครับ",
+      "not_found": "❌ ไม่พบ builder ชื่อ **\"{name}\"** ในเซิร์ฟเวอร์นี้ครับ\nใช้ `/builder list` เพื่อดูรายชื่อ builder ทั้งหมด",
+      "not_found_short": "❌ ไม่พบ builder ชื่อ **\"{name}\"** ในเซิร์ฟเวอร์นี้ครับ",
+      "delete_confirm_header": "⚠️ **ยืนยันการลบ**\nต้องการลบ builder **\"{name}\"** จริงๆ ไหมครับ?\nลบแล้วจะไม่สามารถกู้คืนได้ครับ",
+      "delete_confirm_button": "✅ ยืนยัน ลบ",
+      "delete_cancel_button": "❌ ยกเลิก"
+    },
+    "delete": {
+      "expired": "⚠️ ข้อมูลการลบหมดอายุแล้วครับ (อาจเกิดจาก bot restart)\nลองใช้ `/builder delete [ชื่อ]` ใหม่อีกครั้งนะครับ",
+      "success": "✅ ลบ builder **\"{name}\"** สำเร็จแล้วครับ",
+      "not_found": "⚠️ หา builder \"{name}\" ไม่เจอ (อาจถูกลบไปแล้ว)",
+      "cancelled": "❌ ยกเลิกการลบ **\"{name}\"** แล้วครับ"
+    },
+    "block": {
+      "gone": "⚠️ บล็อกนี้ไม่มีอยู่แล้วครับ (อาจถูกลบหรือแก้ไปก่อนหน้านี้)",
+      "already_top": "⚠️ บล็อกนี้อยู่บนสุดแล้วครับ",
+      "already_bottom": "⚠️ บล็อกนี้อยู่ล่างสุดแล้วครับ"
+    },
+    "preview": {
+      "empty": "⚠️ ยังไม่มีบล็อกเลยครับ ลองกด \"+ เพิ่มข้อความ\", \"+ เพิ่มรูป\" หรือ \"+ เพิ่มเส้นคั่น\" เพิ่มอะไรสักอย่างก่อนนะ",
+      "shown": "🔍 ตัวอย่างด้านล่างนี้ครับ (เห็นแค่คุณคนเดียว ยังไม่ได้โพสต์จริง)",
+      "failed": "❌ แสดงตัวอย่างไม่สำเร็จ: {error}"
+    },
+    "list_select": {
+      "not_found": "❌ ไม่พบ builder ชื่อ **\"{name}\"** แล้วครับ (อาจถูกลบไปแล้ว)\nใช้ /builder list เพื่อดูรายชื่อล่าสุด"
+    },
+    "color_custom": {
+      "invalid": "❌ รูปแบบสีไม่ถูกต้องครับ ต้องเป็น #RRGGBB เช่น #FF66AA (ได้รับ: \"{input}\")\n\nลองกด \"🎨 เลือกสี\" แล้วเลือก \"🖌️ กำหนดเอง\" ใหม่อีกครั้งนะครับ"
+    },
+    "role_button": {
+      "no_roles": "❌ ไม่มียศที่บอทสามารถจัดการได้ในเซิร์ฟเวอร์นี้ ติดต่อแอดมินให้ตรวจสอบสิทธิ์และตำแหน่งยศของบอทด้วยนะครับ"
+    },
+    "error": {
+      "add_failed": "❌ เพิ่มไม่สำเร็จ: {error}",
+      "edit_failed": "❌ แก้ไขไม่สำเร็จ: {error}",
+      "insert_failed": "❌ แทรกไม่สำเร็จ: {error}"
+    },
+    "hint": {
+      "retry_button": "\n\nลองกด \"{button}\" แล้วใส่ลิงก์ใหม่อีกครั้งนะครับ",
+      "retry_edit": "\n\nลองกดแก้ไขแล้วใส่ลิงก์ใหม่อีกครั้งนะครับ",
+      "retry_or_delete": "\n\nถ้าต้องการลบบล็อกนี้ทั้งหมด ให้กลับไปกดปุ่ม \"{deleteButton}\" แทนนะครับ"
+    },
+    "image_warning": {
+      "suspicious": "⚠️ ลิงก์นี้อาจมีปัญหา แนะนำให้ตรวจสอบอีกครั้งหรือใช้ /upload-image แทนนะครับ:\n{list}"
+    },
+    "validation": {
+      "line_label": "บรรทัดที่ {n}",
+      "thumbnail_label": "ลิงก์รูปเล็ก",
+      "button_link_label": "ลิงก์ปุ่ม"
+    },
+    "quota": {
+      "reached": "เซิร์ฟนี้มี builder ครบจำนวนสูงสุดที่แผนฟรีอนุญาตแล้วครับ ({limit} อัน)"
+    },
+    "premium_content_reason": "Builder นี้มีการใช้ฟีเจอร์พรีเมี่ยมอยู่ (เช่น **หลายบล็อกข้อความ/รูป** หรือ **ปุ่มพิเศษ** ที่แผนฟรีใช้ไม่ได้)",
+    "simple": {
+      "header": "**{title}**\n{note}",
+      "empty_note": "ยังไม่ได้ตั้งค่าเลยครับ กดปุ่มด้านล่างเพื่อเริ่ม",
+      "button": {
+        "edit_basic": "แก้ข้อมูลพื้นฐาน (หัวข้อ/คำอธิบาย/สี)",
+        "edit_main_image": "แก้รูปหลัก",
+        "edit_thumbnail": "แก้ thumbnail",
+        "post": "โพสต์"
+      },
+      "modal": {
+        "basic_title": "✏️ แก้ข้อมูลพื้นฐาน",
+        "title_label": "หัวข้อ",
+        "description_label": "คำอธิบาย",
+        "color_label": "สี (hex, ไม่บังคับ เช่น #57F287)",
+        "main_image_title": "🖼️ แก้รูปหลัก",
+        "image_url_label": "ลิงก์รูป",
+        "thumbnail_title": "🖼️ แก้ thumbnail",
+        "thumbnail_url_label": "ลิงก์ thumbnail"
+      },
+      "preview_error": "❌ สร้าง preview ไม่สำเร็จครับ: {error}",
+      "mention_blocked": "❌ แท็กคน/ยศ/ช่อง ใช้ไม่ได้บนแผนฟรีครับ ฟีเจอร์นี้สงวนไว้สำหรับ Premium เท่านั้น ลบ @mention หรือ #ช่อง ออกจากหัวข้อ/คำอธิบายแล้วลองใหม่นะครับ",
+      "default_title": "รังสรรค์ข้อความของคุณ",
+      "color_invalid": "รูปแบบสีไม่ถูกต้องครับ ต้องเป็น #RRGGBB เช่น #57F287 (ได้รับ: \"{input}\") ลองกด \"Edit basic info\" ใหม่แล้วแก้ช่อง Color นะครับ"
+    }
+  },
+  "validation": {
+    "required": "{context} ต้องเป็น string ที่ไม่ว่าง (ได้รับ: {value})",
+    "url_format": "{context} ต้องขึ้นต้นด้วย \"http://\", \"https://\" หรือ \"attachment://\" เท่านั้น (ได้รับ: \"{value}\")",
+    "http_url_format": "{context} ต้องขึ้นต้นด้วย \"http://\" หรือ \"https://\" เท่านั้น (ได้รับ: \"{value}\")"
+  },
+  "role_setup": {
+    "error": {
+      "session_expired": "❌ Session หมดอายุครับ"
+    },
+    "suffix": {
+      "placeholder_custom": " | placeholder กำหนดเอง",
+      "color": " | สี {color}",
+      "max_roles_unlimited": "ไม่จำกัด"
+    },
+    "count": {
+      "button": "ปุ่ม: {count} | รับได้สูงสุด: {max} ยศ",
+      "reaction": "Reaction: {count} | emoji ผูกยศ",
+      "menu": "เลือกได้ {min}–{max} ยศ | ยศ: {count}"
+    },
+    "editor": {
+      "empty_state": "**{prefix} Role Setup — {name}** `[{type}]`\n{itemCountLabel} | บล็อก: 0{color}{ph}\n\nยังไม่มี Layout ครับ กดปุ่มด้านล่างเพื่อเพิ่ม",
+      "header_with_blocks": "**{prefix} {name}** `[{type}]` — บล็อก: {count} | {itemCountLabel}{color}{ph}",
+      "button": {
+        "add_text": "+ ข้อความ",
+        "add_image": "+ รูป",
+        "add_section": "+ Section",
+        "add_separator": "+ เส้นคั่น",
+        "color": "🎨 สี",
+        "add_button": "➕ เพิ่มปุ่ม",
+        "manage_buttons": "⚙️ จัดการปุ่ม",
+        "max_roles": "🔢 จำนวนยศ",
+        "manage_blocks": "📋 จัดการบล็อก",
+        "preview": "ดูตัวอย่าง",
+        "done": "✅ เสร็จแล้ว",
+        "add_reaction": "➕ เพิ่ม Reaction",
+        "manage_reactions": "⚙️ จัดการ Reaction",
+        "add_role": "➕ เพิ่มยศ",
+        "manage_roles": "🗑️ ยศ ({count})",
+        "config": "⚙️ ตั้งค่า"
+      }
+    },
+    "manage": {
+      "empty": "**📋 จัดการบล็อก**\n\nยังไม่มีบล็อกครับ",
+      "header": "**📋 จัดการบล็อก**\nเลือกบล็อกที่ต้องการจัดการ",
+      "placeholder": "เลือกบล็อก",
+      "option_label": "บล็อกที่ {index} • {type}",
+      "back_button": "← กลับ"
+    },
+    "block_action": {
+      "header": "**บล็อกที่ {index} • {typeLabel}**\n{preview}\n\nต้องการทำอะไรกับบล็อกนี้ดีครับ?",
+      "button": {
+        "edit": "แก้ไข",
+        "delete": "ลบ",
+        "insert": "+ แทรกหลังนี้",
+        "move_up": "⬆️ ขึ้น",
+        "move_down": "⬇️ ลง"
+      }
+    },
+    "insert_type": {
+      "header": "**+ แทรกบล็อก**\nจะแทรกที่ตำแหน่ง {position}",
+      "cancel_button": "← ยกเลิก"
+    },
+    "color": {
+      "header": "**🎨 เลือกสีธีม**",
+      "placeholder": "เลือกสีแถบด้านข้าง",
+      "custom_label": "🖌️ กำหนดเอง",
+      "custom_description": "พิมพ์ hex เช่น #FF66AA",
+      "none_label": "🚫 ไม่มีสี",
+      "none_description": "ลบสีธีมออก"
+    },
+    "block_type": {
+      "text": "ข้อความ",
+      "gallery": "รูปภาพ",
+      "separator": "เส้นคั่น",
+      "section": "ข้อความคู่รูปเล็ก",
+      "empty_content": "(ว่าง)",
+      "no_data": "(ไม่มีข้อมูล)"
+    },
+    "modal": {
+      "section_text_label": "ข้อความ (รองรับ markdown)",
+      "section_image_label": "ลิงก์รูปเล็ก (thumbnail URL)",
+      "title": {
+        "add_section": "เพิ่มข้อความคู่รูปเล็ก",
+        "edit_section": "แก้ไขข้อความคู่รูปเล็ก",
+        "insert_section": "แทรกข้อความคู่รูปเล็ก",
+        "edit_text": "แก้ไขข้อความ",
+        "edit_image": "แก้ไขรูป",
+        "insert_text": "แทรกข้อความ",
+        "insert_image": "แทรกรูป",
+        "add_text": "เพิ่มข้อความ",
+        "add_image": "เพิ่มรูป",
+        "edit_button": "แก้ไขปุ่ม (1/3)",
+        "add_button": "เพิ่มปุ่ม (1/3)",
+        "edit_reaction": "แก้ไข Reaction (1/2)",
+        "add_reaction": "เพิ่ม Reaction (1/2)",
+        "config": "ตั้งค่า Dropdown",
+        "color_custom": "กำหนดสีเอง"
+      },
+      "text_content_label": "เนื้อหา (รองรับ markdown)",
+      "text_content_placeholder": "# หัวข้อ\nเนื้อหา...",
+      "image_urls_label": "ลิงก์รูป (1 บรรทัดต่อ 1 ลิงก์)",
+      "btn_label_label": "ป้ายชื่อปุ่ม",
+      "btn_label_placeholder": "เช่น รับยศสมาชิก",
+      "btn_emoji_label": "Emoji (unicode/custom, optional)",
+      "btn_emoji_placeholder": "🎮 หรือ :ชื่อemoji:",
+      "rxn_emoji_label": "Emoji (unicode หรือ :ชื่อ custom emoji:)",
+      "rxn_emoji_placeholder": "เช่น 🎭 หรือ :pronoun_he:",
+      "config_min_label": "ยศขั้นต่ำที่ต้องเลือก (0 = ไม่บังคับ)",
+      "config_max_label": "ยศสูงสุดที่เลือกได้ (1=single, N=multi)",
+      "config_ph_label": "Placeholder ของ dropdown (optional)",
+      "config_ph_placeholder": "เช่น 🎭 เลือกยศประจำตัว...",
+      "hex_label": "Hex code (#RRGGBB)"
+    },
+    "describe": {
+      "separator_spacing": "ระยะห่าง: {spacing}",
+      "gallery_multi": "{count} รูป"
+    },
+    "spacing": {
+      "large": "ใหญ่",
+      "small": "เล็ก"
+    },
+    "add_role": {
+      "header": "**➕ เพิ่มยศ — {name}**\nเลือกยศที่ต้องการเพิ่ม",
+      "placeholder": "เลือกยศ",
+      "cancel_button": "← ยกเลิก",
+      "everyone_blocked": "❌ ไม่สามารถเพิ่ม @everyone ได้ครับ",
+      "setup_gone": "❌ ไม่พบ setup แล้วครับ",
+      "already_added": "⚠️ ยศ **{name}** อยู่ใน setup นี้แล้วครับ",
+      "max_reached": "❌ มียศครบ 25 อันแล้วครับ",
+      "modal_title": "เพิ่มยศ: {name}",
+      "desc_label": "คำอธิบาย (optional, แสดงใต้ชื่อยศ)",
+      "desc_placeholder": "เช่น สีแดง",
+      "pending_expired": "❌ ข้อมูลหมดอายุแล้วครับ",
+      "added_success": "✅ เพิ่มยศ **{name}**{descText} แล้วครับ",
+      "desc_note": " (คำอธิบาย: \"{description}\")"
+    },
+    "role_manage": {
+      "empty": "**🗑️ จัดการยศ — {name}**\n\nยังไม่มียศครับ",
+      "select_header": "**🗑️ จัดการยศ — {name}**\nเลือกยศที่ต้องการลบออก",
+      "placeholder": "เลือกยศที่จะลบ",
+      "removed": "✅ ลบ {count} ยศออกแล้วครับ"
+    },
+    "button_color": {
+      "edit_title": "✏️ แก้ไขปุ่ม — {name}",
+      "add_title": "➕ เพิ่มปุ่ม — {name}",
+      "current_style_note": "\nสีปัจจุบัน: {style}",
+      "header": "**{title}**\nปุ่ม: \"{previewLabel}\"{note}\n\nเลือกสีปุ่มครับ",
+      "cancel_button": "← ยกเลิก"
+    },
+    "button_role": {
+      "keep_label_named": "✅ คงยศเดิม ({name})",
+      "keep_label": "✅ คงยศเดิม",
+      "keep_description": "ไม่เปลี่ยนยศ แค่อัปเดตชื่อ / emoji / สีปุ่ม",
+      "role_description": "ID: {id}",
+      "header_edit": "**🎭 เลือกยศ**\nเลือก **\"✅ คงยศเดิม\"** เพื่อแก้แค่ชื่อ/emoji/สี หรือเลือกยศใหม่เพื่อเปลี่ยน\n*(แสดงเฉพาะยศที่บอทจัดการได้)*",
+      "header_add": "**🎭 เลือกยศ**\nเลือกยศที่ปุ่มนี้จะ toggle ให้/ถอด\n*(แสดงเฉพาะยศที่บอทจัดการได้)*",
+      "placeholder": "เลือกยศ",
+      "cancel_button": "← ยกเลิก"
+    },
+    "btn_manage": {
+      "empty": "**⚙️ จัดการปุ่ม — {name}**\n\nยังไม่มีปุ่มครับ",
+      "header": "**⚙️ จัดการปุ่ม — {name}**\nเลือกปุ่มที่ต้องการแก้ไขหรือลบจากรายการด้านล่าง",
+      "placeholder": "เลือกปุ่มที่ต้องการแก้ไขหรือลบ",
+      "option_description": "→ ยศ {roleName}"
+    },
+    "btn_action": {
+      "header": "**ปุ่ม: {previewLabel}**\nสี: {styleName}\nยศ: {roleName}\n\nต้องการทำอะไรกับปุ่มนี้ดีครับ?",
+      "button": {
+        "edit": "แก้ไข",
+        "delete": "ลบ"
+      },
+      "role_deleted_suffix": "ID: {id} (ถูกลบจาก Discord แล้ว)"
+    },
+    "rxn_manage": {
+      "empty": "**⚙️ จัดการ Reaction — {name}**\n\nยังไม่มี reaction ครับ",
+      "header": "**⚙️ จัดการ Reaction — {name}**\nเลือก reaction ที่ต้องการแก้ไขหรือลบ",
+      "placeholder": "เลือก reaction",
+      "option_label": "→ ยศ {roleName}",
+      "option_description": "emoji: {emoji}"
+    },
+    "rxn_action": {
+      "header": "**Reaction: {emoji}**\nยศ: {roleName}\n\nต้องการทำอะไรกับ reaction นี้ดีครับ?",
+      "button": {
+        "edit": "แก้ไข emoji",
+        "delete": "ลบ"
+      },
+      "role_deleted_suffix": "ID: {id} (ถูกลบ)"
+    },
+    "rxn_role": {
+      "keep_label_named": "✅ คงยศเดิม ({name})",
+      "keep_label": "✅ คงยศเดิม",
+      "keep_description": "ไม่เปลี่ยนยศ แค่อัปเดต emoji",
+      "role_description": "ID: {id}",
+      "header_edit": "**🎭 เลือกยศ**\nเลือก \"✅ คงยศเดิม\" เพื่อแก้แค่ emoji หรือเลือกยศใหม่\n*(แสดงเฉพาะยศที่บอทจัดการได้)*",
+      "header_add": "**🎭 เลือกยศ**\nเลือกยศที่จะได้รับเมื่อ react ด้วย emoji นี้\n*(แสดงเฉพาะยศที่บอทจัดการได้)*",
+      "placeholder": "เลือกยศ",
+      "cancel_button": "← ยกเลิก"
+    },
+    "max_roles": {
+      "option_single": "1 ยศ",
+      "option_single_desc": "รับได้ยศเดียว (เลือกใหม่ = ถอดยศเก่าอัตโนมัติ)",
+      "option_two": "2 ยศ",
+      "option_two_desc": "รับได้พร้อมกันสูงสุด 2 ยศ",
+      "option_three": "3 ยศ",
+      "option_three_desc": "รับได้พร้อมกันสูงสุด 3 ยศ",
+      "option_unlimited": "ไม่จำกัด",
+      "option_unlimited_desc": "รับได้ทุกยศในกลุ่มนี้พร้อมกัน",
+      "header": "**🔢 จำนวนยศสูงสุด — {name}**\nกำหนดว่าสมาชิก 1 คนกดรับยศจากกลุ่มนี้พร้อมกันได้กี่ยศ",
+      "placeholder": "เลือกจำนวนยศสูงสุด",
+      "set_success": "✅ ตั้งจำนวนยศสูงสุดเป็น **{label}** แล้วครับ",
+      "count_label": "{count} ยศ"
+    },
+    "done": {
+      "posted_note": "\n*(เคยโพสต์ไปแล้ว ข้อความเดิมจะยังอยู่ในช่อง)*",
+      "header": "**📤 โพสต์ — {name}**\nเลือกช่องที่ต้องการโพสต์ครับ{note}",
+      "placeholder": "เลือกช่องปลายทาง",
+      "cancel_button": "← ยกเลิก"
+    },
+    "post_confirm": {
+      "header": "**⚠️ เคยโพสต์ไปแล้ว**\nrole setup **\"{name}\"** ถูกโพสต์ล่าสุด {timestamp}\n\nข้อความเดิมที่โพสต์ไปแล้วจะยังอยู่ในช่องนั้น ต้องการโพสต์อันใหม่เข้า {channel} ไหมครับ?",
+      "confirm_button": "โพสต์ต่อ",
+      "cancel_button": "ยกเลิก"
+    },
+    "post": {
+      "setup_not_found": "❌ ไม่พบ setup แล้วครับ",
+      "no_buttons": "❌ ยังไม่มีปุ่มครับ เพิ่มปุ่มก่อนนะครับ",
+      "all_button_roles_deleted": "❌ ยศทั้งหมดที่ผูกกับปุ่มถูกลบออกจาก Discord แล้วครับ",
+      "duplicate_buttons": "❌ มีปุ่มหลายอันผูกกับยศเดียวกัน ({names}) ครับ Discord ไม่อนุญาตให้มีปุ่มซ้ำแบบนี้ในข้อความเดียว ลบปุ่มที่ซ้ำออกก่อนนะครับ",
+      "send_failed_button": "❌ ส่งเข้า {channel} ไม่สำเร็จครับ บอทอาจไม่มีสิทธิ์ \"Send Messages\" (ดู console log สำหรับรายละเอียด error)",
+      "skipped_buttons_warning": "⚠️ ข้าม {count} ปุ่มเพราะยศถูกลบไปแล้ว",
+      "no_reactions": "❌ ยังไม่มี reaction ครับ เพิ่ม reaction ก่อนนะครับ",
+      "send_failed_generic": "❌ ส่งเข้า {channel} ไม่สำเร็จครับ บอทอาจไม่มีสิทธิ์ \"Send Messages\"",
+      "react_failed_warning": "⚠️ react ไม่สำเร็จสำหรับ: {emojis}",
+      "unsupported_type": "⚠️ type `{type}` ยังไม่รองรับครับ",
+      "no_roles": "❌ ยังไม่มียศครับ เพิ่มยศก่อนนะครับ",
+      "all_roles_deleted": "❌ ยศทั้งหมดถูกลบออกจาก Discord แล้วครับ",
+      "placeholder_single": "เลือกยศ (เลือกได้ 1 อัน)",
+      "placeholder_multi": "เลือกยศ (เลือกได้ {min}–{max} อัน)",
+      "channel_gone": "❌ ไม่พบช่องนั้นแล้วครับ"
+    },
+    "image_urls": {
+      "need_one": "⚠️ ต้องมีลิงก์อย่างน้อย 1 รายการครับ",
+      "invalid_header": "❌ ลิงก์ไม่ถูกต้อง:"
+    },
+    "role_check": {
+      "no_manage_roles_perm": "❌ บอทไม่มีสิทธิ์ \"Manage Roles\" ครับ",
+      "role_too_high": "❌ ยศ **{name}** อยู่สูงกว่ายศบอทครับ",
+      "role_managed": "❌ ยศ **{name}** ถูกจัดการโดยระบบอัตโนมัติครับ",
+      "pick_another_hint": "\nเลือกยศอื่นก่อนนะครับ"
+    },
+    "command": {
+      "name_required": "❌ ชื่อต้องไม่ว่างครับ",
+      "name_has_colon": "❌ ชื่อห้ามมี \":\" ครับ",
+      "type_unsupported": "⚠️ type `{type}` ยังอยู่ระหว่างพัฒนาครับ",
+      "already_exists": "⚠️ มี setup ชื่อ **\"{name}\"** อยู่แล้วครับ ใช้ `/role-setup edit \"{name}\"`",
+      "not_found": "❌ ไม่พบ setup ชื่อ **\"{name}\"** ครับ",
+      "post_success": "✅ โพสต์ **\"{name}\"** เข้า {channel} แล้วครับ!\n[กดเพื่อไปดูข้อความ]({url}){warnText}",
+      "list_empty": "**🎭 Role Setup**\n\nยังไม่มีครับ สร้างด้วย `/role-setup new [ชื่อ] menu`",
+      "list_header": "**🎭 Role Setup** ({count} รายการ)",
+      "list_entry": "**{index}. {name}** `[{type}]` — {roleCount} ยศ — {blockCount} บล็อก{postedNote} — แก้ล่าสุด {timestamp} โดย <@{userId}>",
+      "list_posted_note": " — โพสต์ล่าสุด {timestamp}",
+      "delete_confirm_header": "**🗑️ ยืนยันการลบ role setup**\nต้องการลบ **\"{name}\"** ออกจากระบบไหมครับ?\n\n> ⚠️ ข้อมูล config จะถูกลบถาวร แต่ข้อความที่โพสต์ไปแล้วในช่องจะยังอยู่\n> ต้องลบข้อความในช่องเองด้วยตนเองนะครับ",
+      "delete_confirm_button": "✅ ยืนยันลบ",
+      "delete_cancel_button": "❌ ยกเลิก"
+    },
+    "block": {
+      "gone": "⚠️ ไม่พบบล็อกนี้แล้วครับ",
+      "already_top": "⚠️ อยู่บนสุดแล้วครับ",
+      "already_bottom": "⚠️ อยู่ล่างสุดแล้วครับ"
+    },
+    "button": {
+      "not_found": "⚠️ ไม่พบปุ่มนี้แล้วครับ (อาจถูกลบไปก่อนหน้านี้)",
+      "deleted": "✅ ลบปุ่ม **\"{label}\"** แล้วครับ",
+      "max_reached": "❌ มีปุ่มครบ 25 อันแล้วครับ (จำกัดสูงสุดของ ActionRow ทั้งหมด)",
+      "role_conflict": "⚠️ มีปุ่มที่ผูกกับยศ **{name}** อยู่แล้วครับ เลือกยศอื่น หรือลบปุ่มเดิมออกก่อนถ้าต้องการแก้ไข",
+      "edited_same_role": "✅ แก้ไขปุ่ม **\"{label}\"** แล้วครับ (ยศ **{name}** เดิม)",
+      "edited_new_role": "✅ แก้ไขปุ่ม **\"{label}\"** → ยศ **{name}** แล้วครับ",
+      "added": "✅ เพิ่มปุ่ม **\"{label}\"** → ยศ **{name}** แล้วครับ",
+      "label_required": "❌ ป้ายชื่อปุ่มต้องไม่ว่างครับ",
+      "emoji_not_found": "ไม่พบอิโมจินี้ในเซิร์ฟเวอร์ครับ ปุ่มจะไม่มีอิโมจิ ลองใช้ชื่ออิโมจิที่ถูกต้องนะครับ"
+    },
+    "reaction": {
+      "deleted": "✅ ลบ reaction {emoji} แล้วครับ",
+      "max_reached": "❌ มี reaction ครบ 20 อันแล้วครับ (Discord จำกัด bot react สูงสุด 20 emoji ต่อ message)",
+      "edited_same_role": "✅ แก้ไข reaction เป็น {emoji} (ยศ **{name}** เดิม) แล้วครับ",
+      "edited_new_role": "✅ แก้ไข reaction เป็น {emoji} → ยศ **{name}** แล้วครับ",
+      "added": "✅ เพิ่ม reaction {emoji} → ยศ **{name}** แล้วครับ",
+      "emoji_required": "❌ ใส่ emoji ครับ",
+      "emoji_not_found_example": "ไม่พบ emoji นี้ในเซิร์ฟเวอร์ครับ ลองพิมพ์ชื่อ emoji ใหม่นะครับ เช่น `:pronoun_he:`",
+      "emoji_not_found": "ไม่พบ emoji นี้ในเซิร์ฟเวอร์ครับ ลองพิมพ์ชื่อ emoji ใหม่นะครับ",
+      "duplicate": "⚠️ emoji {emoji} ผูกกับยศ **{name}** อยู่แล้วครับ",
+      "no_manageable_roles": "❌ ไม่มียศที่บอทจัดการได้ครับ"
+    },
+    "preview": {
+      "layout_error": "❌ Layout มีปัญหาครับ: {error}",
+      "no_reactions": "⚠️ ยังไม่มี reaction เลยครับ เพิ่ม reaction ก่อนนะครับ",
+      "reaction_notice": "🔍 **ตัวอย่างเท่านั้น** — จะถูกลบอัตโนมัติใน 60 วินาที\nกด emoji ด้านล่างทดสอบได้เลยครับ *(ไม่รับ/ถอดยศจริงระหว่างทดสอบ)*",
+      "delete_button": "🗑️ ลบตัวอย่างเดี๋ยวนี้",
+      "send_failed": "❌ ส่งข้อความไม่สำเร็จครับ บอทอาจไม่มีสิทธิ์ \"Send Messages\" ในช่องนี้",
+      "sent_success": "✅ ส่งตัวอย่างแล้วครับ กดปุ่ม \"🗑️ ลบตัวอย่างเดี๋ยวนี้\" ได้เลยเมื่อทดสอบเสร็จ",
+      "no_buttons": "⚠️ ยังไม่มีปุ่มยศเลยครับ กด ➕ เพิ่มปุ่ม ก่อนนะครับ",
+      "no_roles": "⚠️ ยังไม่มียศเลยครับ กด ➕ เพิ่มยศ ก่อนนะครับ",
+      "header": "🔍 **ตัวอย่าง \"{name}\"** — เห็นแค่คุณคนเดียว สามารถกดทดสอบได้"
+    },
+    "delete": {
+      "expired": "⚠️ คำขอลบหมดอายุแล้วครับ ลองใช้ `/role-setup delete` ใหม่นะครับ",
+      "success": "✅ ลบ role setup **\"{name}\"** ออกจากระบบแล้วครับ\n*(ข้อความที่โพสต์ไปแล้วในช่องยังอยู่ ลบเองได้เลยนะครับ)*",
+      "not_found": "⚠️ ไม่พบ role setup \"{name}\" แล้วครับ (อาจถูกลบไปก่อนหน้านี้แล้ว)",
+      "cancelled": "↩️ ยกเลิกการลบแล้วครับ"
+    },
+    "color_custom": {
+      "invalid": "❌ รูปแบบสีไม่ถูกต้องครับ ต้องเป็น #RRGGBB (ได้รับ: \"{input}\")"
+    },
+    "config": {
+      "invalid_range": "❌ ค่าไม่ถูกต้องครับ (min={min}, max={max})\n• Min ต้องเป็น 0–25\n• Max ต้องเป็น 1–25\n• Min ≤ Max",
+      "max_exceeds_roles": "⚠️ Max ({max}) เกินจำนวนยศ ({count}) ครับ ลด Max ลงหรือเพิ่มยศให้ครบก่อนนะครับ"
+    },
+    "hint": {
+      "retry_add_image": "\n\nลองกด + รูป ใหม่นะครับ",
+      "retry_add_section": "\n\nลองกด + Section ใหม่นะครับ"
+    },
+    "image_warning": {
+      "suspicious_list": "⚠️ ลิงก์ต่อไปนี้อาจไม่ใช่รูปจริงครับ:\n{list}",
+      "suspicious_single": "⚠️ ลิงก์รูปเล็กอาจไม่ใช่รูปจริงครับ: {url}"
+    },
+    "runtime": {
+      "guild_only": "❌ ใช้ได้ในเซิร์ฟเวอร์เท่านั้นครับ",
+      "setup_gone_select": "❌ ไม่พบ setup นี้แล้วครับ ติดต่อแอดมินโพสต์ใหม่นะครับ",
+      "no_changes": "ℹ️ ไม่มีการเปลี่ยนแปลงครับ",
+      "fetch_failed": "❌ ดึงข้อมูล member ไม่ได้ครับ",
+      "generic_error": "❌ เกิดข้อผิดพลาดครับ ลองใหม่อีกครั้ง",
+      "removed_roles": "➖ ถูกถอดยศ: {roles}",
+      "added_roles": "✅ ได้รับยศ: {roles}",
+      "guild_only_button": "❌ ใช้งานได้ในเซิร์ฟเวอร์เท่านั้นครับ",
+      "setup_gone_button": "❌ ไม่พบ role setup นี้แล้วครับ ติดต่อแอดมินให้อัปเดตข้อความนะครับ",
+      "role_gone": "❌ ยศนี้ไม่มีอยู่ในเซิร์ฟเวอร์แล้วครับ (อาจถูกลบไปแล้ว) ติดต่อแอดมินให้อัปเดตปุ่มนี้ได้เลย",
+      "role_removed_toggle": "✅ ถอดยศ **{name}** แล้วครับ",
+      "role_added_toggle": "✅ ได้รับยศ **{name}** แล้วครับ",
+      "role_swapped": "✅ เปลี่ยนเป็นยศ **{name}** แล้วครับ{removedNote}",
+      "role_swapped_removed_note": " (ถอด: {names})",
+      "max_reached": "❌ ถึงขีดจำกัด **{max} ยศ** แล้วครับ ต้องถอดยศอื่นในกลุ่มนี้ก่อนนะครับ"
+    },
+    "role_button": {
+      "no_roles": "❌ ไม่มียศที่บอทจัดการได้เหลือในเซิร์ฟเวอร์นี้แล้วครับ ให้แอดมินเช็คสิทธิ์บอทกับตำแหน่งยศดูนะครับ"
+    },
+    "quota": {
+      "reached": "เซิร์ฟนี้มี role setup ครบจำนวนสูงสุดที่แผนฟรีอนุญาตแล้วครับ ({limit} ชุด)"
+    },
+    "type_gate": {
+      "reaction_only": "แผนฟรีรองรับแค่ type \"reaction\" เท่านั้นครับ เลือก \"reaction\" หรืออัปเกรดเป็น Premium เพื่อปลดล็อก Menu และ Button ได้เลยครับ"
+    },
+    "reaction_gate": {
+      "max_reached": "เซิร์ฟนี้มี reaction ครบจำนวนสูงสุดที่แผนฟรีอนุญาตต่อ 1 setup แล้วครับ ({limit} ตัว)"
+    }
+  },
+  "welcome_setup": {
+    "status": {
+      "on": "เปิดอยู่",
+      "off": "ปิดอยู่",
+      "channel_unset": "*ยังไม่เลือก*",
+      "bg_gif": "มี (GIF)",
+      "bg_set": "มี",
+      "bg_none": "ไม่มี (ใช้ gradient)",
+      "avatar_on": "เปิด",
+      "avatar_off": "ปิด",
+      "text_none": "ยังไม่มีข้อความ",
+      "text_count": "{count} บล็อก",
+      "field_status": "สถานะ",
+      "field_channel": "ช่อง",
+      "field_background": "พื้นหลัง",
+      "field_overlay": "Overlay",
+      "field_avatar": "Avatar",
+      "field_text": "ข้อความในรูป",
+      "field_greeting": "ข้อความทักทาย"
+    },
+    "panel": {
+      "hint": "💡 กดปุ่ม **🖼️ พื้นหลัง** แล้ววางลิงก์รูป — ใช้ `/upload-image` ก่อนเพื่อแปลงไฟล์เป็นลิงก์ถาวรนะครับ",
+      "button": {
+        "background": "พื้นหลัง",
+        "text": "ข้อความ",
+        "avatar": "Avatar",
+        "opacity": "ความทึบ",
+        "greeting": "ข้อความทักทาย",
+        "preview": "ดูตัวอย่าง",
+        "toggle_on": "เปิดอยู่",
+        "toggle_off": "ปิดอยู่",
+        "done": "เสร็จแล้ว"
+      },
+      "channel_placeholder_set": "เปลี่ยนช่องต้อนรับ (ปัจจุบันตั้งค่าแล้ว)",
+      "channel_placeholder_unset": "เลือกช่องต้อนรับ…"
+    },
+    "avatar": {
+      "on_header": "**👤 Avatar Settings** — 🟢 เปิดอยู่\nX: {x}%  |  Y: {y}%  |  ขนาด (R): {r}%\n\n⬅️ ➡️ = ขยับแนวนอน (ทีละ {stepXY}%)  |  ⬆️ ⬇️ = แนวตั้ง (ทีละ {stepXY}%)\n➕ ➖ = ขนาด avatar (ทีละ {stepR}%)  |  🎯 = พิมพ์พิกัดตรงๆ",
+      "off_header": "**👤 Avatar Settings** — ⭕ ปิดอยู่\nกดปุ่ม \"⭕ เปิด Avatar\" เพื่อเปิดและเห็นตัวเลือกปรับตำแหน่ง",
+      "toggle_on": "🟢 ปิด Avatar",
+      "toggle_off": "⭕ เปิด Avatar",
+      "custom_button": "🎯 ปรับแต่งเอง",
+      "back_button": "← กลับ"
+    },
+    "text_list": {
+      "header": "**💬 จัดการข้อความต้อนรับ**\nมีทั้งหมด {count} บล็อก — เลือกจากรายการเพื่อแก้ไข หรือเพิ่มบล็อกใหม่\n💡 ใช้ `{ph}` เพื่อแสดงชื่อสมาชิกใหม่อัตโนมัติ",
+      "block_label": "บล็อกที่ {index}{bold}",
+      "block_label_bold": " (ตัวหนา)",
+      "block_empty": "(ว่าง)",
+      "add_new_label": "➕ เพิ่มข้อความใหม่",
+      "add_new_description": "สร้าง text block ใหม่",
+      "placeholder_has_blocks": "เลือกบล็อกที่ต้องการแก้ไข…",
+      "placeholder_empty": "ยังไม่มีบล็อก — กดเพิ่มใหม่",
+      "back_button": "← กลับ",
+      "max_blocks_warning": "⚠️ เพิ่มได้สูงสุด {max} บล็อกครับ ลบบล็อกเก่าก่อนนะครับ",
+      "new_block_content": "ข้อความใหม่"
+    },
+    "text_editor": {
+      "not_found": "⚠️ ไม่พบบล็อกนี้แล้วครับ (อาจถูกลบไปแล้ว) กลับไปที่รายการนะครับ",
+      "not_found_back_button": "← กลับไปรายการ",
+      "header": "**💬 แก้ไขบล็อกข้อความ** {boldTag}\n\"{preview}\"\nX: {x}%  |  Y: {y}%  |  ขนาด Font: {size}%\n\n💡 ใช้ `{ph}` เพื่อแสดงชื่อสมาชิกใหม่อัตโนมัติ\n⬅️ ➡️ = ขยับแนวนอน (ทีละ {stepXY}%)  |  ⬆️ ⬇️ = แนวตั้ง (ทีละ {stepXY}%)\n➕ ➖ = ขนาด font (ทีละ {stepSZ}%)  |  🎯 = พิมพ์พิกัดตรงๆ",
+      "bold_tag": "**[B ตัวหนา]**",
+      "normal_tag": "[ปกติ]",
+      "font_placeholder": "เลือกสไตล์ฟอนต์",
+      "font_default": "🎈 ค่าเริ่มต้น (Mali/Fredoka)",
+      "font_charmonman": "✨ Charmonman (ฝันๆ)",
+      "font_chonburi": "🎉 Chonburi (สนุกสนาน ไม่มีตัวหนา)",
+      "font_kanit": "🔹 Kanit (มินิมอล ทันสมัย)",
+      "font_sarabun": "🔹 Sarabun (มินิมอล เป็นทางการ)",
+      "bold_disabled": "⛔ ไม่มีตัวหนา",
+      "bold_on": "B ตัวหนา",
+      "bold_off": "⬛ ปกติ",
+      "edit_button": "✏️ แก้ไขข้อความ",
+      "delete_button": "🗑️ ลบบล็อกนี้",
+      "custom_button": "🎯 ปรับแต่งเอง",
+      "back_button": "← กลับไปรายการ"
+    },
+    "modal": {
+      "example_number": "เช่น {n}",
+      "bg_title": "🖼️ ตั้งค่ารูปพื้นหลัง",
+      "bg_label": "ลิงก์รูปพื้นหลัง",
+      "bg_placeholder": "วางลิงก์จาก /upload-image หรือลิงก์รูปตรงๆ ที่ลงท้ายด้วย .gif .png .jpg",
+      "opacity_title": "🎨 ตั้งค่าความทึบ Overlay",
+      "opacity_label": "ความทึบ 0–100  (0=โปร่งใส, 100=ทึบสนิท)",
+      "greeting_title": "📢 ตั้งค่าข้อความทักทาย",
+      "greeting_label": "ข้อความ (นอกรูป) ตอนสมาชิกใหม่เข้ามา",
+      "greeting_placeholder": "{user} = mention จริง | {username} = ชื่อ | {server} = ชื่อเซิร์ฟเวอร์",
+      "avatar_custom_title": "🎯 ปรับแต่ง Avatar เอง",
+      "avatar_x_label": "ตำแหน่ง X (% ของความกว้าง 0-100)",
+      "avatar_y_label": "ตำแหน่ง Y (% ของความสูง 0-100)",
+      "avatar_r_label": "ขนาด Radius (% ของความสูง 5-45)",
+      "txb_edit_title": "💬 แก้ไขข้อความต้อนรับ",
+      "txb_edit_label": "ข้อความ  (ใช้ {ph} = ชื่อสมาชิก)",
+      "txb_edit_placeholder": "เช่น: ยินดีต้อนรับ {ph} เข้าสู่เซิร์ฟเวอร์!",
+      "txb_custom_title": "🎯 ปรับแต่งตำแหน่งข้อความเอง",
+      "txb_x_label": "ตำแหน่ง X (% ของความกว้าง 0-100)",
+      "txb_y_label": "ตำแหน่ง Y (% ของความสูง 0-100)",
+      "txb_size_label": "ขนาด Font (% ของความสูง 4-25)"
+    },
+    "preview": {
+      "error": "❌ สร้าง preview ไม่สำเร็จครับ: {error}"
+    },
+    "block_not_found": "⚠️ ไม่พบบล็อกนี้แล้วครับ",
+    "done": {
+      "message": "✅ **บันทึกสำเร็จครับ!**\n{onNote}\n{chNote}\n\nรัน `/welcome-setup` อีกครั้งเพื่อแก้ไขได้เลยนะครับ",
+      "channel_note": "ช่อง: {channel}",
+      "channel_unset_note": "⚠️ ยังไม่ได้เลือกช่อง — กลับมาตั้งค่าใหม่ได้เลยครับ",
+      "status_on": "🟢 ระบบต้อนรับ: เปิดอยู่",
+      "status_off": "⭕ ระบบต้อนรับ: ปิดอยู่"
+    },
+    "session_expired": "⏱️ Session หมดอายุแล้วครับ กรุณาพิมพ์ `/welcome-setup` ใหม่",
+    "bg": {
+      "invalid_url": "❌ URL ไม่ถูกต้องครับ ต้องขึ้นต้นด้วย https:// หรือ http://",
+      "invalid_extension": "❌ ลิงก์ต้องลงท้ายด้วยนามสกุลรูปที่รองรับครับ\n• `.png` `.jpg` `.jpeg` `.webp` — รูปทั่วไป\n• `.gif` — ภาพเคลื่อนไหว (⭐ premium)",
+      "premium_required": "GIF background เป็นฟีเจอร์ Premium เท่านั้นครับ",
+      "temp_link_warning": "⚠️ ลิงก์นี้เป็นลิงก์ชั่วคราวจาก Discord (media proxy) อาจหมดอายุใน ~24 ชม. แล้วรูปจะหายไปเองครับ\nแนะนำให้ใช้ `/upload-image` ก่อน จะได้ลิงก์ถาวรที่ไม่หมดอายุ (บันทึกลิงก์นี้ให้แล้วตอนนี้ แต่เตือนไว้ก่อนเผื่อพังทีหลัง)"
+    },
+    "opacity": {
+      "invalid": "❌ กรุณาใส่ตัวเลขระหว่าง 0–100 ครับ"
+    },
+    "greeting": {
+      "no_user_warning": "ข้อความนี้ไม่มี {ph} นะครับ สมาชิกใหม่จะไม่ได้รับการแจ้งเตือน (ping) ถ้าต้องการให้ ping ให้เพิ่ม {ph} เข้าไปในข้อความด้วยครับ"
+    },
+    "coord_error": {
+      "x": "X ต้องเป็นตัวเลข 0-100",
+      "y": "Y ต้องเป็นตัวเลข 0-100",
+      "r": "Radius ต้องเป็นตัวเลข 5-45",
+      "size": "ขนาด Font ต้องเป็นตัวเลข 4-25"
+    }
+  },
+  "goodbye_setup": {
+    "status": {
+      "on": "เปิดอยู่",
+      "off": "ปิดอยู่",
+      "channel_unset": "*ยังไม่เลือก*",
+      "bg_gif": "มี (GIF)",
+      "bg_set": "มี",
+      "bg_none": "ไม่มี (ใช้ gradient)",
+      "avatar_on": "เปิด",
+      "avatar_off": "ปิด",
+      "text_none": "ยังไม่มีข้อความ",
+      "text_count": "{count} บล็อก",
+      "field_status": "สถานะ",
+      "field_channel": "ช่อง",
+      "field_background": "พื้นหลัง",
+      "field_overlay": "Overlay",
+      "field_avatar": "Avatar",
+      "field_text": "ข้อความในรูป",
+      "field_farewell": "ข้อความอำลา"
+    },
+    "panel": {
+      "hint": "💡 กดปุ่ม **🖼️ พื้นหลัง** แล้ววางลิงก์รูป — ใช้ `/upload-image` ก่อนเพื่อแปลงไฟล์เป็นลิงก์ถาวรนะครับ",
+      "button": {
+        "background": "พื้นหลัง",
+        "text": "ข้อความ",
+        "avatar": "Avatar",
+        "opacity": "ความทึบ",
+        "farewell": "ข้อความอำลา",
+        "preview": "ดูตัวอย่าง",
+        "toggle_on": "เปิดอยู่",
+        "toggle_off": "ปิดอยู่",
+        "done": "เสร็จแล้ว"
+      },
+      "channel_placeholder_set": "เปลี่ยนช่องอำลา (ปัจจุบันตั้งค่าแล้ว)",
+      "channel_placeholder_unset": "เลือกช่องอำลา…"
+    },
+    "avatar": {
+      "on_header": "**👤 Avatar Settings** — 🟢 เปิดอยู่\nX: {x}%  |  Y: {y}%  |  ขนาด (R): {r}%\n\n⬅️ ➡️ = ขยับแนวนอน (ทีละ {stepXY}%)  |  ⬆️ ⬇️ = แนวตั้ง (ทีละ {stepXY}%)\n➕ ➖ = ขนาด avatar (ทีละ {stepR}%)  |  🎯 = พิมพ์พิกัดตรงๆ",
+      "off_header": "**👤 Avatar Settings** — ⭕ ปิดอยู่\nกดปุ่ม \"⭕ เปิด Avatar\" เพื่อเปิดและเห็นตัวเลือกปรับตำแหน่ง",
+      "toggle_on": "🟢 ปิด Avatar",
+      "toggle_off": "⭕ เปิด Avatar",
+      "custom_button": "🎯 ปรับแต่งเอง",
+      "back_button": "← กลับ"
+    },
+    "text_list": {
+      "header": "**💬 จัดการข้อความอำลา**\nมีทั้งหมด {count} บล็อก — เลือกจากรายการเพื่อแก้ไข หรือเพิ่มบล็อกใหม่\n💡 ใช้ `{ph}` เพื่อแสดงชื่อสมาชิกที่ออกอัตโนมัติ",
+      "block_label": "บล็อกที่ {index}{bold}",
+      "block_label_bold": " (ตัวหนา)",
+      "block_empty": "(ว่าง)",
+      "add_new_label": "➕ เพิ่มข้อความใหม่",
+      "add_new_description": "สร้าง text block ใหม่",
+      "placeholder_has_blocks": "เลือกบล็อกที่ต้องการแก้ไข…",
+      "placeholder_empty": "ยังไม่มีบล็อก — กดเพิ่มใหม่",
+      "back_button": "← กลับ",
+      "max_blocks_warning": "⚠️ เพิ่มได้สูงสุด {max} บล็อกครับ ลบบล็อกเก่าก่อนนะครับ",
+      "new_block_content": "ข้อความใหม่"
+    },
+    "text_editor": {
+      "not_found": "⚠️ ไม่พบบล็อกนี้แล้วครับ (อาจถูกลบไปแล้ว) กลับไปที่รายการนะครับ",
+      "not_found_back_button": "← กลับไปรายการ",
+      "header": "**💬 แก้ไขบล็อกข้อความ** {boldTag}\n\"{preview}\"\nX: {x}%  |  Y: {y}%  |  ขนาด Font: {size}%\n\n💡 ใช้ `{ph}` เพื่อแสดงชื่อสมาชิกที่ออกอัตโนมัติ\n⬅️ ➡️ = ขยับแนวนอน (ทีละ {stepXY}%)  |  ⬆️ ⬇️ = แนวตั้ง (ทีละ {stepXY}%)\n➕ ➖ = ขนาด font (ทีละ {stepSZ}%)  |  🎯 = พิมพ์พิกัดตรงๆ",
+      "bold_tag": "**[B ตัวหนา]**",
+      "normal_tag": "[ปกติ]",
+      "font_placeholder": "เลือกสไตล์ฟอนต์",
+      "font_default": "🎈 ค่าเริ่มต้น (Mali/Fredoka)",
+      "font_charmonman": "✨ Charmonman (ฝันๆ)",
+      "font_chonburi": "🎉 Chonburi (สนุกสนาน ไม่มีตัวหนา)",
+      "font_kanit": "🔹 Kanit (มินิมอล ทันสมัย)",
+      "font_sarabun": "🔹 Sarabun (มินิมอล เป็นทางการ)",
+      "bold_disabled": "⛔ ไม่มีตัวหนา",
+      "bold_on": "B ตัวหนา",
+      "bold_off": "⬛ ปกติ",
+      "edit_button": "✏️ แก้ไขข้อความ",
+      "delete_button": "🗑️ ลบบล็อกนี้",
+      "custom_button": "🎯 ปรับแต่งเอง",
+      "back_button": "← กลับไปรายการ"
+    },
+    "modal": {
+      "example_number": "เช่น {n}",
+      "bg_title": "🖼️ ตั้งค่ารูปพื้นหลัง",
+      "bg_label": "ลิงก์รูปพื้นหลัง",
+      "bg_placeholder": "วางลิงก์จาก /upload-image หรือลิงก์รูปตรงๆ ที่ลงท้ายด้วย .gif .png .jpg",
+      "opacity_title": "🎨 ตั้งค่าความทึบ Overlay",
+      "opacity_label": "ความทึบ 0–100  (0=โปร่งใส, 100=ทึบสนิท)",
+      "farewell_title": "📢 ตั้งค่าข้อความอำลา",
+      "farewell_label": "ข้อความ (นอกรูป) ตอนสมาชิกออกจากเซิร์ฟ",
+      "farewell_placeholder": "{username} = ชื่อ | {server} = ชื่อเซิร์ฟเวอร์",
+      "avatar_custom_title": "🎯 ปรับแต่ง Avatar เอง",
+      "avatar_x_label": "ตำแหน่ง X (% ของความกว้าง 0-100)",
+      "avatar_y_label": "ตำแหน่ง Y (% ของความสูง 0-100)",
+      "avatar_r_label": "ขนาด Radius (% ของความสูง 5-45)",
+      "txb_edit_title": "💬 แก้ไขข้อความอำลา",
+      "txb_edit_label": "ข้อความ  (ใช้ {ph} = ชื่อสมาชิก)",
+      "txb_edit_placeholder": "เช่น: ลาก่อน {ph} แล้วเจอกันใหม่นะ!",
+      "txb_custom_title": "🎯 ปรับแต่งตำแหน่งข้อความเอง",
+      "txb_x_label": "ตำแหน่ง X (% ของความกว้าง 0-100)",
+      "txb_y_label": "ตำแหน่ง Y (% ของความสูง 0-100)",
+      "txb_size_label": "ขนาด Font (% ของความสูง 4-25)"
+    },
+    "preview": {
+      "error": "❌ สร้าง preview ไม่สำเร็จครับ: {error}"
+    },
+    "block_not_found": "⚠️ ไม่พบบล็อกนี้แล้วครับ",
+    "done": {
+      "message": "✅ **บันทึกสำเร็จครับ!**\n{onNote}\n{chNote}\n\nรัน `/goodbye-setup` อีกครั้งเพื่อแก้ไขได้เลยนะครับ",
+      "channel_note": "ช่อง: {channel}",
+      "channel_unset_note": "⚠️ ยังไม่ได้เลือกช่อง — กลับมาตั้งค่าใหม่ได้เลยครับ",
+      "status_on": "🟢 ระบบอำลา: เปิดอยู่",
+      "status_off": "⭕ ระบบอำลา: ปิดอยู่"
+    },
+    "session_expired": "⏱️ Session หมดอายุแล้วครับ กรุณาพิมพ์ `/goodbye-setup` ใหม่",
+    "bg": {
+      "invalid_url": "❌ URL ไม่ถูกต้องครับ ต้องขึ้นต้นด้วย https:// หรือ http://",
+      "invalid_extension": "❌ ลิงก์ต้องลงท้ายด้วยนามสกุลรูปที่รองรับครับ\n• `.png` `.jpg` `.jpeg` `.webp` — รูปทั่วไป\n• `.gif` — ภาพเคลื่อนไหว (⭐ premium)",
+      "premium_required": "GIF background เป็นฟีเจอร์ Premium เท่านั้นครับ",
+      "temp_link_warning": "⚠️ ลิงก์นี้เป็นลิงก์ชั่วคราวจาก Discord (media proxy) อาจหมดอายุใน ~24 ชม. แล้วรูปจะหายไปเองครับ\nแนะนำให้ใช้ `/upload-image` ก่อน จะได้ลิงก์ถาวรที่ไม่หมดอายุ (บันทึกลิงก์นี้ให้แล้วตอนนี้ แต่เตือนไว้ก่อนเผื่อพังทีหลัง)"
+    },
+    "opacity": {
+      "invalid": "❌ กรุณาใส่ตัวเลขระหว่าง 0–100 ครับ"
+    },
+    "coord_error": {
+      "x": "X ต้องเป็นตัวเลข 0-100",
+      "y": "Y ต้องเป็นตัวเลข 0-100",
+      "r": "Radius ต้องเป็นตัวเลข 5-45",
+      "size": "ขนาด Font ต้องเป็นตัวเลข 4-25"
+    }
+  },
+  "premium": {
+    "command_description": "จัดการระบบสมัครพรีเมียมของเซิร์ฟนี้ครับ",
+    "title": "# 🍵 Premium",
+    "status": {
+      "active": "⭐ พรีเมียม (ต่ออายุ {date})",
+      "free": "🔓 ฟรี"
+    },
+    "button": {
+      "subscribe": "สมัครพรีเมียม (89฿) ☕",
+      "manage": "จัดการการสมัคร"
+    },
+    "benefits": {
+      "free_header": "**🎁 อัปเกรดแล้วได้อะไรบ้าง:**",
+      "free_body": "• พื้นหลังแบบ GIF เคลื่อนไหวได้\n• Builder ไม่จำกัดจำนวน + ใช้ Layout Builder เต็มรูปแบบ\n• Role Setup ไม่จำกัดจำนวน + ปลดล็อกแบบเมนู/ปุ่ม\n• แท็กคน/ยศ/ช่องในข้อความได้",
+      "premium_header": "**✅ สิทธิ์ที่คุณใช้ได้ตอนนี้:**",
+      "premium_body": "• พื้นหลังแบบ GIF เคลื่อนไหว\n• Builder ไม่จำกัดจำนวน + Layout Builder เต็มรูปแบบ\n• Role Setup ไม่จำกัดจำนวน + แบบเมนู/ปุ่ม\n• แท็กคน/ยศ/ช่องในข้อความ"
+    },
+    "open_checkout_button": "💳 เปิดหน้าชำระเงิน",
+    "subscribe_link": "💎 กดลิงก์นี้เพื่อสมัครพรีเมียมครับ:\n{url}",
+    "manage_link": "⚙️ จัดการการสมัครที่นี่ครับ:\n{url}",
+    "manage_no_customer": "⚠️ ยังไม่พบข้อมูลการสมัครพรีเมียมผ่าน Stripe ของเซิร์ฟนี้ครับ ถ้าแอดมินตั้ง premium ไว้ด้วยมือ จะไม่มีอะไรให้จัดการตรงนี้นะครับ",
+    "already_premium": "✅ เซิร์ฟนี้เป็นพรีเมี่ยมอยู่แล้วครับ ไม่ต้องสมัครซ้ำนะครับ",
+    "dm": {
+      "activated": "🎉 เปิดใช้งาน Aitao Bot Premium สำหรับ **{guildName}** เรียบร้อยแล้วครับ! ขอบคุณที่สนับสนุนนะครับ 💚"
+    }
+  },
+  "premium_gate": {
+    "message": "⭐ {reason}\n\nอัปเกรดเป็น Premium เพื่อปลดล็อกได้เลยครับ — พิมพ์ `/premium` เพื่อเริ่มสมัครนะครับ!"
+  }
+}

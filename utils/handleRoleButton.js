@@ -40,7 +40,7 @@ async function handleRoleButton(interaction) {
   // ปุ่มนี้ใช้ใน guild เท่านั้น (ไม่รองรับ DM)
   if (!interaction.guild) {
     await interaction.reply({
-      content: '❌ ปุ่มนี้ใช้งานได้ในเซิร์ฟเวอร์เท่านั้นค่ะ',
+      content: '❌ ปุ่มนี้ใช้งานได้ในเซิร์ฟเวอร์เท่านั้นครับ',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -62,7 +62,7 @@ async function handleRoleButton(interaction) {
 
     if (!role) {
       await interaction.reply({
-        content: '❌ ยศนี้ไม่มีอยู่ในเซิร์ฟเวอร์แล้วค่ะ (อาจถูกลบไปแล้ว) ติดต่อแอดมินให้อัปเดตปุ่มนี้ด้วยนะคะ',
+        content: '❌ ยศนี้ไม่มีอยู่ในเซิร์ฟเวอร์แล้วครับ (อาจถูกลบไปแล้ว) ติดต่อแอดมินให้อัปเดตปุ่มนี้ได้เลย',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -73,7 +73,7 @@ async function handleRoleButton(interaction) {
     const botMember = interaction.guild.members.me;
     if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
       await interaction.reply({
-        content: '❌ บอทไม่มีสิทธิ์ "Manage Roles" ในเซิร์ฟเวอร์นี้ค่ะ ติดต่อแอดมินให้เพิ่มสิทธิ์ให้บอทก่อนนะคะ',
+        content: '❌ บอทไม่มีสิทธิ์ "Manage Roles" ในเซิร์ฟเวอร์นี้ครับ ติดต่อแอดมินให้เพิ่มสิทธิ์ให้บอทก่อนนะครับ',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -85,7 +85,7 @@ async function handleRoleButton(interaction) {
     const botHighestPosition = botMember.roles.highest.position;
     if (role.position >= botHighestPosition) {
       await interaction.reply({
-        content: `❌ บอทไม่สามารถจัดการยศ **${role.name}** ได้ค่ะ เพราะยศนี้อยู่สูงกว่าหรือเท่ากับยศสูงสุดของบอท ติดต่อแอดมินให้เลื่อนตำแหน่งยศบอทให้สูงกว่านะคะ`,
+        content: `❌ บอทไม่สามารถจัดการยศ **${role.name}** ได้ครับ เพราะยศนี้อยู่สูงกว่าหรือเท่ากับยศสูงสุดของบอท ติดต่อแอดมินให้เลื่อนตำแหน่งยศบอทให้สูงกว่านะครับ`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -96,7 +96,7 @@ async function handleRoleButton(interaction) {
     // Discord API จะปฏิเสธถ้าพยายาม add/remove managed role ของคนอื่น
     if (role.managed) {
       await interaction.reply({
-        content: `❌ ยศ **${role.name}** ถูกจัดการโดยระบบอัตโนมัติค่ะ ให้/ถอดด้วยปุ่มนี้ไม่ได้`,
+        content: `❌ ยศ **${role.name}** ถูกจัดการโดยระบบอัตโนมัติครับ ให้/ถอดด้วยปุ่มนี้ไม่ได้`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -111,13 +111,13 @@ async function handleRoleButton(interaction) {
     if (hasRole) {
       await member.roles.remove(role);
       await interaction.reply({
-        content: `✅ ถอดยศ **${role.name}** แล้วค่ะ`,
+        content: `✅ ถอดยศ **${role.name}** แล้วครับ`,
         flags: MessageFlags.Ephemeral,
       });
     } else {
       await member.roles.add(role);
       await interaction.reply({
-        content: `✅ ได้รับยศ **${role.name}** แล้วค่ะ`,
+        content: `✅ ได้รับยศ **${role.name}** แล้วครับ`,
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -127,7 +127,7 @@ async function handleRoleButton(interaction) {
     // log เก็บไว้สำหรับ debug แต่ไม่โชว์ technical detail ให้ผู้ใช้เห็น
     console.error('[handleRoleButton] error:', error);
     await interaction.reply({
-      content: '❌ เกิดข้อผิดพลาดขึ้นค่ะ กรุณาลองใหม่อีกครั้ง ถ้ายังไม่ได้ติดต่อแอดมินด้วยนะคะ',
+      content: '❌ เกิดข้อผิดพลาดขึ้นครับ ลองใหม่อีกครั้ง ถ้ายังไม่ได้ติดต่อแอดมินได้เลย',
       flags: MessageFlags.Ephemeral,
     });
   }

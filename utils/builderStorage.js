@@ -1,7 +1,7 @@
 /**
  * Persistent storage layer สำหรับ named builder drafts
  *
- * เก็บข้อมูลใน drafts.json (ที่ root โปรเจกต์ ข้างๆ index.js)
+ * เก็บข้อมูลใน data/drafts.json (โฟลเดอร์ data/ ระดับเดียวกับ index.js)
  * รูปแบบ key: "{guildId}:{name}"  — ห้ามมี ":" ในชื่อ builder เพราะใช้เป็น separator
  *
  * รูปแบบ value:
@@ -22,8 +22,10 @@
 const fs = require('fs');
 const path = require('path');
 
-// ไฟล์เก็บข้อมูลอยู่ที่ root ของโปรเจกต์ (ระดับเดียวกับ index.js)
-const DRAFTS_FILE = path.join(__dirname, '..', 'drafts.json');
+// ไฟล์เก็บข้อมูลอยู่ที่โฟลเดอร์ data/ (ระดับเดียวกับ index.js) แทนที่จะอยู่ที่ root ตรงๆ
+// เหตุผล: Railway ใช้ Volume แยกต่างหากมาต่อเข้าที่โฟลเดอร์ data/ เพื่อให้ข้อมูลไม่หาย
+// ตอน deploy ใหม่ (ดูคำอธิบายเพิ่มเติมใน .gitignore และคำตอบท้ายข้อความ)
+const DRAFTS_FILE = path.join(__dirname, '..', 'data', 'drafts.json');
 
 /**
  * อ่านข้อมูลทั้งหมดจากไฟล์
@@ -47,6 +49,9 @@ function _readAll() {
  */
 function _writeAll(data) {
   try {
+    // เผื่อโฟลเดอร์ data/ ยังไม่มีอยู่จริง (เช่น รันครั้งแรกบน Railway) — สร้างให้ก่อนเขียนไฟล์
+    // ถ้าไม่มีบรรทัดนี้ fs.writeFileSync จะโยน error "ENOENT: no such file or directory" ทันที
+    fs.mkdirSync(path.dirname(DRAFTS_FILE), { recursive: true });
     fs.writeFileSync(DRAFTS_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
     console.error('[builderStorage] เขียนไฟล์ drafts.json ไม่ได้:', error.message);

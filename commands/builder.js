@@ -11,6 +11,8 @@ const {
   ChannelSelectMenuBuilder,
   ChannelType,
   LabelBuilder,
+  MediaGalleryBuilder,
+  MediaGalleryItemBuilder,
   MessageFlags,
 } = require('discord.js');
 const {
@@ -39,13 +41,24 @@ const {
   getActiveSession,
   clearActiveSession,
 } = require('../utils/builderDrafts');
+// ⚠️ ฟังก์ชันทุกตัวข้างบน (ยกเว้น namedDraftExists/createNamedDraft/openNamedDraft/
+// deleteNamedDraft/listGuildDrafts ที่รับ guildId อยู่แล้วแต่เดิม) ตอนนี้ต้องการ
+// guildId เป็น argument แรกเสมอ เพราะ Map ข้างใน builderDrafts.js เปลี่ยนไปใช้
+// key ผสม `${guildId}_${userId}` แล้ว (เดิมใช้ userId เดี่ยวๆ ทำให้ session ของ
+// user คนเดียวกันชนกันข้ามเซิร์ฟได้ ถ้าสลับไปเปิดคำสั่งนี้ในเซิร์ฟอื่นก่อนกด
+// "เสร็จแล้ว"/โพสต์ ที่เซิร์ฟแรก) ทุกจุดที่เรียกฟังก์ชันพวกนี้ในไฟล์นี้จึงต้อง
+// ส่ง guildId (หรือ interaction.guildId) เป็น argument แรกเสมอ ก่อน userId
 const { validateUrl, validateHttpUrl, buildMessageFromSchema } = require('../utils/buildMessageFromSchema');
 const { resolveCustomEmojis } = require('../utils/resolveCustomEmojis');
 const { checkImageUrlLooksValid } = require('../utils/checkImageUrl');
+const { getGuildLanguage } = require('../utils/languageStorage');
+const { createTranslator } = require('../utils/i18n');
+const { isPremiumGuild } = require('../utils/tierManager');
+const { buildUpgradeMessage } = require('../utils/premiumGate');
 
-// ข้อความคำแนะนำที่โชว์ใต้ช่องกรอก URL รูปภาพทุกจุด (ใช้ LabelBuilder.setDescription ซึ่งอยู่ติดถาวร ไม่หายไปตอนพิมพ์)
-const IMAGE_URL_HINT =
-  'ลิงก์ต้องเป็นลิงก์รูปโดยตรง ลงท้ายด้วย .jpg .png .gif หรือ .webp ถ้าไม่แน่ใจ ใช้ /upload-image แทน';
+// หมายเหตุ: ข้อความคำแนะนำใต้ช่องกรอก URL รูปภาพ (เดิมเป็นค่าคงที่ IMAGE_URL_HINT)
+// ย้ายเข้าไปอยู่ใน locale key "builder.modal.image_url_hint" แล้ว เรียกผ่าน t() ที่แต่ละจุดใช้งานแทน
+// (เดิมเป็น string คงที่ ข้ามระบบภาษาไปเพราะ setDescription() ของ LabelBuilder ไม่ใช่ SlashCommandBuilder)
 
 // customId ของปุ่ม/modal/select menu ทั้งหมดในฟีเจอร์นี้ รวมไว้ที่เดียวกันกันพิมพ์ผิด
 const IDS = {
@@ -57,7 +70,6 @@ const IDS = {
   ADD_SECTION_BUTTON: 'builder_add_section_button', // ตัวเลือกย่อย "🔘 ปุ่มลิงก์"
   ADD_SECTION_ROLE: 'builder_add_section_role', // ตัวเลือกย่อย "🎭 ปุ่มยศ"
   ADD_SECTION_CHANNEL: 'builder_add_section_channel', // ตัวเลือกย่อย "📢 ปุ่มลิงก์ช่อง"
-  PREVIEW: 'builder_preview',
   MANAGE: 'builder_manage', // ปุ่ม "📋 จัดการบล็อก"
   MANAGE_SELECT: 'builder_manage_select', // select menu เลือกบล็อก
   MANAGE_BACK: 'builder_manage_back', // ปุ่มกลับไปแผงควบคุมปกติ
@@ -95,6 +107,11 @@ const IDS = {
   INPUT_LIST_SEARCH: 'builder_input_list_search',  // text input ในนั้น
   DELETE_CONFIRM: 'builder_delete_confirm',   // ยืนยันลบ
   DELETE_CANCEL: 'builder_delete_cancel',     // ยกเลิกลบ
+  // simple panel (free tier)
+  SIMPLE_EDIT_BASIC: 'builder_simple_edit_basic',
+  SIMPLE_EDIT_MAIN_IMAGE: 'builder_simple_edit_main_image',
+  SIMPLE_EDIT_THUMBNAIL: 'builder_simple_edit_thumbnail',
+  SIMPLE_POST: 'builder_simple_post',
 };
 
 // ปุ่ม "แก้ไข"/"ลบ" ต้องรู้ว่ากำลังจัดการ block ตำแหน่งไหน เลยฝัง index ต่อท้าย customId เลย
@@ -139,9 +156,32 @@ const MODAL_INSERT_SECTION_CHANNEL_PREFIX = 'builder_modal_insertsecchan_';
 // customId รูปแบบ "builder_role_style_Primary" / "builder_role_style_Secondary" ฯลฯ
 const ROLE_STYLE_PREFIX = 'builder_role_style_';
 
-// เก็บข้อมูลการลบที่รอ confirm (userId → { guildId, name })
+// เก็บข้อมูลการลบที่รอ confirm (key ผสม guildId_userId → { guildId, name })
 // ล้างทิ้งเมื่อกด ยืนยัน/ยกเลิก หรือ bot restart
+//
+// 🔑 key = `${guildId}_${userId}` (ไม่ใช่ userId เดี่ยวๆ เหมือนเดิม)
+// เหตุผล: ถ้า key เป็น userId เดี่ยวๆ แอดมินคนเดียวกันที่รัน /builder delete
+// ค้างไว้ในเซิร์ฟ A (ยังไม่กดยืนยัน) แล้วสลับไปรัน /builder delete ใน
+// เซิร์ฟ B ก่อน จะทำให้ pending deletion ของเซิร์ฟ B ไปทับของเซิร์ฟ A ใน
+// หน่วยความจำทันที (เพราะ userId เดียวกัน) พอกลับไปกดยืนยันที่ปุ่มค้างของ
+// เซิร์ฟ A ระบบจะเผลอลบ builder ผิดตัวของเซิร์ฟ B แทน (cross-guild data
+// corruption) — เป็นบัคเงียบ ไม่มี error โผล่ให้เห็นเลย
+//
+// แก้โดยผูก key กับทั้ง guildId และ userId พร้อมกัน (Discord ID เป็นตัวเลข
+// ล้วน ใช้ underscore คั่นได้ปลอดภัย ไม่มีทางชนกัน) แต่ละเซิร์ฟจะมี pending
+// deletion แยกกันเด็ดขาด ต่อให้ user คนเดียวกันเปิดพร้อมกันหลายเซิร์ฟก็ไม่ชนกัน
 const pendingDeletions = new Map();
+
+/**
+ * สร้าง Map key ผสมจาก guildId + userId — ใช้จุดเดียวทั่วทั้งไฟล์ กันเผลอพิมพ์
+ * รูปแบบ key ไม่ตรงกันระหว่างจุดต่างๆ (เช่นลืมใส่ underscore หรือสลับลำดับ)
+ * @param {string} guildId
+ * @param {string} userId
+ * @returns {string}
+ */
+function sessionKey(guildId, userId) {
+  return `${guildId}_${userId}`;
+}
 
 /**
  * แปลง ISO string เป็น Discord relative timestamp (<t:unix:R>)
@@ -155,45 +195,42 @@ function toDiscordTimestamp(isoString) {
 
 /**
  * สร้างแถวปุ่มควบคุมของ /builder (เรียกใช้ซ้ำได้ทุกครั้งที่ต้องโชว์แผงควบคุม)
+ * @param {(key: string, replacements?: object) => string} t translator ของภาษาเซิร์ฟนี้
  */
-function buildMainPanelComponents() {
+function buildMainPanelComponents(t) {
   // แถว 1: ปุ่มเพิ่ม block ทุกชนิด
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(IDS.ADD_TEXT)
-      .setLabel('+ เพิ่มข้อความ')
+      .setLabel(t('builder.panel.button.add_text'))
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(IDS.ADD_IMAGE)
-      .setLabel('+ เพิ่มรูป')
+      .setLabel(t('builder.panel.button.add_image'))
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(IDS.ADD_SECTION)
-      .setLabel('+ เพิ่ม Section')
+      .setLabel(t('builder.panel.button.add_section'))
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(IDS.ADD_SEPARATOR)
-      .setLabel('+ เพิ่มเส้นคั่น')
+      .setLabel(t('builder.panel.button.add_separator'))
       .setStyle(ButtonStyle.Secondary)
   );
 
   // แถว 2: ปุ่มจัดการ/ตั้งค่า/โพสต์
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(IDS.PREVIEW)
-      .setLabel('ดูตัวอย่าง')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
       .setCustomId(IDS.MANAGE)
-      .setLabel('📋 จัดการบล็อก')
+      .setLabel(t('builder.panel.button.manage'))
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(IDS.COLOR)
-      .setLabel('🎨 เลือกสี')
+      .setLabel(t('builder.panel.button.color'))
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(IDS.POST)
-      .setLabel('โพสต์')
+      .setLabel(t('builder.panel.button.post'))
       .setStyle(ButtonStyle.Success)
   );
 
@@ -203,45 +240,57 @@ function buildMainPanelComponents() {
 /**
  * สรุป block หนึ่งอันให้เป็นข้อความสั้นๆ สำหรับโชว์ใน select menu
  * คืนค่า { typeLabel, preview } เช่น { typeLabel: 'ข้อความ', preview: '# หัวข้อทดสอบ' }
+ * @param {object} block
+ * @param {(key: string, replacements?: object) => string} [t] translator ของภาษาเซิร์ฟนี้
+ *   ⚠️ ตั้งแต่ sub-phase 3b จุดเรียกทั้งหมดในไฟล์ (buildManageSelectPayload, buildBlockActionPayload)
+ *   ส่ง t มาครบแล้ว — default เป็นเซฟตี้เน็ตเฉยๆ เผื่อมีจุดเรียกใหม่ในอนาคตที่ลืมส่ง t มา จะได้ไม่พัง
+ *   default เป็น 'en' ให้ตรงกับทิศทาง fallback ของทั้งระบบที่สลับเป็นอังกฤษแล้วตั้งแต่ Phase 1
+ *   (ไม่ใช่ 'th' เหมือนตอนแรกที่เขียนไว้ผิด — จุดนั้นเป็นบั๊กตกค้าง แก้แล้ว)
  */
-function describeBlock(block) {
+function describeBlock(block, t = createTranslator('en')) {
   switch (block.type) {
     case 'text': {
-      const firstLine = block.content.split('\n')[0] || '(ข้อความว่าง)';
-      return { typeLabel: 'ข้อความ', preview: firstLine };
+      const firstLine = block.content.split('\n')[0] || t('builder.block_type.empty_content');
+      return { typeLabel: t('builder.block_type.text'), preview: firstLine };
     }
     case 'gallery': {
       const count = block.items.length;
       if (count === 1) {
         const item = block.items[0];
-        return { typeLabel: 'รูปภาพ', preview: item.description || item.url };
+        return { typeLabel: t('builder.block_type.gallery'), preview: item.description || item.url };
       }
-      return { typeLabel: 'รูปภาพ', preview: `${count} รูป (เริ่มจาก ${block.items[0].url})` };
+      return {
+        typeLabel: t('builder.block_type.gallery'),
+        preview: t('builder.describe.gallery_multi', { count, url: block.items[0].url }),
+      };
     }
     case 'separator': {
-      const spacingLabel = block.spacing === 'large' ? 'ใหญ่' : 'เล็ก';
-      return { typeLabel: 'เส้นคั่น', preview: `ระยะห่าง: ${spacingLabel}` };
+      const spacingKey = block.spacing === 'large' ? 'builder.spacing.large' : 'builder.spacing.small';
+      return {
+        typeLabel: t('builder.block_type.separator'),
+        preview: t('builder.describe.separator_spacing', { spacing: t(spacingKey) }),
+      };
     }
     case 'section': {
-      const firstLine = block.text.split('\n')[0] || '(ข้อความว่าง)';
-      return { typeLabel: 'ข้อความคู่รูปเล็ก', preview: firstLine };
+      const firstLine = block.text.split('\n')[0] || t('builder.block_type.empty_content');
+      return { typeLabel: t('builder.block_type.section'), preview: firstLine };
     }
     case 'section_button': {
-      const firstLine = block.text.split('\n')[0] || '(ข้อความว่าง)';
-      return { typeLabel: 'ข้อความคู่ปุ่มลิงก์', preview: `${firstLine} (ปุ่ม: ${block.buttonLabel})` };
+      const firstLine = block.text.split('\n')[0] || t('builder.block_type.empty_content');
+      return { typeLabel: t('builder.block_type.section_button'), preview: `${firstLine} (${block.buttonLabel})` };
     }
     case 'section_role_button': {
-      const firstLine = block.text.split('\n')[0] || '(ข้อความว่าง)';
-      return { typeLabel: 'ข้อความคู่ปุ่มยศ', preview: `${firstLine} (ปุ่ม: ${block.buttonLabel})` };
+      const firstLine = block.text.split('\n')[0] || t('builder.block_type.empty_content');
+      return { typeLabel: t('builder.block_type.section_role_button'), preview: `${firstLine} (${block.buttonLabel})` };
     }
     case 'section_channel_button': {
-      const firstLine = block.text.split('\n')[0] || '(ข้อความว่าง)';
-      return { typeLabel: 'ข้อความคู่ปุ่มช่อง', preview: `${firstLine} (ปุ่ม: ${block.buttonLabel})` };
+      const firstLine = block.text.split('\n')[0] || t('builder.block_type.empty_content');
+      return { typeLabel: t('builder.block_type.section_channel_button'), preview: `${firstLine} (${block.buttonLabel})` };
     }
     default:
       // ป้องกันไม่ให้คืน preview เป็น '' ซึ่ง StringSelectMenuBuilder จะปฏิเสธ
       // (Discord ต้องการ description ที่มีความยาว >= 1 หรือไม่มี field นั้นเลย)
-      return { typeLabel: block.type, preview: '(ไม่มีข้อมูล)' };
+      return { typeLabel: block.type, preview: t('builder.block_type.no_data') };
   }
 }
 
@@ -249,28 +298,46 @@ function describeBlock(block) {
  * ประกอบ "แผงควบคุม" ทั้งก้อน = ตัวอย่าง Layout ปัจจุบัน (ถ้ามี) + แถวปุ่มควบคุม
  * ทั้งหมดอยู่ในข้อความเดียวแบบ Components V2 เพื่อให้เห็นผลลัพธ์ real-time ทุกครั้งที่กดปุ่ม
  */
-function buildPanelComponents(userId) {
-  const draft = getDraft(userId);
-  const session = getActiveSession(userId); // ใช้แสดงชื่อ draft ใน header
+function buildPanelComponents(userId, guildId) {
+  const t = createTranslator(getGuildLanguage(guildId));
+  const draft = getDraft(guildId, userId);
+  const session = getActiveSession(guildId, userId); // ใช้แสดงชื่อ draft ใน header
   const components = [];
 
   // header แสดงชื่อ draft ถ้ามี active session
   const draftLabel = session ? ` — **"${session.name}"**` : '';
 
-  if (draft.blocks.length === 0) {
-    // ยังไม่มีบล็อกเลย โชว์ข้อความบอกสถานะแทนตัวอย่าง
+  // 🩹 กรองบล็อกที่ยังกรอกไม่ครบออกก่อนเสมอ (เหมือนที่ buildSimplePanel ทำ) — กันเคส
+  // builder ตัวนี้ถูกสร้างไว้ตอนยังฟรี (มี gallery ว่างเปล่าค้างจาก createFreeTierBlocks())
+  // แล้วเซิร์ฟเพิ่งอัปเกรดเป็นพรีเมี่ยมทีหลัง พอมาเปิด /builder edit ตัวเดิม ถ้าส่ง draft
+  // ดิบๆ (ที่มี gallery ว่างเปล่าติดมาด้วย) เข้า buildMessageFromSchema() ตรงๆ จะ throw
+  // ทันทีเพราะ engine กลางเข้มงวด (gallery ต้องมี items อย่างน้อย 1)
+  const previewableDraft = buildPreviewableDraft(draft);
+
+  if (previewableDraft.blocks.length === 0) {
+    // ไม่มีบล็อกที่พร้อมโชว์เลย ไม่ว่าจะเป็น draft ว่างจริงๆ หรือมีบล็อกอยู่แต่กรอก
+    // ไม่ครบทั้งหมด (เช่นเคสข้างบน) — โชว์ข้อความบอกสถานะแทนตัวอย่าง เหมือนเดิมทุกประการ
     components.push(
       new TextDisplayBuilder().setContent(
-        `**🛠️ Layout Builder${draftLabel}**\nยังไม่มีบล็อกเลยค่ะ กดปุ่มด้านล่างเพื่อเริ่มสร้าง Layout`
+        `**${t('builder.panel.header')}${draftLabel}**\n${t('builder.panel.empty_state')}`
       )
     );
   } else {
-    // มีบล็อกแล้ว ใช้ buildMessageFromSchema() ตัวเดียวกับที่ใช้ตอนโพสต์จริง มาประกอบเป็นตัวอย่าง
-    const preview = buildMessageFromSchema(draft);
-    components.push(...preview.components);
+    // มีบล็อกที่พร้อมโชว์แล้ว ใช้ buildMessageFromSchema() ตัวเดียวกับที่ใช้ตอนโพสต์จริง
+    // มาประกอบเป็นตัวอย่าง — ห่อด้วย try/catch กันเหนียว (pattern เดียวกับ buildSimplePanel)
+    // เผื่อกรณีคาดไม่ถึงอื่นๆ ที่ buildPreviewableDraft() กรองไม่ครอบคลุม จะได้ไม่ throw
+    // จนคำสั่งทั้งก้อนพัง แค่ fallback ไปโชว์ header เฉยๆ แทน
+    try {
+      const preview = buildMessageFromSchema(previewableDraft);
+      components.push(...preview.components);
+    } catch {
+      components.push(
+        new TextDisplayBuilder().setContent(`**${t('builder.panel.header')}${draftLabel}**`)
+      );
+    }
   }
 
-  components.push(...buildMainPanelComponents());
+  components.push(...buildMainPanelComponents(t));
 
   return components;
 }
@@ -278,28 +345,186 @@ function buildPanelComponents(userId) {
 /**
  * สร้าง payload เต็มสำหรับ reply/update แผงควบคุม ใช้ร่วมกันทุกจุดที่ต้องโชว์แผงควบคุม
  */
-function buildPanelPayload(userId) {
+function buildPanelPayload(userId, guildId) {
   return {
-    components: buildPanelComponents(userId),
+    components: buildPanelComponents(userId, guildId),
     // ต้องรวม flag IsComponentsV2 ไว้เสมอ เพราะข้อความนี้ใช้ TextDisplay/Container แทน content ธรรมดา
     flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
   };
 }
 
+/** สร้าง id ใหม่สำหรับ block ฝั่งฟรี — unique ด้วย timestamp + random
+ * (pattern เดียวกับ welcome-setup.js/goodbye-setup.js — ฝั่ง premium ของไฟล์นี้ยังคง
+ * จัดการบล็อกด้วย index ในอาเรย์เหมือนเดิมทุกประการ ไม่ยุ่งกับ id เลย)
+ */
+function generateBlockId() {
+  return `blk_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+}
+
+/**
+ * สร้างโครง blocks เริ่มต้นสำหรับ builder ระดับฟรี (text + gallery ว่างๆ)
+ * เริ่มเป็น type "text" (ไม่ใช่ "section") เพื่อไม่บังคับให้ต้องมี thumbnail
+ * ตั้งแต่แรก — พอผู้ใช้ตั้ง thumbnail ทีหลัง handler จะ "อัปเกรด" บล็อกนี้เป็น
+ * "section" ให้เอง (ดู builder_modal_simple_thumbnail)
+ */
+function createFreeTierBlocks() {
+  return [
+    { id: generateBlockId(), type: 'text', content: '' },
+    { id: generateBlockId(), type: 'gallery', items: [] },
+  ];
+}
+
+/**
+ * เช็คว่าข้อความมีการ mention คน/ยศ/ช่อง/@everyone/@here อยู่ไหม
+ * ใช้เฉพาะ builder free-tier (title/description) เท่านั้น เพราะ
+ * ฟรีไม่ควรใช้ mention ได้ (สงวนไว้ให้ premium — ป้องกันการเอาไป
+ * ใช้แทน role-setup/ประกาศแบบเต็มรูปแบบทั้งที่จ่ายแค่ค่าฟรี)
+ * @param {string} text
+ * @returns {boolean}
+ */
+function containsMention(text) {
+  if (!text) return false;
+  // <@id> <@!id> = user, <@&id> = role, <#id> = channel, @everyone, @here
+  return /<@[!&]?\d+>|<#\d+>|@everyone|@here/.test(text);
+}
+
+/**
+ * กรองบล็อกที่ยังกรอกไม่ครบออกก่อนส่งเข้า buildMessageFromSchema()
+ * เพราะ engine กลางเข้มงวดมาก (gallery ต้องมี items อย่างน้อย 1,
+ * section ต้องมีทั้ง text+thumbnail) ถ้าส่ง draft ดิบๆ ที่ยังกรอก
+ * ไม่ครบเข้าไปจะ throw ทันที ทำให้ preview ไม่ขึ้นเลยจนกว่าจะกรอก
+ * ครบทุกอย่าง — ฟังก์ชันนี้ตัดบล็อกที่ยังไม่พร้อมออกไปก่อน ให้เห็น
+ * preview บางส่วนได้ระหว่างกรอกทีละขั้น
+ */
+function buildPreviewableDraft(draft) {
+  const validBlocks = draft.blocks.filter(b => {
+    if (b.type === 'gallery') return Array.isArray(b.items) && b.items.length > 0;
+    if (b.type === 'section') return !!b.text && !!b.thumbnail;
+    if (b.type === 'text')    return !!b.content;
+    return true;
+  });
+  return { ...draft, blocks: validBlocks };
+}
+
+/**
+ * แผงควบคุมแบบง่ายสำหรับ builder ระดับฟรี — ฝัง live preview ไว้ในข้อความเดียวกันเลย
+ * (เหมือน main panel ฝั่ง premium) แทนที่จะโชว์แค่สรุปหัวข้อ/ส่งข้อความ preview แยก
+ */
+function buildSimplePanel(userId, guildId) {
+  const t = createTranslator(getGuildLanguage(guildId));
+  let draft = getDraft(guildId, userId);
+  const session = getActiveSession(guildId, userId); // ใช้โชว์ชื่อ builder ที่กำลังแก้อยู่ (pattern เดียวกับแผงพรีเมี่ยม buildPanelComponents)
+
+  // 🩹 Self-healing: ถ้า draft ไม่มีบล็อกข้อมูล/รูปเลย (เช่น เป็น
+  // draft เก่าที่สร้างไว้ก่อนมีระบบ skeleton) ให้เติมให้ตอนนี้เลย
+  const hasInfoBlock = draft.blocks.some(b => b.type === 'text' || b.type === 'section');
+  const hasGalleryBlock = draft.blocks.some(b => b.type === 'gallery');
+  if (!hasInfoBlock || !hasGalleryBlock) {
+    if (!hasInfoBlock)    addBlock(guildId, userId, { id: generateBlockId(), type: 'text', content: '' });
+    if (!hasGalleryBlock) addBlock(guildId, userId, { id: generateBlockId(), type: 'gallery', items: [] });
+    draft = getDraft(guildId, userId); // โหลดใหม่หลังเติมแล้ว
+  }
+
+  const components = [];
+
+  // header แสดงชื่อ builder ถ้ามี active session (เหมือน buildPanelComponents ฝั่งพรีเมี่ยม)
+  // โชว์ไว้บนสุดเสมอ ไม่ว่าจะมี preview หรือยัง — กันงงเวลามีหลาย builder ในเซิร์ฟเดียวกัน
+  const draftLabel = session ? ` — **"${session.name}"**` : '';
+  components.push(new TextDisplayBuilder().setContent(`**${t('builder.panel.header')}${draftLabel}**`));
+
+  const previewableDraft = buildPreviewableDraft(draft); // ใช้ตัวเดิมจากรอบก่อน
+  if (previewableDraft.blocks.length > 0) {
+    try {
+      const preview = buildMessageFromSchema(previewableDraft);
+      components.push(...preview.components); // ← ฝังตรงนี้เลย เหมือน premium panel
+    } catch {
+      components.push(new TextDisplayBuilder().setContent(t('builder.simple.default_title')));
+    }
+  } else {
+    components.push(new TextDisplayBuilder().setContent(t('builder.simple.default_title')));
+  }
+
+  components.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(IDS.SIMPLE_EDIT_BASIC).setLabel(t('builder.simple.button.edit_basic')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(IDS.SIMPLE_EDIT_MAIN_IMAGE).setLabel(t('builder.simple.button.edit_main_image')).setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(IDS.SIMPLE_EDIT_THUMBNAIL).setLabel(t('builder.simple.button.edit_thumbnail')).setStyle(ButtonStyle.Secondary),
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(IDS.SIMPLE_POST).setLabel(t('builder.simple.button.post')).setStyle(ButtonStyle.Success),
+    ),
+  );
+
+  return { components, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+}
+
+/**
+ * เช็คว่า draft นี้มีเนื้อหาเกินความสามารถของแผงฟรี (simple panel) ไหม
+ * แผงฟรีรองรับแค่โครงสร้าง "2 บล็อกพื้นฐาน" เท่านั้น: บล็อกแรกเป็น
+ * text หรือ section (section เกิดได้จากฝั่งฟรีเองตอนใส่ thumbnail
+ * ผ่านปุ่ม "แก้ thumbnail" — ไม่ใช่ของพรีเมี่ยมอย่างเดียว ต้องนับเป็น
+ * เนื้อหาปกติของฟรีด้วย) + บล็อกที่สองเป็น gallery เท่านั้น
+ * ถ้าโครงสร้างไม่ตรงแบบนี้ (บล็อกไม่ครบ 2, มี section_button,
+ * section_role_button, section_channel_button ฯลฯ ปนมา) แปลว่าถูก
+ * สร้าง/แก้ไว้ตอนยังเป็นพรีเมี่ยม ต้องกันไม่ให้แผงฟรีแตะเลย
+ *
+ * @param {{ blocks: object[] }} draft
+ * @returns {boolean}
+ */
+function draftNeedsPremiumPanel(draft) {
+  const blocks = draft?.blocks ?? [];
+  if (blocks.length !== 2) return true;
+  const [first, second] = blocks;
+  const firstOk  = first?.type === 'text' || first?.type === 'section';
+  const secondOk = second?.type === 'gallery';
+  return !(firstOk && secondOk);
+}
+
+/**
+ * ตัดสินใจว่าจะโชว์ panel แบบไหนให้ user คนนี้ — รวม logic 3 ทาง
+ * (พรีเมี่ยม / ฟรีปกติ / ฟรีแต่เนื้อหาเกินความสามารถ) ไว้จุดเดียว
+ *
+ * ⚠️ ห้ามเช็ค isPremiumGuild() แล้วเลือก buildPanelPayload/buildSimplePanel
+ * กันเองตรงจุดเรียกแทนนะครับ — ให้เรียกฟังก์ชันนี้เสมอ กันบั๊กแบบที่เจอมา
+ * (มีจุดเช็คซ้ำกันหลายที่ในไฟล์นี้ แล้วพลาดแก้ไม่ครบตอนต้องอัปเดต logic)
+ *
+ * @param {string} userId
+ * @param {string} guildId
+ * @param {(key: string, params?: object) => string} t
+ */
+function resolveBuilderPanelPayload(userId, guildId, t) {
+  if (isPremiumGuild(guildId)) {
+    return buildPanelPayload(userId, guildId);
+  }
+  const draft = getDraft(guildId, userId);
+  if (draftNeedsPremiumPanel(draft)) {
+    return {
+      components: [
+        new TextDisplayBuilder().setContent(
+          buildUpgradeMessage(t, t('builder.premium_content_reason'))
+        ),
+      ],
+      flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+    };
+  }
+  return buildSimplePanel(userId, guildId);
+}
+
 /**
  * สร้างหน้าจอ "เลือกบล็อกที่จะจัดการ" (select menu) แสดงเมื่อกด 📋 จัดการบล็อก
  */
-function buildManageSelectPayload(userId) {
-  const draft = getDraft(userId);
+function buildManageSelectPayload(userId, guildId) {
+  const t = createTranslator(getGuildLanguage(guildId));
+  const draft = getDraft(guildId, userId);
 
   // select menu ของ Discord ใส่ตัวเลือกได้สูงสุด 25 อัน ถ้า block เกินนี้ ตัดให้เหลือ 25 อันแรกไปก่อน
   const blocksToShow = draft.blocks.slice(0, 25);
 
   const options = blocksToShow.map((block, index) => {
-    const { typeLabel, preview } = describeBlock(block);
+    const { typeLabel, preview } = describeBlock(block, t);
     const desc = preview.slice(0, 100);
     return {
-      label: `บล็อกที่ ${index + 1} • ${typeLabel}`.slice(0, 100),
+      label: t('builder.manage.option_label', { index: index + 1, type: typeLabel }).slice(0, 100),
       // ใส่ description เฉพาะตอนที่มีค่าจริงเท่านั้น
       // Discord ไม่ยอมรับ description เป็น string ว่าง ('') ต้องการ length >= 1 หรือไม่มี field นั้นเลย
       ...(desc.length > 0 ? { description: desc } : {}),
@@ -309,17 +534,17 @@ function buildManageSelectPayload(userId) {
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(IDS.MANAGE_SELECT)
-    .setPlaceholder('เลือกบล็อกที่ต้องการแก้ไขหรือลบ')
+    .setPlaceholder(t('builder.manage.placeholder'))
     .addOptions(options);
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ')
+    .setLabel(t('builder.manage.back_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
-      new TextDisplayBuilder().setContent('**📋 จัดการบล็อก**\nเลือกบล็อกที่ต้องการแก้ไขหรือลบจากรายการด้านล่าง'),
+      new TextDisplayBuilder().setContent(t('builder.manage.header')),
       new ActionRowBuilder().addComponents(selectMenu),
       new ActionRowBuilder().addComponents(backButton),
     ],
@@ -332,46 +557,48 @@ function buildManageSelectPayload(userId) {
  * @param {number} index
  * @param {object} block
  * @param {number} totalBlocks - จำนวน block ทั้งหมดใน draft ตอนนี้ (ใช้เช็คว่าควร disable ปุ่มย้ายขึ้น/ลงไหม)
+ * @param {string} guildId
  */
-function buildBlockActionPayload(index, block, totalBlocks) {
-  const { typeLabel, preview } = describeBlock(block);
+function buildBlockActionPayload(index, block, totalBlocks, guildId) {
+  const t = createTranslator(getGuildLanguage(guildId));
+  const { typeLabel, preview } = describeBlock(block, t);
 
   const editButton = new ButtonBuilder()
     .setCustomId(`${MANAGE_EDIT_PREFIX}${index}`)
-    .setLabel('แก้ไข')
+    .setLabel(t('builder.block_action.button.edit'))
     .setStyle(ButtonStyle.Primary);
 
   const deleteButton = new ButtonBuilder()
     .setCustomId(`${MANAGE_DELETE_PREFIX}${index}`)
-    .setLabel('ลบ')
+    .setLabel(t('builder.block_action.button.delete'))
     .setStyle(ButtonStyle.Danger);
 
   const insertButton = new ButtonBuilder()
     .setCustomId(`${INSERT_PREFIX}${index}`)
-    .setLabel('+ แทรกบล็อกใหม่หลังจากนี้')
+    .setLabel(t('builder.block_action.button.insert'))
     .setStyle(ButtonStyle.Secondary);
 
   const moveUpButton = new ButtonBuilder()
     .setCustomId(`${MOVE_UP_PREFIX}${index}`)
-    .setLabel('⬆️ ย้ายขึ้น')
+    .setLabel(t('builder.block_action.button.move_up'))
     .setStyle(ButtonStyle.Secondary)
     .setDisabled(index === 0); // อยู่บนสุดแล้ว ย้ายขึ้นต่อไม่ได้
 
   const moveDownButton = new ButtonBuilder()
     .setCustomId(`${MOVE_DOWN_PREFIX}${index}`)
-    .setLabel('⬇️ ย้ายลง')
+    .setLabel(t('builder.block_action.button.move_down'))
     .setStyle(ButtonStyle.Secondary)
     .setDisabled(index === totalBlocks - 1); // อยู่ล่างสุดแล้ว ย้ายลงต่อไม่ได้
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ')
+    .setLabel(t('builder.manage.back_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
       new TextDisplayBuilder().setContent(
-        `**บล็อกที่ ${index + 1} • ${typeLabel}**\n${preview}\n\nต้องการทำอะไรกับบล็อกนี้คะ?`
+        t('builder.block_action.header', { index: index + 1, typeLabel, preview })
       ),
       new ActionRowBuilder().addComponents(editButton, deleteButton, insertButton),
       new ActionRowBuilder().addComponents(moveUpButton, moveDownButton, backButton),
@@ -383,37 +610,40 @@ function buildBlockActionPayload(index, block, totalBlocks) {
 /**
  * สร้างหน้าจอ "เลือกชนิดบล็อกที่จะแทรก" แสดงเมื่อกด "+ แทรกบล็อกใหม่หลังจากนี้"
  * @param {number} insertPosition - ตำแหน่งที่บล็อกใหม่จะถูกแทรกเข้าไป (index ของบล็อกที่เลือกไว้ + 1)
+ * @param {string} guildId
  */
-function buildInsertTypePayload(insertPosition) {
+function buildInsertTypePayload(insertPosition, guildId) {
+  const t = createTranslator(getGuildLanguage(guildId));
+
   const textButton = new ButtonBuilder()
     .setCustomId(`${INSERT_TEXT_PREFIX}${insertPosition}`)
-    .setLabel('+ เพิ่มข้อความ')
+    .setLabel(t('builder.panel.button.add_text'))
     .setStyle(ButtonStyle.Primary);
 
   const imageButton = new ButtonBuilder()
     .setCustomId(`${INSERT_IMAGE_PREFIX}${insertPosition}`)
-    .setLabel('+ เพิ่มรูป')
+    .setLabel(t('builder.panel.button.add_image'))
     .setStyle(ButtonStyle.Primary);
 
   const sectionButton = new ButtonBuilder()
     .setCustomId(`${INSERT_SECTION_PREFIX}${insertPosition}`)
-    .setLabel('+ เพิ่ม Section')
+    .setLabel(t('builder.panel.button.add_section'))
     .setStyle(ButtonStyle.Primary);
 
   const separatorButton = new ButtonBuilder()
     .setCustomId(`${INSERT_SEPARATOR_PREFIX}${insertPosition}`)
-    .setLabel('+ เพิ่มเส้นคั่น')
+    .setLabel(t('builder.panel.button.add_separator'))
     .setStyle(ButtonStyle.Secondary);
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ')
+    .setLabel(t('builder.manage.back_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
       new TextDisplayBuilder().setContent(
-        `**+ แทรกบล็อกใหม่**\nเลือกชนิดบล็อกที่จะแทรกเข้าตำแหน่งที่ ${insertPosition + 1}`
+        t('builder.insert_type.header', { position: insertPosition + 1 })
       ),
       new ActionRowBuilder().addComponents(textButton, imageButton, sectionButton, separatorButton),
       new ActionRowBuilder().addComponents(backButton),
@@ -434,11 +664,14 @@ const CUSTOM_COLOR_VALUE = 'custom'; // ค่าพิเศษของตั�
 
 /**
  * สร้างหน้าจอ "เลือกสีธีม" แสดงเมื่อกด "🎨 เลือกสี"
+ * @param {string} guildId
  */
-function buildColorSelectPayload() {
+function buildColorSelectPayload(guildId) {
+  const t = createTranslator(getGuildLanguage(guildId));
+
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(IDS.COLOR_SELECT)
-    .setPlaceholder('เลือกสีธีม')
+    .setPlaceholder(t('builder.color.placeholder'))
     .addOptions(
       ...PRESET_COLORS.map((color) => ({
         label: color.label,
@@ -446,22 +679,20 @@ function buildColorSelectPayload() {
         description: color.hex,
       })),
       {
-        label: '🖌️ กำหนดเอง',
+        label: t('builder.color.custom_label'),
         value: CUSTOM_COLOR_VALUE,
-        description: 'พิมพ์ hex code เอง เช่น #FF66AA',
+        description: t('builder.color.custom_description'),
       }
     );
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ')
+    .setLabel(t('builder.manage.back_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
-      new TextDisplayBuilder().setContent(
-        '**🎨 เลือกสีธีม**\nเลือกสีแถบด้านข้างของ Layout จากตัวเลือกด้านล่าง หรือกำหนดเองก็ได้'
-      ),
+      new TextDisplayBuilder().setContent(t('builder.color.header')),
       new ActionRowBuilder().addComponents(selectMenu),
       new ActionRowBuilder().addComponents(backButton),
     ],
@@ -475,20 +706,21 @@ function buildColorSelectPayload() {
  * @param {string} customId
  * @param {string} title
  * @param {{ text?: string, thumbnail?: string }} prefill
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildSectionModal(customId, title, prefill = {}) {
+function buildSectionModal(customId, title, prefill = {}, t) {
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
 
   const textInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_TEXT)
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder('ข้อความตรงนี้ (รองรับ markdown)')
+    .setPlaceholder(t('builder.modal.section_text_placeholder'))
     .setRequired(true)
     .setMaxLength(4000);
   if (prefill.text) textInput.setValue(prefill.text);
 
   const textLabel = new LabelBuilder()
-    .setLabel('ข้อความ (รองรับ markdown)')
+    .setLabel(t('builder.modal.section_text_label'))
     .setTextInputComponent(textInput);
 
   const thumbnailInput = new TextInputBuilder()
@@ -500,8 +732,8 @@ function buildSectionModal(customId, title, prefill = {}) {
   if (prefill.thumbnail) thumbnailInput.setValue(prefill.thumbnail);
 
   const thumbnailLabel = new LabelBuilder()
-    .setLabel('ลิงก์รูปเล็ก (thumbnail)')
-    .setDescription(IMAGE_URL_HINT)
+    .setLabel(t('builder.modal.thumbnail_label'))
+    .setDescription(t('builder.modal.image_url_hint'))
     .setTextInputComponent(thumbnailInput);
 
   modal.addLabelComponents(textLabel, thumbnailLabel);
@@ -514,36 +746,38 @@ function buildSectionModal(customId, title, prefill = {}) {
  * @param {string} thumbnailCustomId - customId ของปุ่ม "🖼️ รูปเล็ก"
  * @param {string} buttonCustomId - customId ของปุ่ม "🔘 ปุ่มลิงก์"
  * @param {string} roleCustomId - customId ของปุ่ม "🎭 ปุ่มยศ"
+ * @param {string} channelCustomId
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildSectionChoicePayload(thumbnailCustomId, buttonCustomId, roleCustomId, channelCustomId) {
+function buildSectionChoicePayload(thumbnailCustomId, buttonCustomId, roleCustomId, channelCustomId, t) {
   const thumbnailButton = new ButtonBuilder()
     .setCustomId(thumbnailCustomId)
-    .setLabel('🖼️ รูปเล็ก')
+    .setLabel(t('builder.section_choice.button.thumbnail'))
     .setStyle(ButtonStyle.Primary);
 
   const buttonButton = new ButtonBuilder()
     .setCustomId(buttonCustomId)
-    .setLabel('🔘 ปุ่มลิงก์')
+    .setLabel(t('builder.section_choice.button.link'))
     .setStyle(ButtonStyle.Primary);
 
   const roleButton = new ButtonBuilder()
     .setCustomId(roleCustomId)
-    .setLabel('🎭 ปุ่มยศ')
+    .setLabel(t('builder.section_choice.button.role'))
     .setStyle(ButtonStyle.Primary);
 
   const channelButton = new ButtonBuilder()
     .setCustomId(channelCustomId)
-    .setLabel('📢 ปุ่มลิงก์ช่อง')
+    .setLabel(t('builder.section_choice.button.channel'))
     .setStyle(ButtonStyle.Primary);
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ')
+    .setLabel(t('builder.manage.back_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
-      new TextDisplayBuilder().setContent('**+ เพิ่ม Section**\nเลือกว่าจะให้ Section นี้คู่กับอะไร'),
+      new TextDisplayBuilder().setContent(t('builder.section_choice.header')),
       new ActionRowBuilder().addComponents(thumbnailButton, buttonButton, roleButton, channelButton),
       new ActionRowBuilder().addComponents(backButton),
     ],
@@ -557,32 +791,33 @@ function buildSectionChoicePayload(thumbnailCustomId, buttonCustomId, roleCustom
  * @param {string} customId
  * @param {string} title
  * @param {{ text?: string, buttonLabel?: string }} prefill - ค่าเดิมสำหรับตอนแก้ไข
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildSectionChannelModal(customId, title, prefill = {}) {
+function buildSectionChannelModal(customId, title, prefill = {}, t) {
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
 
   const textInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_CHANNEL_TEXT)
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder('ข้อความตรงนี้ (รองรับ markdown)')
+    .setPlaceholder(t('builder.modal.section_text_placeholder'))
     .setRequired(true)
     .setMaxLength(4000);
   if (prefill.text) textInput.setValue(prefill.text);
 
   const textLabel = new LabelBuilder()
-    .setLabel('ข้อความ (รองรับ markdown)')
+    .setLabel(t('builder.modal.section_text_label'))
     .setTextInputComponent(textInput);
 
   const labelInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_CHANNEL_LABEL)
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('เช่น 📢 ไปที่ห้องประกาศ')
+    .setPlaceholder(t('builder.modal.channel_button_placeholder'))
     .setRequired(true)
     .setMaxLength(80);
   if (prefill.buttonLabel) labelInput.setValue(prefill.buttonLabel);
 
   const labelLabel = new LabelBuilder()
-    .setLabel('ป้ายชื่อปุ่ม')
+    .setLabel(t('builder.modal.button_label_label'))
     .setTextInputComponent(labelInput);
 
   modal.addLabelComponents(textLabel, labelLabel);
@@ -593,25 +828,24 @@ function buildSectionChannelModal(customId, title, prefill = {}) {
  * สร้างหน้าจอ "เลือกช่อง" (ขั้นที่ 2 ของ flow ปุ่มลิงก์ช่อง)
  * แสดง ChannelSelectMenuBuilder ที่ filter เฉพาะ text/announcement channel เท่านั้น
  * (เพราะช่องประเภทอื่น เช่น voice/forum ลิงก์แบบนี้ไม่สมเหตุสมผล)
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildChannelSelectPayload() {
+function buildChannelSelectPayload(t) {
   const selectMenu = new ChannelSelectMenuBuilder()
     .setCustomId(IDS.CHANNEL_SELECT)
-    .setPlaceholder('เลือกช่องที่ต้องการลิงก์ไป')
+    .setPlaceholder(t('builder.channel_select.placeholder'))
     // filter เฉพาะ text channel (0) และ announcement channel (5)
     // ChannelType.GuildText = 0, ChannelType.GuildAnnouncement = 5
     .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ (ยกเลิก)')
+    .setLabel(t('builder.common.back_cancel_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
-      new TextDisplayBuilder().setContent(
-        '**📢 เลือกช่อง**\nเลือกช่องที่ต้องการให้ปุ่มลิงก์ไปค่ะ\n*(แสดงเฉพาะ text channel และ announcement channel)*'
-      ),
+      new TextDisplayBuilder().setContent(t('builder.channel_select.header')),
       new ActionRowBuilder().addComponents(selectMenu),
       new ActionRowBuilder().addComponents(backButton),
     ],
@@ -624,32 +858,33 @@ function buildChannelSelectPayload() {
  * @param {string} customId
  * @param {string} title
  * @param {{ text?: string, buttonLabel?: string, buttonUrl?: string }} prefill
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildSectionButtonModal(customId, title, prefill = {}) {
+function buildSectionButtonModal(customId, title, prefill = {}, t) {
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
 
   const textInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_BUTTON_TEXT)
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder('ข้อความตรงนี้ (รองรับ markdown)')
+    .setPlaceholder(t('builder.modal.section_text_placeholder'))
     .setRequired(true)
     .setMaxLength(4000);
   if (prefill.text) textInput.setValue(prefill.text);
 
   const textLabel = new LabelBuilder()
-    .setLabel('ข้อความ (รองรับ markdown)')
+    .setLabel(t('builder.modal.section_text_label'))
     .setTextInputComponent(textInput);
 
   const buttonLabelInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_BUTTON_LABEL)
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('เข้าร่วม Discord')
+    .setPlaceholder(t('builder.modal.link_button_placeholder'))
     .setRequired(true)
     .setMaxLength(80); // ขีดจำกัดของ label ปุ่มฝั่ง Discord
   if (prefill.buttonLabel) buttonLabelInput.setValue(prefill.buttonLabel);
 
   const buttonLabelLabel = new LabelBuilder()
-    .setLabel('ข้อความบนปุ่ม')
+    .setLabel(t('builder.modal.button_text_label'))
     .setTextInputComponent(buttonLabelInput);
 
   const buttonUrlInput = new TextInputBuilder()
@@ -661,7 +896,7 @@ function buildSectionButtonModal(customId, title, prefill = {}) {
   if (prefill.buttonUrl) buttonUrlInput.setValue(prefill.buttonUrl);
 
   const buttonUrlLabel = new LabelBuilder()
-    .setLabel('ลิงก์ปุ่ม (ต้องขึ้นต้น http:// หรือ https://)')
+    .setLabel(t('builder.modal.button_url_label'))
     .setTextInputComponent(buttonUrlInput);
 
   modal.addLabelComponents(textLabel, buttonLabelLabel, buttonUrlLabel);
@@ -674,32 +909,33 @@ function buildSectionButtonModal(customId, title, prefill = {}) {
  * @param {string} customId
  * @param {string} title
  * @param {{ text?: string, buttonLabel?: string, buttonEmoji?: string }} prefill
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildSectionRoleModal(customId, title, prefill = {}) {
+function buildSectionRoleModal(customId, title, prefill = {}, t) {
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
 
   const textInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_ROLE_TEXT)
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder('ข้อความตรงนี้ (รองรับ markdown) เช่น "กดเพื่อรับยศสมาชิก"')
+    .setPlaceholder(t('builder.modal.section_role_text_placeholder'))
     .setRequired(true)
     .setMaxLength(4000);
   if (prefill.text) textInput.setValue(prefill.text);
 
   const textLabel = new LabelBuilder()
-    .setLabel('ข้อความ (รองรับ markdown)')
+    .setLabel(t('builder.modal.section_text_label'))
     .setTextInputComponent(textInput);
 
   const labelInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_ROLE_LABEL)
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('รับยศ')
+    .setPlaceholder(t('builder.modal.role_button_placeholder'))
     .setRequired(true)
     .setMaxLength(80); // ขีดจำกัด label ปุ่มฝั่ง Discord
   if (prefill.buttonLabel) labelInput.setValue(prefill.buttonLabel);
 
   const labelLabel = new LabelBuilder()
-    .setLabel('ป้ายชื่อปุ่ม')
+    .setLabel(t('builder.modal.button_label_label'))
     .setTextInputComponent(labelInput);
 
   // อิโมจิบนปุ่ม — optional ผู้ใช้ไม่ต้องใส่ก็ได้
@@ -708,14 +944,14 @@ function buildSectionRoleModal(customId, title, prefill = {}) {
   const emojiInput = new TextInputBuilder()
     .setCustomId(IDS.INPUT_SECTION_ROLE_EMOJI)
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('เช่น 🎭 หรือ :ชื่อ_custom_emoji: (เว้นว่างได้)')
+    .setPlaceholder(t('builder.modal.emoji_placeholder'))
     .setRequired(false)
     .setMaxLength(100);
   if (prefill.buttonEmoji) emojiInput.setValue(prefill.buttonEmoji);
 
   const emojiLabel = new LabelBuilder()
-    .setLabel('อิโมจิบนปุ่ม (optional)')
-    .setDescription('ใส่ unicode emoji หรือ :ชื่อ: ของ custom emoji ถ้าไม่ต้องการเว้นว่างไว้ได้เลย')
+    .setLabel(t('builder.modal.emoji_label'))
+    .setDescription(t('builder.modal.emoji_description'))
     .setTextInputComponent(emojiInput);
 
   modal.addLabelComponents(textLabel, labelLabel, emojiLabel);
@@ -728,9 +964,10 @@ function buildSectionRoleModal(customId, title, prefill = {}) {
  * (ต่ำกว่า highest role ของบอท, ไม่ใช่ managed, ไม่ใช่ @everyone)
  *
  * @param {import('discord.js').Guild} guild - ใช้ดึงรายการยศและตำแหน่งบอท
+ * @param {(key: string, replacements?: object) => string} t
  * @returns {{ payload: object|null, assignableCount: number }}
  */
-function buildRoleSelectPayload(guild) {
+function buildRoleSelectPayload(guild, t) {
   const botHighestPosition = guild.members.me.roles.highest.position;
 
   const assignableRoles = guild.roles.cache
@@ -748,7 +985,7 @@ function buildRoleSelectPayload(guild) {
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(IDS.ROLE_SELECT)
-    .setPlaceholder('เลือกยศ')
+    .setPlaceholder(t('builder.role_select.placeholder'))
     .addOptions(
       assignableRoles.map(role => {
         const desc = role.id ? `ID: ${role.id}` : '';
@@ -764,15 +1001,13 @@ function buildRoleSelectPayload(guild) {
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ (ยกเลิก)')
+    .setLabel(t('builder.common.back_cancel_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     payload: {
       components: [
-        new TextDisplayBuilder().setContent(
-          '**🎭 เลือกยศ**\nเลือกยศที่ต้องการให้ปุ่มนี้ toggle ให้/ถอด\n*(แสดงเฉพาะยศที่บอทจัดการได้)*'
-        ),
+        new TextDisplayBuilder().setContent(t('builder.role_select.header')),
         new ActionRowBuilder().addComponents(selectMenu),
         new ActionRowBuilder().addComponents(backButton),
       ],
@@ -787,9 +1022,11 @@ function buildRoleSelectPayload(guild) {
  * แสดง 4 ปุ่ม แต่ละปุ่ม render ด้วยสีของตัวเองจริงๆ ให้ผู้ใช้เห็นหน้าตาก่อนเลือก
  * เมื่อกดปุ่มใดปุ่มหนึ่ง handleButton() จะรับ customId → builder_role_style_{styleName}
  * แล้วสร้าง block พร้อม buttonStyle = styleName
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildRoleStylePayload() {
+function buildRoleStylePayload(t) {
   // ปุ่มแต่ละอันใช้ style ของตัวเองในการแสดงผล ผู้ใช้กดอันไหน = เลือกสีนั้น
+  // ชื่อ Primary/Secondary/Success/Danger เป็นชื่อ style ของ Discord เอง ไม่ต้องแปล (เหมือน PRESET_COLORS)
   const primaryBtn = new ButtonBuilder()
     .setCustomId(`${ROLE_STYLE_PREFIX}Primary`)
     .setLabel('Primary')
@@ -812,14 +1049,12 @@ function buildRoleStylePayload() {
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← กลับ (ยกเลิก)')
+    .setLabel(t('builder.common.back_cancel_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
-      new TextDisplayBuilder().setContent(
-        '**🎨 เลือกสีปุ่ม (3/3)**\nกดปุ่มเพื่อเลือกสีที่ต้องการค่ะ ปุ่มแต่ละอันแสดงสีจริงให้เห็นก่อนเลือกเลย'
-      ),
+      new TextDisplayBuilder().setContent(t('builder.role_style.header')),
       new ActionRowBuilder().addComponents(primaryBtn, secondaryBtn, successBtn, dangerBtn),
       new ActionRowBuilder().addComponents(backButton),
     ],
@@ -830,23 +1065,22 @@ function buildRoleStylePayload() {
 /**
  * สร้างหน้าจอ "เลือกช่องปลายทาง" แสดงเมื่อกดปุ่ม "โพสต์"
  * filter เฉพาะ GuildText และ GuildAnnouncement เหมือน buildChannelSelectPayload()
+ * @param {(key: string, replacements?: object) => string} t
  */
-function buildPostChannelSelectPayload() {
+function buildPostChannelSelectPayload(t) {
   const selectMenu = new ChannelSelectMenuBuilder()
     .setCustomId(IDS.POST_CHANNEL_SELECT)
-    .setPlaceholder('เลือกช่องที่ต้องการโพสต์')
+    .setPlaceholder(t('builder.post.select_placeholder'))
     .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
 
   const backButton = new ButtonBuilder()
     .setCustomId(IDS.MANAGE_BACK)
-    .setLabel('← ยกเลิก')
+    .setLabel(t('builder.post.cancel_button'))
     .setStyle(ButtonStyle.Secondary);
 
   return {
     components: [
-      new TextDisplayBuilder().setContent(
-        '**📤 เลือกช่องปลายทาง**\nจะโพสต์ข้อความนี้ไปที่ช่องไหนดีคะ?\n*(แสดงเฉพาะ text channel และ announcement channel)*'
-      ),
+      new TextDisplayBuilder().setContent(t('builder.post.select_header')),
       new ActionRowBuilder().addComponents(selectMenu),
       new ActionRowBuilder().addComponents(backButton),
     ],
@@ -858,23 +1092,24 @@ function buildPostChannelSelectPayload() {
  * แยกข้อความดิบจาก textarea หลายบรรทัด เป็นรายการ url ที่ผ่านการเช็ครูปแบบเรียบร้อยแล้ว
  * ใช้ร่วมกันทั้งตอน "เพิ่มรูป", "แก้ไขรูป", และ "แทรกรูป" (logic เดียวกันเป๊ะ เลยแยกออกมาเป็นฟังก์ชันกลาง)
  * @param {string} rawText - ข้อความดิบจากช่อง textarea (1 บรรทัด = 1 ลิงก์)
+ * @param {(key: string, replacements?: object) => string} t
  * @returns {{ ok: true, urls: string[] } | { ok: false, errorContent: string }}
  */
-function parseGalleryUrlLines(rawText) {
+function parseGalleryUrlLines(rawText, t) {
   const lines = rawText
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
   if (lines.length === 0) {
-    return { ok: false, errorContent: '⚠️ ต้องมีลิงก์อย่างน้อย 1 รายการค่ะ' };
+    return { ok: false, errorContent: t('builder.gallery_error.need_one') };
   }
 
   // เช็คทุกบรรทัดให้ครบก่อน ถ้ามีอันไหนผิดรูปแบบ ไม่บันทึกอะไรเลยสักบรรทัด (กันข้อมูลครึ่งๆ กลางๆ)
   const invalidLineMessages = [];
   lines.forEach((url, lineIndex) => {
     try {
-      validateUrl(url, `บรรทัดที่ ${lineIndex + 1}`);
+      validateUrl(url, t('builder.validation.line_label', { n: lineIndex + 1 }), t);
     } catch (error) {
       invalidLineMessages.push(error.message.replace(/^buildMessageFromSchema:\s*/, ''));
     }
@@ -884,7 +1119,8 @@ function parseGalleryUrlLines(rawText) {
     return {
       ok: false,
       errorContent:
-        `❌ พบลิงก์ที่ผิดรูปแบบ:\n` + invalidLineMessages.map((message) => `• ${message}`).join('\n'),
+        t('builder.gallery_error.invalid_header') + '\n' +
+        invalidLineMessages.map((message) => `• ${message}`).join('\n'),
     };
   }
 
@@ -896,19 +1132,16 @@ function parseGalleryUrlLines(rawText) {
  * ถ้ามี query จะกรองเฉพาะชื่อที่มีคำนั้น (case-insensitive) แล้วอัปเดต header บอกจำนวน
  * @param {string} guildId
  * @param {string|null} query - คำค้นหา (null = แสดงทั้งหมด)
+ * @param {(key: string, replacements?: object) => string} t
  * @returns {object} payload พร้อมส่งเข้า interaction.reply() หรือ interaction.update()
  */
-function buildListPayload(guildId, query = null) {
+function buildListPayload(guildId, query = null, t) {
   const allDrafts = listGuildDrafts(guildId);
 
   // ─── ไม่มี builder เลย ───
   if (allDrafts.length === 0) {
     return {
-      components: [
-        new TextDisplayBuilder().setContent(
-          '**📋 Builder ในเซิร์ฟเวอร์นี้**\n\nยังไม่มี builder เลยค่ะ\nใช้ `/builder new [ชื่อ]` เพื่อสร้างใหม่'
-        ),
-      ],
+      components: [new TextDisplayBuilder().setContent(t('builder.list.empty'))],
       flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
     };
   }
@@ -922,19 +1155,29 @@ function buildListPayload(guildId, query = null) {
   // ─── header ───
   let headerLine;
   if (normalizedQuery) {
-    headerLine = `**📋 Builder ในเซิร์ฟเวอร์นี้** — แสดง **${filtered.length}** จาก ${allDrafts.length} รายการ (ค้นหา: "${normalizedQuery}")`;
+    headerLine = t('builder.list.header_filtered', {
+      shown: filtered.length,
+      total: allDrafts.length,
+      query: normalizedQuery,
+    });
   } else {
-    headerLine = `**📋 Builder ในเซิร์ฟเวอร์นี้** (${allDrafts.length} รายการ)`;
+    headerLine = t('builder.list.header_all', { total: allDrafts.length });
   }
 
   // ─── รายการ ───
   let bodyText;
   if (filtered.length === 0) {
-    bodyText = `\n\nไม่พบ builder ที่ชื่อมีคำว่า "${normalizedQuery}" ค่ะ`;
+    bodyText = t('builder.list.no_results', { query: normalizedQuery });
   } else {
     const lines = filtered.map((d, i) => {
       const ts = toDiscordTimestamp(d.updatedAt);
-      return `**${i + 1}. ${d.name}** — ${d.blockCount} บล็อก — แก้ล่าสุด ${ts} โดย <@${d.updatedBy}>`;
+      return t('builder.list.entry_line', {
+        index: i + 1,
+        name: d.name,
+        count: d.blockCount,
+        timestamp: ts,
+        userId: d.updatedBy,
+      });
     });
     bodyText = '\n\n' + lines.join('\n');
   }
@@ -945,11 +1188,11 @@ function buildListPayload(guildId, query = null) {
   if (filtered.length > 0) {
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId(IDS.LIST_SELECT)
-      .setPlaceholder('เลือก builder ที่ต้องการเปิดแก้ไข')
+      .setPlaceholder(t('builder.list.select_placeholder'))
       .addOptions(
         filtered.slice(0, 25).map((d) => ({
           label: d.name.slice(0, 100),
-          description: `${d.blockCount} บล็อก`.slice(0, 100),
+          description: t('builder.list.option_description', { count: d.blockCount }).slice(0, 100),
           value: d.name,
         }))
       );
@@ -959,7 +1202,7 @@ function buildListPayload(guildId, query = null) {
   // ─── ปุ่ม 🔍 ค้นหา + ← รีเซ็ต (ถ้ากำลังกรองอยู่) ───
   const searchBtn = new ButtonBuilder()
     .setCustomId(IDS.LIST_SEARCH)
-    .setLabel('🔍 ค้นหา')
+    .setLabel(t('builder.list.search_button'))
     .setStyle(ButtonStyle.Secondary);
 
   const btnRow = new ActionRowBuilder().addComponents(searchBtn);
@@ -968,14 +1211,14 @@ function buildListPayload(guildId, query = null) {
     btnRow.addComponents(
       new ButtonBuilder()
         .setCustomId(IDS.LIST_RESET)
-        .setLabel('← รีเซ็ต')
+        .setLabel(t('builder.list.reset_button'))
         .setStyle(ButtonStyle.Secondary)
     );
   }
 
   components.push(btnRow);
   components.push(
-    new TextDisplayBuilder().setContent('`/builder delete [ชื่อ]` — ลบ builder ที่ไม่ต้องการ')
+    new TextDisplayBuilder().setContent(t('builder.list.delete_hint'))
   );
 
   return {
@@ -998,9 +1241,10 @@ async function warnIfImagesLookSuspicious(interaction, urls) {
     return; // ทุกลิงก์ดูเป็นรูปจริง ไม่ต้องเตือนอะไร
   }
 
+  const t = createTranslator(getGuildLanguage(interaction.guildId));
   const list = suspiciousUrls.map((url) => `• ${url}`).join('\n');
   await interaction.followUp({
-    content: `⚠️ ลิงก์นี้อาจมีปัญหา แนะนำให้ตรวจสอบอีกครั้งหรือใช้ /upload-image แทนนะคะ:\n${list}`,
+    content: t('builder.image_warning.suspicious', { list }),
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -1010,15 +1254,18 @@ module.exports = {
 
   data: new SlashCommandBuilder()
     .setName('builder')
-    .setDescription('สร้างและจัดการ Layout ของข้อความ Discord')
+    .setDescription('Build custom message layouts')
+    .setDescriptionLocalizations({ th: 'สร้างข้อความจัดวางเองได้เลยครับ' })
     .addSubcommand((sub) =>
       sub
         .setName('new')
-        .setDescription('สร้าง builder ใหม่พร้อมตั้งชื่อ')
+        .setDescription('Create a new builder')
+        .setDescriptionLocalizations({ th: 'สร้าง builder ใหม่ครับ' })
         .addStringOption((opt) =>
           opt
             .setName('name')
-            .setDescription('ชื่อ builder (สูงสุด 50 ตัวอักษร)')
+            .setDescription('Builder name (max 50 characters)')
+            .setDescriptionLocalizations({ th: 'ชื่อ builder (สูงสุด 50 ตัวอักษรครับ)' })
             .setRequired(true)
             .setMaxLength(50)
         )
@@ -1026,26 +1273,32 @@ module.exports = {
     .addSubcommand((sub) =>
       sub
         .setName('edit')
-        .setDescription('เปิด builder เก่ากลับมาแก้ต่อ')
+        .setDescription('Reopen an existing builder')
+        .setDescriptionLocalizations({ th: 'เปิด builder เดิมมาแก้ต่อครับ' })
         .addStringOption((opt) =>
           opt
             .setName('name')
-            .setDescription('ชื่อ builder')
+            .setDescription('Builder name')
+            .setDescriptionLocalizations({ th: 'ชื่อ builder' })
             .setRequired(true)
             .setAutocomplete(true)
         )
     )
     .addSubcommand((sub) =>
-      sub.setName('list').setDescription('แสดงรายชื่อ builder ทั้งหมดในเซิร์ฟเวอร์นี้')
+      sub.setName('list')
+        .setDescription('List all builders in this server')
+        .setDescriptionLocalizations({ th: 'ดูรายชื่อ builder ทั้งหมดในเซิร์ฟครับ' })
     )
     .addSubcommand((sub) =>
       sub
         .setName('delete')
-        .setDescription('ลบ builder ออกจากเซิร์ฟเวอร์')
+        .setDescription('Delete a builder')
+        .setDescriptionLocalizations({ th: 'ลบ builder ออกครับ' })
         .addStringOption((opt) =>
           opt
             .setName('name')
-            .setDescription('ชื่อ builder ที่ต้องการลบ')
+            .setDescription('Builder name to delete')
+            .setDescriptionLocalizations({ th: 'ชื่อ builder ที่จะลบ' })
             .setRequired(true)
             .setAutocomplete(true)
         )
@@ -1073,9 +1326,10 @@ module.exports = {
     const sub = interaction.options.getSubcommand(false);
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
+    const t = createTranslator(getGuildLanguage(guildId));
 
     if (!sub) {
-      await interaction.reply(buildListPayload(guildId));
+      await interaction.reply(buildListPayload(guildId, null, t));
       return;
     }
 
@@ -1084,21 +1338,37 @@ module.exports = {
       const rawName = interaction.options.getString('name').trim();
 
       if (!rawName) {
-        return interaction.reply({ content: '❌ ชื่อต้องไม่ว่างค่ะ', flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: t('builder.command.name_required'), flags: MessageFlags.Ephemeral });
       }
 
       if (namedDraftExists(guildId, rawName)) {
         return interaction.reply({
-          content:
-            `⚠️ มี builder ชื่อ **"${rawName}"** อยู่แล้วในเซิร์ฟเวอร์นี้ค่ะ\n` +
-            `ถ้าต้องการแก้ต่อ ใช้ \`/builder edit "${rawName}"\` ได้เลย\n` +
-            `ถ้าต้องการสร้างใหม่จริงๆ ให้ใช้ชื่ออื่นแทนนะคะ`,
+          content: t('builder.command.already_exists', { name: rawName }),
           flags: MessageFlags.Ephemeral,
         });
       }
 
-      createNamedDraft(guildId, rawName, userId); // สร้าง + เริ่ม session
-      await interaction.reply(buildPanelPayload(userId));
+      // 🔒 Quota gating: ฟรีจำกัด 1 อัน/เซิร์ฟ (ของเก่าที่เกินโควตายัง
+      // แก้ไขได้ปกติ แค่ห้ามสร้างใหม่เพิ่ม — เหมือน role-setup.js)
+      const FREE_BUILDER_LIMIT = 1;
+      const guildBuilderCount = listGuildDrafts(guildId).length;
+      if (!isPremiumGuild(guildId) && guildBuilderCount >= FREE_BUILDER_LIMIT) {
+        const reason = t('builder.quota.reached', { limit: FREE_BUILDER_LIMIT });
+        return interaction.reply({ content: buildUpgradeMessage(t, reason), flags: MessageFlags.Ephemeral });
+      }
+
+      createNamedDraft(guildId, rawName, userId); // สร้าง + เริ่ม session (blocks: [] เสมอ)
+
+      // ฟรี: preload blocks เป็น skeleton 2 บล็อก (section + gallery ว่างๆ)
+      // ใช้ addBlock() ตัวเดิม เพื่อให้ auto-save เข้า storage ถูกต้องเหมือนโค้ดส่วนอื่น
+      if (!isPremiumGuild(guildId)) {
+        for (const block of createFreeTierBlocks()) addBlock(guildId, userId, block);
+      }
+
+      // เลือก panel ผ่าน resolveBuilderPanelPayload() เสมอ (ไม่เช็ค isPremiumGuild() เอง
+      // ซ้ำตรงนี้) — draft ที่เพิ่งสร้าง (ว่างหรือ preload skeleton แล้ว) จะผ่านเกณฑ์
+      // แผงฟรีอยู่แล้วปกติ แต่รวม logic ไว้จุดเดียวกันบั๊กแบบที่เคยเจอมา
+      await interaction.reply(resolveBuilderPanelPayload(userId, guildId, t));
       return;
     }
 
@@ -1108,21 +1378,24 @@ module.exports = {
 
       if (!namedDraftExists(guildId, name)) {
         return interaction.reply({
-          content:
-            `❌ ไม่พบ builder ชื่อ **"${name}"** ในเซิร์ฟเวอร์นี้ค่ะ\n` +
-            `ใช้ \`/builder list\` เพื่อดูรายชื่อ builder ทั้งหมด`,
+          content: t('builder.command.not_found', { name }),
           flags: MessageFlags.Ephemeral,
         });
       }
 
       openNamedDraft(guildId, name, userId); // โหลด + เริ่ม session
-      await interaction.reply(buildPanelPayload(userId));
+
+      // เช็ค tier **ปัจจุบัน** เสมอ (ไม่ใช่ตอนสร้าง) เพราะเซิร์ฟอาจอัปเกรด/ดาวน์เกรดทีหลังได้
+      // — และถ้าเป็นฟรีแต่ draft นี้มีเนื้อหาเกินความสามารถของแผงฟรี (เช่น builder
+      // เก่าที่สร้าง/แก้ไว้ตอนยังพรีเมี่ยม) resolveBuilderPanelPayload() จะสลับไปโชว์
+      // ข้อความชวนอัปเกรดแทนให้เอง ไม่ปล่อยให้แผงฟรีพยายามเปิดจนพังเงียบๆ
+      await interaction.reply(resolveBuilderPanelPayload(userId, guildId, t));
       return;
     }
 
     // ----- /builder list -----
     if (sub === 'list') {
-      await interaction.reply(buildListPayload(guildId));
+      await interaction.reply(buildListPayload(guildId, null, t));
       return;
     }
 
@@ -1132,29 +1405,27 @@ module.exports = {
 
       if (!namedDraftExists(guildId, name)) {
         return interaction.reply({
-          content: `❌ ไม่พบ builder ชื่อ **"${name}"** ในเซิร์ฟเวอร์นี้ค่ะ`,
+          content: t('builder.command.not_found_short', { name }),
           flags: MessageFlags.Ephemeral,
         });
       }
 
       // เก็บ pending deletion แล้วแสดงปุ่ม confirm/cancel
-      pendingDeletions.set(userId, { guildId, name });
+      pendingDeletions.set(sessionKey(guildId, userId), { guildId, name });
 
       const confirmBtn = new ButtonBuilder()
         .setCustomId(IDS.DELETE_CONFIRM)
-        .setLabel('✅ ยืนยัน ลบ')
+        .setLabel(t('builder.command.delete_confirm_button'))
         .setStyle(ButtonStyle.Danger);
 
       const cancelBtn = new ButtonBuilder()
         .setCustomId(IDS.DELETE_CANCEL)
-        .setLabel('❌ ยกเลิก')
+        .setLabel(t('builder.command.delete_cancel_button'))
         .setStyle(ButtonStyle.Secondary);
 
       await interaction.reply({
         components: [
-          new TextDisplayBuilder().setContent(
-            `⚠️ **ยืนยันการลบ**\nต้องการลบ builder **"${name}"** จริงๆ ไหมคะ?\nลบแล้วจะไม่สามารถกู้คืนได้ค่ะ`
-          ),
+          new TextDisplayBuilder().setContent(t('builder.command.delete_confirm_header', { name })),
           new ActionRowBuilder().addComponents(confirmBtn, cancelBtn),
         ],
         flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
@@ -1165,15 +1436,17 @@ module.exports = {
 
   // ----- เมื่อกดปุ่มใดๆ ที่ขึ้นต้นด้วย builder_ -----
   async handleButton(interaction) {
+    const t = createTranslator(getGuildLanguage(interaction.guildId));
+
     // ปุ่ม "แก้ไข"/"ลบ" มี index ฝังท้าย customId (เช่น builder_manage_edit_2) เช็คก่อน switch ปกติ
     if (interaction.customId.startsWith(MANAGE_EDIT_PREFIX)) {
       const index = Number(interaction.customId.slice(MANAGE_EDIT_PREFIX.length));
-      const block = getBlockAt(interaction.user.id, index);
+      const block = getBlockAt(interaction.guildId, interaction.user.id, index);
 
       if (!block) {
         // เผื่อกรณีบล็อกถูกลบไปแล้วจากที่อื่นก่อนกดปุ่มนี้ทัน
         await interaction.reply({
-          content: '⚠️ บล็อกนี้ไม่มีอยู่แล้วค่ะ (อาจถูกลบหรือแก้ไปก่อนหน้านี้)',
+          content: t('builder.block.gone'),
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -1182,19 +1455,19 @@ module.exports = {
       if (block.type === 'separator') {
         // separator ไม่มีข้อมูลให้พิมพ์ แค่สลับ small/large ทันทีแล้วกลับแผงควบคุมเลย ไม่ต้องเปิด modal
         const newSpacing = block.spacing === 'large' ? 'small' : 'large';
-        updateBlockAt(interaction.user.id, index, { type: 'separator', spacing: newSpacing });
-        await interaction.update(buildPanelPayload(interaction.user.id));
+        updateBlockAt(interaction.guildId, interaction.user.id, index, { type: 'separator', spacing: newSpacing });
+        await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
         return;
       }
 
       if (block.type === 'text') {
         const modal = new ModalBuilder()
           .setCustomId(`${MODAL_EDIT_TEXT_PREFIX}${index}`)
-          .setTitle('แก้ไขข้อความ');
+          .setTitle(t('builder.modal.title.edit_text'));
 
         const textInput = new TextInputBuilder()
           .setCustomId(IDS.INPUT_TEXT)
-          .setLabel('เนื้อหา (รองรับ markdown)')
+          .setLabel(t('builder.modal.text_content_label'))
           .setStyle(TextInputStyle.Paragraph)
           .setValue(block.content) // pre-fill เนื้อหาเดิม
           .setRequired(true)
@@ -1208,7 +1481,7 @@ module.exports = {
       if (block.type === 'gallery') {
         const modal = new ModalBuilder()
           .setCustomId(`${MODAL_EDIT_IMAGE_PREFIX}${index}`)
-          .setTitle('แก้ไขรูป (หลายลิงก์)');
+          .setTitle(t('builder.modal.title.edit_image'));
 
         const urlsInput = new TextInputBuilder()
           .setCustomId(IDS.INPUT_IMAGE_URLS)
@@ -1219,8 +1492,8 @@ module.exports = {
           .setMaxLength(4000);
 
         const urlsLabel = new LabelBuilder()
-          .setLabel('ลิงก์รูปภาพ (1 บรรทัดต่อ 1 ลิงก์)')
-          .setDescription(IMAGE_URL_HINT)
+          .setLabel(t('builder.modal.image_urls_label'))
+          .setDescription(t('builder.modal.image_url_hint'))
           .setTextInputComponent(urlsInput);
 
         modal.addLabelComponents(urlsLabel);
@@ -1229,10 +1502,10 @@ module.exports = {
       }
 
       if (block.type === 'section') {
-        const modal = buildSectionModal(`${MODAL_EDIT_SECTION_PREFIX}${index}`, 'แก้ไขข้อความคู่รูปเล็ก', {
+        const modal = buildSectionModal(`${MODAL_EDIT_SECTION_PREFIX}${index}`, t('builder.modal.title.edit_section'), {
           text: block.text,
           thumbnail: block.thumbnail,
-        });
+        }, t);
         await interaction.showModal(modal);
         return;
       }
@@ -1240,8 +1513,9 @@ module.exports = {
       if (block.type === 'section_button') {
         const modal = buildSectionButtonModal(
           `${MODAL_EDIT_SECTION_BUTTON_PREFIX}${index}`,
-          'แก้ไขข้อความคู่ปุ่มลิงก์',
-          { text: block.text, buttonLabel: block.buttonLabel, buttonUrl: block.buttonUrl }
+          t('builder.modal.title.edit_section_button'),
+          { text: block.text, buttonLabel: block.buttonLabel, buttonUrl: block.buttonUrl },
+          t
         );
         await interaction.showModal(modal);
         return;
@@ -1253,8 +1527,9 @@ module.exports = {
         // ถ้าอยากเปลี่ยนช่อง ต้องเลือกใหม่ผ่าน ChannelSelectMenu ขั้นที่ 2
         const modal = buildSectionChannelModal(
           `${MODAL_EDIT_SECTION_CHANNEL_PREFIX}${index}`,
-          'แก้ไขข้อความคู่ปุ่มช่อง',
-          { text: block.text, buttonLabel: block.buttonLabel }
+          t('builder.modal.title.edit_section_channel'),
+          { text: block.text, buttonLabel: block.buttonLabel },
+          t
         );
         await interaction.showModal(modal);
         return;
@@ -1266,14 +1541,15 @@ module.exports = {
         // ถ้าอยากเปลี่ยนยศหรือสีปุ่ม ต้องลบแล้วสร้างใหม่
         const modal = buildSectionRoleModal(
           `${MODAL_EDIT_SECTION_ROLE_PREFIX}${index}`,
-          'แก้ไขปุ่มยศ',
+          t('builder.modal.title.edit_section_role'),
           {
             text: block.text,
             buttonLabel: block.buttonLabel,
             // buttonEmoji อาจเป็น null, '<:name:id>', หรือ '🎭'
             // ส่งเป็น string ไปให้ modal pre-fill ได้เลย (ถ้า null ส่ง '' แทนเพื่อให้ช่องว่าง)
             buttonEmoji: block.buttonEmoji || '',
-          }
+          },
+          t
         );
         await interaction.showModal(modal);
         return;
@@ -1284,9 +1560,9 @@ module.exports = {
 
     if (interaction.customId.startsWith(MANAGE_DELETE_PREFIX)) {
       const index = Number(interaction.customId.slice(MANAGE_DELETE_PREFIX.length));
-      removeBlockAt(interaction.user.id, index);
+      removeBlockAt(interaction.guildId, interaction.user.id, index);
       // ลบเสร็จกลับไปแผงควบคุมปกติทันที เห็น preview ที่อัปเดตแล้ว
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -1296,35 +1572,35 @@ module.exports = {
 
       if (index === 0) {
         // ปกติปุ่มจะ disabled ไปแล้วตั้งแต่ฝั่ง UI แต่กันไว้อีกชั้นเผื่อกดทันก่อน UI อัปเดต
-        await interaction.reply({ content: '⚠️ บล็อกนี้อยู่บนสุดแล้วค่ะ', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: t('builder.block.already_top'), flags: MessageFlags.Ephemeral });
         return;
       }
 
       const newIndex = index - 1;
-      swapBlocks(interaction.user.id, index, newIndex);
+      swapBlocks(interaction.guildId, interaction.user.id, index, newIndex);
 
       // โชว์หน้าจอเดิมต่อ แต่อ้างอิงตำแหน่งใหม่ของบล็อกที่เพิ่งย้าย เพื่อกดย้ายต่อเนื่องได้เลยโดยไม่ต้องกลับไปเลือกใหม่
-      const block = getBlockAt(interaction.user.id, newIndex);
-      const totalBlocks = getDraft(interaction.user.id).blocks.length;
-      await interaction.update(buildBlockActionPayload(newIndex, block, totalBlocks));
+      const block = getBlockAt(interaction.guildId, interaction.user.id, newIndex);
+      const totalBlocks = getDraft(interaction.guildId, interaction.user.id).blocks.length;
+      await interaction.update(buildBlockActionPayload(newIndex, block, totalBlocks, interaction.guildId));
       return;
     }
 
     // ----- กด "⬇️ ย้ายลง" -----
     if (interaction.customId.startsWith(MOVE_DOWN_PREFIX)) {
       const index = Number(interaction.customId.slice(MOVE_DOWN_PREFIX.length));
-      const totalBlocks = getDraft(interaction.user.id).blocks.length;
+      const totalBlocks = getDraft(interaction.guildId, interaction.user.id).blocks.length;
 
       if (index === totalBlocks - 1) {
-        await interaction.reply({ content: '⚠️ บล็อกนี้อยู่ล่างสุดแล้วค่ะ', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: t('builder.block.already_bottom'), flags: MessageFlags.Ephemeral });
         return;
       }
 
       const newIndex = index + 1;
-      swapBlocks(interaction.user.id, index, newIndex);
+      swapBlocks(interaction.guildId, interaction.user.id, index, newIndex);
 
-      const block = getBlockAt(interaction.user.id, newIndex);
-      await interaction.update(buildBlockActionPayload(newIndex, block, totalBlocks));
+      const block = getBlockAt(interaction.guildId, interaction.user.id, newIndex);
+      await interaction.update(buildBlockActionPayload(newIndex, block, totalBlocks, interaction.guildId));
       return;
     }
 
@@ -1332,15 +1608,15 @@ module.exports = {
     if (interaction.customId.startsWith(INSERT_PREFIX)) {
       const selectedIndex = Number(interaction.customId.slice(INSERT_PREFIX.length));
       const insertPosition = selectedIndex + 1; // แทรก "หลังจาก" บล็อกที่เลือก = ตำแหน่ง index+1
-      await interaction.update(buildInsertTypePayload(insertPosition));
+      await interaction.update(buildInsertTypePayload(insertPosition, interaction.guildId));
       return;
     }
 
     // ----- เลือก "เส้นคั่น" จากหน้าจอแทรกบล็อก -> แทรกทันทีไม่ต้องเปิด modal -----
     if (interaction.customId.startsWith(INSERT_SEPARATOR_PREFIX)) {
       const insertPosition = Number(interaction.customId.slice(INSERT_SEPARATOR_PREFIX.length));
-      insertBlockAt(interaction.user.id, insertPosition, { type: 'separator', spacing: 'small' });
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      insertBlockAt(interaction.guildId, interaction.user.id, insertPosition, { type: 'separator', spacing: 'small' });
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -1349,13 +1625,13 @@ module.exports = {
       const insertPosition = Number(interaction.customId.slice(INSERT_TEXT_PREFIX.length));
       const modal = new ModalBuilder()
         .setCustomId(`${MODAL_INSERT_TEXT_PREFIX}${insertPosition}`)
-        .setTitle('แทรกข้อความใหม่');
+        .setTitle(t('builder.modal.title.insert_text'));
 
       const textInput = new TextInputBuilder()
         .setCustomId(IDS.INPUT_TEXT)
-        .setLabel('เนื้อหา (รองรับ markdown)')
+        .setLabel(t('builder.modal.text_content_label'))
         .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('# หัวข้อ\nเนื้อหาตรงนี้...')
+        .setPlaceholder(t('builder.modal.text_content_placeholder'))
         .setRequired(true)
         .setMaxLength(4000);
 
@@ -1369,7 +1645,7 @@ module.exports = {
       const insertPosition = Number(interaction.customId.slice(INSERT_IMAGE_PREFIX.length));
       const modal = new ModalBuilder()
         .setCustomId(`${MODAL_INSERT_IMAGE_PREFIX}${insertPosition}`)
-        .setTitle('แทรกรูปใหม่ (ใส่ได้หลายลิงก์)');
+        .setTitle(t('builder.modal.title.insert_image'));
 
       const urlsInput = new TextInputBuilder()
         .setCustomId(IDS.INPUT_IMAGE_URLS)
@@ -1379,8 +1655,8 @@ module.exports = {
         .setMaxLength(4000);
 
       const urlsLabel = new LabelBuilder()
-        .setLabel('ลิงก์รูปภาพ (1 บรรทัดต่อ 1 ลิงก์)')
-        .setDescription(IMAGE_URL_HINT)
+        .setLabel(t('builder.modal.image_urls_label'))
+        .setDescription(t('builder.modal.image_url_hint'))
         .setTextInputComponent(urlsInput);
 
       modal.addLabelComponents(urlsLabel);
@@ -1396,7 +1672,8 @@ module.exports = {
           `${INSERT_SECTION_THUMBNAIL_PREFIX}${insertPosition}`,
           `${INSERT_SECTION_BUTTON_PREFIX}${insertPosition}`,
           `${INSERT_SECTION_ROLE_PREFIX}${insertPosition}`,
-          `${INSERT_SECTION_CHANNEL_PREFIX}${insertPosition}`
+          `${INSERT_SECTION_CHANNEL_PREFIX}${insertPosition}`,
+          t
         )
       );
       return;
@@ -1405,7 +1682,7 @@ module.exports = {
     // ----- เลือกตัวเลือกย่อย "🖼️ รูปเล็ก" ตอนแทรก -> เปิด modal (เหมือนปุ่มหลัก) -----
     if (interaction.customId.startsWith(INSERT_SECTION_THUMBNAIL_PREFIX)) {
       const insertPosition = Number(interaction.customId.slice(INSERT_SECTION_THUMBNAIL_PREFIX.length));
-      const modal = buildSectionModal(`${MODAL_INSERT_SECTION_PREFIX}${insertPosition}`, 'แทรกข้อความคู่รูปเล็ก');
+      const modal = buildSectionModal(`${MODAL_INSERT_SECTION_PREFIX}${insertPosition}`, t('builder.modal.title.insert_section'), {}, t);
       await interaction.showModal(modal);
       return;
     }
@@ -1415,7 +1692,9 @@ module.exports = {
       const insertPosition = Number(interaction.customId.slice(INSERT_SECTION_BUTTON_PREFIX.length));
       const modal = buildSectionButtonModal(
         `${MODAL_INSERT_SECTION_BUTTON_PREFIX}${insertPosition}`,
-        'แทรกข้อความคู่ปุ่มลิงก์'
+        t('builder.modal.title.insert_section_button'),
+        {},
+        t
       );
       await interaction.showModal(modal);
       return;
@@ -1426,7 +1705,9 @@ module.exports = {
       const insertPosition = Number(interaction.customId.slice(INSERT_SECTION_ROLE_PREFIX.length));
       const modal = buildSectionRoleModal(
         `${MODAL_INSERT_SECTION_ROLE_PREFIX}${insertPosition}`,
-        'แทรกปุ่มยศ (1/3)'
+        t('builder.modal.title.insert_section_role'),
+        {},
+        t
       );
       await interaction.showModal(modal);
       return;
@@ -1437,7 +1718,9 @@ module.exports = {
       const insertPosition = Number(interaction.customId.slice(INSERT_SECTION_CHANNEL_PREFIX.length));
       const modal = buildSectionChannelModal(
         `${MODAL_INSERT_SECTION_CHANNEL_PREFIX}${insertPosition}`,
-        'แทรกปุ่มลิงก์ช่อง (1/2)'
+        t('builder.modal.title.insert_section_channel'),
+        {},
+        t
       );
       await interaction.showModal(modal);
       return;
@@ -1449,15 +1732,15 @@ module.exports = {
     if (interaction.customId.startsWith(ROLE_STYLE_PREFIX)) {
       const styleName = interaction.customId.slice(ROLE_STYLE_PREFIX.length);
       // styleName จะเป็น 'Primary', 'Secondary', 'Success', หรือ 'Danger' ตรงๆ
-      const pending = getPendingRoleButton(interaction.user.id);
+      const pending = getPendingRoleButton(interaction.guildId, interaction.user.id);
 
       if (!pending || !pending.roleId) {
         // pending หมดอายุ (เช่น bot restart ระหว่างขั้น 2→3) กลับแผงควบคุมเฉยๆ
-        await interaction.update(buildPanelPayload(interaction.user.id));
+        await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
         return;
       }
 
-      clearPendingRoleButton(interaction.user.id);
+      clearPendingRoleButton(interaction.guildId, interaction.user.id);
 
       const block = {
         type: 'section_role_button',
@@ -1471,12 +1754,12 @@ module.exports = {
       };
 
       if (pending.insertPosition !== null) {
-        insertBlockAt(interaction.user.id, pending.insertPosition, block);
+        insertBlockAt(interaction.guildId, interaction.user.id, pending.insertPosition, block);
       } else {
-        addBlock(interaction.user.id, block);
+        addBlock(interaction.guildId, interaction.user.id, block);
       }
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -1484,13 +1767,13 @@ module.exports = {
       case IDS.ADD_TEXT: {
         const modal = new ModalBuilder()
           .setCustomId(IDS.MODAL_TEXT)
-          .setTitle('เพิ่มข้อความ');
+          .setTitle(t('builder.modal.title.add_text'));
 
         const textInput = new TextInputBuilder()
           .setCustomId(IDS.INPUT_TEXT)
-          .setLabel('เนื้อหา (รองรับ markdown)')
+          .setLabel(t('builder.modal.text_content_label'))
           .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('# หัวข้อ\nเนื้อหาตรงนี้...')
+          .setPlaceholder(t('builder.modal.text_content_placeholder'))
           .setRequired(true)
           .setMaxLength(4000);
 
@@ -1503,7 +1786,7 @@ module.exports = {
       case IDS.ADD_IMAGE: {
         const modal = new ModalBuilder()
           .setCustomId(IDS.MODAL_IMAGE)
-          .setTitle('เพิ่มรูป (ใส่ได้หลายลิงก์)');
+          .setTitle(t('builder.modal.title.add_image'));
 
         const urlsInput = new TextInputBuilder()
           .setCustomId(IDS.INPUT_IMAGE_URLS)
@@ -1513,8 +1796,8 @@ module.exports = {
           .setMaxLength(4000);
 
         const urlsLabel = new LabelBuilder()
-          .setLabel('ลิงก์รูปภาพ (1 บรรทัดต่อ 1 ลิงก์)')
-          .setDescription(IMAGE_URL_HINT)
+          .setLabel(t('builder.modal.image_urls_label'))
+          .setDescription(t('builder.modal.image_url_hint'))
           .setTextInputComponent(urlsInput);
 
         modal.addLabelComponents(urlsLabel);
@@ -1525,26 +1808,26 @@ module.exports = {
 
       case IDS.ADD_SECTION: {
         await interaction.update(
-          buildSectionChoicePayload(IDS.ADD_SECTION_THUMBNAIL, IDS.ADD_SECTION_BUTTON, IDS.ADD_SECTION_ROLE, IDS.ADD_SECTION_CHANNEL)
+          buildSectionChoicePayload(IDS.ADD_SECTION_THUMBNAIL, IDS.ADD_SECTION_BUTTON, IDS.ADD_SECTION_ROLE, IDS.ADD_SECTION_CHANNEL, t)
         );
         break;
       }
 
       case IDS.ADD_SECTION_THUMBNAIL: {
-        const modal = buildSectionModal(IDS.MODAL_SECTION, 'เพิ่มข้อความคู่รูปเล็ก');
+        const modal = buildSectionModal(IDS.MODAL_SECTION, t('builder.modal.title.add_section'), {}, t);
         await interaction.showModal(modal);
         break;
       }
 
       case IDS.ADD_SECTION_BUTTON: {
-        const modal = buildSectionButtonModal(IDS.MODAL_SECTION_BUTTON, 'เพิ่มข้อความคู่ปุ่มลิงก์');
+        const modal = buildSectionButtonModal(IDS.MODAL_SECTION_BUTTON, t('builder.modal.title.add_section_button'), {}, t);
         await interaction.showModal(modal);
         break;
       }
 
       case IDS.ADD_SECTION_ROLE: {
         // ขั้นที่ 1: เปิด modal รับข้อความ + ป้ายปุ่ม + อิโมจิ (optional)
-        const modal = buildSectionRoleModal(IDS.MODAL_SECTION_ROLE, 'เพิ่มปุ่มยศ (1/3)');
+        const modal = buildSectionRoleModal(IDS.MODAL_SECTION_ROLE, t('builder.modal.title.add_section_role'), {}, t);
         await interaction.showModal(modal);
         break;
       }
@@ -1552,92 +1835,60 @@ module.exports = {
       case IDS.ADD_SECTION_CHANNEL: {
         // ขั้นที่ 1: เปิด modal รับข้อความ + ป้ายปุ่ม (ยังไม่เลือกช่อง)
         // ต่างจาก section_button ตรงที่ไม่มีช่อง URL ให้พิมพ์ เพราะ URL จะ generate จากช่องที่เลือกในขั้นที่ 2
-        const sectionChannelModal = buildSectionChannelModal(IDS.MODAL_SECTION_CHANNEL, 'เพิ่มปุ่มลิงก์ช่อง (1/2)');
+        const sectionChannelModal = buildSectionChannelModal(IDS.MODAL_SECTION_CHANNEL, t('builder.modal.title.add_section_channel'), {}, t);
         await interaction.showModal(sectionChannelModal);
         break;
       }
 
       case IDS.ADD_SEPARATOR: {
         // ไม่ต้องเปิด modal เพราะ separator ไม่มีข้อมูลให้ผู้ใช้กรอกเลย
-        addBlock(interaction.user.id, { type: 'separator', spacing: 'small' });
+        addBlock(interaction.guildId, interaction.user.id, { type: 'separator', spacing: 'small' });
 
         // ปุ่มธรรมดา (ไม่ใช่ modal) ต้องใช้ .update() ตรงๆ ได้เลย ไม่ต้องผ่าน showModal ก่อน
-        await interaction.update(buildPanelPayload(interaction.user.id));
-        break;
-      }
-
-      case IDS.PREVIEW: {
-        const draft = getDraft(interaction.user.id);
-
-        // กันกรณีกดดูตัวอย่างทั้งที่ยังไม่มีบล็อกเลย (Discord ไม่ยอมรับ Container ว่างเปล่า)
-        if (draft.blocks.length === 0) {
-          await interaction.reply({
-            content: '⚠️ ยังไม่มีบล็อกเลยค่ะ ลองกด "+ เพิ่มข้อความ", "+ เพิ่มรูป" หรือ "+ เพิ่มเส้นคั่น" เพิ่มอะไรสักอย่างก่อนนะคะ',
-            flags: MessageFlags.Ephemeral,
-          });
-          break;
-        }
-
-        try {
-          const preview = buildMessageFromSchema(draft);
-
-          // ข้อความ Components V2 ใส่ content คู่กับ components ในข้อความเดียวกันไม่ได้
-          // เลยส่งแยกเป็น 2 ข้อความ: บอกก่อนว่านี่คือตัวอย่าง แล้วตามด้วยตัวอย่างจริง
-          await interaction.reply({
-            content: '🔍 ตัวอย่างด้านล่างนี้ค่ะ (เห็นแค่หนูคนเดียว ยังไม่ได้โพสต์จริง)',
-            flags: MessageFlags.Ephemeral,
-          });
-          await interaction.followUp({
-            ...preview,
-            flags: preview.flags | MessageFlags.Ephemeral, // รวม flag IsComponentsV2 + Ephemeral เข้าด้วยกัน
-          });
-        } catch (error) {
-          const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
-          await interaction.reply({
-            content: `❌ แสดงตัวอย่างไม่สำเร็จ: ${friendlyMessage}`,
-            flags: MessageFlags.Ephemeral,
-          });
-        }
+        await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
         break;
       }
 
       case IDS.MANAGE: {
-        const draft = getDraft(interaction.user.id);
+        const draft = getDraft(interaction.guildId, interaction.user.id);
 
         if (draft.blocks.length === 0) {
           await interaction.reply({
-            content: '⚠️ ยังไม่มีบล็อกให้จัดการเลยค่ะ ลองเพิ่มบล็อกก่อนนะคะ',
+            content: t('builder.manage.empty'),
             flags: MessageFlags.Ephemeral,
           });
           break;
         }
 
-        await interaction.update(buildManageSelectPayload(interaction.user.id));
+        await interaction.update(buildManageSelectPayload(interaction.user.id, interaction.guildId));
         break;
       }
 
       case IDS.MANAGE_BACK: {
         // กลับไปแผงควบคุมปกติ ไม่มีการเปลี่ยนแปลงข้อมูลอะไร
-        await interaction.update(buildPanelPayload(interaction.user.id));
+        // 🔒 เลือก panel ผ่าน resolveBuilderPanelPayload() เสมอ เพราะปุ่มนี้ใช้ customId
+        // เดียวกันทั้งฝั่งฟรีและพรีเมี่ยม (มันคือปุ่ม "ยกเลิก" บนหน้าเลือกช่องโพสต์ ซึ่ง
+        // ทั้งสองฝั่งใช้ร่วมกัน) — ถ้าไม่เช็คตรงนี้ ฟรียูสเซอร์จะหลุดไปเจอแผงเต็มของ
+        // พรีเมี่ยม หรือถ้า draft เกินความสามารถแผงฟรี (เช่นบิลด์ไว้ตอนยังพรีเมี่ยม)
+        // จะพังเงียบๆ ถ้าไม่ผ่านฟังก์ชันกลางนี้
+        await interaction.update(resolveBuilderPanelPayload(interaction.user.id, interaction.guildId, t));
         break;
       }
 
       case IDS.COLOR: {
-        await interaction.update(buildColorSelectPayload());
+        await interaction.update(buildColorSelectPayload(interaction.guildId));
         break;
       }
 
       case IDS.DELETE_CONFIRM: {
-        const pending = pendingDeletions.get(interaction.user.id);
-        pendingDeletions.delete(interaction.user.id); // ล้างทิ้งไม่ว่าจะเจอหรือไม่
+        const pending = pendingDeletions.get(sessionKey(interaction.guildId, interaction.user.id));
+        pendingDeletions.delete(sessionKey(interaction.guildId, interaction.user.id)); // ล้างทิ้งไม่ว่าจะเจอหรือไม่
 
         if (!pending) {
           // pending หมดอายุ (เช่น bot restart ระหว่างรอ confirm)
           await interaction.update({
             components: [
-              new TextDisplayBuilder().setContent(
-                '⚠️ ข้อมูลการลบหมดอายุแล้วค่ะ (อาจเกิดจาก bot restart)\nลองใช้ `/builder delete [ชื่อ]` ใหม่อีกครั้งนะคะ'
-              ),
+              new TextDisplayBuilder().setContent(t('builder.delete.expired')),
             ],
             flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
           });
@@ -1649,8 +1900,8 @@ module.exports = {
           components: [
             new TextDisplayBuilder().setContent(
               deleted
-                ? `✅ ลบ builder **"${pending.name}"** สำเร็จแล้วค่ะ`
-                : `⚠️ หา builder "${pending.name}" ไม่เจอ (อาจถูกลบไปแล้ว)`
+                ? t('builder.delete.success', { name: pending.name })
+                : t('builder.delete.not_found', { name: pending.name })
             ),
           ],
           flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
@@ -1659,13 +1910,13 @@ module.exports = {
       }
 
       case IDS.DELETE_CANCEL: {
-        const pending = pendingDeletions.get(interaction.user.id);
-        pendingDeletions.delete(interaction.user.id);
+        const pending = pendingDeletions.get(sessionKey(interaction.guildId, interaction.user.id));
+        pendingDeletions.delete(sessionKey(interaction.guildId, interaction.user.id));
 
         await interaction.update({
           components: [
             new TextDisplayBuilder().setContent(
-              `❌ ยกเลิกการลบ **"${pending?.name ?? 'builder'}"** แล้วค่ะ`
+              t('builder.delete.cancelled', { name: pending?.name ?? 'builder' })
             ),
           ],
           flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
@@ -1673,17 +1924,81 @@ module.exports = {
         break;
       }
 
+      case IDS.SIMPLE_EDIT_BASIC: {
+        const draft     = getDraft(interaction.guildId, interaction.user.id);
+        const infoBlock = draft.blocks.find(b => b.type === 'text' || b.type === 'section');
+        const rawText   = infoBlock ? (infoBlock.type === 'section' ? infoBlock.text : infoBlock.content) : '';
+        const lines     = (rawText || '').split('\n');
+        // ตัดความยาวให้ไม่เกิน maxLength ของ field เสมอ (กันกรณีมีข้อความ
+        // ยาวตกค้างจากการทดสอบ/ใช้งานก่อนหน้า ที่ pre-fill แล้วเกิน 100
+        // ตัวอักษร ทำให้ Discord ปฏิเสธการเปิด modal ทั้งก้อน)
+        const currentTitle = (lines[0]?.replace(/^#\s*/, '') || '').slice(0, 100);
+        const currentDesc  = lines.slice(1).join('\n');
+
+        const modal = new ModalBuilder().setCustomId('builder_modal_simple_basic').setTitle(t('builder.simple.modal.basic_title'));
+        const titleInput = new TextInputBuilder().setCustomId('simple_title').setLabel(t('builder.simple.modal.title_label')).setStyle(TextInputStyle.Short).setValue(currentTitle).setRequired(false).setMaxLength(100);
+        const descInput  = new TextInputBuilder().setCustomId('simple_desc').setLabel(t('builder.simple.modal.description_label')).setStyle(TextInputStyle.Paragraph).setValue(currentDesc).setRequired(false).setMaxLength(2000);
+        const colorInput = new TextInputBuilder().setCustomId('simple_color').setLabel(t('builder.simple.modal.color_label')).setStyle(TextInputStyle.Short).setValue(draft.accentColor || '').setRequired(false).setMaxLength(7);
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(titleInput),
+          new ActionRowBuilder().addComponents(descInput),
+          new ActionRowBuilder().addComponents(colorInput),
+        );
+        await interaction.showModal(modal);
+        break;
+      }
+
+      case IDS.SIMPLE_EDIT_MAIN_IMAGE: {
+        const draft   = getDraft(interaction.guildId, interaction.user.id);
+        const gallery = draft.blocks.find(b => b.type === 'gallery');
+        const currentUrl = gallery?.items?.[0]?.url || '';
+
+        const modal = new ModalBuilder().setCustomId('builder_modal_simple_main_image').setTitle(t('builder.simple.modal.main_image_title'));
+        const urlInput = new TextInputBuilder().setCustomId('simple_image_url').setLabel(t('builder.simple.modal.image_url_label')).setStyle(TextInputStyle.Short).setValue(currentUrl).setRequired(false);
+        modal.addComponents(new ActionRowBuilder().addComponents(urlInput));
+        await interaction.showModal(modal);
+        break;
+      }
+
+      case IDS.SIMPLE_EDIT_THUMBNAIL: {
+        const draft     = getDraft(interaction.guildId, interaction.user.id);
+        const infoBlock = draft.blocks.find(b => b.type === 'text' || b.type === 'section');
+        const currentUrl = infoBlock?.type === 'section' ? (infoBlock.thumbnail || '') : '';
+
+        const modal = new ModalBuilder().setCustomId('builder_modal_simple_thumbnail').setTitle(t('builder.simple.modal.thumbnail_title'));
+        const urlInput = new TextInputBuilder().setCustomId('simple_thumbnail_url').setLabel(t('builder.simple.modal.thumbnail_url_label')).setStyle(TextInputStyle.Short).setValue(currentUrl).setRequired(false);
+        modal.addComponents(new ActionRowBuilder().addComponents(urlInput));
+        await interaction.showModal(modal);
+        break;
+      }
+
+      case IDS.SIMPLE_POST: {
+        // ใช้ buildPreviewableDraft() กรองบล็อกที่ยังไม่พร้อมออกก่อนเช็ค
+        // (เหมือนตอนแสดง preview เป๊ะๆ — สิ่งที่โพสต์จริงต้องตรงกับที่
+        // เห็นใน preview เสมอ)
+        const draft = getDraft(interaction.guildId, interaction.user.id);
+        const previewableDraft = buildPreviewableDraft(draft);
+        if (previewableDraft.blocks.length === 0) {
+          await interaction.reply({ content: t('builder.post.empty_draft'), flags: MessageFlags.Ephemeral });
+          break;
+        }
+        // ปุ่มธรรมดา (ไม่ใช่ modal) ใช้ .update() ได้เลย — เปิดหน้าเลือกช่อง
+        // เดียวกับที่ปุ่ม Post ของพรีเมียมใช้อยู่แล้ว ไม่ต้องสร้างใหม่
+        await interaction.update(buildPostChannelSelectPayload(t));
+        break;
+      }
+
       case IDS.LIST_SEARCH: {
         // เปิด modal ให้ผู้ใช้พิมพ์คำค้นหา
         const modal = new ModalBuilder()
           .setCustomId(IDS.MODAL_LIST_SEARCH)
-          .setTitle('🔍 ค้นหา builder');
+          .setTitle(t('builder.modal.title.list_search'));
 
         const searchInput = new TextInputBuilder()
           .setCustomId(IDS.INPUT_LIST_SEARCH)
-          .setLabel('พิมพ์ชื่อหรือส่วนของชื่อ builder')
+          .setLabel(t('builder.modal.search_label'))
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder('เช่น rules, welcome, ประกาศ')
+          .setPlaceholder(t('builder.modal.search_placeholder'))
           .setRequired(true)
           .setMaxLength(50);
 
@@ -1694,24 +2009,24 @@ module.exports = {
 
       case IDS.LIST_RESET: {
         // ล้างตัวกรอง → แสดงรายการทั้งหมด
-        await interaction.update(buildListPayload(interaction.guildId));
+        await interaction.update(buildListPayload(interaction.guildId, null, t));
         break;
       }
 
       case IDS.POST: {
-        const draft = getDraft(interaction.user.id);
+        const draft = getDraft(interaction.guildId, interaction.user.id);
 
         // draft ว่าง → แจ้งเตือนแบบ ephemeral ไม่ต้องเปิด channel picker
         if (draft.blocks.length === 0) {
           await interaction.reply({
-            content: '⚠️ ยังไม่มีบล็อกเลยค่ะ ลองเพิ่มบล็อกก่อนแล้วค่อยกดโพสต์นะคะ',
+            content: t('builder.post.empty_draft'),
             flags: MessageFlags.Ephemeral,
           });
           break;
         }
 
         // มีบล็อก → เปิดหน้าจอเลือกช่องปลายทาง
-        await interaction.update(buildPostChannelSelectPayload());
+        await interaction.update(buildPostChannelSelectPayload(t));
         break;
       }
     }
@@ -1719,18 +2034,20 @@ module.exports = {
 
   // ----- เมื่อเลือกจาก select menu ใดๆ ที่ขึ้นต้นด้วย builder_ -----
   async handleSelectMenu(interaction) {
+    const t = createTranslator(getGuildLanguage(interaction.guildId));
+
     if (interaction.customId === IDS.MANAGE_SELECT) {
       const index = Number(interaction.values[0]); // ค่าที่เลือกคือ index ของ block (string ต้องแปลงเป็นตัวเลข)
-      const block = getBlockAt(interaction.user.id, index);
+      const block = getBlockAt(interaction.guildId, interaction.user.id, index);
 
       if (!block) {
         // เผื่อกรณีหายากมาก: เลือกจาก list เก่าที่ block ถูกลบไปแล้วพอดี
-        await interaction.update(buildPanelPayload(interaction.user.id));
+        await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
         return;
       }
 
-      const totalBlocks = getDraft(interaction.user.id).blocks.length;
-      await interaction.update(buildBlockActionPayload(index, block, totalBlocks));
+      const totalBlocks = getDraft(interaction.guildId, interaction.user.id).blocks.length;
+      await interaction.update(buildBlockActionPayload(index, block, totalBlocks, interaction.guildId));
       return;
     }
 
@@ -1741,7 +2058,7 @@ module.exports = {
         // เลือก "กำหนดเอง" -> เปิด modal ให้พิมพ์ hex code เอง
         const modal = new ModalBuilder()
           .setCustomId(IDS.MODAL_COLOR_CUSTOM)
-          .setTitle('กำหนดสีเอง');
+          .setTitle(t('builder.modal.title.color_custom'));
 
         const hexInput = new TextInputBuilder()
           .setCustomId(IDS.INPUT_COLOR_HEX)
@@ -1751,7 +2068,7 @@ module.exports = {
           .setMaxLength(7);
 
         const hexLabel = new LabelBuilder()
-          .setLabel('Hex code (รูปแบบ #RRGGBB)')
+          .setLabel(t('builder.modal.hex_label'))
           .setTextInputComponent(hexInput);
 
         modal.addLabelComponents(hexLabel);
@@ -1760,26 +2077,26 @@ module.exports = {
       }
 
       // เป็นสีสำเร็จรูป (ตัวเลือกจะส่งค่ามาเป็น hex อยู่แล้ว) -> บันทึกแล้วกลับไปแผงควบคุมทันที
-      setAccentColor(interaction.user.id, selectedValue);
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      setAccentColor(interaction.guildId, interaction.user.id, selectedValue);
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
     // ----- เลือกยศจาก select menu (ขั้นที่ 2 ของ flow ปุ่มยศ) -----
     if (interaction.customId === IDS.ROLE_SELECT) {
       const roleId = interaction.values[0];
-      const pending = getPendingRoleButton(interaction.user.id);
+      const pending = getPendingRoleButton(interaction.guildId, interaction.user.id);
 
       if (!pending) {
         // pending หมดอายุ (เช่น bot restart ระหว่างขั้น 1→2) กลับแผงควบคุมเฉยๆ
-        await interaction.update(buildPanelPayload(interaction.user.id));
+        await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
         return;
       }
 
       // อัปเดต pending ให้เพิ่ม roleId เข้าไป แล้วเปลี่ยนหน้าจอเป็นขั้นที่ 3 (เลือกสีปุ่ม)
       // ยังไม่ clearPendingRoleButton() เพราะขั้นที่ 3 (ROLE_STYLE_PREFIX handler) ต้องใช้ข้อมูลนี้อยู่
-      setPendingRoleButton(interaction.user.id, { ...pending, roleId });
-      await interaction.update(buildRoleStylePayload());
+      setPendingRoleButton(interaction.guildId, interaction.user.id, { ...pending, roleId });
+      await interaction.update(buildRoleStylePayload(t));
       return;
     }
 
@@ -1790,7 +2107,7 @@ module.exports = {
 
       if (!namedDraftExists(guildId, name)) {
         await interaction.reply({
-          content: `❌ ไม่พบ builder ชื่อ **"${name}"** แล้วค่ะ (อาจถูกลบไปแล้ว)\nใช้ /builder list เพื่อดูรายชื่อล่าสุด`,
+          content: t('builder.list_select.not_found', { name }),
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -1798,22 +2115,22 @@ module.exports = {
 
       openNamedDraft(guildId, name, interaction.user.id);
       // update ทับ list panel → เปิด builder panel แทน
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
     if (interaction.customId === IDS.CHANNEL_SELECT) {
       // ขั้นที่ 2: ผู้ใช้เลือกช่องแล้ว — ดึง pending state ที่เก็บไว้จากขั้นที่ 1
       const channelId = interaction.values[0];
-      const pending = getPendingChannelButton(interaction.user.id);
+      const pending = getPendingChannelButton(interaction.guildId, interaction.user.id);
 
       if (!pending) {
         // pending หมดอายุ (เช่น bot restart ระหว่างขั้น 1→2) กลับแผงควบคุมเฉยๆ
-        await interaction.update(buildPanelPayload(interaction.user.id));
+        await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
         return;
       }
 
-      clearPendingChannelButton(interaction.user.id);
+      clearPendingChannelButton(interaction.guildId, interaction.user.id);
 
       // สร้าง URL ในรูปแบบที่ Discord ใช้ลิงก์ตรงไปยังช่องนั้น
       // รูปแบบ: https://discord.com/channels/{guildId}/{channelId}
@@ -1828,34 +2145,38 @@ module.exports = {
       };
 
       if (pending.insertPosition !== null) {
-        insertBlockAt(interaction.user.id, pending.insertPosition, block);
+        insertBlockAt(interaction.guildId, interaction.user.id, pending.insertPosition, block);
       } else {
-        addBlock(interaction.user.id, block);
+        addBlock(interaction.guildId, interaction.user.id, block);
       }
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
     // ----- เลือกช่องปลายทางสำหรับโพสต์ (flow ของปุ่ม "โพสต์") -----
     if (interaction.customId === IDS.POST_CHANNEL_SELECT) {
       const channelId = interaction.values[0];
-      const draft = getDraft(interaction.user.id);
+      const draft = getDraft(interaction.guildId, interaction.user.id);
 
       // เช็คอีกครั้งเผื่อ draft ถูกล้างจากที่อื่น (edge case มาก แต่กันไว้)
       if (draft.blocks.length === 0) {
-        await interaction.update(buildPanelPayload(interaction.user.id));
+        // 🔒 เลือก panel ผ่าน resolveBuilderPanelPayload() เหมือนกัน — handler นี้ใช้
+        // ร่วมกันทั้งปุ่ม "โพสต์" ฝั่งพรีเมี่ยม (IDS.POST) และฝั่งฟรี (IDS.SIMPLE_POST)
+        // เลยพาฟรียูสเซอร์วนมาเจอแผงเต็ม หรือ draft เกินความสามารถแผงฟรีได้ถ้าไม่ผ่าน
+        // ฟังก์ชันกลางนี้ก่อน
+        await interaction.update(resolveBuilderPanelPayload(interaction.user.id, interaction.guildId, t));
         return;
       }
 
       // validate schema ก่อนส่งจริง — ถ้า schema เสียหายอยากรู้ก่อนที่จะยิงออกไป
       let messagePayload;
       try {
-        messagePayload = buildMessageFromSchema(draft);
+        messagePayload = buildMessageFromSchema(buildPreviewableDraft(draft));
       } catch (error) {
         const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
         await interaction.reply({
-          content: `❌ โพสต์ไม่สำเร็จค่ะ: ${friendlyMessage}`,
+          content: t('builder.post.build_failed', { error: friendlyMessage }),
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -1873,7 +2194,7 @@ module.exports = {
 
       if (!channel) {
         await interaction.reply({
-          content: '❌ หาช่องที่เลือกไม่เจอค่ะ ลองกด "โพสต์" แล้วเลือกช่องใหม่อีกครั้งนะคะ',
+          content: t('builder.post.channel_not_found'),
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -1886,29 +2207,35 @@ module.exports = {
       } catch (error) {
         console.error('[builder POST] channel.send error:', error);
         await interaction.reply({
-          content: `❌ ส่งข้อความเข้าช่องนั้นไม่สำเร็จค่ะ บอทอาจไม่มีสิทธิ์ "Send Messages" ในช่องนั้น\nลองแจ้งแอดมินให้ตรวจสอบสิทธิ์ของบอทในช่องนั้นด้วยนะคะ`,
+          content: t('builder.post.send_failed'),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      // โพสต์สำเร็จ — ล้าง draft, รีเซ็ตแผง, แจ้ง user พร้อม jump link
-      clearDraft(interaction.user.id);
-      await interaction.update(buildPanelPayload(interaction.user.id));
-      await interaction.followUp({
-        // [text](url) ใน ephemeral message จะ render เป็น hyperlink ให้กดได้เลย
-        content: `✅ โพสต์สำเร็จแล้วค่ะ! [กดเพื่อไปดูข้อความ](${postedMessage.url})`,
-        flags: MessageFlags.Ephemeral,
+      // โพสต์สำเร็จ — ล้าง draft แล้วแก้ข้อความเดิม (ที่เคยเป็นแผงตั้งค่า/แผงเลือกช่อง)
+      // ให้กลายเป็นข้อความสำเร็จ + jump link ตรงๆ เลย จบในตัวเดียว ไม่ต้องโชว์แผง
+      // ตั้งค่ากลับมาอีก ไม่มีปุ่มค้างให้กดต่อ — ผลลัพธ์เหมือนกันทั้งฝั่งฟรี/พรีเมี่ยม
+      // เพราะจุดนี้ไม่มีการโชว์แผงแบบไหนแล้ว เลยไม่ต้องเช็ค tier ด้วยซ้ำ
+      clearDraft(interaction.guildId, interaction.user.id);
+      await interaction.update({
+        components: [
+          // [text](url) ใน ephemeral message จะ render เป็น hyperlink ให้กดได้เลย
+          new TextDisplayBuilder().setContent(t('builder.post.success', { url: postedMessage.url })),
+        ],
+        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
       });
       return;
     }
   },
   async handleModalSubmit(interaction) {
+    const t = createTranslator(getGuildLanguage(interaction.guildId));
+
     // ----- modal ค้นหา builder (จากปุ่ม 🔍 ในหน้า list) -----
     if (interaction.customId === IDS.MODAL_LIST_SEARCH) {
       const query = interaction.fields.getTextInputValue(IDS.INPUT_LIST_SEARCH).trim();
       // อัปเดตหน้า list เดิมให้แสดงเฉพาะ builder ที่ชื่อ contains คำนั้น
-      await interaction.update(buildListPayload(interaction.guildId, query || null));
+      await interaction.update(buildListPayload(interaction.guildId, query || null, t));
       return;
     }
 
@@ -1920,14 +2247,109 @@ module.exports = {
 
       if (!isValidHex) {
         await interaction.reply({
-          content: `❌ รูปแบบสีไม่ถูกต้องค่ะ ต้องเป็น #RRGGBB เช่น #FF66AA (ได้รับ: "${rawHex}")\n\nลองกด "🎨 เลือกสี" แล้วเลือก "🖌️ กำหนดเอง" ใหม่อีกครั้งนะคะ`,
+          content: t('builder.color_custom.invalid', { input: rawHex }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      setAccentColor(interaction.user.id, rawHex);
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      setAccentColor(interaction.guildId, interaction.user.id, rawHex);
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
+      return;
+    }
+
+    // ── simple panel (free tier) — modal ทั้ง 3 ตัว ──────────────────────────
+    // ⚠️ ต่างจากเอกสารต้นฉบับ: ไม่มีฟังก์ชัน saveDraft(userId) อยู่จริงในไฟล์นี้
+    // การ auto-save ทำผ่าน _autoSave() ภายใน builderDrafts.js ซึ่งถูกเรียกอัตโนมัติ
+    // อยู่แล้วข้างใน updateBlockAt()/setAccentColor() — เลยใช้ 2 ฟังก์ชันนี้แทนการ
+    // แก้ field ตรงๆ บน object reference แล้วเรียก save เอง (ไม่มีฟังก์ชันแบบนั้นให้เรียก)
+    if (interaction.customId === 'builder_modal_simple_basic') {
+      const rawTitle = interaction.fields.getTextInputValue('simple_title').trim();
+      const rawDesc  = interaction.fields.getTextInputValue('simple_desc').trim();
+      const color    = interaction.fields.getTextInputValue('simple_color').trim();
+
+      // 🔒 เช็ค mention ก่อน resolve emoji (เช็คจากข้อความดิบก็พอ)
+      if (containsMention(rawTitle) || containsMention(rawDesc)) {
+        return interaction.reply({ content: t('builder.simple.mention_blocked'), flags: MessageFlags.Ephemeral });
+      }
+
+      // ✅ แปลง :ชื่อ: เป็น <:ชื่อ:id> ก่อนบันทึก (จุดที่หายไปตอน 3b)
+      const title = resolveCustomEmojis(rawTitle, interaction.guild);
+      const desc  = resolveCustomEmojis(rawDesc, interaction.guild);
+
+      const draft = getDraft(interaction.guildId, interaction.user.id);
+      const infoIndex = draft.blocks.findIndex(b => b.type === 'text' || b.type === 'section');
+      if (infoIndex !== -1) {
+        const infoBlock = draft.blocks[infoIndex];
+        const newContent = title ? `# ${title}${desc ? '\n' + desc : ''}` : desc;
+        if (infoBlock.type === 'section') {
+          // มี thumbnail อยู่แล้ว → คงเป็น section ต่อไป แค่อัปเดต text
+          updateBlockAt(interaction.guildId, interaction.user.id, infoIndex, { ...infoBlock, text: newContent });
+        } else {
+          // ยังไม่มี thumbnail → คงเป็น text ต่อไป แค่อัปเดต content
+          updateBlockAt(interaction.guildId, interaction.user.id, infoIndex, { ...infoBlock, content: newContent });
+        }
+      }
+
+      if (color) {
+        if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+          return interaction.reply({ content: t('builder.simple.color_invalid', { input: color }), flags: MessageFlags.Ephemeral });
+        }
+        setAccentColor(interaction.guildId, interaction.user.id, color);
+      } else {
+        setAccentColor(interaction.guildId, interaction.user.id, null);
+      }
+
+      await interaction.deferUpdate();
+      await interaction.editReply(buildSimplePanel(interaction.user.id, interaction.guildId));
+      return;
+    }
+
+    if (interaction.customId === 'builder_modal_simple_main_image') {
+      const url   = interaction.fields.getTextInputValue('simple_image_url').trim();
+      const draft = getDraft(interaction.guildId, interaction.user.id);
+      const galleryIndex = draft.blocks.findIndex(b => b.type === 'gallery');
+      const galleryId = draft.blocks[galleryIndex]?.id;
+
+      if (url) {
+        try { validateUrl(url, t('builder.validation.thumbnail_label'), t); }
+        catch (e) {
+          return interaction.reply({ content: t('builder.simple.preview_error', { error: e.message.replace(/^buildMessageFromSchema:\s*/, '') }), flags: MessageFlags.Ephemeral });
+        }
+        if (galleryIndex !== -1) updateBlockAt(interaction.guildId, interaction.user.id, galleryIndex, { id: galleryId, type: 'gallery', items: [{ url }] });
+      } else if (galleryIndex !== -1) {
+        updateBlockAt(interaction.guildId, interaction.user.id, galleryIndex, { id: galleryId, type: 'gallery', items: [] });
+      }
+
+      await interaction.deferUpdate();
+      await interaction.editReply(buildSimplePanel(interaction.user.id, interaction.guildId));
+      return;
+    }
+
+    if (interaction.customId === 'builder_modal_simple_thumbnail') {
+      const url = interaction.fields.getTextInputValue('simple_thumbnail_url').trim();
+      const draft = getDraft(interaction.guildId, interaction.user.id);
+      const infoIndex = draft.blocks.findIndex(b => b.type === 'text' || b.type === 'section');
+
+      if (infoIndex !== -1) {
+        const infoBlock = draft.blocks[infoIndex];
+        const currentText = infoBlock.type === 'section' ? infoBlock.text : infoBlock.content;
+
+        if (url) {
+          try { validateUrl(url, t('builder.validation.thumbnail_label'), t); }
+          catch (e) {
+            return interaction.reply({ content: t('builder.simple.preview_error', { error: e.message.replace(/^buildMessageFromSchema:\s*/, '') }), flags: MessageFlags.Ephemeral });
+          }
+          // ตั้งค่าแล้ว → อัปเกรดเป็น section (มีทั้ง text+thumbnail ครบ)
+          updateBlockAt(interaction.guildId, interaction.user.id, infoIndex, { id: infoBlock.id, type: 'section', text: currentText, thumbnail: url });
+        } else {
+          // ลบออก → กลับไปเป็น text ธรรมดา (thumbnail ไม่บังคับอีกต่อไป)
+          updateBlockAt(interaction.guildId, interaction.user.id, infoIndex, { id: infoBlock.id, type: 'text', content: currentText });
+        }
+      }
+
+      await interaction.deferUpdate();
+      await interaction.editReply(buildSimplePanel(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -1935,32 +2357,32 @@ module.exports = {
       const rawContent = interaction.fields.getTextInputValue(IDS.INPUT_TEXT);
       const content = resolveCustomEmojis(rawContent, interaction.guild);
 
-      addBlock(interaction.user.id, { type: 'text', content });
+      addBlock(interaction.guildId, interaction.user.id, { type: 'text', content });
 
       // .update() จะแก้ไขข้อความแผงควบคุมเดิม (ข้อความที่มีปุ่มอยู่) แทนที่จะส่งข้อความใหม่ซ้อนขึ้นมาเรื่อยๆ
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
     if (interaction.customId === IDS.MODAL_IMAGE) {
       const rawUrls = interaction.fields.getTextInputValue(IDS.INPUT_IMAGE_URLS);
-      const result = parseGalleryUrlLines(rawUrls);
+      const result = parseGalleryUrlLines(rawUrls, t);
 
       if (!result.ok) {
         // ลิงก์ผิดรูปแบบหรือไม่มีลิงก์เลย — ไม่เก็บลง draft, ตอบกลับอธิบายสาเหตุแบบ ephemeral (ไม่แตะแผงควบคุมเดิม)
         await interaction.reply({
-          content: `${result.errorContent}\n\nลองกด "+ เพิ่มรูป" แล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: result.errorContent + t('builder.hint.retry_button', { button: t('builder.panel.button.add_image') }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      addBlock(interaction.user.id, {
+      addBlock(interaction.guildId, interaction.user.id, {
         type: 'gallery',
         items: result.urls.map((url) => ({ url })),
       });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
 
       // เช็ค content-type แบบ soft-warning หลังบันทึกแล้ว (ไม่บล็อก แค่เตือนเพิ่ม ถ้าดูน่าสงสัย)
       await warnIfImagesLookSuspicious(interaction, result.urls);
@@ -1974,19 +2396,20 @@ module.exports = {
       const thumbnail = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_THUMBNAIL).trim();
 
       try {
-        validateUrl(thumbnail, 'ลิงก์รูปเล็ก');
+        validateUrl(thumbnail, t('builder.validation.thumbnail_label'), t);
       } catch (error) {
         const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
         await interaction.reply({
-          content: `❌ เพิ่มไม่สำเร็จ: ${friendlyMessage}\n\nลองกด "+ เพิ่ม Section" แล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: t('builder.error.add_failed', { error: friendlyMessage }) +
+            t('builder.hint.retry_button', { button: t('builder.panel.button.add_section') }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      addBlock(interaction.user.id, { type: 'section', text, thumbnail });
+      addBlock(interaction.guildId, interaction.user.id, { type: 'section', text, thumbnail });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       await warnIfImagesLookSuspicious(interaction, [thumbnail]);
       return;
     }
@@ -2001,20 +2424,21 @@ module.exports = {
       const buttonUrl = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_BUTTON_URL).trim();
 
       try {
-        validateHttpUrl(buttonUrl, 'ลิงก์ปุ่ม');
+        validateHttpUrl(buttonUrl, t('builder.validation.button_link_label'), t);
       } catch (error) {
         const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
         await interaction.reply({
-          content: `❌ เพิ่มไม่สำเร็จ: ${friendlyMessage}\n\nลองกด "+ เพิ่ม Section" แล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: t('builder.error.add_failed', { error: friendlyMessage }) +
+            t('builder.hint.retry_button', { button: t('builder.panel.button.add_section') }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      addBlock(interaction.user.id, { type: 'section_button', text, buttonLabel, buttonUrl });
+      addBlock(interaction.guildId, interaction.user.id, { type: 'section_button', text, buttonLabel, buttonUrl });
 
       // ลิงก์ปุ่มไม่ใช่ลิงก์รูป เลยไม่ต้องเช็ค HEAD request แบบ image content-type
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -2031,14 +2455,14 @@ module.exports = {
       const buttonEmoji = rawEmoji ? resolveCustomEmojis(rawEmoji, interaction.guild) : null;
 
       // เก็บ pending state ไว้ก่อน แล้วค่อยเปลี่ยนหน้าจอเป็น select menu ยศ (ขั้นที่ 2)
-      setPendingRoleButton(interaction.user.id, { text, buttonLabel, buttonEmoji, insertPosition: null });
+      setPendingRoleButton(interaction.guildId, interaction.user.id, { text, buttonLabel, buttonEmoji, insertPosition: null });
 
-      const { payload, assignableCount } = buildRoleSelectPayload(interaction.guild);
+      const { payload, assignableCount } = buildRoleSelectPayload(interaction.guild, t);
 
       if (assignableCount === 0) {
-        clearPendingRoleButton(interaction.user.id);
+        clearPendingRoleButton(interaction.guildId, interaction.user.id);
         await interaction.reply({
-          content: '❌ ไม่มียศที่บอทสามารถจัดการได้ในเซิร์ฟเวอร์นี้ค่ะ ติดต่อแอดมินให้ตรวจสอบสิทธิ์และตำแหน่งยศของบอทด้วยนะคะ',
+          content: t('builder.role_button.no_roles'),
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -2055,8 +2479,8 @@ module.exports = {
       const buttonLabel = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_CHANNEL_LABEL).trim();
 
       // เก็บ pending state แล้วเปลี่ยนหน้าจอเป็น ChannelSelectMenu ขั้นที่ 2
-      setPendingChannelButton(interaction.user.id, { text, buttonLabel, insertPosition: null });
-      await interaction.update(buildChannelSelectPayload());
+      setPendingChannelButton(interaction.guildId, interaction.user.id, { text, buttonLabel, insertPosition: null });
+      await interaction.update(buildChannelSelectPayload(t));
       return;
     }
 
@@ -2069,15 +2493,15 @@ module.exports = {
 
       // อัปเดตแค่ text กับ buttonLabel, คง buttonUrl เดิมไว้ (URL ผูกกับช่องที่เลือกไว้แต่แรก)
       // ถ้าอยากเปลี่ยนช่อง ต้องลบแล้วสร้างใหม่ผ่านปุ่ม + เพิ่ม Section
-      const existingBlock = getBlockAt(interaction.user.id, index);
-      updateBlockAt(interaction.user.id, index, {
+      const existingBlock = getBlockAt(interaction.guildId, interaction.user.id, index);
+      updateBlockAt(interaction.guildId, interaction.user.id, index, {
         type: 'section_channel_button',
         text,
         buttonLabel,
         buttonUrl: existingBlock.buttonUrl, // คง URL เดิมไว้
       });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -2087,10 +2511,10 @@ module.exports = {
       const rawContent = interaction.fields.getTextInputValue(IDS.INPUT_TEXT);
       const content = resolveCustomEmojis(rawContent, interaction.guild);
 
-      updateBlockAt(interaction.user.id, index, { type: 'text', content });
+      updateBlockAt(interaction.guildId, interaction.user.id, index, { type: 'text', content });
 
       // แก้เสร็จกลับไปแผงควบคุมปกติทันที เห็น preview ที่อัปเดตแล้ว
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -2098,22 +2522,22 @@ module.exports = {
     if (interaction.customId.startsWith(MODAL_EDIT_IMAGE_PREFIX)) {
       const index = Number(interaction.customId.slice(MODAL_EDIT_IMAGE_PREFIX.length));
       const rawUrls = interaction.fields.getTextInputValue(IDS.INPUT_IMAGE_URLS);
-      const result = parseGalleryUrlLines(rawUrls);
+      const result = parseGalleryUrlLines(rawUrls, t);
 
       if (!result.ok) {
         await interaction.reply({
-          content: `${result.errorContent}\n\nถ้าต้องการลบบล็อกนี้ทั้งหมด ให้กลับไปกดปุ่ม "ลบ" แทนนะคะ`,
+          content: result.errorContent + t('builder.hint.retry_or_delete', { deleteButton: t('builder.block_action.button.delete') }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      updateBlockAt(interaction.user.id, index, {
+      updateBlockAt(interaction.guildId, interaction.user.id, index, {
         type: 'gallery',
         items: result.urls.map((url) => ({ url })),
       });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
 
       // เช็คทุกลิงก์พร้อมกัน (ขนาน ไม่รอทีละอัน) แบบ soft-warning
       await warnIfImagesLookSuspicious(interaction, result.urls);
@@ -2128,19 +2552,19 @@ module.exports = {
       const thumbnail = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_THUMBNAIL).trim();
 
       try {
-        validateUrl(thumbnail, 'ลิงก์รูปเล็ก');
+        validateUrl(thumbnail, t('builder.validation.thumbnail_label'), t);
       } catch (error) {
         const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
         await interaction.reply({
-          content: `❌ แก้ไขไม่สำเร็จ: ${friendlyMessage}\n\nลองกดแก้ไขแล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: t('builder.error.edit_failed', { error: friendlyMessage }) + t('builder.hint.retry_edit'),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      updateBlockAt(interaction.user.id, index, { type: 'section', text, thumbnail });
+      updateBlockAt(interaction.guildId, interaction.user.id, index, { type: 'section', text, thumbnail });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       await warnIfImagesLookSuspicious(interaction, [thumbnail]);
       return;
     }
@@ -2154,19 +2578,19 @@ module.exports = {
       const buttonUrl = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_BUTTON_URL).trim();
 
       try {
-        validateHttpUrl(buttonUrl, 'ลิงก์ปุ่ม');
+        validateHttpUrl(buttonUrl, t('builder.validation.button_link_label'), t);
       } catch (error) {
         const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
         await interaction.reply({
-          content: `❌ แก้ไขไม่สำเร็จ: ${friendlyMessage}\n\nลองกดแก้ไขแล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: t('builder.error.edit_failed', { error: friendlyMessage }) + t('builder.hint.retry_edit'),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      updateBlockAt(interaction.user.id, index, { type: 'section_button', text, buttonLabel, buttonUrl });
+      updateBlockAt(interaction.guildId, interaction.user.id, index, { type: 'section_button', text, buttonLabel, buttonUrl });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -2183,8 +2607,8 @@ module.exports = {
       const buttonEmoji = rawEmoji ? resolveCustomEmojis(rawEmoji, interaction.guild) : null;
 
       // ดึง roleId และ buttonStyle จาก block เดิมแล้วคงไว้
-      const existingBlock = getBlockAt(interaction.user.id, index);
-      updateBlockAt(interaction.user.id, index, {
+      const existingBlock = getBlockAt(interaction.guildId, interaction.user.id, index);
+      updateBlockAt(interaction.guildId, interaction.user.id, index, {
         type: 'section_role_button',
         text,
         buttonLabel,
@@ -2193,7 +2617,7 @@ module.exports = {
         buttonStyle: existingBlock.buttonStyle,
       });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
     if (interaction.customId.startsWith(MODAL_INSERT_TEXT_PREFIX)) {
@@ -2201,9 +2625,9 @@ module.exports = {
       const rawContent = interaction.fields.getTextInputValue(IDS.INPUT_TEXT);
       const content = resolveCustomEmojis(rawContent, interaction.guild);
 
-      insertBlockAt(interaction.user.id, insertPosition, { type: 'text', content });
+      insertBlockAt(interaction.guildId, interaction.user.id, insertPosition, { type: 'text', content });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -2211,22 +2635,22 @@ module.exports = {
     if (interaction.customId.startsWith(MODAL_INSERT_IMAGE_PREFIX)) {
       const insertPosition = Number(interaction.customId.slice(MODAL_INSERT_IMAGE_PREFIX.length));
       const rawUrls = interaction.fields.getTextInputValue(IDS.INPUT_IMAGE_URLS);
-      const result = parseGalleryUrlLines(rawUrls);
+      const result = parseGalleryUrlLines(rawUrls, t);
 
       if (!result.ok) {
         await interaction.reply({
-          content: `${result.errorContent}\n\nลองกด "+ แทรกบล็อกใหม่หลังจากนี้" แล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: result.errorContent + t('builder.hint.retry_button', { button: t('builder.block_action.button.insert') }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      insertBlockAt(interaction.user.id, insertPosition, {
+      insertBlockAt(interaction.guildId, interaction.user.id, insertPosition, {
         type: 'gallery',
         items: result.urls.map((url) => ({ url })),
       });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
 
       // เช็ค content-type แบบ soft-warning หลังบันทึกแล้ว
       await warnIfImagesLookSuspicious(interaction, result.urls);
@@ -2241,19 +2665,20 @@ module.exports = {
       const thumbnail = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_THUMBNAIL).trim();
 
       try {
-        validateUrl(thumbnail, 'ลิงก์รูปเล็ก');
+        validateUrl(thumbnail, t('builder.validation.thumbnail_label'), t);
       } catch (error) {
         const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
         await interaction.reply({
-          content: `❌ แทรกไม่สำเร็จ: ${friendlyMessage}\n\nลองกด "+ แทรกบล็อกใหม่หลังจากนี้" แล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: t('builder.error.insert_failed', { error: friendlyMessage }) +
+            t('builder.hint.retry_button', { button: t('builder.block_action.button.insert') }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      insertBlockAt(interaction.user.id, insertPosition, { type: 'section', text, thumbnail });
+      insertBlockAt(interaction.guildId, interaction.user.id, insertPosition, { type: 'section', text, thumbnail });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       await warnIfImagesLookSuspicious(interaction, [thumbnail]);
       return;
     }
@@ -2267,19 +2692,20 @@ module.exports = {
       const buttonUrl = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_BUTTON_URL).trim();
 
       try {
-        validateHttpUrl(buttonUrl, 'ลิงก์ปุ่ม');
+        validateHttpUrl(buttonUrl, t('builder.validation.button_link_label'), t);
       } catch (error) {
         const friendlyMessage = error.message.replace(/^buildMessageFromSchema:\s*/, '');
         await interaction.reply({
-          content: `❌ แทรกไม่สำเร็จ: ${friendlyMessage}\n\nลองกด "+ แทรกบล็อกใหม่หลังจากนี้" แล้วใส่ลิงก์ใหม่อีกครั้งนะคะ`,
+          content: t('builder.error.insert_failed', { error: friendlyMessage }) +
+            t('builder.hint.retry_button', { button: t('builder.block_action.button.insert') }),
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      insertBlockAt(interaction.user.id, insertPosition, { type: 'section_button', text, buttonLabel, buttonUrl });
+      insertBlockAt(interaction.guildId, interaction.user.id, insertPosition, { type: 'section_button', text, buttonLabel, buttonUrl });
 
-      await interaction.update(buildPanelPayload(interaction.user.id));
+      await interaction.update(buildPanelPayload(interaction.user.id, interaction.guildId));
       return;
     }
 
@@ -2294,14 +2720,14 @@ module.exports = {
       const buttonEmoji = rawEmoji ? resolveCustomEmojis(rawEmoji, interaction.guild) : null;
 
       // เก็บ insertPosition ไว้ใน pending เพื่อให้ ROLE_STYLE_PREFIX handler รู้ว่าต้องแทรกที่ไหน
-      setPendingRoleButton(interaction.user.id, { text, buttonLabel, buttonEmoji, insertPosition });
+      setPendingRoleButton(interaction.guildId, interaction.user.id, { text, buttonLabel, buttonEmoji, insertPosition });
 
-      const { payload, assignableCount } = buildRoleSelectPayload(interaction.guild);
+      const { payload, assignableCount } = buildRoleSelectPayload(interaction.guild, t);
 
       if (assignableCount === 0) {
-        clearPendingRoleButton(interaction.user.id);
+        clearPendingRoleButton(interaction.guildId, interaction.user.id);
         await interaction.reply({
-          content: '❌ ไม่มียศที่บอทสามารถจัดการได้ในเซิร์ฟเวอร์นี้ค่ะ ติดต่อแอดมินให้ตรวจสอบสิทธิ์และตำแหน่งยศของบอทด้วยนะคะ',
+          content: t('builder.role_button.no_roles'),
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -2319,8 +2745,8 @@ module.exports = {
       const buttonLabel = interaction.fields.getTextInputValue(IDS.INPUT_SECTION_CHANNEL_LABEL).trim();
 
       // เก็บ insertPosition ไว้ใน pending เพื่อให้ CHANNEL_SELECT รู้ว่าต้องแทรกที่ตำแหน่งไหน
-      setPendingChannelButton(interaction.user.id, { text, buttonLabel, insertPosition });
-      await interaction.update(buildChannelSelectPayload());
+      setPendingChannelButton(interaction.guildId, interaction.user.id, { text, buttonLabel, insertPosition });
+      await interaction.update(buildChannelSelectPayload(t));
       return;
     }
   },

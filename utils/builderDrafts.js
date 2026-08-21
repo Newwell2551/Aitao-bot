@@ -1,7 +1,7 @@
 /**
  * In-memory draft store + auto-sync กับ builderStorage.js
  *
- * โครงสร้าง in-memory draft ต่อ userId:
+ * โครงสร้าง in-memory draft ต่อ (guildId, userId):
  * {
  *   blocks: object[],
  *   accentColor: string | null,
@@ -16,6 +16,19 @@
  *
  * Draft ที่มี _builderName จะ auto-save ลง drafts.json ทุกครั้งที่มีการเปลี่ยนแปลง
  * ผ่าน _autoSave() ที่เรียกต่อท้าย mutation function ทุกตัว
+ *
+ * 🔑 ทำไม Map key ต้องเป็น `${guildId}_${userId}` ไม่ใช่ userId เฉยๆ:
+ * เดิม key เป็น userId เดี่ยวๆ ทำให้ถ้าแอดมินคนเดียวกันเปิด /builder ในเซิร์ฟ A
+ * ค้างไว้ (ยังไม่กด "เสร็จแล้ว"/โพสต์) แล้วสลับไปเปิด /builder ในเซิร์ฟ B ก่อน
+ * ข้อมูลของเซิร์ฟ B จะไปทับ session ในหน่วยความจำของเซิร์ฟ A ทันที (เพราะ
+ * key ใน Map เป็นตัวเดียวกัน — คนเดียวกันไม่ว่าจะอยู่เซิร์ฟไหน) พอกลับไปกดปุ่ม
+ * ที่ panel ค้างของเซิร์ฟ A ระบบจะเผลอบันทึกข้อมูลของเซิร์ฟ B ลงไฟล์การตั้งค่า
+ * ของเซิร์ฟ A แทน (cross-guild data corruption) — เป็นบัคเงียบ ไม่มี error
+ * โผล่ให้เห็นเลย เพราะโค้ดรันผ่านได้ปกติทุกจุด แค่ข้อมูลผิดเซิร์ฟ
+ *
+ * แก้โดยผูก Map key กับทั้ง guildId และ userId พร้อมกัน (Discord ID เป็นตัวเลข
+ * ล้วน ใช้ underscore คั่นได้ปลอดภัย ไม่มีทางชนกัน) แต่ละเซิร์ฟจะมี session
+ * แยกกันเด็ดขาดในหน่วยความจำ ต่อให้ user คนเดียวกันเปิดพร้อมกันหลายเซิร์ฟก็ไม่ชนกัน
  */
 
 const {
@@ -28,6 +41,17 @@ const {
 
 const drafts = new Map();
 
+/**
+ * สร้าง Map key ผสมจาก guildId + userId — รวมไว้จุดเดียวทั่วทั้งไฟล์ กันเผลอ
+ * พิมพ์รูปแบบ key ไม่ตรงกันระหว่างจุดต่างๆ (เช่นลืมใส่ underscore หรือสลับลำดับ)
+ * @param {string} guildId
+ * @param {string} userId
+ * @returns {string}
+ */
+function makeKey(guildId, userId) {
+  return `${guildId}_${userId}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Private helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,16 +59,20 @@ const drafts = new Map();
 /**
  * บันทึก in-memory draft ลง storage ถ้า draft นี้มีชื่อ (_builderName)
  * เรียกต่อท้ายทุก mutation function
+ * @param {string} guildId
  * @param {string} userId - ผู้ที่ทำการเปลี่ยนแปลง (บันทึกเป็น updatedBy)
  */
-function _autoSave(userId) {
-  const draft = drafts.get(userId);
+function _autoSave(guildId, userId) {
+  const draft = drafts.get(makeKey(guildId, userId));
   if (!draft || !draft._guildId || !draft._builderName) return;
 
   saveDraft(draft._guildId, draft._builderName, {
     name: draft._builderName,
     blocks: draft.blocks ?? [],
     accentColor: draft.accentColor ?? null,
+    // ⚠️ createdBy/updatedBy ต้องเก็บ userId ดิบๆ เหมือนเดิม ห้ามเก็บ key ผสม
+    // (guildId_userId) ลงไปแทน เพราะ field พวกนี้ใช้แสดงผลจริงว่า "ใคร" เป็น
+    // คนแก้ ไม่ใช่ตัวระบุ session — ตัว Map key เท่านั้นที่ต้องเป็น key ผสม
     createdBy: draft._createdBy ?? userId,
     createdAt: draft._createdAt ?? new Date().toISOString(),
     updatedBy: userId,
@@ -57,128 +85,139 @@ function _autoSave(userId) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * ดึง draft ของ user คนนี้ ถ้ายังไม่เคยมีจะสร้างอันใหม่ว่างๆ ให้อัตโนมัติ
+ * ดึง draft ของ user คนนี้ในเซิร์ฟนี้ ถ้ายังไม่เคยมีจะสร้างอันใหม่ว่างๆ ให้อัตโนมัติ
+ * @param {string} guildId
  * @param {string} userId
  * @returns {{ blocks: object[] }}
  */
-function getDraft(userId) {
-  if (!drafts.has(userId)) {
-    drafts.set(userId, { blocks: [] });
+function getDraft(guildId, userId) {
+  const key = makeKey(guildId, userId);
+  if (!drafts.has(key)) {
+    drafts.set(key, { blocks: [] });
   }
-  return drafts.get(userId);
+  return drafts.get(key);
 }
 
 /**
  * เพิ่ม block ใหม่เข้าไปท้าย draft
+ * @param {string} guildId
  * @param {string} userId
  * @param {object} block
  */
-function addBlock(userId, block) {
-  const draft = getDraft(userId);
+function addBlock(guildId, userId, block) {
+  const draft = getDraft(guildId, userId);
   draft.blocks.push(block);
-  _autoSave(userId);
+  _autoSave(guildId, userId);
   return draft;
 }
 
 /**
  * ล้าง draft ของ user คนนี้ทิ้ง (เรียกหลังกดโพสต์สำเร็จ)
  * ⚠️ ไม่ลบออกจาก storage เพราะ named draft ควรอยู่ถาวร
+ * @param {string} guildId
  * @param {string} userId
  */
-function clearDraft(userId) {
-  drafts.delete(userId);
+function clearDraft(guildId, userId) {
+  drafts.delete(makeKey(guildId, userId));
 }
 
 /**
  * ลบ block ล่าสุด (อันท้ายสุด) ออกจาก draft
+ * @param {string} guildId
  * @param {string} userId
  * @returns {object|null}
  */
-function removeLastBlock(userId) {
-  const draft = getDraft(userId);
+function removeLastBlock(guildId, userId) {
+  const draft = getDraft(guildId, userId);
   if (draft.blocks.length === 0) return null;
   const removed = draft.blocks.pop();
-  _autoSave(userId);
+  _autoSave(guildId, userId);
   return removed;
 }
 
 /**
  * ดึง block ที่ตำแหน่ง index ที่ระบุ
+ * @param {string} guildId
  * @param {string} userId
  * @param {number} index
  * @returns {object|undefined}
  */
-function getBlockAt(userId, index) {
-  const draft = getDraft(userId);
+function getBlockAt(guildId, userId, index) {
+  const draft = getDraft(guildId, userId);
   return draft.blocks[index];
 }
 
 /**
  * ลบ block ที่ตำแหน่ง index ที่ระบุออก
+ * @param {string} guildId
  * @param {string} userId
  * @param {number} index
  * @returns {object|null}
  */
-function removeBlockAt(userId, index) {
-  const draft = getDraft(userId);
+function removeBlockAt(guildId, userId, index) {
+  const draft = getDraft(guildId, userId);
   if (!draft.blocks[index]) return null;
   const removed = draft.blocks.splice(index, 1)[0];
-  _autoSave(userId);
+  _autoSave(guildId, userId);
   return removed;
 }
 
 /**
  * แทนที่ block ที่ตำแหน่ง index ด้วย block ใหม่
+ * @param {string} guildId
  * @param {string} userId
  * @param {number} index
  * @param {object} newBlock
  */
-function updateBlockAt(userId, index, newBlock) {
-  const draft = getDraft(userId);
+function updateBlockAt(guildId, userId, index, newBlock) {
+  const draft = getDraft(guildId, userId);
   if (!draft.blocks[index]) return false;
   draft.blocks[index] = newBlock;
-  _autoSave(userId);
+  _autoSave(guildId, userId);
   return true;
 }
 
 /**
  * แทรก block ใหม่เข้าไปที่ตำแหน่ง position
+ * @param {string} guildId
  * @param {string} userId
  * @param {number} position
  * @param {object} block
  */
-function insertBlockAt(userId, position, block) {
-  const draft = getDraft(userId);
+function insertBlockAt(guildId, userId, position, block) {
+  const draft = getDraft(guildId, userId);
   const clampedPosition = Math.max(0, Math.min(position, draft.blocks.length));
   draft.blocks.splice(clampedPosition, 0, block);
-  _autoSave(userId);
+  _autoSave(guildId, userId);
   return draft;
 }
 
 /**
  * ตั้งค่า accentColor ของ draft
+ * @param {string} guildId
  * @param {string} userId
  * @param {string} hexColor
  */
-function setAccentColor(userId, hexColor) {
-  const draft = getDraft(userId);
+function setAccentColor(guildId, userId, hexColor) {
+  const draft = getDraft(guildId, userId);
   draft.accentColor = hexColor;
-  _autoSave(userId);
+  _autoSave(guildId, userId);
   return draft;
 }
 
 /**
  * สลับตำแหน่ง block สองอัน
+ * @param {string} guildId
  * @param {string} userId
  * @param {number} indexA
  * @param {number} indexB
  * @returns {boolean}
  */
-function swapBlocks(userId, indexA, indexB) {
-  const draft = getDraft(userId);
+function swapBlocks(guildId, userId, indexA, indexB) {
+  const draft = getDraft(guildId, userId);
   if (!draft.blocks[indexA] || !draft.blocks[indexB]) return false;
   [draft.blocks[indexA], draft.blocks[indexB]] = [draft.blocks[indexB], draft.blocks[indexA]];
-  _autoSave(userId);
+  _autoSave(guildId, userId);
   return true;
 }
 
@@ -186,17 +225,17 @@ function swapBlocks(userId, indexA, indexB) {
 // Pending state — ปุ่มยศ
 // ─────────────────────────────────────────────────────────────────────────────
 
-function setPendingRoleButton(userId, pending) {
-  const draft = getDraft(userId);
+function setPendingRoleButton(guildId, userId, pending) {
+  const draft = getDraft(guildId, userId);
   draft.pendingRoleButton = pending;
 }
 
-function getPendingRoleButton(userId) {
-  return getDraft(userId).pendingRoleButton;
+function getPendingRoleButton(guildId, userId) {
+  return getDraft(guildId, userId).pendingRoleButton;
 }
 
-function clearPendingRoleButton(userId) {
-  const draft = getDraft(userId);
+function clearPendingRoleButton(guildId, userId) {
+  const draft = getDraft(guildId, userId);
   delete draft.pendingRoleButton;
 }
 
@@ -204,17 +243,17 @@ function clearPendingRoleButton(userId) {
 // Pending state — ปุ่มลิงก์ช่อง
 // ─────────────────────────────────────────────────────────────────────────────
 
-function setPendingChannelButton(userId, pending) {
-  const draft = getDraft(userId);
+function setPendingChannelButton(guildId, userId, pending) {
+  const draft = getDraft(guildId, userId);
   draft.pendingChannelButton = pending;
 }
 
-function getPendingChannelButton(userId) {
-  return getDraft(userId).pendingChannelButton;
+function getPendingChannelButton(guildId, userId) {
+  return getDraft(guildId, userId).pendingChannelButton;
 }
 
-function clearPendingChannelButton(userId) {
-  const draft = getDraft(userId);
+function clearPendingChannelButton(guildId, userId) {
+  const draft = getDraft(guildId, userId);
   delete draft.pendingChannelButton;
 }
 
@@ -253,8 +292,9 @@ function createNamedDraft(guildId, name, userId) {
     updatedAt: now,
   });
 
-  // โหลดเข้า memory
-  drafts.set(userId, {
+  // โหลดเข้า memory ด้วย key ผสม guildId_userId (กัน session ชนข้ามเซิร์ฟ)
+  const key = makeKey(guildId, userId);
+  drafts.set(key, {
     blocks: [],
     accentColor: null,
     _guildId: guildId,
@@ -263,7 +303,7 @@ function createNamedDraft(guildId, name, userId) {
     _createdAt: now,
   });
 
-  return drafts.get(userId);
+  return drafts.get(key);
 }
 
 /**
@@ -278,7 +318,8 @@ function openNamedDraft(guildId, name, userId) {
   const data = loadDraft(guildId, name);
   if (!data) return null;
 
-  drafts.set(userId, {
+  const key = makeKey(guildId, userId);
+  drafts.set(key, {
     blocks: Array.isArray(data.blocks) ? data.blocks : [],
     accentColor: data.accentColor ?? null,
     _guildId: guildId,
@@ -287,7 +328,7 @@ function openNamedDraft(guildId, name, userId) {
     _createdAt: data.createdAt ?? new Date().toISOString(),
   });
 
-  return drafts.get(userId);
+  return drafts.get(key);
 }
 
 /**
@@ -302,9 +343,14 @@ function deleteNamedDraft(guildId, name) {
   deleteDraftFromStorage(guildId, name);
 
   // ล้าง in-memory session ของทุก user ที่กำลัง active อยู่กับ draft นี้
-  for (const [userId, draft] of drafts.entries()) {
+  // ⚠️ ตัวแปร loop ต้องเป็น "key" (รูปแบบ guildId_userId) ไม่ใช่ userId เดี่ยวๆ
+  // แล้ว เพราะตอนนี้ Map key ไม่ใช่ userId ตรงๆ อีกต่อไป — ถ้ายังใช้ userId
+  // ไปเรียก drafts.delete(userId) จะลบไม่ออกจริง (เพราะไม่มี key ชื่อ userId
+  // เดี่ยวๆ อยู่ใน Map เลย) กลายเป็น session เก่าค้างในหน่วยความจำตลอดไป
+  // ไม่ error ให้เห็น แต่รั่วหน่วยความจำเงียบๆ
+  for (const [key, draft] of drafts.entries()) {
     if (draft._guildId === guildId && draft._builderName === name) {
-      drafts.delete(userId);
+      drafts.delete(key);
     }
   }
 
@@ -325,24 +371,26 @@ function listGuildDrafts(guildId) {
 }
 
 /**
- * ดึงข้อมูล named draft ที่ user กำลัง active อยู่
+ * ดึงข้อมูล named draft ที่ user กำลัง active อยู่ในเซิร์ฟนี้
  * ใช้ใน buildPanelComponents() เพื่อแสดงชื่อ draft ใน header
+ * @param {string} guildId
  * @param {string} userId
  * @returns {{ guildId: string, name: string } | null}
  */
-function getActiveSession(userId) {
+function getActiveSession(guildId, userId) {
   // ใช้ drafts.get โดยตรง ไม่ใช้ getDraft() เพราะไม่อยากสร้าง empty draft โดยไม่ตั้งใจ
-  const draft = drafts.get(userId);
+  const draft = drafts.get(makeKey(guildId, userId));
   if (!draft || !draft._guildId || !draft._builderName) return null;
   return { guildId: draft._guildId, name: draft._builderName };
 }
 
 /**
- * ล้าง active session ของ user (alias ของ clearDraft)
+ * ล้าง active session ของ user ในเซิร์ฟนี้ (alias ของ clearDraft)
+ * @param {string} guildId
  * @param {string} userId
  */
-function clearActiveSession(userId) {
-  drafts.delete(userId);
+function clearActiveSession(guildId, userId) {
+  drafts.delete(makeKey(guildId, userId));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

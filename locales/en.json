@@ -1,0 +1,888 @@
+{
+  "common": {
+    "error": {
+      "guild_only": "❌ This command only works inside a server."
+    }
+  },
+  "ping": {
+    "response": "🏓 Pong! ({latency}ms)"
+  },
+  "language": {
+    "changed": "✅ Bot language changed to {lang}."
+  },
+  "builder": {
+    "panel": {
+      "button": {
+        "add_text": "+ Add Text",
+        "add_image": "+ Add Image",
+        "add_section": "+ Add Section",
+        "add_separator": "+ Add Divider",
+        "preview": "Preview",
+        "manage": "📋 Manage Blocks",
+        "color": "🎨 Choose Color",
+        "post": "Post"
+      },
+      "empty_state": "No blocks yet — tap a button below to start building your layout",
+      "header": "🛠️ Layout Builder"
+    },
+    "block_type": {
+      "text": "Text",
+      "gallery": "Image",
+      "separator": "Divider",
+      "section": "Text + Small Image",
+      "section_button": "Text + Link Button",
+      "section_role_button": "Text + Role Button",
+      "section_channel_button": "Text + Channel Button",
+      "empty_content": "(empty text)",
+      "no_data": "(no data)"
+    },
+    "describe": {
+      "gallery_multi": "{count} images (starting from {url})",
+      "separator_spacing": "Spacing: {spacing}"
+    },
+    "spacing": {
+      "large": "Large",
+      "small": "Small"
+    },
+    "manage": {
+      "header": "**📋 Manage Blocks**\nSelect a block to edit or delete from the list below",
+      "placeholder": "Select a block to edit or delete",
+      "option_label": "Block {index} • {type}",
+      "back_button": "← Back",
+      "empty": "⚠️ No blocks to manage yet. Add a block first."
+    },
+    "block_action": {
+      "header": "**Block {index} • {typeLabel}**\n{preview}\n\nWhat would you like to do with this block?",
+      "button": {
+        "edit": "Edit",
+        "delete": "Delete",
+        "insert": "+ Insert new block after this",
+        "move_up": "⬆️ Move Up",
+        "move_down": "⬇️ Move Down"
+      }
+    },
+    "insert_type": {
+      "header": "**+ Insert New Block**\nChoose a block type to insert at position {position}"
+    },
+    "color": {
+      "header": "**🎨 Choose Theme Color**\nPick a sidebar color below, or set a custom one",
+      "placeholder": "Choose a theme color",
+      "custom_label": "🖌️ Custom",
+      "custom_description": "Enter your own hex code, e.g. #FF66AA"
+    },
+    "modal": {
+      "text_content_label": "Content (supports markdown)",
+      "text_content_placeholder": "# Heading\nYour content here...",
+      "image_urls_label": "Image links (1 per line)",
+      "section_text_label": "Text (supports markdown)",
+      "section_text_placeholder": "Your text here (supports markdown)",
+      "section_role_text_placeholder": "Your text here (supports markdown), e.g. \"Tap to get the member role\"",
+      "thumbnail_label": "Thumbnail image link",
+      "button_label_label": "Button label",
+      "button_text_label": "Button text",
+      "button_url_label": "Button URL (http:// or https://)",
+      "channel_button_placeholder": "e.g. 📢 Go to announcements",
+      "role_button_placeholder": "Get Role",
+      "link_button_placeholder": "Join Discord",
+      "emoji_label": "Button emoji (optional)",
+      "emoji_description": "Enter a unicode emoji or :name: for a custom emoji. Leave it blank if you don't want one.",
+      "emoji_placeholder": "e.g. 🎭 or :custom_emoji_name: (optional)",
+      "hex_label": "Hex code (format #RRGGBB)",
+      "search_label": "Type the builder's name or part of it",
+      "search_placeholder": "e.g. rules, welcome, announcements",
+      "title": {
+        "edit_text": "Edit Text",
+        "edit_image": "Edit Images (multiple links)",
+        "edit_section": "Edit Text + Small Image",
+        "edit_section_button": "Edit Text + Link Button",
+        "edit_section_channel": "Edit Text + Channel Button",
+        "edit_section_role": "Edit Role Button",
+        "insert_text": "Insert New Text",
+        "insert_image": "Insert New Images (multiple links)",
+        "insert_section": "Insert Text + Small Image",
+        "insert_section_button": "Insert Text + Link Button",
+        "insert_section_role": "Insert Role Button (1/3)",
+        "insert_section_channel": "Insert Channel Link Button (1/2)",
+        "add_text": "Add Text",
+        "add_image": "Add Images (multiple links)",
+        "add_section": "Add Text + Small Image",
+        "add_section_button": "Add Text + Link Button",
+        "add_section_role": "Add Role Button (1/3)",
+        "add_section_channel": "Add Channel Link Button (1/2)",
+        "list_search": "🔍 Search builders",
+        "color_custom": "Custom Color"
+      },
+      "image_url_hint": "Must be a direct image link ending in .jpg .png .gif or .webp. Unsure? Use /upload-image instead."
+    },
+    "section_choice": {
+      "header": "**+ Add Section**\nChoose what this section should pair with",
+      "button": {
+        "thumbnail": "🖼️ Small Image",
+        "link": "🔘 Link Button",
+        "role": "🎭 Role Button",
+        "channel": "📢 Channel Link Button"
+      }
+    },
+    "common": {
+      "back_cancel_button": "← Back (Cancel)"
+    },
+    "channel_select": {
+      "placeholder": "Choose the channel to link to",
+      "header": "**📢 Choose Channel**\nChoose which channel this button should link to\n*(only text and announcement channels are shown)*"
+    },
+    "role_select": {
+      "placeholder": "Choose a role",
+      "header": "**🎭 Choose Role**\nChoose the role this button should toggle on/off\n*(only roles the bot can manage are shown)*"
+    },
+    "role_style": {
+      "header": "**🎨 Choose Button Color (3/3)**\nTap a button to choose its color — each one shows its real color before you pick"
+    },
+    "post": {
+      "select_placeholder": "Choose the channel to post in",
+      "select_header": "**📤 Choose Destination Channel**\nWhich channel should this message be posted to?\n*(only text and announcement channels are shown)*",
+      "cancel_button": "← Cancel",
+      "empty_draft": "⚠️ No blocks yet. Add a block first, then tap Post.",
+      "build_failed": "❌ Post failed: {error}",
+      "channel_not_found": "❌ Couldn't find that channel. Try tapping \"Post\" and choosing a channel again.",
+      "send_failed": "❌ Couldn't send the message to that channel. The bot might not have \"Send Messages\" permission there.\nAsk an admin to check the bot's permissions in that channel.",
+      "success": "✅ Posted successfully! [Tap to view the message]({url})"
+    },
+    "gallery_error": {
+      "need_one": "⚠️ You need at least 1 link.",
+      "invalid_header": "❌ Found invalid links:"
+    },
+    "list": {
+      "empty": "**📋 Builders in this server**\n\nNo builders yet.\nUse `/builder new [name]` to create one",
+      "header_filtered": "**📋 Builders in this server** — showing **{shown}** of {total} (search: \"{query}\")",
+      "header_all": "**📋 Builders in this server** ({total} total)",
+      "no_results": "\n\nNo builders found matching \"{query}\".",
+      "entry_line": "**{index}. {name}** — {count} blocks — last edited {timestamp} by <@{userId}>",
+      "select_placeholder": "Choose a builder to open",
+      "option_description": "{count} blocks",
+      "search_button": "🔍 Search",
+      "reset_button": "← Reset",
+      "delete_hint": "`/builder delete [name]` — delete a builder you no longer need"
+    },
+    "command": {
+      "name_required": "❌ Name can't be empty.",
+      "already_exists": "⚠️ A builder named **\"{name}\"** already exists in this server.\nTo keep editing it, use `/builder edit \"{name}\"`.\nTo create a new one, use a different name.",
+      "not_found": "❌ No builder named **\"{name}\"** found in this server.\nUse `/builder list` to see all builders.",
+      "not_found_short": "❌ No builder named **\"{name}\"** found in this server.",
+      "delete_confirm_header": "⚠️ **Confirm Deletion**\nAre you sure you want to delete builder **\"{name}\"**?\nThis can't be undone.",
+      "delete_confirm_button": "✅ Confirm Delete",
+      "delete_cancel_button": "❌ Cancel"
+    },
+    "delete": {
+      "expired": "⚠️ This deletion request has expired (the bot may have restarted).\nTry `/builder delete [name]` again.",
+      "success": "✅ Builder **\"{name}\"** deleted successfully.",
+      "not_found": "⚠️ Couldn't find builder \"{name}\" (it may have already been deleted).",
+      "cancelled": "❌ Cancelled deleting **\"{name}\"**."
+    },
+    "block": {
+      "gone": "⚠️ This block no longer exists (it may have been deleted or edited elsewhere).",
+      "already_top": "⚠️ This block is already at the top.",
+      "already_bottom": "⚠️ This block is already at the bottom."
+    },
+    "preview": {
+      "empty": "⚠️ No blocks yet. Try tapping \"+ Add Text\", \"+ Add Image\", or \"+ Add Divider\" to add something first.",
+      "shown": "🔍 Here's your preview (only you can see this — it hasn't been posted yet).",
+      "failed": "❌ Couldn't show the preview: {error}"
+    },
+    "list_select": {
+      "not_found": "❌ Builder **\"{name}\"** no longer exists (it may have been deleted).\nUse /builder list to see the latest list."
+    },
+    "color_custom": {
+      "invalid": "❌ Invalid color format. It must be #RRGGBB, e.g. #FF66AA (got: \"{input}\")\n\nTry tapping \"🎨 Choose Color\" then \"🖌️ Custom\" again."
+    },
+    "role_button": {
+      "no_roles": "❌ There are no roles the bot can manage in this server. Ask an admin to check the bot's permissions and role position."
+    },
+    "error": {
+      "add_failed": "❌ Couldn't add it: {error}",
+      "edit_failed": "❌ Couldn't save the edit: {error}",
+      "insert_failed": "❌ Couldn't insert it: {error}"
+    },
+    "hint": {
+      "retry_button": "\n\nTry tapping \"{button}\" and entering the link again.",
+      "retry_edit": "\n\nTry editing it again and entering the link again.",
+      "retry_or_delete": "\n\nIf you want to remove this block entirely, go back and tap \"{deleteButton}\" instead."
+    },
+    "image_warning": {
+      "suspicious": "⚠️ These links might not be valid images. We'd suggest double-checking them, or using /upload-image instead:\n{list}"
+    },
+    "validation": {
+      "line_label": "Line {n}",
+      "thumbnail_label": "Thumbnail link",
+      "button_link_label": "Button link"
+    },
+    "quota": {
+      "reached": "This server already has the maximum number of builders allowed on the Free plan ({limit})."
+    },
+    "premium_content_reason": "This builder uses premium features (like **multiple text/image blocks** or **special buttons**) not available on the Free plan",
+    "simple": {
+      "header": "**{title}**\n{note}",
+      "empty_note": "Not set up yet — tap the buttons below to get started",
+      "button": {
+        "edit_basic": "Edit basic info (title/description/color)",
+        "edit_main_image": "Edit main image",
+        "edit_thumbnail": "Edit thumbnail",
+        "post": "Post"
+      },
+      "modal": {
+        "basic_title": "✏️ Edit Basic Info",
+        "title_label": "Title",
+        "description_label": "Description",
+        "color_label": "Color (hex, optional, e.g. #57F287)",
+        "main_image_title": "🖼️ Edit Main Image",
+        "image_url_label": "Image link",
+        "thumbnail_title": "🖼️ Edit Thumbnail",
+        "thumbnail_url_label": "Thumbnail link"
+      },
+      "preview_error": "❌ Couldn't create preview: {error}",
+      "mention_blocked": "❌ Tagging users, roles, or channels isn't available on the Free plan — this feature is Premium only. Remove any @mentions or #channel-links from the title/description and try again.",
+      "default_title": "Edit basic info",
+      "color_invalid": "Invalid color format. It must be #RRGGBB, e.g. #57F287 (got: \"{input}\"). Try \"Edit basic info\" again and fix the Color field."
+    }
+  },
+  "validation": {
+    "required": "{context} must not be empty (got: {value})",
+    "url_format": "{context} must start with \"http://\", \"https://\", or \"attachment://\" (got: \"{value}\")",
+    "http_url_format": "{context} must start with \"http://\" or \"https://\" (got: \"{value}\")"
+  },
+  "role_setup": {
+    "error": {
+      "session_expired": "❌ Session expired"
+    },
+    "suffix": {
+      "placeholder_custom": " | custom placeholder",
+      "color": " | color {color}",
+      "max_roles_unlimited": "Unlimited"
+    },
+    "count": {
+      "button": "Buttons: {count} | Max roles: {max}",
+      "reaction": "Reactions: {count} | emoji linked to roles",
+      "menu": "Choose {min}–{max} roles | Roles: {count}"
+    },
+    "editor": {
+      "empty_state": "**{prefix} Role Setup — {name}** `[{type}]`\n{itemCountLabel} | Blocks: 0{color}{ph}\n\nNo layout yet — tap a button below to add one",
+      "header_with_blocks": "**{prefix} {name}** `[{type}]` — Blocks: {count} | {itemCountLabel}{color}{ph}",
+      "button": {
+        "add_text": "+ Text",
+        "add_image": "+ Image",
+        "add_section": "+ Section",
+        "add_separator": "+ Divider",
+        "color": "🎨 Color",
+        "add_button": "➕ Add Button",
+        "manage_buttons": "⚙️ Manage Buttons",
+        "max_roles": "🔢 Max Roles",
+        "manage_blocks": "📋 Manage Blocks",
+        "preview": "Preview",
+        "done": "✅ Done",
+        "add_reaction": "➕ Add Reaction",
+        "manage_reactions": "⚙️ Manage Reactions",
+        "add_role": "➕ Add Role",
+        "manage_roles": "🗑️ Roles ({count})",
+        "config": "⚙️ Settings"
+      }
+    },
+    "manage": {
+      "empty": "**📋 Manage Blocks**\n\nNo blocks yet",
+      "header": "**📋 Manage Blocks**\nChoose a block to manage",
+      "placeholder": "Select a block",
+      "option_label": "Block {index} • {type}",
+      "back_button": "← Back"
+    },
+    "block_action": {
+      "header": "**Block {index} • {typeLabel}**\n{preview}\n\nWhat would you like to do with this block?",
+      "button": {
+        "edit": "Edit",
+        "delete": "Delete",
+        "insert": "+ Insert after this",
+        "move_up": "⬆️ Up",
+        "move_down": "⬇️ Down"
+      }
+    },
+    "insert_type": {
+      "header": "**+ Insert Block**\nWill insert at position {position}",
+      "cancel_button": "← Cancel"
+    },
+    "color": {
+      "header": "**🎨 Choose Theme Color**",
+      "placeholder": "Choose sidebar color",
+      "custom_label": "🖌️ Custom",
+      "custom_description": "Enter hex code, e.g. #FF66AA",
+      "none_label": "🚫 No Color",
+      "none_description": "Remove theme color"
+    },
+    "block_type": {
+      "text": "Text",
+      "gallery": "Image",
+      "separator": "Divider",
+      "section": "Text + Small Image",
+      "empty_content": "(empty)",
+      "no_data": "(no data)"
+    },
+    "modal": {
+      "section_text_label": "Text (supports markdown)",
+      "section_image_label": "Thumbnail link (thumbnail URL)",
+      "title": {
+        "add_section": "Add Text + Small Image",
+        "edit_section": "Edit Text + Small Image",
+        "insert_section": "Insert Text + Small Image",
+        "edit_text": "Edit Text",
+        "edit_image": "Edit Images",
+        "insert_text": "Insert Text",
+        "insert_image": "Insert Images",
+        "add_text": "Add Text",
+        "add_image": "Add Images",
+        "edit_button": "Edit Button (1/3)",
+        "add_button": "Add Button (1/3)",
+        "edit_reaction": "Edit Reaction (1/2)",
+        "add_reaction": "Add Reaction (1/2)",
+        "config": "Configure Dropdown",
+        "color_custom": "Custom Color"
+      },
+      "text_content_label": "Content (supports markdown)",
+      "text_content_placeholder": "# Heading\nContent...",
+      "image_urls_label": "Image links (1 per line)",
+      "btn_label_label": "Button Label",
+      "btn_label_placeholder": "e.g. Get Member Role",
+      "btn_emoji_label": "Emoji (unicode/custom, optional)",
+      "btn_emoji_placeholder": "🎮 or :emoji_name:",
+      "rxn_emoji_label": "Emoji (unicode or :custom_emoji_name:)",
+      "rxn_emoji_placeholder": "e.g. 🎭 or :pronoun_he:",
+      "config_min_label": "Min roles required (0 = optional)",
+      "config_max_label": "Max roles selectable (1=single, N=multi)",
+      "config_ph_label": "Dropdown placeholder (optional)",
+      "config_ph_placeholder": "e.g. 🎭 Choose your role...",
+      "hex_label": "Hex code (#RRGGBB)"
+    },
+    "describe": {
+      "separator_spacing": "Spacing: {spacing}",
+      "gallery_multi": "{count} images"
+    },
+    "spacing": {
+      "large": "Large",
+      "small": "Small"
+    },
+    "add_role": {
+      "header": "**➕ Add Role — {name}**\nChoose the role to add",
+      "placeholder": "Choose a role",
+      "cancel_button": "← Cancel",
+      "everyone_blocked": "❌ Can't add @everyone.",
+      "setup_gone": "❌ Setup no longer exists.",
+      "already_added": "⚠️ Role **{name}** is already in this setup.",
+      "max_reached": "❌ Already have 25 roles.",
+      "modal_title": "Add Role: {name}",
+      "desc_label": "Description (optional, shown under the role name)",
+      "desc_placeholder": "e.g. Red",
+      "pending_expired": "❌ This request has expired.",
+      "added_success": "✅ Added role **{name}**{descText}",
+      "desc_note": " (description: \"{description}\")"
+    },
+    "role_manage": {
+      "empty": "**🗑️ Manage Roles — {name}**\n\nNo roles yet",
+      "select_header": "**🗑️ Manage Roles — {name}**\nChoose roles to remove",
+      "placeholder": "Choose roles to remove",
+      "removed": "✅ Removed {count} role(s)"
+    },
+    "button_color": {
+      "edit_title": "✏️ Edit Button — {name}",
+      "add_title": "➕ Add Button — {name}",
+      "current_style_note": "\nCurrent color: {style}",
+      "header": "**{title}**\nButton: \"{previewLabel}\"{note}\n\nChoose a button color",
+      "cancel_button": "← Cancel"
+    },
+    "button_role": {
+      "keep_label_named": "✅ Keep current role ({name})",
+      "keep_label": "✅ Keep current role",
+      "keep_description": "Don't change the role — just update the label / emoji / color",
+      "role_description": "ID: {id}",
+      "header_edit": "**🎭 Choose Role**\nChoose **\"✅ Keep current role\"** to only edit the label/emoji/color, or pick a new role to change it\n*(only roles the bot can manage are shown)*",
+      "header_add": "**🎭 Choose Role**\nChoose the role this button will toggle on/off\n*(only roles the bot can manage are shown)*",
+      "placeholder": "Choose a role",
+      "cancel_button": "← Cancel"
+    },
+    "btn_manage": {
+      "empty": "**⚙️ Manage Buttons — {name}**\n\nNo buttons yet",
+      "header": "**⚙️ Manage Buttons — {name}**\nChoose a button to edit or delete from the list below",
+      "placeholder": "Choose a button to edit or delete",
+      "option_description": "→ Role {roleName}"
+    },
+    "btn_action": {
+      "header": "**Button: {previewLabel}**\nColor: {styleName}\nRole: {roleName}\n\nWhat would you like to do with this button?",
+      "button": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "role_deleted_suffix": "ID: {id} (deleted from Discord)"
+    },
+    "rxn_manage": {
+      "empty": "**⚙️ Manage Reactions — {name}**\n\nNo reactions yet",
+      "header": "**⚙️ Manage Reactions — {name}**\nChoose a reaction to edit or delete",
+      "placeholder": "Choose a reaction",
+      "option_label": "→ Role {roleName}",
+      "option_description": "emoji: {emoji}"
+    },
+    "rxn_action": {
+      "header": "**Reaction: {emoji}**\nRole: {roleName}\n\nWhat would you like to do with this reaction?",
+      "button": {
+        "edit": "Edit emoji",
+        "delete": "Delete"
+      },
+      "role_deleted_suffix": "ID: {id} (deleted)"
+    },
+    "rxn_role": {
+      "keep_label_named": "✅ Keep current role ({name})",
+      "keep_label": "✅ Keep current role",
+      "keep_description": "Don't change the role — just update the emoji",
+      "role_description": "ID: {id}",
+      "header_edit": "**🎭 Choose Role**\nChoose \"✅ Keep current role\" to only edit the emoji, or pick a new role\n*(only roles the bot can manage are shown)*",
+      "header_add": "**🎭 Choose Role**\nChoose the role to grant when reacting with this emoji\n*(only roles the bot can manage are shown)*",
+      "placeholder": "Choose a role",
+      "cancel_button": "← Cancel"
+    },
+    "max_roles": {
+      "option_single": "1 role",
+      "option_single_desc": "Only 1 role at a time (picking a new one auto-removes the old one)",
+      "option_two": "2 roles",
+      "option_two_desc": "Up to 2 roles at once",
+      "option_three": "3 roles",
+      "option_three_desc": "Up to 3 roles at once",
+      "option_unlimited": "Unlimited",
+      "option_unlimited_desc": "All roles in this group at once",
+      "header": "**🔢 Max Roles — {name}**\nSet how many roles from this group 1 member can hold at once",
+      "placeholder": "Choose max roles",
+      "set_success": "✅ Set max roles to **{label}**",
+      "count_label": "{count} roles"
+    },
+    "done": {
+      "posted_note": "\n*(already posted before — the old message will stay in that channel)*",
+      "header": "**📤 Post — {name}**\nChoose the channel to post in{note}",
+      "placeholder": "Choose destination channel",
+      "cancel_button": "← Cancel"
+    },
+    "post_confirm": {
+      "header": "**⚠️ Already Posted**\nrole setup **\"{name}\"** was last posted {timestamp}\n\nThe old message will stay in that channel. Post a new one to {channel}?",
+      "confirm_button": "Post Again",
+      "cancel_button": "Cancel"
+    },
+    "post": {
+      "setup_not_found": "❌ Setup no longer exists",
+      "no_buttons": "❌ No buttons yet — add one first",
+      "all_button_roles_deleted": "❌ All roles linked to buttons have been deleted from Discord",
+      "duplicate_buttons": "❌ Multiple buttons are linked to the same role ({names}). Discord doesn't allow duplicate buttons in one message — remove the duplicate first",
+      "send_failed_button": "❌ Couldn't send to {channel}. The bot might not have \"Send Messages\" permission there (check console log for details)",
+      "skipped_buttons_warning": "⚠️ Skipped {count} button(s) because the role was deleted",
+      "no_reactions": "❌ No reactions yet — add one first",
+      "send_failed_generic": "❌ Couldn't send to {channel}. The bot might not have \"Send Messages\" permission there",
+      "react_failed_warning": "⚠️ Failed to react with: {emojis}",
+      "unsupported_type": "⚠️ Type `{type}` isn't supported yet",
+      "no_roles": "❌ No roles yet — add one first",
+      "all_roles_deleted": "❌ All roles have been deleted from Discord",
+      "placeholder_single": "Choose a role (pick 1)",
+      "placeholder_multi": "Choose roles (pick {min}–{max})",
+      "channel_gone": "❌ Couldn't find that channel."
+    },
+    "image_urls": {
+      "need_one": "⚠️ You need at least 1 link.",
+      "invalid_header": "❌ Invalid links:"
+    },
+    "role_check": {
+      "no_manage_roles_perm": "❌ The bot doesn't have \"Manage Roles\" permission.",
+      "role_too_high": "❌ Role **{name}** is positioned higher than the bot's role.",
+      "role_managed": "❌ Role **{name}** is managed by an integration.",
+      "pick_another_hint": "\nPlease choose a different role."
+    },
+    "command": {
+      "name_required": "❌ Name can't be empty.",
+      "name_has_colon": "❌ Name can't contain \":\".",
+      "type_unsupported": "⚠️ Type `{type}` isn't supported yet.",
+      "already_exists": "⚠️ A setup named **\"{name}\"** already exists. Use `/role-setup edit \"{name}\"`.",
+      "not_found": "❌ No setup named **\"{name}\"** found.",
+      "post_success": "✅ Posted **\"{name}\"** to {channel}!\n[Tap to view the message]({url}){warnText}",
+      "list_empty": "**🎭 Role Setup**\n\nNo setups yet. Create one with `/role-setup new [name] menu`",
+      "list_header": "**🎭 Role Setup** ({count} total)",
+      "list_entry": "**{index}. {name}** `[{type}]` — {roleCount} roles — {blockCount} blocks{postedNote} — last edited {timestamp} by <@{userId}>",
+      "list_posted_note": " — last posted {timestamp}",
+      "delete_confirm_header": "**🗑️ Confirm Deletion**\nDo you want to delete **\"{name}\"**?\n\n> ⚠️ The config will be permanently deleted, but any messages already posted in the channel will remain.\n> You'll need to delete those messages yourself.",
+      "delete_confirm_button": "✅ Confirm Delete",
+      "delete_cancel_button": "❌ Cancel"
+    },
+    "block": {
+      "gone": "⚠️ This block no longer exists",
+      "already_top": "⚠️ Already at the top",
+      "already_bottom": "⚠️ Already at the bottom"
+    },
+    "button": {
+      "not_found": "⚠️ This button no longer exists (it may have been deleted)",
+      "deleted": "✅ Deleted button **\"{label}\"**",
+      "max_reached": "❌ Already have 25 buttons (ActionRow limit).",
+      "role_conflict": "⚠️ A button linked to role **{name}** already exists. Choose a different role or remove the old button first.",
+      "edited_same_role": "✅ Edited button **\"{label}\"** (still linked to **{name}**)",
+      "edited_new_role": "✅ Edited button **\"{label}\"** → role **{name}**",
+      "added": "✅ Added button **\"{label}\"** → role **{name}**",
+      "label_required": "❌ Button label can't be empty.",
+      "emoji_not_found": "Couldn't find that emoji in this server. The button won't have an emoji — try using a valid emoji name."
+    },
+    "reaction": {
+      "deleted": "✅ Deleted reaction {emoji}",
+      "max_reached": "❌ Already have 20 reactions (Discord's bot reaction limit is 20 per message).",
+      "edited_same_role": "✅ Changed reaction to {emoji} (still linked to **{name}**)",
+      "edited_new_role": "✅ Changed reaction to {emoji} → role **{name}**",
+      "added": "✅ Added reaction {emoji} → role **{name}**",
+      "emoji_required": "❌ Please enter an emoji.",
+      "emoji_not_found_example": "Couldn't find that emoji in this server. Try typing the emoji name again, e.g. `:pronoun_he:`",
+      "emoji_not_found": "Couldn't find that emoji in this server. Try typing the emoji name again.",
+      "duplicate": "⚠️ Emoji {emoji} is already linked to role **{name}**",
+      "no_manageable_roles": "❌ No roles the bot can manage."
+    },
+    "preview": {
+      "layout_error": "❌ Layout has an issue: {error}",
+      "no_reactions": "⚠️ No reactions yet. Add one first.",
+      "reaction_notice": "🔍 **Preview only** — will auto-delete in 60 seconds\nTap the emoji below to test it *(won't actually grant/remove roles during testing)*",
+      "delete_button": "🗑️ Delete Preview Now",
+      "send_failed": "❌ Couldn't send the message. The bot might not have \"Send Messages\" permission in this channel.",
+      "sent_success": "✅ Preview sent! Tap \"🗑️ Delete Preview Now\" when you're done testing.",
+      "no_buttons": "⚠️ No role buttons yet. Tap ➕ Add Button first.",
+      "no_roles": "⚠️ No roles yet. Tap ➕ Add Role first.",
+      "header": "🔍 **Preview \"{name}\"** — only you can see this, feel free to test it"
+    },
+    "delete": {
+      "expired": "⚠️ This deletion request has expired. Try `/role-setup delete` again.",
+      "success": "✅ Deleted role setup **\"{name}\"** from the system.\n*(Any messages already posted in the channel will remain — delete those yourself.)*",
+      "not_found": "⚠️ Couldn't find role setup \"{name}\" (it may have already been deleted).",
+      "cancelled": "↩️ Deletion cancelled."
+    },
+    "color_custom": {
+      "invalid": "❌ Invalid color format. Must be #RRGGBB (got: \"{input}\")"
+    },
+    "config": {
+      "invalid_range": "❌ Invalid values (min={min}, max={max})\n• Min must be 0–25\n• Max must be 1–25\n• Min ≤ Max",
+      "max_exceeds_roles": "⚠️ Max ({max}) exceeds role count ({count}). Lower Max or add more roles first."
+    },
+    "hint": {
+      "retry_add_image": "\n\nTry tapping + Image again.",
+      "retry_add_section": "\n\nTry tapping + Section again."
+    },
+    "image_warning": {
+      "suspicious_list": "⚠️ These links might not be real images:\n{list}",
+      "suspicious_single": "⚠️ This thumbnail link might not be a real image: {url}"
+    },
+    "runtime": {
+      "guild_only": "❌ This only works in a server.",
+      "setup_gone_select": "❌ This setup no longer exists. Contact an admin to post it again.",
+      "no_changes": "ℹ️ No changes made.",
+      "fetch_failed": "❌ Couldn't fetch member data.",
+      "generic_error": "❌ Something went wrong. Please try again.",
+      "removed_roles": "➖ Removed: {roles}",
+      "added_roles": "✅ Added: {roles}",
+      "guild_only_button": "❌ This only works in a server.",
+      "setup_gone_button": "❌ This role setup no longer exists. Contact an admin to update the message.",
+      "role_gone": "❌ This role no longer exists in the server (it may have been deleted). Contact an admin to update this button.",
+      "role_removed_toggle": "✅ Removed role **{name}**",
+      "role_added_toggle": "✅ Got role **{name}**",
+      "role_swapped": "✅ Switched to role **{name}**{removedNote}",
+      "role_swapped_removed_note": " (removed: {names})",
+      "max_reached": "❌ Reached the limit of **{max} roles**. Remove another role in this group first."
+    },
+    "role_button": {
+      "no_roles": "❌ There are no roles the bot can manage in this server. Ask an admin to check the bot's permissions and role position."
+    },
+    "quota": {
+      "reached": "This server already has the maximum number of role setups allowed on the Free plan ({limit})."
+    },
+    "type_gate": {
+      "reaction_only": "Free plan only supports the Reaction type. Choose \"reaction\", or upgrade to Premium to unlock Menu and Button types."
+    },
+    "reaction_gate": {
+      "max_reached": "This server has reached the maximum number of reactions ({limit}) allowed per setup on the Free plan."
+    }
+  },
+  "welcome_setup": {
+    "status": {
+      "on": "On",
+      "off": "Off",
+      "channel_unset": "*not set*",
+      "bg_gif": "Set (GIF)",
+      "bg_set": "Set",
+      "bg_none": "None (using gradient)",
+      "avatar_on": "On",
+      "avatar_off": "Off",
+      "text_none": "No text yet",
+      "text_count": "{count} block(s)",
+      "field_status": "Status",
+      "field_channel": "Channel",
+      "field_background": "Background",
+      "field_overlay": "Overlay",
+      "field_avatar": "Avatar",
+      "field_text": "Text",
+      "field_greeting": "Greeting"
+    },
+    "panel": {
+      "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
+      "button": {
+        "background": "Background",
+        "text": "Text",
+        "avatar": "Avatar",
+        "opacity": "Opacity",
+        "greeting": "Greeting Message",
+        "preview": "Preview",
+        "toggle_on": "On",
+        "toggle_off": "Off",
+        "done": "Done"
+      },
+      "channel_placeholder_set": "Change welcome channel (currently set)",
+      "channel_placeholder_unset": "Choose welcome channel…"
+    },
+    "avatar": {
+      "on_header": "**👤 Avatar Settings** — 🟢 On\nX: {x}%  |  Y: {y}%  |  Size (R): {r}%\n\n⬅️ ➡️ = move horizontally ({stepXY}% per tap)  |  ⬆️ ⬇️ = vertical ({stepXY}% per tap)\n➕ ➖ = avatar size ({stepR}% per tap)  |  🎯 = enter exact coordinates",
+      "off_header": "**👤 Avatar Settings** — ⭕ Off\nTap \"⭕ Enable Avatar\" to turn it on and see position options",
+      "toggle_on": "🟢 Disable Avatar",
+      "toggle_off": "⭕ Enable Avatar",
+      "custom_button": "🎯 Custom",
+      "back_button": "← Back"
+    },
+    "text_list": {
+      "header": "**💬 Manage Welcome Text**\nTotal {count} block(s) — choose from the list to edit, or add a new one\n💡 Use `{ph}` to automatically show the new member's name",
+      "block_label": "Block {index}{bold}",
+      "block_label_bold": " (Bold)",
+      "block_empty": "(empty)",
+      "add_new_label": "➕ Add New Text",
+      "add_new_description": "Create a new text block",
+      "placeholder_has_blocks": "Choose a block to edit…",
+      "placeholder_empty": "No blocks yet — tap to add one",
+      "back_button": "← Back",
+      "max_blocks_warning": "⚠️ Maximum {max} blocks — delete an old one first.",
+      "new_block_content": "New text"
+    },
+    "text_editor": {
+      "not_found": "⚠️ This block no longer exists (it may have been deleted). Going back to the list.",
+      "not_found_back_button": "← Back to List",
+      "header": "**💬 Edit Text Block** {boldTag}\n\"{preview}\"\nX: {x}%  |  Y: {y}%  |  Font Size: {size}%\n\n💡 Use `{ph}` to automatically show the new member's name\n⬅️ ➡️ = move horizontally ({stepXY}% per tap)  |  ⬆️ ⬇️ = vertical ({stepXY}% per tap)\n➕ ➖ = font size ({stepSZ}% per tap)  |  🎯 = enter exact coordinates",
+      "bold_tag": "**[B Bold]**",
+      "normal_tag": "[Normal]",
+      "font_placeholder": "Choose font style",
+      "font_default": "🎈 Default (Mali/Fredoka)",
+      "font_charmonman": "✨ Charmonman (dreamy)",
+      "font_chonburi": "🎉 Chonburi (festive, no bold)",
+      "font_kanit": "🔹 Kanit (minimal, modern)",
+      "font_sarabun": "🔹 Sarabun (minimal, formal)",
+      "bold_disabled": "⛔ No Bold",
+      "bold_on": "B Bold",
+      "bold_off": "⬛ Normal",
+      "edit_button": "✏️ Edit Text",
+      "delete_button": "🗑️ Delete Block",
+      "custom_button": "🎯 Custom",
+      "back_button": "← Back to List"
+    },
+    "modal": {
+      "example_number": "e.g. {n}",
+      "bg_title": "🖼️ Set Background Image",
+      "bg_label": "Background image link",
+      "bg_placeholder": "Paste from /upload-image or a direct image link ending in .gif .png .jpg",
+      "opacity_title": "🎨 Set Overlay Opacity",
+      "opacity_label": "Opacity 0-100 (0=clear, 100=solid)",
+      "greeting_title": "📢 Set Greeting Message",
+      "greeting_label": "Message shown when a new member joins",
+      "greeting_placeholder": "{user} = real mention | {username} = name | {server} = server name",
+      "avatar_custom_title": "🎯 Customize Avatar",
+      "avatar_x_label": "X position (% of width, 0-100)",
+      "avatar_y_label": "Y position (% of height, 0-100)",
+      "avatar_r_label": "Radius size (% of height, 5-45)",
+      "txb_edit_title": "💬 Edit Welcome Text",
+      "txb_edit_label": "Text (use {ph} = member name)",
+      "txb_edit_placeholder": "e.g. Welcome {ph} to the server!",
+      "txb_custom_title": "🎯 Customize Text Position",
+      "txb_x_label": "X position (% of width, 0-100)",
+      "txb_y_label": "Y position (% of height, 0-100)",
+      "txb_size_label": "Font Size (% of height, 4-25)"
+    },
+    "preview": {
+      "error": "❌ Couldn't create preview: {error}"
+    },
+    "block_not_found": "⚠️ This block no longer exists",
+    "done": {
+      "message": "✅ **Saved successfully!**\n{onNote}\n{chNote}\n\nRun `/welcome-setup` again anytime to make changes",
+      "channel_note": "Channel: {channel}",
+      "channel_unset_note": "⚠️ No channel selected yet — come back anytime to set one",
+      "status_on": "🟢 Welcome system: On",
+      "status_off": "⭕ Welcome system: Off"
+    },
+    "session_expired": "⏱️ Session expired. Please run `/welcome-setup` again.",
+    "bg": {
+      "invalid_url": "❌ Invalid URL. Must start with https:// or http://",
+      "invalid_extension": "❌ The link must end with a supported image extension:\n• `.png` `.jpg` `.jpeg` `.webp` — regular images\n• `.gif` — animated (⭐ premium)",
+      "premium_required": "GIF backgrounds are a Premium feature only.",
+      "temp_link_warning": "⚠️ This is a temporary Discord link (media proxy) — it may expire in ~24 hours and the image will disappear.\nWe recommend using `/upload-image` first for a permanent link (this link has been saved for now, but it's worth switching before it breaks)."
+    },
+    "opacity": {
+      "invalid": "❌ Please enter a number between 0–100."
+    },
+    "greeting": {
+      "no_user_warning": "This message doesn't include {ph} — new members won't get a notification (ping). Add {ph} to the message if you want them to be pinged."
+    },
+    "coord_error": {
+      "x": "X must be a number 0-100",
+      "y": "Y must be a number 0-100",
+      "r": "Radius must be a number 5-45",
+      "size": "Font Size must be a number 4-25"
+    }
+  },
+  "goodbye_setup": {
+    "status": {
+      "on": "On",
+      "off": "Off",
+      "channel_unset": "*not set*",
+      "bg_gif": "Set (GIF)",
+      "bg_set": "Set",
+      "bg_none": "None (using gradient)",
+      "avatar_on": "On",
+      "avatar_off": "Off",
+      "text_none": "No text yet",
+      "text_count": "{count} block(s)",
+      "field_status": "Status",
+      "field_channel": "Channel",
+      "field_background": "Background",
+      "field_overlay": "Overlay",
+      "field_avatar": "Avatar",
+      "field_text": "Text",
+      "field_farewell": "Farewell"
+    },
+    "panel": {
+      "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
+      "button": {
+        "background": "Background",
+        "text": "Text",
+        "avatar": "Avatar",
+        "opacity": "Opacity",
+        "farewell": "Farewell Message",
+        "preview": "Preview",
+        "toggle_on": "On",
+        "toggle_off": "Off",
+        "done": "Done"
+      },
+      "channel_placeholder_set": "Change goodbye channel (currently set)",
+      "channel_placeholder_unset": "Choose goodbye channel…"
+    },
+    "avatar": {
+      "on_header": "**👤 Avatar Settings** — 🟢 On\nX: {x}%  |  Y: {y}%  |  Size (R): {r}%\n\n⬅️ ➡️ = move horizontally ({stepXY}% per tap)  |  ⬆️ ⬇️ = vertical ({stepXY}% per tap)\n➕ ➖ = avatar size ({stepR}% per tap)  |  🎯 = enter exact coordinates",
+      "off_header": "**👤 Avatar Settings** — ⭕ Off\nTap \"⭕ Enable Avatar\" to turn it on and see position options",
+      "toggle_on": "🟢 Disable Avatar",
+      "toggle_off": "⭕ Enable Avatar",
+      "custom_button": "🎯 Custom",
+      "back_button": "← Back"
+    },
+    "text_list": {
+      "header": "**💬 Manage Goodbye Text**\nTotal {count} block(s) — choose from the list to edit, or add a new one\n💡 Use `{ph}` to automatically show the leaving member's name",
+      "block_label": "Block {index}{bold}",
+      "block_label_bold": " (Bold)",
+      "block_empty": "(empty)",
+      "add_new_label": "➕ Add New Text",
+      "add_new_description": "Create a new text block",
+      "placeholder_has_blocks": "Choose a block to edit…",
+      "placeholder_empty": "No blocks yet — tap to add one",
+      "back_button": "← Back",
+      "max_blocks_warning": "⚠️ Maximum {max} blocks — delete an old one first.",
+      "new_block_content": "New text"
+    },
+    "text_editor": {
+      "not_found": "⚠️ This block no longer exists (it may have been deleted). Going back to the list.",
+      "not_found_back_button": "← Back to List",
+      "header": "**💬 Edit Text Block** {boldTag}\n\"{preview}\"\nX: {x}%  |  Y: {y}%  |  Font Size: {size}%\n\n💡 Use `{ph}` to automatically show the leaving member's name\n⬅️ ➡️ = move horizontally ({stepXY}% per tap)  |  ⬆️ ⬇️ = vertical ({stepXY}% per tap)\n➕ ➖ = font size ({stepSZ}% per tap)  |  🎯 = enter exact coordinates",
+      "bold_tag": "**[B Bold]**",
+      "normal_tag": "[Normal]",
+      "font_placeholder": "Choose font style",
+      "font_default": "🎈 Default (Mali/Fredoka)",
+      "font_charmonman": "✨ Charmonman (dreamy)",
+      "font_chonburi": "🎉 Chonburi (festive, no bold)",
+      "font_kanit": "🔹 Kanit (minimal, modern)",
+      "font_sarabun": "🔹 Sarabun (minimal, formal)",
+      "bold_disabled": "⛔ No Bold",
+      "bold_on": "B Bold",
+      "bold_off": "⬛ Normal",
+      "edit_button": "✏️ Edit Text",
+      "delete_button": "🗑️ Delete Block",
+      "custom_button": "🎯 Custom",
+      "back_button": "← Back to List"
+    },
+    "modal": {
+      "example_number": "e.g. {n}",
+      "bg_title": "🖼️ Set Background Image",
+      "bg_label": "Background image link",
+      "bg_placeholder": "Paste from /upload-image or a direct image link ending in .gif .png .jpg",
+      "opacity_title": "🎨 Set Overlay Opacity",
+      "opacity_label": "Opacity 0-100 (0=clear, 100=solid)",
+      "farewell_title": "📢 Set Farewell Message",
+      "farewell_label": "Message shown when a member leaves",
+      "farewell_placeholder": "{username} = name | {server} = server name",
+      "avatar_custom_title": "🎯 Customize Avatar",
+      "avatar_x_label": "X position (% of width, 0-100)",
+      "avatar_y_label": "Y position (% of height, 0-100)",
+      "avatar_r_label": "Radius size (% of height, 5-45)",
+      "txb_edit_title": "💬 Edit Goodbye Text",
+      "txb_edit_label": "Text (use {ph} = member name)",
+      "txb_edit_placeholder": "e.g. Goodbye {ph}, we'll miss you!",
+      "txb_custom_title": "🎯 Customize Text Position",
+      "txb_x_label": "X position (% of width, 0-100)",
+      "txb_y_label": "Y position (% of height, 0-100)",
+      "txb_size_label": "Font Size (% of height, 4-25)"
+    },
+    "preview": {
+      "error": "❌ Couldn't create preview: {error}"
+    },
+    "block_not_found": "⚠️ This block no longer exists",
+    "done": {
+      "message": "✅ **Saved successfully!**\n{onNote}\n{chNote}\n\nRun `/goodbye-setup` again anytime to make changes",
+      "channel_note": "Channel: {channel}",
+      "channel_unset_note": "⚠️ No channel selected yet — come back anytime to set one",
+      "status_on": "🟢 Goodbye system: On",
+      "status_off": "⭕ Goodbye system: Off"
+    },
+    "session_expired": "⏱️ Session expired. Please run `/goodbye-setup` again.",
+    "bg": {
+      "invalid_url": "❌ Invalid URL. Must start with https:// or http://",
+      "invalid_extension": "❌ The link must end with a supported image extension:\n• `.png` `.jpg` `.jpeg` `.webp` — regular images\n• `.gif` — animated (⭐ premium)",
+      "premium_required": "GIF backgrounds are a Premium feature only.",
+      "temp_link_warning": "⚠️ This is a temporary Discord link (media proxy) — it may expire in ~24 hours and the image will disappear.\nWe recommend using `/upload-image` first for a permanent link (this link has been saved for now, but it's worth switching before it breaks)."
+    },
+    "opacity": {
+      "invalid": "❌ Please enter a number between 0–100."
+    },
+    "coord_error": {
+      "x": "X must be a number 0-100",
+      "y": "Y must be a number 0-100",
+      "r": "Radius must be a number 5-45",
+      "size": "Font Size must be a number 4-25"
+    }
+  },
+  "premium": {
+    "command_description": "Manage this server's premium subscription",
+    "title": "# 🍵 Premium",
+    "status": {
+      "active": "⭐ Premium (renews {date})",
+      "free": "🔓 Free"
+    },
+    "button": {
+      "subscribe": "Subscribe to Premium ($2.99) ☕",
+      "manage": "Manage Subscription"
+    },
+    "benefits": {
+      "free_header": "**🎁 What you'll unlock:**",
+      "free_body": "• Animated GIF backgrounds\n• Unlimited Builders + full Layout Builder\n• Unlimited Role Setups + menu/button types unlocked\n• Mention users/roles/channels in messages",
+      "premium_header": "**✅ Your current perks:**",
+      "premium_body": "• Animated GIF backgrounds\n• Unlimited Builders + full Layout Builder\n• Unlimited Role Setups + menu/button types\n• Mention users/roles/channels in messages"
+    },
+    "open_checkout_button": "💳 Open Checkout",
+    "subscribe_link": "💎 Tap this link to subscribe:\n{url}",
+    "manage_link": "⚙️ Manage your subscription here:\n{url}",
+    "manage_no_customer": "⚠️ No Stripe subscription found on file for this server yet. If your admin was set to premium manually, there's nothing to manage here.",
+    "already_premium": "✅ This server is already Premium — no need to subscribe again.",
+    "dm": {
+      "activated": "🎉 Your Aitao Bot Premium subscription is now active for **{guildName}**! Thank you for supporting us 💚"
+    }
+  },
+  "premium_gate": {
+    "message": "⭐ {reason}\n\nUpgrade to Premium to unlock this — run `/premium` to get started!"
+  }
+}

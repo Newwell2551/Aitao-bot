@@ -12,7 +12,7 @@ async function checkImageUrlLooksValid(url, timeoutMs = 3000) {
   // AbortController ใช้ยกเลิก request ถ้ารอนานเกินที่กำหนด (กันบอทค้างรอปลายทางที่ไม่ตอบ)
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
+ 
   try {
     const response = await fetch(url, { method: 'HEAD', signal: controller.signal });
     const contentType = response.headers.get('content-type') || '';
@@ -25,5 +25,5 @@ async function checkImageUrlLooksValid(url, timeoutMs = 3000) {
     clearTimeout(timeoutId);
   }
 }
-
+ 
 module.exports = { checkImageUrlLooksValid };

@@ -18,19 +18,27 @@ const {
  *
  * @param {string} url
  * @param {string} context - ข้อความบอกตำแหน่งที่ error เพื่อ debug ง่ายขึ้น
+ * @param {(key: string, replacements?: object) => string} [t] - translator ของภาษาเซิร์ฟ (optional)
+ *   ไม่ส่งมา (เช่นตอนเรียกจากภายในไฟล์นี้เอง) = ทำงานเหมือนเดิมทุกอย่าง เป็นข้อความไทย hardcode
+ *   (จุดเรียกจากภายในไฟล์นี้เป็น debug label เช่น "blocks[0].thumbnail" ไม่มี user จริงเห็นข้อความนี้อยู่แล้ว
+ *   จึงไม่จำเป็นต้องผ่านระบบภาษา)
  */
-function validateUrl(url, context) {
+function validateUrl(url, context, t = null) {
   if (!url || typeof url !== 'string') {
-    throw new Error(`buildMessageFromSchema: ${context} ต้องเป็น string ที่ไม่ว่าง (ได้รับ: ${JSON.stringify(url)})`);
+    const msg = t
+      ? t('validation.required', { context, value: JSON.stringify(url) })
+      : `${context} ต้องเป็น string ที่ไม่ว่าง (ได้รับ: ${JSON.stringify(url)})`;
+    throw new Error(`buildMessageFromSchema: ${msg}`);
   }
   const isValid =
     url.startsWith('http://') ||
     url.startsWith('https://') ||
     url.startsWith('attachment://');
   if (!isValid) {
-    throw new Error(
-      `buildMessageFromSchema: ${context} ต้องขึ้นต้นด้วย "http://", "https://" หรือ "attachment://" เท่านั้น (ได้รับ: "${url}")`
-    );
+    const msg = t
+      ? t('validation.url_format', { context, value: url })
+      : `${context} ต้องขึ้นต้นด้วย "http://", "https://" หรือ "attachment://" เท่านั้น (ได้รับ: "${url}")`;
+    throw new Error(`buildMessageFromSchema: ${msg}`);
   }
 }
 
@@ -41,16 +49,21 @@ function validateUrl(url, context) {
  *
  * @param {string} url
  * @param {string} context
+ * @param {(key: string, replacements?: object) => string} [t] - translator ของภาษาเซิร์ฟ (optional เหมือน validateUrl)
  */
-function validateHttpUrl(url, context) {
+function validateHttpUrl(url, context, t = null) {
   if (!url || typeof url !== 'string') {
-    throw new Error(`buildMessageFromSchema: ${context} ต้องเป็น string ที่ไม่ว่าง (ได้รับ: ${JSON.stringify(url)})`);
+    const msg = t
+      ? t('validation.required', { context, value: JSON.stringify(url) })
+      : `${context} ต้องเป็น string ที่ไม่ว่าง (ได้รับ: ${JSON.stringify(url)})`;
+    throw new Error(`buildMessageFromSchema: ${msg}`);
   }
   const isValid = url.startsWith('http://') || url.startsWith('https://');
   if (!isValid) {
-    throw new Error(
-      `buildMessageFromSchema: ${context} ต้องขึ้นต้นด้วย "http://" หรือ "https://" เท่านั้น (ได้รับ: "${url}")`
-    );
+    const msg = t
+      ? t('validation.http_url_format', { context, value: url })
+      : `${context} ต้องขึ้นต้นด้วย "http://" หรือ "https://" เท่านั้น (ได้รับ: "${url}")`;
+    throw new Error(`buildMessageFromSchema: ${msg}`);
   }
 }
 

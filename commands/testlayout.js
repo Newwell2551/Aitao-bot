@@ -89,7 +89,8 @@ const exampleSchema = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('testlayout')
-    .setDescription('ทดสอบ buildMessageFromSchema() ด้วย schema ตัวอย่างที่ hardcode ไว้'),
+    .setDescription('Test buildMessageFromSchema() with a hardcoded sample schema')
+    .setDescriptionLocalizations({ th: 'ทดสอบ buildMessageFromSchema() ด้วย schema ตัวอย่างที่ hardcode ไว้ครับ' }),
 
   async execute(interaction) {
     const message = buildMessageFromSchema(exampleSchema);

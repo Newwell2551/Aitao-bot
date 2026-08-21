@@ -1,2 +1,10 @@
 node_modules/
 .env
+
+# โฟลเดอร์เก็บข้อมูลจริง (drafts.json, role-setups.json ฯลฯ) — ห้ามขึ้น GitHub เด็ดขาด
+# เหตุผล: ถ้าไฟล์พวกนี้ติดไปกับ git แล้ว Railway ดึงโค้ดจาก GitHub มา deploy ใหม่ทุกครั้ง
+# มันจะเอาข้อมูลเก่าที่ค้างอยู่ใน git มาทับข้อมูลจริงบน Volume ทำให้ข้อมูลลูกค้า/การตั้งค่า
+# ที่อัปเดตล่าสุดหายไปได้
+data/
+drafts.json
+role-setups.json
