@@ -118,7 +118,7 @@ function createWebhookServer(client) {
         </head>
         <body>
           <div>
-            <h1>🎉 Subscription successful!</h1>
+            <h1>✅ Subscription successful!</h1>
             <p>Head back to Discord and type /premium to see your status.</p>
           </div>
         </body>
