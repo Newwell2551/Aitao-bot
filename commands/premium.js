@@ -111,9 +111,10 @@ module.exports = {
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         line_items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID, quantity: 1 }],
-        // TODO: เปลี่ยนเป็น URL จริงของโปรเจกต์ตอนมีเว็บ/หน้า thank-you แล้ว
-        success_url: 'https://example.com/success',
-        cancel_url: 'https://example.com/cancel',
+        // ชี้ไปที่โดเมนจริงของบอทบน Railway แล้ว — สองหน้านี้ถูกเพิ่มเป็น route
+        // /success กับ /cancel ใน server.js (ดูคอมเมนต์ในไฟล์นั้นสำหรับรายละเอียด)
+        success_url: 'https://aitao-bot-production.up.railway.app/success',
+        cancel_url: 'https://aitao-bot-production.up.railway.app/cancel',
         // discordUserId เพิ่มเข้ามาใหม่ — server.js เอาไปใช้หา user ตอนส่ง DM แจ้งเตือน
         // (ดู PART F) มาจาก interaction.user.id ของ Discord โดยตรง ไม่ใช่ user กรอกเอง
         // ปลอมแปลงไม่ได้เหมือนกับ guildId

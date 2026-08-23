@@ -75,6 +75,92 @@ function createWebhookServer(client) {
     }
   });
 
+  // ─────────────────────────────────────────────────────────────────────
+  // route /success กับ /cancel — หน้าที่ลูกค้าเจอหลังกดจ่ายเงินผ่าน Stripe Checkout
+  //
+  // ตอนสร้าง checkout session ใน commands/premium.js เราต้องบอก Stripe ไว้ล่วงหน้าว่า
+  // "ถ้าจ่ายเงินสำเร็จ ให้ redirect กลับมาที่ URL ไหน" (success_url) และ "ถ้ากดยกเลิก
+  // กลางทาง ให้ redirect กลับมาที่ URL ไหน" (cancel_url) — สอง route นี้คือปลายทางนั้นเอง
+  //
+  // ⚠️ ทำไมใช้ app.get() ธรรมดา ไม่ใช้ express.raw() แบบ /webhook ด้านบน:
+  // express.raw() จำเป็นเฉพาะตอนที่เราต้องอ่าน "raw bytes" ของ body ไปคำนวณลายเซ็น
+  // (คือ route /webhook ที่ Stripe "ยิง POST" มาบอกเราเรื่อง event) ส่วน /success กับ
+  // /cancel เป็นแค่ "หน้าเว็บที่เบราว์เซอร์ของลูกค้า redirect ไปเปิดเฉยๆ" (GET request
+  // ธรรมดา ไม่มี body ส่งมาด้วยเลย) เลยไม่เกี่ยวกับเรื่อง signature verification ใดๆ
+  //
+  // res.send(...) ตรงนี้ส่งกลับเป็น HTML ตรงๆ (string ธรรมดาที่มีแท็ก HTML ปนอยู่)
+  // ไม่ต้องมีไฟล์ .html แยกต่างหาก เพราะหน้านี้มีแค่ข้อความสั้นๆ ไม่ซับซ้อน
+  app.get('/success', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="th">
+        <head>
+          <meta charset="UTF-8" />
+          <title>สมัครพรีเมียมสำเร็จ</title>
+          <style>
+            /* จัดกึ่งกลางทั้งแนวตั้งแนวนอน — ใช้ flexbox กับความสูงเต็มจอ (100vh) */
+            body {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              background: #0f1115;
+              color: #ffffff;
+              text-align: center;
+              padding: 24px;
+              box-sizing: border-box;
+            }
+            h1 { font-size: 28px; margin-bottom: 12px; }
+            p { font-size: 16px; color: #b5b9c2; }
+          </style>
+        </head>
+        <body>
+          <div>
+            <h1>🎉 สมัครพรีเมียมสำเร็จแล้ว!</h1>
+            <p>กลับไปที่ Discord แล้วพิมพ์ /premium เพื่อดูสถานะได้เลยครับ</p>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+
+  app.get('/cancel', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="th">
+        <head>
+          <meta charset="UTF-8" />
+          <title>ยกเลิกการสมัคร</title>
+          <style>
+            body {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              background: #0f1115;
+              color: #ffffff;
+              text-align: center;
+              padding: 24px;
+              box-sizing: border-box;
+            }
+            h1 { font-size: 28px; margin-bottom: 12px; }
+            p { font-size: 16px; color: #b5b9c2; }
+          </style>
+        </head>
+        <body>
+          <div>
+            <h1>ยกเลิกการสมัครแล้ว</h1>
+            <p>ไม่มีการตัดเงินใดๆ ครับ กลับไปที่ Discord ได้เลย</p>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+
   return app;
 }
 
