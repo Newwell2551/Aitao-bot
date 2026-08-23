@@ -93,10 +93,10 @@ function createWebhookServer(client) {
   app.get('/success', (req, res) => {
     res.send(`
       <!DOCTYPE html>
-      <html lang="th">
+      <html lang="en">
         <head>
           <meta charset="UTF-8" />
-          <title>สมัครพรีเมียมสำเร็จ</title>
+          <title>Subscription Successful</title>
           <style>
             /* จัดกึ่งกลางทั้งแนวตั้งแนวนอน — ใช้ flexbox กับความสูงเต็มจอ (100vh) */
             body {
@@ -118,8 +118,8 @@ function createWebhookServer(client) {
         </head>
         <body>
           <div>
-            <h1>🎉 สมัครพรีเมียมสำเร็จแล้ว!</h1>
-            <p>กลับไปที่ Discord แล้วพิมพ์ /premium เพื่อดูสถานะได้เลยครับ</p>
+            <h1>🎉 Subscription successful!</h1>
+            <p>Head back to Discord and type /premium to see your status.</p>
           </div>
         </body>
       </html>
@@ -129,10 +129,10 @@ function createWebhookServer(client) {
   app.get('/cancel', (req, res) => {
     res.send(`
       <!DOCTYPE html>
-      <html lang="th">
+      <html lang="en">
         <head>
           <meta charset="UTF-8" />
-          <title>ยกเลิกการสมัคร</title>
+          <title>Checkout Canceled</title>
           <style>
             body {
               display: flex;
@@ -153,8 +153,8 @@ function createWebhookServer(client) {
         </head>
         <body>
           <div>
-            <h1>ยกเลิกการสมัครแล้ว</h1>
-            <p>ไม่มีการตัดเงินใดๆ ครับ กลับไปที่ Discord ได้เลย</p>
+            <h1>Checkout canceled</h1>
+            <p>No charge was made. You can head back to Discord.</p>
           </div>
         </body>
       </html>
