@@ -4,30 +4,48 @@
 // ให้ส่งข้อความแนะนำตัวเข้าไปในเซิร์ฟนั้นทันที เพื่อบอกว่าบอทชื่ออะไร ทำอะไรได้บ้าง
 // และควรเริ่มต้นใช้งานยังไง — ให้ความรู้สึกเป็นมืออาชีพตั้งแต่วินาทีแรกที่เชิญเข้าไป
 //
-// 🆕 ใช้ Discord Components V2 (ContainerBuilder/TextDisplayBuilder/SeparatorBuilder)
-// แทน EmbedBuilder แบบเดิม — เหตุผลที่เปลี่ยน: Components V2 รองรับ markdown header
-// จริงๆ (#, ##) และมีเส้นคั่น (Separator) เป็น component แท้ๆ ให้ใช้ตรงๆ ไม่ต้อง
-// หลอกตาด้วยตัวอักษร ▬ เหมือนตอนใช้ embed ธรรมดา (ดูคอมเมนต์แต่ละจุดด้านล่าง)
+// 🆕 ใช้ Discord Components V2 (ContainerBuilder/TextDisplayBuilder/SeparatorBuilder/
+// SectionBuilder/MediaGalleryBuilder) แทน EmbedBuilder แบบเดิม — เหตุผลที่เปลี่ยน:
+// Components V2 รองรับ markdown header จริงๆ (#, ##), มีเส้นคั่น (Separator) เป็น
+// component แท้ๆ, และวางรูปภาพ/thumbnail ได้ยืดหยุ่นกว่า embed แบบเดิมมาก
+// (ดูคอมเมนต์แต่ละจุดด้านล่าง)
 //
 // ไฟล์นี้ export ฟังก์ชันเดียวคือ sendGuildJoinGreeting(guild) ไปให้ index.js
 // เรียกใช้ตอนดัก event guildCreate (ดูจุดที่เรียกใน index.js)
 // ─────────────────────────────────────────────────────────────────────────
 
+const path = require('path');
 const {
   ChannelType,
   PermissionFlagsBits,
-  // ── 4 ตัวนี้คือ Components V2 — ต้อง import เพิ่มจาก discord.js ──────────
-  ContainerBuilder,      // "กล่อง" ห่อทุก component ไว้ด้วยกัน มีแถบสี (accent color) ทางซ้ายเหมือน embed
-  TextDisplayBuilder,     // "ก้อนข้อความ" หนึ่งก้อน — รองรับ markdown เต็มรูปแบบ (#, ##, **, `code`, ฯลฯ)
-  SeparatorBuilder,       // เส้นคั่นจริงๆ ระหว่าง component (ไม่ใช่ตัวอักษรวาดเอง)
-  SeparatorSpacingSize,   // ขนาดระยะห่างของเส้นคั่น — Small (แคบ) / Large (กว้าง)
-  MessageFlags,           // ใช้ธง IsComponentsV2 บอก Discord ว่าข้อความนี้เป็น Components V2
+  // ── Components V2 — ต้อง import เพิ่มจาก discord.js ──────────────────────
+  ContainerBuilder,        // "กล่อง" ห่อทุก component ไว้ด้วยกัน มีแถบสี (accent color) ทางซ้ายเหมือน embed
+  TextDisplayBuilder,       // "ก้อนข้อความ" หนึ่งก้อน — รองรับ markdown เต็มรูปแบบ (#, ##, **, `code`, ฯลฯ)
+  SeparatorBuilder,         // เส้นคั่นจริงๆ ระหว่าง component (ไม่ใช่ตัวอักษรวาดเอง)
+  SeparatorSpacingSize,     // ขนาดระยะห่างของเส้นคั่น — Small (แคบ) / Large (กว้าง)
+  SectionBuilder,           // 🆕 "บล็อก" ที่วางข้อความ (สูงสุด 3 TextDisplay) คู่กับรูปเล็ก/ปุ่มด้านข้างได้ 1 อัน (accessory)
+  ThumbnailBuilder,         // 🆕 รูปเล็กที่ใช้เป็น accessory ของ Section (วางด้านขวาของข้อความ)
+  MediaGalleryBuilder,      // 🆕 "แกลเลอรีรูปภาพ" — ใช้แสดงรูปใหญ่เต็มความกว้าง (เอาไว้ทำ banner)
+  MediaGalleryItemBuilder,  // 🆕 รูปแต่ละรูปใน MediaGallery (ตอนนี้มีรูปเดียวคือ banner)
+  AttachmentBuilder,        // 🆕 ใช้แนบไฟล์จริง (banner.png) ไปกับข้อความ
+  MessageFlags,             // ใช้ธง IsComponentsV2 บอก Discord ว่าข้อความนี้เป็น Components V2
 } = require('discord.js');
 
 // ชื่อเต็มของบอทที่จะโชว์ในข้อความแนะนำตัว — ไม่ได้ดึงจาก client.user.username
 // เพราะชื่อบอทบน Discord (application name) กับชื่อที่อยากให้แนะนำตัวอาจไม่ตรงกันเป๊ะๆ
 // เก็บเป็นค่าคงที่ไว้ตรงนี้ที่เดียว แก้ง่ายถ้าจะเปลี่ยนชื่อทีหลัง
 const BOT_DISPLAY_NAME = 'Cavin Milo';
+
+// ── ไฟล์รูป banner ──────────────────────────────────────────────────────────
+// เก็บไว้ที่ assets/mascot-banner.png (ระดับเดียวกับ index.js ที่ root โปรเจกต์)
+// path.join(__dirname, '..', 'assets', ...) เพราะไฟล์นี้อยู่ใน utils/ ต้องถอยออกมา
+// 1 ระดับ (..) ก่อนถึงจะเจอโฟลเดอร์ assets/
+//
+// เก็บชื่อไฟล์เป็นค่าคงที่ตัวเดียว (BANNER_FILENAME) แล้วใช้ซ้ำทั้งตอนสร้าง
+// AttachmentBuilder และตอนอ้างอิงด้วย attachment:// ด้านล่าง — กันพิมพ์ชื่อไฟล์
+// ไม่ตรงกัน 2 จุด (ถ้าไม่ตรงกัน Discord จะหารูปไม่เจอ โชว์เป็นภาพแตกทันที)
+const BANNER_FILENAME = 'mascot-banner.png';
+const BANNER_FILE_PATH = path.join(__dirname, '..', 'assets', BANNER_FILENAME);
 
 /**
  * ส่งข้อความแนะนำตัว (Components V2) เข้าไปในเซิร์ฟที่บอทเพิ่งถูกเชิญเข้าไป
@@ -55,18 +73,30 @@ async function sendGuildJoinGreeting(guild) {
       return;
     }
 
-    // ── ขั้นที่ 2: สร้าง Container (Components V2) แนะนำตัว แล้วส่งเข้าช่องที่หาได้ ──
+    // ── ขั้นที่ 2: เตรียมไฟล์แนบ (banner) ────────────────────────────────────
+    // AttachmentBuilder ห่อไฟล์จริงบนดิสก์ (BANNER_FILE_PATH) ให้กลายเป็นสิ่งที่
+    // ส่งไปกับข้อความ Discord ได้ — { name: ... } ตั้งชื่อไฟล์ตอนอัปโหลดขึ้น Discord
+    // ต้อง "ตรงกับ" ชื่อที่ผูกไว้ใน MediaGallery ด้านใน buildIntroContainer() เป๊ะๆ
+    // (ดูคอมเมนต์เรื่อง attachment:// ในฟังก์ชันนั้น) เลยใช้ BANNER_FILENAME ตัวแปร
+    // เดียวกันทั้ง 2 จุด กันพิมพ์ไม่ตรงกัน
+    const bannerAttachment = new AttachmentBuilder(BANNER_FILE_PATH, { name: BANNER_FILENAME });
+
+    // ── ขั้นที่ 3: สร้าง Container (Components V2) แนะนำตัว แล้วส่งเข้าช่องที่หาได้ ──
     const introContainer = buildIntroContainer(guild);
 
-    // ⚠️ จุดสำคัญที่สุดของการย้ายมาใช้ Components V2: ต้องส่ง 2 อย่างนี้คู่กันเสมอ
+    // ⚠️ จุดสำคัญที่สุดของการย้ายมาใช้ Components V2: ต้องส่งครบ 3 อย่างนี้คู่กันเสมอ
     //   1) components: [introContainer] — แทนที่ embeds: [introEmbed] แบบเดิม
-    //   2) flags: MessageFlags.IsComponentsV2 — ธงบอก Discord ว่าข้อความนี้ใช้ระบบ
+    //   2) files: [bannerAttachment] — 🆕 ไฟล์แนบจริง (Components V2 อ้างอิงรูปด้วย
+    //      "attachment://ชื่อไฟล์" ซึ่งจะ resolve ไม่ได้เลยถ้าไม่ได้แนบไฟล์จริงมาด้วยใน
+    //      key นี้ — เหมือนโพสต์ข้อความพร้อมแนบรูปแล้วอ้างอิงชื่อไฟล์นั้นในเนื้อหา)
+    //   3) flags: MessageFlags.IsComponentsV2 — ธงบอก Discord ว่าข้อความนี้ใช้ระบบ
     //      Components V2 ทั้งก้อน ถ้าลืมใส่ธงนี้ Discord จะปฏิเสธข้อความทันที (error)
     // และ "ห้ามใส่ content หรือ embeds ปนเข้ามาด้วยเด็ดขาด" — Components V2 กับ
     // embed/content แบบเดิมใช้แทนกันไม่ได้ ใช้ปนกันในข้อความเดียวกันไม่ได้เลย
     // (กฎเดียวกับที่เคยเจอตอนทำ /premium กับ DM แจ้งเตือนพรีเมียมมาแล้ว)
     await channel.send({
       components: [introContainer],
+      files: [bannerAttachment],
       flags: MessageFlags.IsComponentsV2,
     });
 
@@ -74,8 +104,8 @@ async function sendGuildJoinGreeting(guild) {
       `[guildJoinGreeting] ส่งข้อความทักทายเข้า guild ${guild.id} (${guild.name}) ที่ช่อง #${channel.name} สำเร็จ`
     );
   } catch (error) {
-    // ดักทุก error ที่อาจเกิดขึ้น (เช่น ส่งข้อความไม่สำเร็จเพราะโดนบล็อกกะทันหัน
-    // ระหว่างทาง หรือ Discord API ล่มชั่วคราว) — log ไว้เฉยๆ ไม่ทำให้บอทพัง
+    // ดักทุก error ที่อาจเกิดขึ้น (เช่น หาไฟล์ banner ไม่เจอ, ส่งข้อความไม่สำเร็จเพราะ
+    // โดนบล็อกกะทันหันระหว่างทาง, หรือ Discord API ล่มชั่วคราว) — log ไว้เฉยๆ ไม่ทำให้บอทพัง
     console.error(`[guildJoinGreeting] เกิดข้อผิดพลาดตอนส่งข้อความทักทายที่ guild ${guild.id}:`, error);
   }
 }
@@ -145,28 +175,69 @@ function findGreetingChannel(guild) {
  * เซิร์ฟนี้เลย (การตั้งค่าภาษาอยู่ใน utils/languageStorage.js ซึ่งต้องรอแอดมินสั่ง /language ก่อน)
  *
  * โครงสร้างเรียงจากบนลงล่าง:
- *   Header ใหญ่ (# ...) → คำแนะนำตัวสั้นๆ → เส้นคั่น → "## 🎨 What I Do" + คำอธิบาย
- *   → เส้นคั่น → "## ⚡ Get Started" + รายการคำสั่ง → เส้นคั่นเล็ก → footer เล็กๆ
+ *   MediaGallery (banner) → Section (header + คำแนะนำตัว พร้อม thumbnail avatar) →
+ *   เส้นคั่น → "## 🎨 What I Do" + คำอธิบาย → เส้นคั่น → "## ⚡ Get Started" + รายการคำสั่ง
+ *   → เส้นคั่นเล็ก → footer เล็กๆ
  * @param {import('discord.js').Guild} guild
  * @returns {import('discord.js').ContainerBuilder}
  */
 function buildIntroContainer(guild) {
+  // guild.client คือ Discord Client instance เดียวกับที่ล็อกอินอยู่ (เข้าถึงได้จาก
+  // guild object เสมอ) — ใช้ดึง avatar ของบอทมาใส่เป็น thumbnail accessory ของ Section
+  // ด้านล่าง displayAvatarURL({ size: 256 }) ได้ URL รูปโปรไฟล์บอท ขนาด 256x256 พิกเซล
+  const botAvatarUrl = guild.client.user.displayAvatarURL({ size: 256 });
+
   return (
     new ContainerBuilder()
       // setAccentColor = สีแถบทางซ้ายของ Container ทำหน้าที่เหมือน .setColor() ของ
-      // embed เดิมเป๊ะๆ — ใช้เลข hex เดียวกับที่ embed เคยใช้ (0x57f287 = เขียวธรรมชาติ)
-      .setAccentColor(0x57f287)
+      // embed เดิม — เปลี่ยนจากเขียว (0x57f287) เป็นน้ำเงินเข้ม (0x3b4e89) ตามที่สั่ง
+      // ให้เข้ากับโทนภาพ banner ที่เพิ่มเข้ามา
+      .setAccentColor(0x3b4e89)
 
-      // ── TextDisplay #1: Header ใหญ่ ──────────────────────────────────────
-      // "# " ที่ขึ้นต้นบรรทัด คือ markdown header ระดับ 1 (เหมือนพิมพ์ # ในข้อความ
-      // Discord ปกติ) — TextDisplay รองรับ markdown เต็มรูปแบบ ต่างจาก embed title
-      // เดิมที่เป็นแค่ตัวหนาธรรมดา ไม่ใช่ header จริงๆ
-      .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# ˙𓈒 👋 Hi, I'm ${BOT_DISPLAY_NAME}!  🐻‍❄️`))
+      // ── 🆕 MediaGallery: banner รูปใหญ่ ด้านบนสุดของข้อความ ────────────────
+      // MediaGallery คือ component สำหรับโชว์รูปภาพเต็มความกว้าง (เหมือนแกลเลอรีรูป
+      // ในแชตทั่วไป) รับรูปได้หลายรูปพร้อมกัน แต่ตรงนี้เราใส่แค่รูปเดียวคือ banner
+      //
+      // MediaGalleryItemBuilder แต่ละอันคือ "รูป 1 รูป" ในแกลเลอรี — .setURL() ตรงนี้
+      // ใช้รูปแบบพิเศษ "attachment://ชื่อไฟล์" (ไม่ใช่ URL เว็บทั่วไปที่ขึ้นต้นด้วย
+      // https://) ซึ่งเป็นวิธีที่ Discord ใช้บอกว่า "เอารูปจากไฟล์แนบ (attachment) ของ
+      // ข้อความนี้เอง ที่ชื่อไฟล์ตรงกับตรงนี้เป๊ะๆ" — ไฟล์จริงถูกแนบมาคู่กันผ่าน
+      // key `files: [bannerAttachment]` ตอนเรียก channel.send() ใน sendGuildJoinGreeting()
+      // (ถ้าชื่อไฟล์ตรงนี้กับตอนสร้าง AttachmentBuilder ไม่ตรงกัน Discord จะหารูปไม่เจอ
+      // แล้วโชว์เป็นภาพแตก — เพราะงั้นทั้งสองจุดใช้ตัวแปร BANNER_FILENAME ตัวเดียวกัน)
+      //
+      // .setDescription() ใส่ alt text สั้นๆ ให้ screen reader อ่านได้ (accessibility)
+      .addMediaGalleryComponents(
+        new MediaGalleryBuilder().addItems(
+          new MediaGalleryItemBuilder()
+            .setURL(`attachment://${BANNER_FILENAME}`)
+            .setDescription('Cavin Milo mascot banner')
+        )
+      )
 
-      // ── TextDisplay #2: คำแนะนำตัวสั้นๆ ──────────────────────────────────
-      // ประโยคเดียวสั้นๆ ใต้ header (เนื้อหาเดิมจาก .setDescription() ของ embed เก่า)
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent('A decoration & customization bot for your Discord server.')
+      // ── 🆕 Section: header + คำแนะนำตัว พร้อมรูป avatar เล็กด้านขวา ────────
+      // Section คือ component ที่เอาไว้ "จับคู่" ข้อความกับรูปเล็ก/ปุ่ม 1 อัน — คิดง่ายๆ
+      // ว่าเหมือน embed เดิมที่มี thumbnail มุมขวาบนคู่กับ title/description แต่ตอนนี้
+      // ทำเป็น component แยกต่างหากแทน
+      //
+      // .addTextDisplayComponents(...) ใส่ข้อความของ section ได้สูงสุด 3 TextDisplay
+      // (ตรงนี้ใส่ 2 อัน: header ใหญ่ กับ ประโยคแนะนำตัวสั้นๆ — เนื้อหาเดิมจากเวอร์ชัน
+      // ก่อนหน้า ไม่ได้แก้คำเลย)
+      //
+      // .setThumbnailAccessory(...) คือ "accessory" ของ section นี้ — เลือกได้ว่าจะเป็น
+      // ThumbnailBuilder (รูปเล็ก) หรือ ButtonBuilder (ปุ่ม) อย่างใดอย่างหนึ่งเท่านั้น
+      // ต่อ 1 section ตรงนี้เราใช้ ThumbnailBuilder ใส่รูป avatar ของบอทเอง (จาก
+      // botAvatarUrl ด้านบน) มันจะไปโผล่ที่ "ฝั่งขวา" ของ section โดยอัตโนมัติ — ตำแหน่ง
+      // นี้ Discord จัดให้เอง ไม่ต้องกำหนดพิกัดเพิ่ม
+      .addSectionComponents(
+        new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`# ˙𓈒 👋 Hi, I'm ${BOT_DISPLAY_NAME}!  🐻‍❄️`),
+            new TextDisplayBuilder().setContent('A decoration & customization bot for your Discord server.')
+          )
+          .setThumbnailAccessory(
+            new ThumbnailBuilder().setURL(botAvatarUrl).setDescription(`${BOT_DISPLAY_NAME} avatar`)
+          )
       )
 
       // ── Separator #1: เส้นคั่นจริง ────────────────────────────────────────
@@ -175,11 +246,10 @@ function buildIntroContainer(guild) {
       // "section ใหญ่" ที่เปลี่ยนหัวข้อจริงๆ (ต่างจาก Separator #3 ท้ายสุดที่เบากว่า)
       .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
 
-      // ── TextDisplay #3: "## 🎨 What I Do" + คำอธิบาย ─────────────────────
+      // ── TextDisplay: "## 🎨 What I Do" + คำอธิบาย ────────────────────────
       // "## " คือ markdown header ระดับ 2 (เล็กกว่า # นิดหน่อย) — เขียนหัวข้อกับ
       // เนื้อหาไว้ใน TextDisplay เดียวกัน คั่นด้วย "\n\n" (เว้นบรรทัดว่าง 1 บรรทัด
-      // ให้อ่านง่าย เหมือนย่อหน้าในเอกสารทั่วไป) เนื้อหาเป็นข้อความเดิมจาก field
-      // "🎨 What I Do" เวอร์ชัน embed ก่อนหน้านี้ ไม่ได้แก้คำเลย
+      // ให้อ่านง่าย เหมือนย่อหน้าในเอกสารทั่วไป) เนื้อหาเป็นข้อความเดิม ไม่ได้แก้คำเลย
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
           '## 🎨 What I Do\n\n' +
@@ -192,12 +262,11 @@ function buildIntroContainer(guild) {
       // ── Separator #2: เส้นคั่นจริง (เหมือน Separator #1) ──────────────────
       .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
 
-      // ── TextDisplay #4: "## ⚡ Get Started" + รายการคำสั่ง ────────────────
+      // ── TextDisplay: "## ⚡ Get Started" + รายการคำสั่ง ──────────────────
       // ⚠️ ชื่อคำสั่งกับคำอธิบายตรงนี้ต้อง "ตรงกับที่ deploy จริง" เป๊ะๆ — ดึงมาจาก
       // .setName()/.setDescription() จริงในแต่ละไฟล์ commands/*.js (deploy-commands.js
       // เป็นตัวอ่านไฟล์พวกนี้ไปลงทะเบียนกับ Discord จริงๆ) ห้ามพิมพ์ชื่อคำสั่งเดาเอง —
-      // รายการนี้เหมือนเวอร์ชัน embed เดิมทุกตัวอักษร ไม่ได้แก้อะไร แค่ย้ายมาอยู่ใน
-      // TextDisplay เดียวกับ header "## ⚡ Get Started" แทน
+      // รายการนี้เหมือนเวอร์ชันก่อนหน้าทุกตัวอักษร ไม่ได้แก้อะไร
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
           '## ⚡ Get Started\n\n' +
@@ -217,7 +286,7 @@ function buildIntroContainer(guild) {
       // section ใหญ่เท่าๆ กับสองอันบน
       .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
 
-      // ── TextDisplay #5: footer เล็กๆ ปิดท้าย ─────────────────────────────
+      // ── TextDisplay: footer เล็กๆ ปิดท้าย ─────────────────────────────────
       // "-# " ที่ขึ้นต้นบรรทัด คือ markdown "subtext" ของ Discord (ตัวหนังสือเล็กสีเทา
       // จางๆ) ใกล้เคียงกับหน้าตาของ .setFooter() ใน embed เดิมที่สุด — Components V2
       // ไม่มี component "footer" ให้ใช้ตรงๆ เหมือน embed เลยใช้ syntax นี้แทน
