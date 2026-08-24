@@ -1,9 +1,10 @@
-const { Client, GatewayIntentBits, Collection, Partials, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Partials, MessageFlags, Events } = require('discord.js');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { isRoleButton, handleRoleButton } = require('./utils/handleRoleButton');
 const { initImageWorkerPool }            = require('./utils/imageWorkerPool');
+const { sendGuildJoinGreeting }          = require('./utils/guildJoinGreeting');
 const { createWebhookServer }            = require('./server');
 
 // 1. สร้างบอท พร้อมระบุ "intents" และ "partials" ที่ต้องการ
@@ -444,6 +445,19 @@ client.on('guildMemberRemove', async member => {
   } catch (error) {
     console.error('[guildMemberRemove] goodbye error:', error);
   }
+});
+
+// 9c. เมื่อบอทถูกแอดมินเชิญเข้าเซิร์ฟเวอร์ใหม่ (guildCreate) → ส่ง embed แนะนำตัวอัตโนมัติ
+// ❗ ใช้ Events.GuildCreate (enum ของ discord.js) แทนการพิมพ์ string 'guildCreate' เอง
+// กันเผื่อพิมพ์ผิด — ทั้งสองแบบทำงานเหมือนกันทุกประการ แค่ enum ปลอดภัยกว่า
+// logic การหาช่อง/สร้าง embed ทั้งหมดอยู่ใน utils/guildJoinGreeting.js แล้ว
+// (แยกออกมาเป็นไฟล์ต่างหาก เพราะ index.js นี้มีหน้าที่แค่ "ผูก event เข้ากับ handler"
+// ไม่ควรมี logic ยาวๆ ปนอยู่ตรงนี้)
+//
+// ⚠️ ไม่ต้องมี try/catch ห่อตรงนี้ เพราะ sendGuildJoinGreeting() ดัก error ไว้ข้างในหมดแล้ว
+// (ดูคอมเมนต์ในไฟล์นั้น) รับประกันว่าไม่มีทาง throw หลุดออกมาทำให้บอทพัง
+client.on(Events.GuildCreate, async (guild) => {
+  await sendGuildJoinGreeting(guild);
 });
 
 // 10. เริ่ม Worker Thread pool สำหรับสร้าง animated GIF ต้อนรับ/อำลา
