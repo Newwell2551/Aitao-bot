@@ -119,47 +119,61 @@ function buildIntroEmbed(guild) {
   // displayAvatarURL({ size: 256 }) ได้ URL รูปโปรไฟล์บอท ขนาด 256x256 พิกเซล
   const botAvatarUrl = guild.client.user.displayAvatarURL({ size: 256 });
 
+  // ── "เส้นคั่น" ระหว่าง section ──────────────────────────────────────────
+  // Discord embed ไม่มี component เส้นคั่นให้ใช้ตรงๆ เลยต้องใช้ "ลูกเล่น" นี้แทน:
+  // สร้าง field ปลอมๆ ที่ name เป็น '​' (zero-width space — อักขระที่มีความกว้าง
+  // เป็น 0 มองไม่เห็นด้วยตา เขียนเป็น escape sequence ตรงๆ ในโค้ด กันปัญหา editor/เครื่องมือ
+  // อื่นแอบลบอักขระที่มองไม่เห็นทิ้งโดยไม่ตั้งใจ) ทำให้หัวข้อของ field นี้ดูเหมือนไม่มีอะไรอยู่เลย
+  // ส่วน value ใส่ตัวอักษร "▬" เรียงกันยาวๆ แทนเส้นขีดคั่นสายตา — inline: false
+  // บังคับให้ field นี้ขึ้นบรรทัดใหม่เต็มความกว้าง ไม่ไปเรียงติดกับ field อื่น
+  // เก็บไว้เป็นค่าคงที่ตัวเดียว เพราะใช้ซ้ำ 2 จุดด้านล่าง (กันพิมพ์ผิดเวลาต้องพิมพ์ซ้ำ)
+  const DIVIDER = { name: '\u200b', value: '▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬', inline: false };
+
   return (
     new EmbedBuilder()
       // สีเขียวโทนธรรมชาติ ให้เข้ากับธีม "สายตกแต่ง/ต้นไม้" ของชื่อบอท (Milo 🌿)
       .setColor(0x57f287)
-      .setTitle(`Hi, I'm ${BOT_DISPLAY_NAME}! 🌿`)
-      // คำอธิบายสั้นๆ ว่าบอทตัวนี้ทำอะไร — เน้นเรื่อง "แต่ง/คัสตอมไมซ์เซิร์ฟ Discord"
-      .setDescription(
-        "I'm a decoration & customization bot — I help you make your Discord server look polished and welcoming. " +
-          'From custom welcome/goodbye cards to self-assign role menus and rich message layouts, ' +
-          "I've got you covered."
-      )
+      // Header — ชื่อบอทพร้อมสัญลักษณ์ตกแต่งหน้า-หลัง ตามที่กำหนด
+      .setTitle("˙𓈒 👋 Hi, I'm Cavin Milo! 🌫️")
+      // description สั้นๆ ใต้ title เป็นประโยคแนะนำตัวประโยคเดียว (รายละเอียดเต็มๆ
+      // ย้ายไปอยู่ใน field "🎨 What I Do" ด้านล่างแทน เพื่อให้หัว embed ดูโล่ง อ่านง่าย)
+      .setDescription('A decoration & customization bot for your Discord server.')
       // thumbnail = รูปเล็กมุมขวาบนของ embed
       .setThumbnail(botAvatarUrl)
-      // ── ความสามารถหลัก — ชื่อคำสั่งกับคำอธิบายตรงนี้ต้อง "ตรงกับที่ deploy จริง" ──
-      // ดึงมาจาก .setName()/.setDescription() จริงในแต่ละไฟล์ commands/*.js
-      // (deploy-commands.js เป็นตัวอ่านไฟล์พวกนี้ไปลงทะเบียนกับ Discord จริงๆ)
-      // ห้ามพิมพ์ชื่อคำสั่งเดาเอง เพราะถ้าพิมพ์ผิดจะกลายเป็นแนะนำคำสั่งที่ไม่มีจริง
       .addFields(
+        // เส้นคั่นที่ 1 — กั้นระหว่าง description บนสุด กับ field "What I Do"
+        DIVIDER,
+        // ── field "🎨 What I Do" — คำอธิบายเต็มๆ ว่าบอทตัวนี้ทำอะไรได้บ้าง ──────
+        // ย้ายมาจาก setDescription() เดิม (คำพูดเดียวกัน ไม่ได้แก้เนื้อหา แค่ย้ายที่)
         {
-          name: '/builder',
-          value: 'Build custom message layouts', // ตรงกับ commands/builder.js
+          name: '🎨 What I Do',
+          value:
+            "I'm a decoration & customization bot — I help you make your Discord server look polished and welcoming. " +
+            'From custom welcome/goodbye cards to self-assign role menus and rich message layouts, ' +
+            "I've got you covered.",
           inline: false,
         },
+        // เส้นคั่นที่ 2 — กั้นระหว่าง "What I Do" กับ "Get Started"
+        DIVIDER,
+        // ── field "⚡ Get Started" — รายการ slash command หลักๆ ──────────────
+        // ⚠️ ชื่อคำสั่งกับคำอธิบายตรงนี้ต้อง "ตรงกับที่ deploy จริง" เป๊ะๆ — ดึงมาจาก
+        // .setName()/.setDescription() จริงในแต่ละไฟล์ commands/*.js (deploy-commands.js
+        // เป็นตัวอ่านไฟล์พวกนี้ไปลงทะเบียนกับ Discord จริงๆ) ห้ามพิมพ์ชื่อคำสั่งเดาเอง
+        // เพราะถ้าพิมพ์ผิดจะกลายเป็นแนะนำคำสั่งที่ไม่มีจริงให้ผู้ใช้ไปพิมพ์ตาม
+        //
+        // รวมเป็น field เดียว โดยเขียนแต่ละคำสั่งเป็นบรรทัดในสตริงเดียวกัน (คั่นด้วย \n
+        // = ขึ้นบรรทัดใหม่) แทนที่จะแยกเป็นหลาย field เหมือนโครงสร้างเดิม เพื่อให้เข้ากับ
+        // ดีไซน์ "1 field ต่อ 1 หัวข้อใหญ่" ตามที่ต้องการ — ใช้ backtick ครอบชื่อคำสั่ง
+        // (เช่น `/builder`) ให้ Discord render เป็นตัวอักษร monospace เด่นกว่าตัวหนังสือปกติ
         {
-          name: '/role-setup',
-          value: 'Set up automatic role assignment (menu / button / reaction)', // ตรงกับ commands/role-setup.js
-          inline: false,
-        },
-        {
-          name: '/welcome-setup',
-          value: 'Set up new member welcome cards', // ตรงกับ commands/welcome-setup.js
-          inline: false,
-        },
-        {
-          name: '/goodbye-setup',
-          value: 'Set up member farewell cards', // ตรงกับ commands/goodbye-setup.js
-          inline: false,
-        },
-        {
-          name: '/premium',
-          value: "Manage this server's premium subscription", // ตรงกับ commands/premium.js
+          name: '⚡ Get Started',
+          value: [
+            '`/builder` — Build custom message layouts', // ตรงกับ commands/builder.js
+            '`/role-setup` — Set up automatic role assignment (menu / button / reaction)', // ตรงกับ commands/role-setup.js
+            '`/welcome-setup` — Set up new member welcome cards', // ตรงกับ commands/welcome-setup.js
+            '`/goodbye-setup` — Set up member farewell cards', // ตรงกับ commands/goodbye-setup.js
+            "`/premium` — Manage this server's premium subscription", // ตรงกับ commands/premium.js
+          ].join('\n'),
           inline: false,
         }
       )
