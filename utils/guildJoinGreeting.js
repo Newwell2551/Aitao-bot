@@ -75,41 +75,49 @@ const GREETING_DUPLICATE_WINDOW_MS = 30_000;
  *
  * ⚠️ ฟังก์ชันนี้ต้อง "ไม่มีทาง throw error ออกไปนอกฟังก์ชัน" เด็ดขาด เพราะถ้า throw
  * หลุดออกไป event handler ใน index.js จะพังทั้งเส้น (ไม่มีใคร catch ต่อ) ทำให้
- * event guildCreate ครั้งถัดๆ ไปอาจไม่ทำงานเลย — เพราะงั้นทุกอย่างข้างในห่อด้วย
- * try/catch แล้วแค่ console.log/console.error เก็บไว้เฉยๆ ไม่ throw ต่อ
+ * event guildCreate ครั้งถัดๆ ไปอาจไม่ทำงานเลย — เพราะงั้นส่วนที่อาจ error ได้จริง
+ * (หาช่อง/แนบไฟล์/ส่งข้อความ) ห่อด้วย try/catch แล้วแค่ console.log/console.error
+ * เก็บไว้เฉยๆ ไม่ throw ต่อ (ส่วนตัวกันซ้ำด้านล่างเป็นแค่ Map.get/set ธรรมดา ไม่มีทาง
+ * throw จึงจงใจไม่เอาไว้ใน try — ให้มันรันแน่นอน 100% ก่อนเข้าสู่ส่วนที่อาจพังได้)
  * @param {import('discord.js').Guild} guild เซิร์ฟที่บอทเพิ่งเข้าไป (มาจาก event guildCreate)
  */
 async function sendGuildJoinGreeting(guild) {
+  // ══════════════════════════════════════════════════════════════════════
+  // ⚠️⚠️ ขั้นที่ 0 (ต้องเป็นบรรทัดแรกสุดของฟังก์ชัน — อยู่ "นอก" try/catch ด้วยซ้ำ) ⚠️⚠️
+  // เช็ค + บันทึกว่าเพิ่งทักทาย guild นี้ไปหรือยัง (กันซ้ำ)
+  //
+  // จุดนี้ทั้งหมด (อ่านค่าจาก Map, เทียบเวลา, เขียนค่ากลับลง Map) เป็นโค้ด synchronous
+  // ล้วนๆ ไม่มี await คั่นเลยสักบรรทัด — ต้องทำก่อน "อย่างอื่นทุกอย่าง" ในฟังก์ชันนี้
+  // (หาช่อง / เช็คสิทธิ์ / สร้าง container ข้อความ) เพราะ JavaScript รัน async function
+  // แบบ "run-to-completion จนกว่าจะเจอ await ตัวแรก" — พูดง่ายๆ คือถ้าโค้ดตั้งแต่ต้น
+  // ฟังก์ชันจนถึงบรรทัด recentlyGreetedGuilds.set(...) ไม่มี await เลยสักตัว การรันจะ
+  // "รวดเดียวจบ ห้ามแทรก" เหมือนเป็นคำสั่งเดียวกัน ต่อให้ guildCreate ยิงมาซ้อนกันเร็ว
+  // แค่ไหนในโปรเซสเดียวกัน ก็ไม่มีทางแทรกเข้ามาระหว่างกลางได้ — เพราะ Node.js เป็น
+  // single-threaded รันโค้ด synchronous ทีละบรรทัดจริงๆ ไม่มีการสลับงานระหว่างสองบรรทัด
+  // ที่ไม่มี await คั่นอยู่เด็ดขาด
+  const guildId = guild.id;
+  const lastGreetedAt = recentlyGreetedGuilds.get(guildId);
+  const isDuplicateFire = lastGreetedAt !== undefined && Date.now() - lastGreetedAt < GREETING_DUPLICATE_WINDOW_MS;
+
+  if (isDuplicateFire) {
+    console.log(
+      `[guildJoinGreeting] guild ${guildId} (${guild.name}) เพิ่งถูกทักทายไปเมื่อไม่กี่วินาทีก่อน (น่าจะเป็น guildCreate ที่ gateway ยิงซ้ำ) ข้ามการส่งรอบนี้`
+    );
+    return; // ← ออกจากฟังก์ชันทันที ยังไม่แตะ findGreetingChannel/AttachmentBuilder/channel.send เลยสักบรรทัด
+  }
+
+  // บันทึกทันที ก่อนไปทำอย่างอื่นต่อ — นี่คือบรรทัดที่ "กันซ้ำ" จริงๆ
+  recentlyGreetedGuilds.set(guildId, Date.now());
+
+  // ทำความสะอาด Map ทีหลัง: ลบ entry ของ guild นี้ทิ้งหลังพ้นช่วงกันซ้ำไปแล้ว กัน Map
+  // โตค้างอยู่ในหน่วยความจำเรื่อยๆ โดยไม่จำเป็น (ใช้ .unref() กัน timer นี้หน่วง process
+  // ไม่ให้ปิดตัวตามปกติ)
+  setTimeout(() => {
+    recentlyGreetedGuilds.delete(guildId);
+  }, GREETING_DUPLICATE_WINDOW_MS).unref();
+  // ══════════════════════════════════════════════════════════════════════
+
   try {
-    // ── ขั้นที่ 0: เช็คก่อนว่าเพิ่งทักทาย guild นี้ไปหรือยัง (กันซ้ำ) ──────────
-    // อ่านค่าล่าสุดที่เคยบันทึกไว้สำหรับ guild.id นี้ — ถ้าไม่เคยมีเลย lastGreetedAt
-    // จะเป็น undefined
-    const lastGreetedAt = recentlyGreetedGuilds.get(guild.id);
-
-    // ถ้าเคยส่งไปแล้ว "และ" ยังไม่พ้นช่วงเวลากันซ้ำ (นับจากตอนนั้นถึงตอนนี้ยังไม่ถึง
-    // 30 วินาที) → ถือว่าเป็นการยิงซ้ำจาก gateway ข้ามไปเลย ไม่ต้องทำอะไรต่อ
-    if (lastGreetedAt !== undefined && Date.now() - lastGreetedAt < GREETING_DUPLICATE_WINDOW_MS) {
-      console.log(
-        `[guildJoinGreeting] guild ${guild.id} (${guild.name}) เพิ่งถูกทักทายไปเมื่อไม่กี่วินาทีก่อน (น่าจะเป็น guildCreate ที่ gateway ยิงซ้ำ) ข้ามการส่งรอบนี้`
-      );
-      return;
-    }
-
-    // ⚠️ จุดสำคัญ: ต้อง "บันทึกเวลาไว้ทันที" ก่อนเริ่มขั้นตอนส่งข้อความจริง (ไม่ใช่รอ
-    // บันทึกหลัง channel.send() สำเร็จ) เพราะถ้า guildCreate ยิงซ้ำมาไล่ๆ กันแบบ
-    // เกือบพร้อมกัน (เช่นห่างกันแค่เสี้ยววินาที) การส่งข้อความรอบแรกอาจยัง await
-    // ไม่เสร็จตอนที่รอบสองเข้ามาเช็ค ถ้ารอบันทึกทีหลัง รอบสองจะเช็คไม่เจอ (lastGreetedAt
-    // ยังเป็น undefined อยู่) แล้วหลุดผ่านการกันซ้ำไปได้ — บันทึกไว้ก่อนเลยกันปัญหานี้
-    recentlyGreetedGuilds.set(guild.id, Date.now());
-
-    // ทำความสะอาด Map ทีหลัง: ตั้งเวลาลบ entry ของ guild นี้ทิ้งหลังพ้นช่วงกันซ้ำไปแล้ว
-    // (ไม่จำเป็นต้องเก็บไว้ตลอดไป — guild นี้จะทักทายซ้ำได้อีกครั้งถ้าเชิญบอทออกแล้ว
-    // เชิญกลับเข้ามาใหม่หลังจากผ่านไปนานๆ) กันไม่ให้ Map โตค้างอยู่ในหน่วยความจำเรื่อยๆ
-    // โดยไม่จำเป็น
-    setTimeout(() => {
-      recentlyGreetedGuilds.delete(guild.id);
-    }, GREETING_DUPLICATE_WINDOW_MS).unref();
-
     // ── ขั้นที่ 1: หาช่องที่จะส่งข้อความ ───────────────────────────────────
     // ไม่แตะฟังก์ชันนี้เลย — logic การเลือกช่อง (systemChannel → text channel แรกสุด)
     // เหมือนเดิมทุกประการ
