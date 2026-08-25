@@ -14,7 +14,7 @@
  *   "guildId2": { "tier": "free" }
  * }
  *
- * ตอนนี้ยังไม่มีระบบจ่ายเงินจริง ข้อมูลนี้จะถูกตั้งค่าผ่านคำสั่งลับ /dev-set-tier
+ * ตอนนี้ยังไม่มีระบบจ่ายเงินจริง ข้อมูลนี้จะถูกตั้งค่าผ่านคำสั่งลับ /dev
  * (เจ้าของบอทเท่านั้นที่ใช้ได้) ไปก่อน พอมีระบบจ่ายเงินจริงทีหลัง ก็แค่เปลี่ยนจุดที่
  * เรียก setGuildTier() จาก "คำสั่งลับ" เป็น "webhook ตอนจ่ายเงินสำเร็จ" แทน โดยไม่ต้อง
  * แก้โค้ดส่วนอื่นที่ใช้ isPremiumGuild() เลยสักบรรทัด
@@ -148,7 +148,7 @@ function setSubscriptionInfo(guildId, { stripeCustomerId, stripeSubscriptionId, 
 
 /**
  * ดึงข้อมูล Stripe subscription ของ guild นี้ (คืน null ถ้ายังไม่เคยสมัครเลย
- * เช่น guild ที่ยังไม่เคยกด "สมัครพรีเมียม" หรือ guild ที่ตั้ง premium ผ่าน /dev-set-tier
+ * เช่น guild ที่ยังไม่เคยกด "สมัครพรีเมียม" หรือ guild ที่ตั้ง premium ผ่าน /dev
  * มือเปล่าๆ โดยไม่เคยผ่าน Stripe จริง)
  * @param {string} guildId
  * @returns {{ stripeCustomerId: string, stripeSubscriptionId: string, currentPeriodEnd: string|null } | null}
@@ -156,7 +156,7 @@ function setSubscriptionInfo(guildId, { stripeCustomerId, stripeSubscriptionId, 
 function getSubscriptionInfo(guildId) {
   const all = readAll();
   const info = all[guildId];
-  // guard: ถ้ายังไม่เคยมี stripeCustomerId เลย (เช่นตั้ง premium มือผ่าน /dev-set-tier)
+  // guard: ถ้ายังไม่เคยมี stripeCustomerId เลย (เช่นตั้ง premium มือผ่าน /dev)
   // ให้คืน null ชัดเจน แทนที่จะคืน object ที่มีแต่ tier ไม่มี stripe fields
   // (กันโค้ดฝั่งเรียกใช้ เผลอเอา info.stripeCustomerId ที่เป็น undefined ไปยิง Stripe API ต่อ)
   if (!info?.stripeCustomerId) return null;

@@ -1,10 +1,15 @@
 /**
- * /dev-set-tier — คำสั่งลับสำหรับเจ้าของบอทเท่านั้น ใช้ตั้งค่า tier ของเซิร์ฟเวอร์ไหนก็ได้
+ * /dev — คำสั่งลับสำหรับเจ้าของบอทเท่านั้น ใช้ตั้งค่า tier ของเซิร์ฟเวอร์ไหนก็ได้
  * ก่อนที่จะมีระบบจ่ายเงินจริง (เช่น Stripe webhook) ใช้ตอน dev/ทดสอบระบบ premium gate เอง
  *
  * ⚠️ คำสั่งนี้ทรงพลังมาก — ปลดล็อก/ล็อกฟีเจอร์ premium ของเซิร์ฟเวอร์ไหนก็ได้ในโลก
  * (ใส่ guild_id เป็น string เอง ไม่ได้จำกัดแค่เซิร์ฟเวอร์ที่รันคำสั่งอยู่)
  * เพราะงั้นต้องล็อกให้เจ้าของบอทเท่านั้นที่ใช้ได้ ห้ามหลุดไปถึงแอดมินเซิร์ฟเวอร์ทั่วไปเด็ดขาด
+ *
+ * 📝 เดิมชื่อคำสั่งคือ "dev-set-tier" (ไฟล์ dev-set-tier.js) — เปลี่ยนชื่อเป็น "dev"
+ * (ไฟล์ dev.js) แล้ว เพราะชื่อเดิมเปิดเผยรายละเอียดการทำงานเยอะเกินไปตอนคนอื่นเห็นในลิสต์
+ * คำสั่งของบอท (autocomplete ตอนพิมพ์ "/") — logic ข้างในไม่ได้เปลี่ยนอะไรเลยสักบรรทัด
+ * แก้แค่ชื่อคำสั่ง/description/ข้อความที่โชว์ให้ดูเป็นกลางขึ้นเท่านั้น
  */
 
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
@@ -16,9 +21,12 @@ const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('dev-set-tier')
-    .setDescription("[DEV ONLY] Set a server's tier (for testing before real payments)")
-    .setDescriptionLocalizations({ th: '[DEV ONLY] ตั้งค่า tier ของเซิร์ฟไว้ทดสอบก่อนมีระบบจ่ายเงินจริงครับ' })
+    .setName('dev')
+    // description เดิม "[DEV ONLY] Set a server's tier (for testing before real
+    // payments)" บอกรายละเอียดเยอะเกินไปว่าคำสั่งนี้ทำอะไรได้บ้าง — เปลี่ยนเป็นข้อความ
+    // สั้นๆ กลางๆ แทน ไม่บอกว่าคำสั่งนี้ทำอะไรได้จริงๆ
+    .setDescription('For development use only.')
+    .setDescriptionLocalizations({ th: 'สำหรับนักพัฒนาเท่านั้นครับ' })
     .addStringOption((opt) =>
       opt.setName('guild_id')
         .setDescription('Guild ID of the server to set')
@@ -40,9 +48,12 @@ module.exports = {
     // ── เช็ค owner-only ก่อนทำอะไรทั้งนั้น (สำคัญที่สุดของคำสั่งนี้) ──────────────
     // เทียบ interaction.user.id (คนที่กำลังกดคำสั่งอยู่ตอนนี้) กับ OWNER_ID ใน .env
     // ถ้าไม่ตรงกัน หยุดทันที ไม่ทำอะไรต่อเลยแม้แต่นิดเดียว
+    // ⚠️ logic จุดนี้ "ไม่ได้เปลี่ยน" เลยแม้แต่บรรทัดเดียวตามที่สั่ง — แก้แค่ข้อความ
+    // ที่ตอบกลับ (content) ด้านล่างเท่านั้น ไม่บอกตรงๆ อีกแล้วว่าเป็นคำสั่งเฉพาะเจ้าของบอท
+    // (เดิมบอกตรงๆ ว่า "ใช้ได้เฉพาะเจ้าของบอทเท่านั้น" ซึ่งเผยว่ามีการเช็คสิทธิ์แบบนี้อยู่)
     if (interaction.user.id !== process.env.OWNER_ID) {
       return interaction.reply({
-        content: '❌ คำสั่งนี้ใช้ได้เฉพาะเจ้าของบอทเท่านั้นครับ',
+        content: '❌ คำสั่งนี้ไม่สามารถใช้งานได้ครับ',
         flags: MessageFlags.Ephemeral,
       });
     }

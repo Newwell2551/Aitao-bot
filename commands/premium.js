@@ -101,7 +101,7 @@ module.exports = {
     if (interaction.customId === 'premium_subscribe') {
       // 🔒 กันเคสปุ่มเก่าค้าง — เช่น user เปิดข้อความ /premium ทิ้งไว้ตอนเซิร์ฟยังฟรี
       // แล้วมีคนสมัครพรีเมียมสำเร็จไปแล้วระหว่างนั้น (ผ่านข้อความ /premium อันอื่น หรือ
-      // ผ่าน /dev-set-tier) พอกลับมากดปุ่มเก่าอีกที ต้องเช็คสถานะ "ล่าสุด" ก่อนเสมอ
+      // ผ่าน /dev) พอกลับมากดปุ่มเก่าอีกที ต้องเช็คสถานะ "ล่าสุด" ก่อนเสมอ
       // ไม่งั้นจะไปสร้าง checkout session ใหม่ซ้อนกัน เสี่ยงจ่ายเงินซ้ำ 2 รอบโดยไม่ตั้งใจ
       if (isPremiumGuild(guildId)) {
         await interaction.editReply({ content: t('premium.already_premium') });
@@ -139,7 +139,7 @@ module.exports = {
     if (interaction.customId === 'premium_manage') {
       const info = getSubscriptionInfo(guildId);
 
-      // ป้องกัน loophole: ถ้าไม่มีข้อมูล Stripe จริง (เช่นตั้ง premium มือผ่าน /dev-set-tier)
+      // ป้องกัน loophole: ถ้าไม่มีข้อมูล Stripe จริง (เช่นตั้ง premium มือผ่าน /dev)
       // ห้ามยิง stripe.billingPortal.sessions.create({ customer: undefined }) เด็ดขาด
       // เพราะ Stripe API จะ error ทันที ต้องดักไว้ก่อนแล้วบอก user ตรงๆ ว่าไม่มีอะไรให้จัดการ
       if (!info) {
