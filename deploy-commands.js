@@ -1,17 +1,12 @@
 const { REST, Routes } = require('discord.js');
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
+const { getCommandsJSON } = require('./utils/getCommandsJSON');
 
 // 1. รวบรวมข้อมูลคำสั่งทั้งหมดจากโฟลเดอร์ commands
-const commands = [];
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-for (const file of commandFiles) {
-  const command = require(path.join(commandsPath, file));
-  commands.push(command.data.toJSON()); // แปลงเป็น JSON ตามรูปแบบที่ Discord API ต้องการ
-}
+// (ย้ายไปอยู่ใน utils/getCommandsJSON.js แล้ว — ไฟล์นี้เรียกใช้ฟังก์ชันเดียวกับที่
+// utils/syncDiscordBotList.js ใช้ส่งรายการคำสั่งไปที่ discordbotlist.com เพื่อไม่ให้
+// ต้องเขียนโค้ด "อ่านไฟล์ commands/ แล้วแปลงเป็น JSON" ซ้ำสองที่)
+const commands = getCommandsJSON();
 
 // 2. สร้างตัวเชื่อมต่อ Discord API ด้วย token
 const rest = new REST().setToken(process.env.DISCORD_TOKEN);

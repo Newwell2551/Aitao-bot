@@ -5,6 +5,7 @@ const path = require('path');
 const { isRoleButton, handleRoleButton } = require('./utils/handleRoleButton');
 const { initImageWorkerPool }            = require('./utils/imageWorkerPool');
 const { sendGuildJoinGreeting }          = require('./utils/guildJoinGreeting');
+const { syncDiscordBotListCommands }     = require('./utils/syncDiscordBotList');
 const { createWebhookServer }            = require('./server');
 
 // 1. สร้างบอท พร้อมระบุ "intents" และ "partials" ที่ต้องการ
@@ -51,6 +52,16 @@ for (const file of commandFiles) {
 // 4. เมื่อบอทล็อกอินสำเร็จและพร้อมใช้งาน
 client.once('ready', () => {
   console.log(`บอทออนไลน์แล้ว! ล็อกอินในชื่อ ${client.user.tag}`);
+
+  // 4b. ส่งรายการ slash command ปัจจุบันไปอัปเดตที่ discordbotlist.com อัตโนมัติ
+  // ทุกครั้งที่บอทเริ่มทำงาน (ไม่ต้องมานั่งรันเองทีละรอบ) — logic ทั้งหมด (รวม try/catch
+  // กันพัง) อยู่ใน utils/syncDiscordBotList.js แล้ว ที่นี่มีหน้าที่แค่ "เรียกใช้" เฉยๆ
+  //
+  // ❗ จงใจ "ไม่ใส่ await" ตรงนี้ — เพราะไม่อยากให้ event 'ready' (ซึ่ง callback ตัวนี้
+  // ไม่ได้ประกาศเป็น async function ด้วย) ต้องรอผลลัพธ์จากการยิง HTTP ไปหา
+  // discordbotlist.com ก่อนจะทำงานส่วนอื่นต่อ ปล่อยให้มันรันคู่ขนานไปเบื้องหลังได้เลย
+  // (ฟังก์ชันข้างในดัก error ไว้หมดแล้ว รับประกันว่าไม่มีทาง throw หลุดออกมา)
+  syncDiscordBotListCommands();
 });
 
 // 5. เมื่อมีคนใช้ slash command / กดปุ่ม / submit modal
