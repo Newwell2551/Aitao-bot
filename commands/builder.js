@@ -255,6 +255,15 @@ function describeBlock(block, t = createTranslator('en')) {
     }
     case 'gallery': {
       const count = block.items.length;
+      // 🩹 บั๊กที่เจอจากการใช้งานจริง: เดิมเช็คแค่ count === 1 แล้วปล่อยให้ count อื่นๆ
+      // (รวมถึง 0) ตกไปอ่าน block.items[0].url ตรงๆ — พอ gallery ยังไม่มีรูปเลย
+      // (items: []) block.items[0] จะเป็น undefined แล้วอ่าน .url ต่อทันที ทำให้ crash
+      // ทันทีด้วย TypeError ต้องเช็ค count === 0 แยกออกมาก่อน แล้ว fallback ไปใช้
+      // t('builder.block_type.empty_content') ตัวเดียวกับที่ case 'text'/'section' ใช้
+      // (สื่อความหมายตรงกันว่า "บล็อกนี้ยังไม่มีเนื้อหา" ไม่ว่าจะเป็น text ว่างหรือ gallery ว่าง)
+      if (count === 0) {
+        return { typeLabel: t('builder.block_type.gallery'), preview: t('builder.block_type.empty_content') };
+      }
       if (count === 1) {
         const item = block.items[0];
         return { typeLabel: t('builder.block_type.gallery'), preview: item.description || item.url };
