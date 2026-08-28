@@ -111,8 +111,8 @@ const RS = {
   // done → post flow
   DONE: 'rs_done',
   DONE_CHAN_SEL: 'rs_done_chan',   // ChannelSelectMenu หลังกด DONE
-  POST_CONFIRM: 'rs_post_confirm', // ยืนยันโพสต์ (กรณีเคยโพสต์แล้ว)
-  POST_CANCEL:  'rs_post_cancel',  // ยกเลิก กลับ editor
+  // 📝 POST_CONFIRM / POST_CANCEL (ขั้นตอน "ยืนยันโพสต์ซ้ำ") ถูกลบออกแล้ว —
+  // ตอนนี้เลือกช่องจาก DONE_CHAN_SEL แล้วโพสต์ทันทีเสมอ ไม่มีขั้นยืนยันคั่นกลางอีกต่อไป
   // delete
   DEL_CONFIRM: 'rs_del_confirm',   // ยืนยันลบ setup
   DEL_CANCEL:  'rs_del_cancel',    // ยกเลิกการลบ
@@ -300,11 +300,11 @@ function buildEditorPanel(userId, guildId) {
         .setStyle(ButtonStyle.Secondary).setDisabled(!buttons.length),
       new ButtonBuilder().setCustomId(RS.MAX_ROLES).setLabel(t('role_setup.editor.button.max_roles')).setStyle(ButtonStyle.Secondary),
     ));
-    // button type Row 3: general controls (3 ปุ่ม)
+    // button type Row 3: general controls (2 ปุ่ม — เอาปุ่ม "ดูตัวอย่าง" (RS.PREVIEW) ออกแล้ว
+    // ตามคำขอ ไม่ต้องรวม row ใหม่ เหลือแค่ manage_blocks + done ใน row เดิม)
     components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(RS.MANAGE_BLOCKS).setLabel(t('role_setup.editor.button.manage_blocks'))
         .setStyle(ButtonStyle.Secondary).setDisabled(!blocks.length),
-      new ButtonBuilder().setCustomId(RS.PREVIEW).setLabel(t('role_setup.editor.button.preview')).setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(RS.DONE).setLabel(t('role_setup.editor.button.done')).setStyle(ButtonStyle.Success),
     ));
   } else if (type === 'reaction') {
@@ -330,9 +330,9 @@ function buildEditorPanel(userId, guildId) {
       new ButtonBuilder().setCustomId(RS.MANAGE_BLOCKS).setLabel(t('role_setup.editor.button.manage_blocks'))
         .setStyle(ButtonStyle.Secondary).setDisabled(!blocks.length),
     ));
-    // menu type Row 3: general controls (2 ปุ่ม)
+    // menu type Row 3: general controls (1 ปุ่ม — เอาปุ่ม "ดูตัวอย่าง" (RS.PREVIEW) ออกแล้ว
+    // ตามคำขอ เหลือแค่ done ปุ่มเดียวใน row นี้ ไม่ต้องรวม row ใหม่)
     components.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(RS.PREVIEW).setLabel(t('role_setup.editor.button.preview')).setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(RS.DONE).setLabel(t('role_setup.editor.button.done')).setStyle(ButtonStyle.Success),
     ));
   }
@@ -844,25 +844,6 @@ function buildDoneChannelPanel(setupName, wasPosted, guildId) {
   };
 }
 
-/**
- * Panel confirm โพสต์ (กรณีเคยโพสต์แล้ว)
- */
-function buildPostConfirmPanel(setupName, channel, lastPostedAt, guildId) {
-  const t = createTranslator(getGuildLanguage(guildId));
-  return {
-    components: [
-      new TextDisplayBuilder().setContent(
-        t('role_setup.post_confirm.header', { name: setupName, timestamp: toTs(lastPostedAt), channel })
-      ),
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(RS.POST_CONFIRM).setLabel(t('role_setup.post_confirm.confirm_button')).setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId(RS.POST_CANCEL).setLabel(t('role_setup.post_confirm.cancel_button')).setStyle(ButtonStyle.Secondary),
-      ),
-    ],
-    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
-  };
-}
-
 // ─── Core post logic — คืน { ok, error } หรือ { ok, posted } ──────────────
 // ไม่เรียก interaction methods โดยตรง เพื่อให้ caller จัดการ response ได้เอง
 // (ป้องกันปัญหา "double response" และรองรับ deferUpdate flow)
@@ -1115,19 +1096,6 @@ module.exports = {
         .setDescriptionLocalizations({ th: 'ชื่อ role setup' })
         .setRequired(true).setAutocomplete(true))
     )
-    .addSubcommand(sub => sub.setName('post')
-      .setDescription('Post to a channel (optional — ✅ Done also posts)')
-      .setDescriptionLocalizations({ th: 'โพสต์เข้าช่อง (ไม่จำเป็นก็ได้ — กด ✅ เสร็จแล้ว ก็โพสต์ให้เลยครับ)' })
-      .addStringOption(opt => opt.setName('name')
-        .setDescription('Role setup name')
-        .setDescriptionLocalizations({ th: 'ชื่อ role setup' })
-        .setRequired(true).setAutocomplete(true))
-      .addChannelOption(opt => opt.setName('channel')
-        .setDescription('Channel to post in')
-        .setDescriptionLocalizations({ th: 'ช่องที่จะโพสต์ครับ' })
-        .setRequired(true)
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    )
     .addSubcommand(sub => sub.setName('list')
       .setDescription('List all role setups')
       .setDescriptionLocalizations({ th: 'ดูรายการทั้งหมดครับ' }))
@@ -1192,16 +1160,6 @@ module.exports = {
       if (!setupExists(guildId, name)) return interaction.reply({ content: t('role_setup.command.not_found', { name }), flags: MessageFlags.Ephemeral });
       sessions.set(sessionKey(guildId, userId), { name, guildId, isEdit: true, pendingChannelId: null });
       return interaction.reply(buildEditorPanel(userId, interaction.guildId));
-    }
-
-    if (sub === 'post') {
-      const name    = interaction.options.getString('name').trim();
-      const channel = interaction.options.getChannel('channel');
-      if (!setupExists(guildId, name)) return interaction.reply({ content: t('role_setup.command.not_found', { name }), flags: MessageFlags.Ephemeral });
-      const result = await doPost(interaction.guild, userId, guildId, name, channel);
-      if (!result.ok) return interaction.reply({ content: result.error, flags: MessageFlags.Ephemeral });
-      const warnText = result.warning ? `\n${result.warning}` : '';
-      return interaction.reply({ content: t('role_setup.command.post_success', { name, channel, url: result.posted.url, warnText }), flags: MessageFlags.Ephemeral });
     }
 
     if (sub === 'list') {
@@ -1759,36 +1717,6 @@ module.exports = {
         await interaction.update(buildDoneChannelPanel(name, wasPosted, interaction.guildId)); break;
       }
 
-      // POST_CONFIRM: โพสต์ต่อ (หลังยืนยันที่เคยโพสต์แล้ว)
-      case RS.POST_CONFIRM: {
-        const channelId = session.pendingChannelId;
-        const channel   = interaction.guild.channels.cache.get(channelId);
-        if (!channel) { await interaction.reply({ content: t('role_setup.post.channel_gone'), flags: MessageFlags.Ephemeral }); break; }
-        // deferUpdate ก่อน เพราะ doPost อาจใช้เวลา > 3 วินาที
-        await interaction.deferUpdate();
-        const result = await doPost(interaction.guild, userId, guildId, name, channel);
-        if (!result.ok) {
-          // ── จุดที่ 3: นี่คือ flags:64 (Ephemeral) ที่อาจสร้างความสับสน ──────────
-          // editReply นี้คือการตอบกลับ "interaction" (อัปเดต panel ephemeral เดิม)
-          // เพื่อแจ้งว่าโพสต์ล้มเหลว — เป็นคนละ HTTP request กับ channel.send() ใน doPost()
-          // ที่ใช้ flags: IsComponentsV2 (32768) ล้วนๆ ไม่มี Ephemeral ปนเลย
-          // ถ้าเห็น flags:64 ใน log มันคือ editReply ตัวนี้ ไม่ใช่ payload ที่ส่งเข้าห้องจริง
-          await interaction.editReply({ content: result.error, flags: MessageFlags.Ephemeral });
-          break;
-        }
-        sessions.delete(sessionKey(guildId, userId));
-        const warnText2 = result.warning ? `\n${result.warning}` : '';
-        await interaction.editReply({
-          components: [new TextDisplayBuilder().setContent(t('role_setup.command.post_success', { name, channel, url: result.posted.url, warnText: warnText2 }))],
-          flags: MessageFlags.IsComponentsV2,
-        });
-        break;
-      }
-
-      // POST_CANCEL: ยกเลิก กลับ editor
-      case RS.POST_CANCEL: {
-        await interaction.update(buildEditorPanel(userId, interaction.guildId)); break;
-      }
     }
   },
 
@@ -2018,18 +1946,11 @@ module.exports = {
 
     const channelId = interaction.values[0];
     const channel   = interaction.guild.channels.cache.get(channelId);
-    session.pendingChannelId = channelId; // เก็บไว้ใช้ตอน POST_CONFIRM
+    session.pendingChannelId = channelId; // เก็บ channelId ไว้ในเซสชัน เผื่อจุดอื่นในอนาคตต้องใช้อ้างอิงช่องที่เลือกล่าสุด
 
-    const setup = loadSetup(session.guildId, session.name);
-
-    // ถ้าเคยโพสต์แล้ว → ขอ confirm ก่อน (เร็ว ไม่ต้อง fetch อะไร)
-    if (setup?.lastPostedAt) {
-      const chDisplay = channel ?? `<#${channelId}>`;
-      await interaction.editReply(buildPostConfirmPanel(session.name, chDisplay, setup.lastPostedAt, interaction.guildId));
-      return;
-    }
-
-    // ยังไม่เคยโพสต์ → โพสต์เลย
+    // 🩹 เอาขั้นตอน "ยืนยันโพสต์ซ้ำ" (เคยเช็ค setup?.lastPostedAt แล้วเด้ง
+    // buildPostConfirmPanel ให้กดยืนยัน/ยกเลิกก่อน) ออกตามคำขอแล้ว — ตอนนี้เลือกช่อง
+    // แล้วโพสต์เข้าช่องนั้นทันทีเสมอ ไม่ว่าจะเคยโพสต์มาก่อนหรือไม่ก็ตาม
     if (!channel) {
       await interaction.editReply({ content: t('role_setup.post.channel_gone'), flags: MessageFlags.Ephemeral });
       return;
