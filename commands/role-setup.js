@@ -1951,14 +1951,25 @@ module.exports = {
     // 🩹 เอาขั้นตอน "ยืนยันโพสต์ซ้ำ" (เคยเช็ค setup?.lastPostedAt แล้วเด้ง
     // buildPostConfirmPanel ให้กดยืนยัน/ยกเลิกก่อน) ออกตามคำขอแล้ว — ตอนนี้เลือกช่อง
     // แล้วโพสต์เข้าช่องนั้นทันทีเสมอ ไม่ว่าจะเคยโพสต์มาก่อนหรือไม่ก็ตาม
+    // ⚠️ ห้ามใช้ { content, flags: Ephemeral } ตรงนี้เด็ดขาด — ข้อความนี้ถูกส่งไปแล้วด้วย
+    // flags: IsComponentsV2 (มาจาก buildDoneChannelPanel ตอนกด Done) Discord ไม่ยอมให้
+    // "ถอด" flag IsComponentsV2 ออกจากข้อความทีหลัง ถ้า editReply ด้วย content ธรรมดา
+    // (ไม่มี flag นี้) จะโดน DiscordAPIError 50035 (MESSAGE_CANNOT_REMOVE_COMPONENTS_V2_FLAG)
+    // ทันที ต้องใช้ TextDisplayBuilder + flags: IsComponentsV2 แบบเดียวกับตอนโพสต์สำเร็จเสมอ
     if (!channel) {
-      await interaction.editReply({ content: t('role_setup.post.channel_gone'), flags: MessageFlags.Ephemeral });
+      await interaction.editReply({
+        components: [new TextDisplayBuilder().setContent(t('role_setup.post.channel_gone'))],
+        flags: MessageFlags.IsComponentsV2,
+      });
       return;
     }
 
     const result = await doPost(interaction.guild, userId, session.guildId, session.name, channel);
     if (!result.ok) {
-      await interaction.editReply({ content: result.error, flags: MessageFlags.Ephemeral });
+      await interaction.editReply({
+        components: [new TextDisplayBuilder().setContent(result.error)],
+        flags: MessageFlags.IsComponentsV2,
+      });
       return;
     }
 
