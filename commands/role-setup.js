@@ -945,10 +945,18 @@ function buildRoleButtonRows(guild, buttons, setupName) {
 
     console.log(`[role-setup buildRoleButtonRows] ปุ่ม "${b.label}" → roleId=${b.roleId} emoji=${JSON.stringify(b.emoji)}`);
 
+    // 🩹 บั๊กที่เจอ: เดิมเช็คแค่ pattern /^:[^\s:]+:$/ (จับได้แค่กรณี ":ชื่อ:" ดิบๆ ที่ resolve
+    // emoji ไม่สำเร็จตอนกรอก) แต่ไม่ครอบคลุมค่าขยะอื่นๆ ที่ไม่ตรงทั้ง custom emoji แบบเต็ม
+    // (<a?:name:id>) และไม่ใช่ unicode emoji จริง (เช่น "df") ค่าพวกนี้หลุด pattern เดิมผ่าน
+    // ไปเข้า setEmoji() ตรงๆ ซึ่ง discord.js ฝั่ง client ไม่ได้เช็คเข้มพอจะจับได้ทุกเคส
+    // สุดท้ายไปพังตอน Discord API (server-side) reject กลับมาเป็น DiscordAPIError 50035
+    // (COMPONENT_INVALID_EMOJI) พังทั้งข้อความที่โพสต์ ไม่ใช่แค่ปุ่มเดียว
+    // แก้โดยเปลี่ยนมาใช้ isValidEmojiFormat() ตัวเดียวกับที่ใช้ใน buildBtnManagePanel()/
+    // buildRxnManagePanel() ไปแล้วก่อนหน้านี้ — เช็คครอบคลุมทั้ง custom emoji แบบเต็มและ
+    // unicode emoji จริง ไม่ใช่แค่เคส ":ชื่อ:" ดิบๆ เคสเดียวเหมือนเดิม
     if (b.emoji) {
-      const looksUnresolved = /^:[^\s:]+:$/.test(b.emoji);
-      if (looksUnresolved) {
-        console.warn(`[role-setup buildRoleButtonRows] ⚠️ emoji "${b.emoji}" ยังเป็นรูปแบบดิบที่ไม่ resolve ข้ามไม่ใส่ emoji`);
+      if (!isValidEmojiFormat(b.emoji)) {
+        console.warn(`[role-setup buildRoleButtonRows] ⚠️ emoji "${b.emoji}" ไม่ตรงรูปแบบที่ถูกต้อง ข้ามไม่ใส่ emoji`);
       } else {
         try {
           btn.setEmoji(b.emoji);
