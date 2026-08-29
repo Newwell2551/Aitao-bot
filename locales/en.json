@@ -218,7 +218,6 @@
     "quota": {
       "reached": "This server already has the maximum number of builders allowed on the Free plan ({limit})."
     },
-    "premium_content_reason": "This builder uses premium features (like **multiple text/image blocks** or **special buttons**) not available on the Free plan",
     "simple": {
       "header": "**{title}**\n{note}",
       "empty_note": "Not set up yet — tap the buttons below to get started",
@@ -290,7 +289,8 @@
       "header": "**📋 Manage Blocks**\nChoose a block to manage",
       "placeholder": "Select a block",
       "option_label": "Block {index} • {type}",
-      "back_button": "← Back"
+      "back_button": "← Back",
+      "panel_error": "❌ Couldn't open this screen (some saved data might be invalid, e.g. an emoji that's been deleted from the server). Try tapping \"← Back\" and opening it again."
     },
     "block_action": {
       "header": "**Block {index} • {typeLabel}**\n{preview}\n\nWhat would you like to do with this block?",
@@ -601,36 +601,30 @@
   },
   "welcome_setup": {
     "status": {
-      "on": "On",
-      "off": "Off",
+      "on": "🟢 On",
+      "off": "⭕ Off",
       "channel_unset": "*not set*",
-      "bg_gif": "Set (GIF)",
-      "bg_set": "Set",
-      "bg_none": "None (using gradient)",
-      "avatar_on": "On",
-      "avatar_off": "Off",
-      "text_none": "No text yet",
-      "text_count": "{count} block(s)",
-      "field_status": "Status",
-      "field_channel": "Channel",
-      "field_background": "Background",
-      "field_overlay": "Overlay",
-      "field_avatar": "Avatar",
-      "field_text": "Text",
-      "field_greeting": "Greeting"
+      "bg_gif": "✅ Set (GIF ⭐)",
+      "bg_set": "✅ Set",
+      "bg_none": "❌ None (using gradient)",
+      "avatar_on": "🟢 On",
+      "avatar_off": "⭕ Off",
+      "text_none": "❌ No text yet",
+      "text_count": "✅ {count} block(s)",
+      "template": "**🎉 Welcome Setup** — {onOff}\n📢 Channel: {channel}\n🖼️ Background: {bgTag}  |  🎨 Overlay Opacity: {opacity}%\n👤 Avatar: {avText}\n💬 Text (in image): {blockTag}\n💌 Greeting message (Discord message): \"{preview}\""
     },
     "panel": {
       "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
       "button": {
-        "background": "Background",
-        "text": "Text",
-        "avatar": "Avatar",
-        "opacity": "Opacity",
-        "greeting": "Greeting Message",
-        "preview": "Preview",
-        "toggle_on": "On",
-        "toggle_off": "Off",
-        "done": "Done"
+        "background": "🖼️ Background",
+        "text": "💬 Text",
+        "avatar": "👤 Avatar",
+        "opacity": "🎨 Opacity",
+        "greeting": "📢 Greeting Message",
+        "preview": "👀 Preview",
+        "toggle_on": "🔛 On",
+        "toggle_off": "⬛ Off",
+        "done": "✅ Done"
       },
       "channel_placeholder_set": "Change welcome channel (currently set)",
       "channel_placeholder_unset": "Choose welcome channel…"
@@ -713,7 +707,7 @@
     "bg": {
       "invalid_url": "❌ Invalid URL. Must start with https:// or http://",
       "invalid_extension": "❌ The link must end with a supported image extension:\n• `.png` `.jpg` `.jpeg` `.webp` — regular images\n• `.gif` — animated (⭐ premium)",
-      "premium_required": "GIF backgrounds are a Premium feature only.",
+      "premium_required": "⭐ **GIF backgrounds are a Premium feature only.**\nUpgrade your server and try again.",
       "temp_link_warning": "⚠️ This is a temporary Discord link (media proxy) — it may expire in ~24 hours and the image will disappear.\nWe recommend using `/upload-image` first for a permanent link (this link has been saved for now, but it's worth switching before it breaks)."
     },
     "opacity": {
@@ -731,36 +725,30 @@
   },
   "goodbye_setup": {
     "status": {
-      "on": "On",
-      "off": "Off",
+      "on": "🟢 On",
+      "off": "⭕ Off",
       "channel_unset": "*not set*",
-      "bg_gif": "Set (GIF)",
-      "bg_set": "Set",
-      "bg_none": "None (using gradient)",
-      "avatar_on": "On",
-      "avatar_off": "Off",
-      "text_none": "No text yet",
-      "text_count": "{count} block(s)",
-      "field_status": "Status",
-      "field_channel": "Channel",
-      "field_background": "Background",
-      "field_overlay": "Overlay",
-      "field_avatar": "Avatar",
-      "field_text": "Text",
-      "field_farewell": "Farewell"
+      "bg_gif": "✅ Set (GIF ⭐)",
+      "bg_set": "✅ Set",
+      "bg_none": "❌ None (using gradient)",
+      "avatar_on": "🟢 On",
+      "avatar_off": "⭕ Off",
+      "text_none": "❌ No text yet",
+      "text_count": "✅ {count} block(s)",
+      "template": "**👋 Goodbye Setup** — {onOff}\n📢 Channel: {channel}\n🖼️ Background: {bgTag}  |  🎨 Overlay Opacity: {opacity}%\n👤 Avatar: {avText}\n💬 Text (in image): {blockTag}\n💌 Farewell message (Discord message): \"{preview}\""
     },
     "panel": {
       "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
       "button": {
-        "background": "Background",
-        "text": "Text",
-        "avatar": "Avatar",
-        "opacity": "Opacity",
-        "farewell": "Farewell Message",
-        "preview": "Preview",
-        "toggle_on": "On",
-        "toggle_off": "Off",
-        "done": "Done"
+        "background": "🖼️ Background",
+        "text": "💬 Text",
+        "avatar": "👤 Avatar",
+        "opacity": "🎨 Opacity",
+        "farewell": "📢 Farewell Message",
+        "preview": "👀 Preview",
+        "toggle_on": "🔛 On",
+        "toggle_off": "⬛ Off",
+        "done": "✅ Done"
       },
       "channel_placeholder_set": "Change goodbye channel (currently set)",
       "channel_placeholder_unset": "Choose goodbye channel…"
@@ -843,7 +831,7 @@
     "bg": {
       "invalid_url": "❌ Invalid URL. Must start with https:// or http://",
       "invalid_extension": "❌ The link must end with a supported image extension:\n• `.png` `.jpg` `.jpeg` `.webp` — regular images\n• `.gif` — animated (⭐ premium)",
-      "premium_required": "GIF backgrounds are a Premium feature only.",
+      "premium_required": "⭐ **GIF backgrounds are a Premium feature only.**\nUpgrade your server and try again.",
       "temp_link_warning": "⚠️ This is a temporary Discord link (media proxy) — it may expire in ~24 hours and the image will disappear.\nWe recommend using `/upload-image` first for a permanent link (this link has been saved for now, but it's worth switching before it breaks)."
     },
     "opacity": {
@@ -858,26 +846,19 @@
   },
   "premium": {
     "command_description": "Manage this server's premium subscription",
-    "title": "# 🍵 Premium",
+    "title": "🍵 Premium",
     "status": {
-      "active": "⭐ Premium (renews {date})",
-      "free": "🔓 Free"
+      "active": "✅ Premium (renews {date})",
+      "free": "❌ Free"
     },
     "button": {
-      "subscribe": "Subscribe to Premium ($2.99) ☕",
-      "manage": "Manage Subscription"
-    },
-    "benefits": {
-      "free_header": "**🎁 What you'll unlock:**",
-      "free_body": "• Animated GIF backgrounds\n• Unlimited Builders + full Layout Builder\n• Unlimited Role Setups + menu/button types unlocked\n• Mention users/roles/channels in messages",
-      "premium_header": "**✅ Your current perks:**",
-      "premium_body": "• Animated GIF backgrounds\n• Unlimited Builders + full Layout Builder\n• Unlimited Role Setups + menu/button types\n• Mention users/roles/channels in messages"
+      "subscribe": "🍵 Subscribe to Premium ($2.99) ☕",
+      "manage": "⚙️ Manage Subscription"
     },
     "open_checkout_button": "💳 Open Checkout",
     "subscribe_link": "💎 Tap this link to subscribe:\n{url}",
     "manage_link": "⚙️ Manage your subscription here:\n{url}",
     "manage_no_customer": "⚠️ No Stripe subscription found on file for this server yet. If your admin was set to premium manually, there's nothing to manage here.",
-    "already_premium": "✅ This server is already Premium — no need to subscribe again.",
     "dm": {
       "activated": "🎉 Your Aitao Bot Premium subscription is now active for **{guildName}**! Thank you for supporting us 💚"
     }

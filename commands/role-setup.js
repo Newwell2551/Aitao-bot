@@ -604,6 +604,63 @@ function buildButtonRolePanel(guild, currentRoleId = null, currentRoleName = nul
  * @param {import('discord.js').Guild} guild
  */
 /**
+ * เช็คว่า string ที่อ้างว่าเป็น emoji หน้าตาถูกรูปแบบจริงไหม ก่อนจะเอาไปเรียก setEmoji()
+ * รองรับ 2 แบบ: custom emoji แบบเต็ม <a?:name:id> (animated หรือไม่ก็ได้) หรือ unicode
+ * emoji เดี่ยวๆ 1 ตัว (รวม variation selector ท้าย ๆ อย่าง ️ ได้)
+ *
+ * 🩹 เหตุผลที่ต้องเช็คแบบนี้ก่อน แทนที่จะพึ่ง try/catch รอบ opt.setEmoji() อย่างเดียว:
+ * try/catch จับได้แค่ error ที่ discord.js เช็คฝั่ง client เอง (เช่น format ผิดชัดๆ)
+ * แต่ข้อมูล emoji เก่าที่ "format ถูกต้อง" แต่ค่าจริงใช้ไม่ได้แล้ว (เช่น custom emoji
+ * ที่ถูกลบออกจากเซิร์ฟไปแล้ว แต่ id เก่ายังค้างอยู่ในปุ่ม) discord.js ฝั่ง client
+ * มองว่า "ผ่าน" เพราะ format สมบูรณ์แบบทุกอย่าง แล้วปล่อยให้หลุดไปตอน request จริง
+ * ถึงจะไปโดน Discord API (server-side) reject กลับมาเป็น DiscordAPIError 50035
+ * (COMPONENT_INVALID_EMOJI) พังทั้ง payload — จุดนี้ตัว regex เช็คได้แค่ "format" เท่านั้น
+ * เช็ค "emoji ยังมีอยู่จริงไหม" ไม่ได้ (ต้องไปเทียบกับ guild.emojis.cache ซึ่งมีเคส
+ * application emoji ที่ไม่โผล่ในนั้นด้วย ซับซ้อนเกินความจำเป็นสำหรับแค่ list ตัวอย่าง)
+ * เพราะงั้นชั้นป้องกันที่แท้จริงสำหรับเคส "id ถูกลบไปแล้ว" คือ try/catch รอบ
+ * interaction.update() ทั้งก้อนที่เพิ่มไว้ในจุดเรียกใช้ (case RS.MANAGE_BTNS ฯลฯ) แทน
+ * @param {string} emoji
+ * @returns {boolean}
+ */
+function isValidEmojiFormat(emoji) {
+  const emojiPattern = /^(<a?:[^\s:]+:\d+>|\p{Extended_Pictographic}(\uFE0F)?)$/u;
+  return typeof emoji === 'string' && emojiPattern.test(emoji);
+}
+
+/**
+ * เรียก interaction.update() แบบปลอดภัย — ห่อทั้งการ "สร้าง payload" (buildPayloadFn)
+ * และ "ส่งจริง" (interaction.update) ไว้ใน try/catch เดียวกัน
+ *
+ * เหตุผล: isValidEmojiFormat() ข้างบนกรอง emoji ที่ format ผิดชัดๆ ได้ก็จริง แต่กรอง
+ * เคส "format ถูกต้องแต่ emoji จริงใช้ไม่ได้แล้ว" (เช่น custom emoji ที่ถูกลบออกจาก
+ * เซิร์ฟไปแล้ว) ไม่ได้ — เคสนั้นจะไปโผล่เป็น DiscordAPIError ตอน interaction.update()
+ * ยิงจริงเท่านั้น (server-side validation) ชั้นนี้เลยเป็นเซฟตี้เน็ตจริงที่ครอบคลุมทั้ง
+ * เคสนี้และ error ไม่คาดคิดอื่นๆ ที่อาจเกิดตอนสร้าง/ส่ง panel กันไม่ให้บอทค้าง/
+ * ไม่ตอบสนอง interaction เลยทั้งที่มีแค่บางปุ่ม/reaction เดียวที่มีข้อมูลเสีย
+ *
+ * @param {import('discord.js').Interaction} interaction
+ * @param {() => object} buildPayloadFn - ฟังก์ชันที่ return payload พร้อมส่ง (เช่น () => buildBtnManagePanel(...))
+ * @param {string} guildId
+ */
+async function safeUpdatePanel(interaction, buildPayloadFn, guildId) {
+  const t = createTranslator(getGuildLanguage(guildId));
+  try {
+    const payload = buildPayloadFn();
+    await interaction.update(payload);
+  } catch (error) {
+    console.error('[role-setup safeUpdatePanel] เปิด/อัปเดตแผงควบคุมไม่สำเร็จ:', error);
+    try {
+      await interaction.update({
+        components: [new TextDisplayBuilder().setContent(t('role_setup.manage.panel_error'))],
+        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+      });
+    } catch (fallbackError) {
+      console.error('[role-setup safeUpdatePanel] fallback update ก็ล้มเหลวอีก:', fallbackError);
+    }
+  }
+}
+
+/**
  * หน้าจอ "เลือกปุ่มที่จะจัดการ" (single select) — กดจากปุ่ม "⚙️ จัดการปุ่ม" ในแผงควบคุม
  * แสดง emoji+label ของแต่ละปุ่ม พร้อมชื่อยศที่ผูกอยู่
  */
@@ -628,9 +685,11 @@ function buildBtnManagePanel(userId, guild, guildId) {
       .setLabel(b.label.slice(0, 100))
       .setDescription(t('role_setup.btn_manage.option_description', { roleName }).slice(0, 100))
       .setValue(String(i));
-    // emoji เป็น optional — ถ้าผิดรูปแบบ (เช่นข้อมูลเก่าที่ resolve ไม่สำเร็จ) ข้ามไปเฉยๆ ไม่ critical สำหรับ list
-    if (b.emoji) {
-      try { opt.setEmoji(b.emoji); } catch { /* ข้าม emoji ที่ใส่ไม่ได้ */ }
+    // emoji เป็น optional — เช็ค format ให้เข้มก่อน (isValidEmojiFormat) แทนที่จะพึ่ง
+    // try/catch อย่างเดียว เพราะข้อมูลเก่าที่ format ถูกต้องแต่ emoji จริงไม่มีอยู่แล้ว
+    // (เช่น custom emoji ที่โดนลบจากเซิร์ฟไปแล้ว) หลุด try/catch นี้ผ่านได้สบายๆ
+    if (b.emoji && isValidEmojiFormat(b.emoji)) {
+      try { opt.setEmoji(b.emoji); } catch { /* กันไว้อีกชั้น เผื่อกรณีขอบๆ ที่ regex ยังไม่ครอบคลุม */ }
     }
     return opt;
   });
@@ -758,8 +817,14 @@ function buildRxnManagePanel(userId, guild, guildId) {
       .setLabel(t('role_setup.rxn_manage.option_label', { roleName }).slice(0, 100))
       .setDescription(t('role_setup.rxn_manage.option_description', { emoji: r.emoji }).slice(0, 100))
       .setValue(String(i));
-    const cm = r.emoji.match(/^<a?:([^\s:]+):(\d+)>$/);
-    try { if (cm) opt.setEmoji({ name: cm[1], id: cm[2] }); else opt.setEmoji(r.emoji); } catch {}
+    // 🩹 เช็ค format ด้วย isValidEmojiFormat() ก่อนเรียก setEmoji() เหมือนกับ
+    // buildBtnManagePanel() ด้านบน — เหตุผลเดียวกันเป๊ะ (ดูคอมเมนต์ที่นิยาม
+    // isValidEmojiFormat) กันข้อมูล reaction เก่าที่ emoji ถูกลบไปแล้วแต่ format
+    // ยังดูถูกต้องอยู่ หลุดรอดจนพัง payload ตอน interaction.update() ส่งจริง
+    if (isValidEmojiFormat(r.emoji)) {
+      const cm = r.emoji.match(/^<a?:([^\s:]+):(\d+)>$/);
+      try { if (cm) opt.setEmoji({ name: cm[1], id: cm[2] }); else opt.setEmoji(r.emoji); } catch { /* กันไว้อีกชั้น เผื่อกรณีขอบๆ ที่ regex ยังไม่ครอบคลุม */ }
+    }
     return opt;
   });
   return {
@@ -1529,9 +1594,12 @@ module.exports = {
       case RS.BTN_COLOR_BACK: { pendingButtonAdd.delete(sessionKey(guildId, userId)); await interaction.update(buildEditorPanel(userId, interaction.guildId)); break; }
       case RS.BTN_ROLE_BACK:  { pendingButtonAdd.delete(sessionKey(guildId, userId)); await interaction.update(buildEditorPanel(userId, interaction.guildId)); break; }
 
-      case RS.MANAGE_BTNS:     { await interaction.update(buildBtnManagePanel(userId, interaction.guild, interaction.guildId)); break; }
+      // 🩹 ทั้ง MANAGE_BTNS และ BTN_ACTION_BACK เรียก buildBtnManagePanel() ตัวเดียวกัน
+      // (BTN_ACTION_BACK คือปุ่ม "← กลับ" จากหน้า action panel กลับมาที่หน้า list นี้)
+      // เลยเสี่ยงเจอ error เดียวกันได้ทั้งคู่ ห่อด้วย safeUpdatePanel() ทั้งสองจุด
+      case RS.MANAGE_BTNS:     { await safeUpdatePanel(interaction, () => buildBtnManagePanel(userId, interaction.guild, interaction.guildId), interaction.guildId); break; }
       case RS.BTN_MANAGE_BACK: { await interaction.update(buildEditorPanel(userId, interaction.guildId)); break; }
-      case RS.BTN_ACTION_BACK: { await interaction.update(buildBtnManagePanel(userId, interaction.guild, interaction.guildId)); break; }
+      case RS.BTN_ACTION_BACK: { await safeUpdatePanel(interaction, () => buildBtnManagePanel(userId, interaction.guild, interaction.guildId), interaction.guildId); break; }
 
       // ── reaction type: ปุ่ม "➕ เพิ่ม Reaction" → เปิด modal ใส่ emoji ────────
       case RS.ADD_REACTION: {
@@ -1544,9 +1612,12 @@ module.exports = {
         ));
         await interaction.showModal(modal); break;
       }
-      case RS.MANAGE_REACTIONS: { await interaction.update(buildRxnManagePanel(userId, interaction.guild, interaction.guildId)); break; }
+      // 🩹 เหตุผลเดียวกับ MANAGE_BTNS/BTN_ACTION_BACK ด้านบน — buildRxnManagePanel()
+      // มีความเสี่ยงเดียวกัน (emoji เก่าที่ format ถูกแต่ id ถูกลบไปแล้ว) เลยห่อด้วย
+      // safeUpdatePanel() ทั้งสองจุดที่เรียกฟังก์ชันนี้เช่นกัน
+      case RS.MANAGE_REACTIONS: { await safeUpdatePanel(interaction, () => buildRxnManagePanel(userId, interaction.guild, interaction.guildId), interaction.guildId); break; }
       case RS.RXN_MANAGE_BACK:  { await interaction.update(buildEditorPanel(userId, interaction.guildId)); break; }
-      case RS.RXN_ACTION_BACK:  { await interaction.update(buildRxnManagePanel(userId, interaction.guild, interaction.guildId)); break; }
+      case RS.RXN_ACTION_BACK:  { await safeUpdatePanel(interaction, () => buildRxnManagePanel(userId, interaction.guild, interaction.guildId), interaction.guildId); break; }
       case RS.RXN_ROLE_BACK:    { pendingReactionAdd.delete(sessionKey(guildId, userId)); await interaction.update(buildEditorPanel(userId, interaction.guildId)); break; }
 
       // ── จัดการปุ่ม: กด "แก้ไข" บน action panel → เปิด modal pre-filled ──────
