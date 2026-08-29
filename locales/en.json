@@ -374,7 +374,7 @@
       "already_added": "⚠️ Role **{name}** is already in this setup.",
       "max_reached": "❌ Already have 25 roles.",
       "modal_title": "Add Role: {name}",
-      "desc_label": "Description (optional, shown under the role name)",
+      "desc_label": "Description (shown under the role name)",
       "desc_placeholder": "e.g. Red",
       "pending_expired": "❌ This request has expired.",
       "added_success": "✅ Added role **{name}**{descText}",

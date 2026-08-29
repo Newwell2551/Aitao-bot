@@ -2092,10 +2092,28 @@ module.exports = {
     const guildRole = interaction.guild.roles.cache.get(roleId);
     if (guildRole) { const warn = checkRoleManageable(interaction.guild, guildRole, t); if (warn) return interaction.reply({ content: `⚠️ ${warn}${t('role_setup.role_check.pick_another_hint')}`, flags: MessageFlags.Ephemeral }); }
     pendingRoles.set(sessionKey(guildId, userId), { guildId: session.guildId, name: session.name, roleId, roleName });
+
+    // 🩹🐛 DEBUG ชั่วคราว — เอาไว้ดูค่าจริงที่ t() คืนมา (ความยาวเท่าไหร่) เผื่อพังอีก
+    // จะได้รู้สาเหตุจริงทันทีจาก console log โดยไม่ต้องเดา ลบทิ้งได้หลังจากมั่นใจแล้วว่า
+    // ปัญหาแก้เรียบร้อยแล้วจริงๆ (ดูคอมเมนต์ตรง .setLabel() ด้านล่างประกอบ)
+    const descLabel = t('role_setup.add_role.desc_label');
+    console.log(`[role-setup handleRoleMenuSelect] descLabel="${descLabel}" length=${descLabel?.length}`);
+
     const modal = new ModalBuilder().setCustomId(RS.MODAL_ROLE_DESC).setTitle(t('role_setup.add_role.modal_title', { name: roleName.slice(0, 35) }));
     modal.addComponents(new ActionRowBuilder().addComponents(
-      new TextInputBuilder().setCustomId(RS.INPUT_ROLE_DESC).setLabel(t('role_setup.add_role.desc_label'))
-        .setStyle(TextInputStyle.Short).setPlaceholder(t('role_setup.add_role.desc_placeholder')).setRequired(false).setMaxLength(100)
+      // 🩹 บั๊กที่เจอ: Discord จำกัด label ของ TextInput ไว้ที่ 1–45 ตัวอักษรเป๊ะๆ แต่โค้ด
+      // เดิมส่งค่าจาก t() เข้า .setLabel() ตรงๆ โดยไม่ตัดความยาวเลย ถ้าค่า locale จริง
+      // บน production ยาวเกิน 45 ตัว (หรือกรณีสุดขั้ว ว่างเปล่า) discord.js validator
+      // จะ throw "Invalid string length" ซึ่งไม่ได้บอกตรงๆ ว่าปัญหาคือความยาวเกินลิมิต
+      // แก้โดย clamp ด้วย .slice(0, 45) เสมอ ไม่ว่าค่าจริงจะยาวแค่ไหนก็ไม่มีทางพัง
+      // (descLabel || 'Description') กันเคส t() คืนค่า falsy (เช่น key หาไม่เจอเลย
+      // แม้แต่ fallback ภาษาอังกฤษ) ไม่ให้ label กลายเป็นสตริงว่างซึ่ง Discord ก็ไม่ยอมรับเหมือนกัน
+      // ทำแบบเดียวกันกับ placeholder ด้วย (จำกัดที่ 100 ตัวตามลิมิตของ Discord)
+      new TextInputBuilder().setCustomId(RS.INPUT_ROLE_DESC)
+        .setLabel((descLabel || 'Description').slice(0, 45))
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder((t('role_setup.add_role.desc_placeholder') || '').slice(0, 100))
+        .setRequired(false).setMaxLength(100)
     ));
     await interaction.showModal(modal);
   },
