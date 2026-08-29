@@ -948,9 +948,15 @@ async function doPost(guild, userId, guildId, name, channel) {
     }
 
     // ── ตรวจ customId ซ้ำกัน — สาเหตุที่เป็นไปได้สูงสุดของ error 50035 เมื่อมีหลายปุ่ม ──
-    // ถ้าผู้ใช้ผูกปุ่ม 2 อันเข้ากับยศเดียวกัน customId "rolebtn:{roleId}" จะซ้ำกัน
+    // ถ้าผู้ใช้ผูกปุ่ม 2 อันเข้ากับยศเดียวกัน customId จะซ้ำกัน
     // Discord ปฏิเสธ message ที่มี custom_id ซ้ำกันในข้อความเดียว ด้วย code 50035 เช่นกัน
-    const allCustomIds = buttons.map(b => `rolebtn:${b.roleId}`);
+    //
+    // 🩹 บั๊กที่เจอ: เดิมสร้าง allCustomIds ด้วย prefix "rolebtn:{roleId}" (ของ builder.js/
+    // handleRoleButton.js) แต่ปุ่มจริงที่ buildRoleButtonRows() ใช้ (บรรทัด ~877 ด้านบน)
+    // คือ "rsbtn:{setupName}:{roleId}" คนละ prefix กันเลย ตัวเช็คนี้เลยไม่มีทางเจอ
+    // duplicate จริงได้เลยสักครั้ง (สร้าง id ที่ไม่มีวันซ้ำกับปุ่มที่ส่งออกไปจริง) แก้โดย
+    // เปลี่ยนให้ allCustomIds ใช้ prefix เดียวกับ buildRoleButtonRows() เป๊ะๆ
+    const allCustomIds = buttons.map(b => `rsbtn:${name}:${b.roleId}`);
     const seen = new Set();
     const duplicates = [];
     for (const id of allCustomIds) {
@@ -959,7 +965,7 @@ async function doPost(guild, userId, guildId, name, channel) {
     }
     if (duplicates.length > 0) {
       console.error(`[role-setup doPost button] พบ customId ซ้ำ: ${JSON.stringify(duplicates)}`);
-      const dupRoleIds = [...new Set(duplicates.map(id => id.replace('rolebtn:', '')))];
+      const dupRoleIds = [...new Set(duplicates.map(id => id.split(':').pop()))];
       const dupNames = dupRoleIds.map(id => guild.roles.cache.get(id)?.name ?? id).join(', ');
       return { ok: false, error: t('role_setup.post.duplicate_buttons', { names: dupNames }) };
     }
@@ -1947,6 +1953,13 @@ module.exports = {
     const channelId = interaction.values[0];
     const channel   = interaction.guild.channels.cache.get(channelId);
     session.pendingChannelId = channelId; // เก็บ channelId ไว้ในเซสชัน เผื่อจุดอื่นในอนาคตต้องใช้อ้างอิงช่องที่เลือกล่าสุด
+
+    // 🩹 log ไว้ทุกครั้งที่มีคนเลือกช่องจาก ChannelSelectMenu — ช่วยเวลามีช่องชื่อซ้ำกัน
+    // 2 ช่องขึ้นไปในเซิร์ฟ (เช่นชื่อ "role" ซ้ำกัน) จะได้ไล่ log ย้อนหลังได้ว่าครั้งนั้นๆ
+    // ผู้ใช้เลือก channel ID ไหนจริงๆ และช่องนั้นอยู่ใต้ category ชื่ออะไร (ChannelSelectMenu
+    // ของ Discord เองไม่มีช่องให้บอทแปะ ID ต่อท้ายชื่อในตัวเลือกได้ — เป็น component ที่ Discord
+    // client render เอง ควบคุมแค่ channel_types/placeholder ได้เท่านั้น เลย log ไว้แทน)
+    console.log(`[role-setup handleChannelSelect] setup="${session.name}" เลือกช่อง id=${channelId} name="${channel?.name ?? '(หาไม่เจอใน cache)'}" category="${channel?.parent?.name ?? '(ไม่มี)'}"`);
 
     // 🩹 เอาขั้นตอน "ยืนยันโพสต์ซ้ำ" (เคยเช็ค setup?.lastPostedAt แล้วเด้ง
     // buildPostConfirmPanel ให้กดยืนยัน/ยกเลิกก่อน) ออกตามคำขอแล้ว — ตอนนี้เลือกช่อง
