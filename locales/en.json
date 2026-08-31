@@ -218,6 +218,7 @@
     "quota": {
       "reached": "This server already has the maximum number of builders allowed on the Free plan ({limit})."
     },
+    "premium_content_reason": "This builder uses premium features (such as **multiple text/image blocks** or **special buttons**) that aren't available on the Free plan",
     "simple": {
       "header": "**{title}**\n{note}",
       "empty_note": "Not set up yet — tap the buttons below to get started",
@@ -611,7 +612,13 @@
       "avatar_off": "⭕ Off",
       "text_none": "❌ No text yet",
       "text_count": "✅ {count} block(s)",
-      "template": "**🎉 Welcome Setup** — {onOff}\n📢 Channel: {channel}\n🖼️ Background: {bgTag}  |  🎨 Overlay Opacity: {opacity}%\n👤 Avatar: {avText}\n💬 Text (in image): {blockTag}\n💌 Greeting message (Discord message): \"{preview}\""
+      "field_status": "Status",
+      "field_channel": "Channel",
+      "field_background": "Background",
+      "field_overlay": "Overlay",
+      "field_avatar": "Avatar",
+      "field_text": "Text (in image)",
+      "field_greeting": "Greeting Message"
     },
     "panel": {
       "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
@@ -735,7 +742,13 @@
       "avatar_off": "⭕ Off",
       "text_none": "❌ No text yet",
       "text_count": "✅ {count} block(s)",
-      "template": "**👋 Goodbye Setup** — {onOff}\n📢 Channel: {channel}\n🖼️ Background: {bgTag}  |  🎨 Overlay Opacity: {opacity}%\n👤 Avatar: {avText}\n💬 Text (in image): {blockTag}\n💌 Farewell message (Discord message): \"{preview}\""
+      "field_status": "Status",
+      "field_channel": "Channel",
+      "field_background": "Background",
+      "field_overlay": "Overlay",
+      "field_avatar": "Avatar",
+      "field_text": "Text (in image)",
+      "field_farewell": "Farewell Message"
     },
     "panel": {
       "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
@@ -855,10 +868,17 @@
       "subscribe": "🍵 Subscribe to Premium ($2.99) ☕",
       "manage": "⚙️ Manage Subscription"
     },
+    "benefits": {
+      "free_header": "**🎁 What you get after upgrading:**",
+      "free_body": "• Animated GIF backgrounds\n• Unlimited Builders + full Layout Builder access\n• Unlimited Role Setups + unlock Menu/Button types\n• Tag users/roles/channels in messages",
+      "premium_header": "**✅ Perks you have right now:**",
+      "premium_body": "• Animated GIF backgrounds\n• Unlimited Builders + full Layout Builder access\n• Unlimited Role Setups + Menu/Button types\n• Tag users/roles/channels in messages"
+    },
     "open_checkout_button": "💳 Open Checkout",
     "subscribe_link": "💎 Tap this link to subscribe:\n{url}",
     "manage_link": "⚙️ Manage your subscription here:\n{url}",
     "manage_no_customer": "⚠️ No Stripe subscription found on file for this server yet. If your admin was set to premium manually, there's nothing to manage here.",
+    "already_premium": "✅ This server is already Premium — no need to subscribe again",
     "dm": {
       "activated": "🎉 Your Aitao Bot Premium subscription is now active for **{guildName}**! Thank you for supporting us 💚"
     }
