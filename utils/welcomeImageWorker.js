@@ -44,6 +44,12 @@ const {
 const GIF_MAX_WIDTH  = 480; // scale ลงถ้ากว้างเกินนี้ (ความสูงลดตามสัดส่วน)
 const GIF_FRAME_STEP = 3;   // เอาทุกๆ N เฟรม (step=3 เร็วกว่า step=2 ราว 35% จากการทดสอบจริง)
 
+// เวลาที่ยอมรอสูงสุดตอนดาวน์โหลดรูป/GIF พื้นหลัง ก่อนยกเลิก (กันบอทค้าง/คิว worker
+// ตันทั้งระบบ ถ้า URL พื้นหลังที่ user ใส่มาค้างไม่ตอบ) — ตั้งไว้นานกว่า checkImageUrl.js
+// (ที่ใช้แค่ 3 วิ) เพราะตรงนี้โหลดไฟล์ GIF เต็มๆ ทั้งไฟล์ (อาจหนักหลาย MB) ไม่ใช่แค่
+// ยิง HEAD request เช็ค header เฉยๆ เหมือนที่นั่น
+const BACKGROUND_FETCH_TIMEOUT_MS = 15000;
+
 /**
  * สร้าง animated GIF ต้อนรับด้วย hybrid approach 3 ขั้น (เหมือนเดิมทุกประการ
  * เพียงแค่ย้ายมาไว้ใน worker thread + โหลด avatar จาก URL เองแทนรับมาสำเร็จรูป)
@@ -69,7 +75,22 @@ async function generateWelcomeGif(config) {
   }
 
   // ── ดาวน์โหลด GIF ต้นฉบับ
-  const res = await fetch(config.backgroundUrl);
+  // AbortController ใช้ยกเลิก fetch ถ้ารอนานเกิน BACKGROUND_FETCH_TIMEOUT_MS —
+  // ถ้าไม่ใส่ไว้ แล้ว URL พื้นหลังค้างไม่ตอบ (server เน่า, ลิงก์หลุด ฯลฯ) worker
+  // เธรดนี้จะค้างรอตลอดไป และเพราะ worker pool มีจำนวนจำกัด งานต้อนรับ/อำลาของ
+  // เซิร์ฟอื่นๆ ที่รอคิวอยู่จะติดตันไปด้วยทั้งระบบ
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), BACKGROUND_FETCH_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(config.backgroundUrl, { signal: controller.signal });
+  } finally {
+    // เคลียร์ timer ทุกกรณี (ทั้งสำเร็จและ error) กัน timer ค้างอยู่เบื้องหลังเฉยๆ
+    clearTimeout(timeoutId);
+  }
+  // ถ้าโดน abort เพราะ timeout, fetch() จะ throw ออกไปเองก่อนถึงบรรทัดนี้อยู่แล้ว
+  // (AbortError) — ปล่อยให้หลุดออกไปให้ parentPort.on('message') ข้างล่างจับแทน
+  // เหมือน error เคสอื่นๆ ทุกประการ ไม่ต้องดักซ้ำตรงนี้
   if (!res.ok) throw new Error(`ดาวน์โหลด GIF ล้มเหลว: HTTP ${res.status}`);
   const rawBuffer = Buffer.from(await res.arrayBuffer());
 

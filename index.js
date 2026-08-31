@@ -37,6 +37,30 @@ const client = new Client({
   ],
 });
 
+// 1b. Global error handler — กัน error ที่หลุดไม่มีใครจับทำให้บอททั้งตัวล่ม
+//
+// ❗ ทำไมต้องมี: try/catch ที่ใส่ไว้ทุก handler ข้างล่าง (interactionCreate,
+// messageReactionAdd ฯลฯ) ดักได้แค่ error ที่เกิด "ระหว่างทำงาน" ของ handler นั้นๆ
+// แต่ยังมี error อีกสองแบบที่หลุดรอดจาก try/catch พวกนั้นไปได้เสมอ:
+//
+//   • unhandledRejection — Promise ที่ reject แล้วไม่มีใคร .catch() ไว้เลย
+//     (เช่น โค้ดใน dependency บางตัวลืมใส่ catch, หรือ async function ที่เรียก
+//     แบบไม่ await และไม่ได้ห่อ try/catch) ถ้าไม่ดักตรงนี้ Node.js เวอร์ชันใหม่ๆ
+//     จะ "crash ทั้ง process ทันที" ตามค่า default — บอทและ webhook server ที่รับ
+//     เงินจาก Stripe (ซึ่งรันอยู่ใน process เดียวกัน) จะล่มไปพร้อมกันหมด
+//   • client.on('error') — error ระดับ connection ของ discord.js เอง เช่น
+//     WebSocket หลุดกะทันหัน ปัญหาการเชื่อมต่อกับ Discord gateway ที่ไม่ใช่ error
+//     จาก handler ไหนของเราเลย ถ้าไม่ดักไว้ อาจทำให้ client หลุดเงียบๆ โดยไม่มี log
+//
+// ทั้งสองจุดนี้แค่ console.error() เก็บ log ไว้ดู ไม่ throw ซ้ำ ไม่ restart อะไร —
+// เป้าหมายคือ "อย่าให้ error เดี่ยวๆ ที่ไม่คาดคิด ทำบอททั้งตัวตายไปด้วย" เฉยๆ
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+client.on('error', (error) => {
+  console.error('[client error]', error);
+});
+
 // 2. สร้างที่เก็บคำสั่งทั้งหมดของบอท (เหมือน Map)
 client.commands = new Collection();
 
@@ -75,7 +99,9 @@ client.on('interactionCreate', async interaction => {
       await command.execute(interaction);
     } catch (error) {
       console.error(error);
-      await interaction.reply({ content: 'เกิดข้อผิดพลาดในการรันคำสั่งนี้', flags: MessageFlags.Ephemeral });
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'เกิดข้อผิดพลาดในการรันคำสั่งนี้', flags: MessageFlags.Ephemeral });
+      }
     }
     return;
   }
@@ -119,7 +145,9 @@ client.on('interactionCreate', async interaction => {
         await builderCommand.handleButton(interaction);
       } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนกดปุ่มนี้', flags: MessageFlags.Ephemeral });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนกดปุ่มนี้', flags: MessageFlags.Ephemeral });
+        }
       }
     }
 
@@ -191,7 +219,9 @@ client.on('interactionCreate', async interaction => {
         await builderCommand.handleModalSubmit(interaction);
       } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนบันทึกข้อมูล', flags: MessageFlags.Ephemeral });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนบันทึกข้อมูล', flags: MessageFlags.Ephemeral });
+        }
       }
     }
     // rs_modal_ = modals ของ /role-setup editor
@@ -297,7 +327,9 @@ client.on('interactionCreate', async interaction => {
         await builderCommand.handleSelectMenu(interaction);
       } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', flags: MessageFlags.Ephemeral });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', flags: MessageFlags.Ephemeral });
+        }
       }
     }
     return;
@@ -353,7 +385,9 @@ client.on('interactionCreate', async interaction => {
         await builderCommand.handleSelectMenu(interaction);
       } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกช่อง', flags: MessageFlags.Ephemeral });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกช่อง', flags: MessageFlags.Ephemeral });
+        }
       }
     }
     return;
