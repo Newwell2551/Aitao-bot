@@ -364,21 +364,12 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isRoleSelectMenu()) {
     if (interaction.customId.startsWith('rs_')) {
       const roleSetupCommand = client.commands.get('role-setup');
-      try { await roleSetupCommand.handleRoleMenuSelect(interaction); }
-      catch (error) {
-        // 🩹🐛 DEBUG ชั่วคราว — ปกติจะแค่ console.error() แล้วตอบข้อความสั้นๆ กลางๆ กลับไป
-        // แต่ตอนนี้เจอ error ตรงนี้แบบหาสาเหตุไม่ได้ (console log ปกติหาไม่เจอ อาจเพราะ
-        // บอทรีสตาร์ทไปแล้ว log เลยหาย) เลยแปะ error.stack เต็มๆ ลงในข้อความ Discord
-        // ไปเลยชั่วคราว จะได้เห็นสาเหตุแน่ๆ โดยไม่ต้องพึ่ง console
-        // ⚠️ อย่าลืมเอาโค้ด debug นี้ออกทีหลังหลังจากหาสาเหตุเจอแล้วนะครับ — ข้อความ error
-        // เต็มๆ (stack trace) ไม่ควรโชว์ให้ user เห็นตอนใช้งานจริง เพราะอาจมีรายละเอียด
-        // ภายในระบบ (path ไฟล์ ชื่อฟังก์ชัน ฯลฯ) ที่ไม่ควรเปิดเผยออกไป
+      try {
+        await roleSetupCommand.handleRoleMenuSelect(interaction);
+      } catch (error) {
         console.error('[rs_ RoleSelectMenu error]', error);
-        const debugMsg = `เกิดข้อผิดพลาดตอนเลือกยศ (debug)\n\`\`\`${(error?.stack ?? String(error)).slice(0, 1500)}\`\`\``;
         if (!interaction.replied && !interaction.deferred) {
-          await interaction.reply({ content: debugMsg, flags: MessageFlags.Ephemeral });
-        } else if (interaction.deferred) {
-          await interaction.editReply({ content: debugMsg });
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกยศ', flags: MessageFlags.Ephemeral });
         }
       }
     }
