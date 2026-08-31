@@ -4,6 +4,8 @@ const {
   PermissionFlagsBits,
   MessageFlags,
 } = require('discord.js');
+const { getGuildLanguage } = require('../utils/languageStorage');
+const { createTranslator } = require('../utils/i18n');
 
 const ASSET_CHANNEL_NAME = 'asset-storage';
 const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
@@ -12,8 +14,9 @@ const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
  * หาห้อง asset-storage ที่มีอยู่แล้ว หรือสร้างใหม่ถ้ายังไม่มี
  * ตั้งสิทธิ์ห้ามคนทั่วไป (@everyone) มองเห็นห้องนี้ ให้บอทเท่านั้นที่โพสต์ได้
  * @param {import('discord.js').Guild} guild
+ * @param {(key: string, replacements?: object) => string} t ฟังก์ชันแปลภาษา
  */
-async function getOrCreateAssetChannel(guild) {
+async function getOrCreateAssetChannel(guild, t) {
   const existing = guild.channels.cache.find(
     (channel) => channel.name === ASSET_CHANNEL_NAME && channel.type === ChannelType.GuildText
   );
@@ -23,8 +26,7 @@ async function getOrCreateAssetChannel(guild) {
   return guild.channels.create({
     name: ASSET_CHANNEL_NAME,
     type: ChannelType.GuildText,
-    topic:
-      'ห้องเก็บไฟล์รูปภาพที่อัปโหลดผ่าน /upload-image สำหรับใช้กับ /builder — ห้ามลบข้อความในห้องนี้ ไม่งั้นลิงก์รูปที่เอาไปใช้ที่อื่นจะพังทันที',
+    topic: t('upload_image.channel_topic'),
     permissionOverwrites: [
       {
         // ปิดไม่ให้สมาชิกทั่วไปมองเห็นห้องนี้เลย
@@ -58,6 +60,8 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    const t = createTranslator(interaction.guildId ? getGuildLanguage(interaction.guildId) : 'en');
+
     const attachment = interaction.options.getAttachment('image');
 
     // เช็คทั้งนามสกุลไฟล์และ content-type ที่ Discord ส่งมาให้ (เผื่อกรณีใดกรณีหนึ่งขาดหายหรือไม่ตรง)
@@ -67,7 +71,7 @@ module.exports = {
 
     if (!hasAllowedExtension || !hasImageContentType) {
       await interaction.reply({
-        content: `❌ ไฟล์นี้ไม่ใช่รูปภาพที่รองรับครับ ใช้ได้เฉพาะไฟล์นามสกุล ${ALLOWED_EXTENSIONS.join(', ')} เท่านั้น`,
+        content: t('upload_image.error.invalid_file', { extensions: ALLOWED_EXTENSIONS.join(', ') }),
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -75,7 +79,7 @@ module.exports = {
 
     if (!interaction.guild) {
       await interaction.reply({
-        content: '❌ คำสั่งนี้ใช้ได้เฉพาะในเซิร์ฟเวอร์เท่านั้นครับ (ใช้ในข้อความส่วนตัวไม่ได้)',
+        content: t('upload_image.error.guild_only'),
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -86,12 +90,11 @@ module.exports = {
 
     let assetChannel;
     try {
-      assetChannel = await getOrCreateAssetChannel(interaction.guild);
+      assetChannel = await getOrCreateAssetChannel(interaction.guild, t);
     } catch (error) {
       console.error(error);
       await interaction.editReply({
-        content:
-          '❌ สร้าง/หาห้องเก็บไฟล์ไม่สำเร็จครับ บอทอาจไม่มีสิทธิ์ "Manage Channels" ลองแจ้งแอดมินเซิร์ฟเวอร์ให้เพิ่มสิทธิ์นี้ให้บอทนะครับ',
+        content: t('upload_image.error.channel_create_failed'),
       });
       return;
     }
@@ -100,13 +103,13 @@ module.exports = {
     try {
       // ดึงไฟล์จาก URL ชั่วคราวของ attachment (ยังไม่หมดอายุแน่นอนเพราะเพิ่งได้มาหมาดๆ) แล้วอัปโหลดเข้าห้องเก็บไฟล์ใหม่
       sentMessage = await assetChannel.send({
-        content: `อัปโหลดโดย ${interaction.user.tag} (${interaction.user.id})`,
+        content: t('upload_image.message.uploaded_by', { tag: interaction.user.tag, id: interaction.user.id }),
         files: [{ attachment: attachment.url, name: attachment.name }],
       });
     } catch (error) {
       console.error(error);
       await interaction.editReply({
-        content: '❌ อัปโหลดไฟล์เข้าห้องเก็บไฟล์ไม่สำเร็จครับ ลองรันคำสั่งใหม่อีกครั้งนะครับ',
+        content: t('upload_image.error.send_failed'),
       });
       return;
     }
@@ -118,8 +121,8 @@ module.exports = {
     try {
       await sentMessage.edit({
         content:
-          `อัปโหลดโดย ${interaction.user.tag} (${interaction.user.id})\n\n`
-          + `🔗 ลิงก์ถาวร (ใช้ได้เลย ไม่หมดอายุ):\n${permanentUrl}`,
+          `${t('upload_image.message.uploaded_by', { tag: interaction.user.tag, id: interaction.user.id })}\n\n`
+          + `${t('upload_image.message.permanent_link')}\n${permanentUrl}`,
         flags: MessageFlags.SuppressEmbeds, // ← ปิด auto-embed ของลิงก์ในเนื้อหา (กันรูปซ้ำ)
       });
     } catch (editError) {
@@ -128,10 +131,7 @@ module.exports = {
     }
 
     await interaction.editReply({
-      content:
-        `✅ อัปโหลดสำเร็จครับ!\n${permanentUrl}\n\n`
-        + `คัดลอกลิงก์นี้ไปใช้ได้เลยครับ ใช้ได้กับทุกจุดที่ต้องใส่ลิงก์รูปภาพ`
-        + ` (เช่น /builder, /welcome-setup, /goodbye-setup)`,
+      content: t('upload_image.reply.success', { url: permanentUrl }),
     });
   },
 };

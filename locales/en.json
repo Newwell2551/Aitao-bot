@@ -865,5 +865,21 @@
   },
   "premium_gate": {
     "message": "⭐ {reason}\n\nUpgrade to Premium to unlock this — run `/premium` to get started!"
+  },
+  "upload_image": {
+    "channel_topic": "Storage room for images uploaded via /upload-image, used with /builder — do not delete messages in this channel or links used elsewhere will break immediately.",
+    "error": {
+      "invalid_file": "❌ This file isn't a supported image. Only these extensions are allowed: {extensions}",
+      "guild_only": "❌ This command can only be used in a server (not in DMs).",
+      "channel_create_failed": "❌ Couldn't create/find the storage channel. The bot may be missing the \"Manage Channels\" permission — ask a server admin to grant it.",
+      "send_failed": "❌ Couldn't upload the file to the storage channel. Please try running the command again."
+    },
+    "message": {
+      "uploaded_by": "Uploaded by {tag} ({id})",
+      "permanent_link": "🔗 Permanent link (ready to use, never expires):"
+    },
+    "reply": {
+      "success": "✅ Upload successful!\n{url}\n\nCopy this link to use anywhere an image link is needed (e.g. /builder, /welcome-setup, /goodbye-setup)"
+    }
   }
 }
