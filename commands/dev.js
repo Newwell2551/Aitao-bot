@@ -10,6 +10,12 @@
  * (ไฟล์ dev.js) แล้ว เพราะชื่อเดิมเปิดเผยรายละเอียดการทำงานเยอะเกินไปตอนคนอื่นเห็นในลิสต์
  * คำสั่งของบอท (autocomplete ตอนพิมพ์ "/") — logic ข้างในไม่ได้เปลี่ยนอะไรเลยสักบรรทัด
  * แก้แค่ชื่อคำสั่ง/description/ข้อความที่โชว์ให้ดูเป็นกลางขึ้นเท่านั้น
+ *
+ * 🔒 เพิ่ม .setDefaultMemberPermissions(0) — ซ่อนคำสั่งนี้ไม่ให้สมาชิก/แอดมินทั่วไป
+ * เห็นในรายการคำสั่งของบอทเลย (ยกเว้นคนที่มีสิทธิ์ Administrator ในเซิร์ฟนั้น ซึ่ง Discord
+ * จะให้เห็นเสมอโดยอัตโนมัติ ข้าม default permission check นี้ไปเลย) — เป็นการป้องกันอีกชั้น
+ * นอกเหนือจาก owner-only check ข้างล่าง (ปกติคนอื่นก็เรียกไม่ได้อยู่แล้ว แต่ตรงนี้ทำให้
+ * "เห็น" คำสั่งนี้ในลิสต์ยากขึ้นไปอีกชั้นด้วย)
  */
 
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
@@ -27,6 +33,7 @@ module.exports = {
     // สั้นๆ กลางๆ แทน ไม่บอกว่าคำสั่งนี้ทำอะไรได้จริงๆ
     .setDescription('For development use only.')
     .setDescriptionLocalizations({ th: 'สำหรับนักพัฒนาเท่านั้นครับ' })
+    .setDefaultMemberPermissions(0)
     .addStringOption((opt) =>
       opt.setName('guild_id')
         .setDescription('Guild ID of the server to set')
