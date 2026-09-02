@@ -85,22 +85,20 @@ function buildInviteUrl() {
  * ลำดับ block ที่ใช้ (ครบเกือบทุก type ที่ buildMessageFromSchema รองรับ ยกเว้น
  * section_role_button กับ section_channel_button ที่ต้องมี roleId/channelId จริงของ
  * แต่ละเซิร์ฟ ไม่เหมาะเอามาโชว์แบบทั่วไป):
- *   text → separator(large) → gallery(2 รูป) → separator(small) → text →
+ *   text → separator(large) → gallery(1 รูปใหญ่) → separator(small) → text →
  *   section+thumbnail → separator(large) → text(โชว์ markdown หลายแบบ) →
  *   separator(small) → section+thumbnail → separator(large) → text(รายการคำสั่ง) →
  *   separator(large) → section_button(ปุ่มเชิญบอท) → [section_button ปุ่มซัพพอร์ต/GitHub
  *   ถ้ามีตั้งค่าไว้] → separator(small) → text(footer)
  *
- * @param {import('discord.js').Guild|null} guild - เซิร์ฟที่รันคำสั่ง (ใช้ดึงไอคอนเซิร์ฟ
- *   มาโชว์ในแกลเลอรี — ถ้ารันใน DM หรือเซิร์ฟไม่มีไอคอน จะข้ามรูปนี้ไปเงียบๆ)
+ * @param {import('discord.js').Guild|null} guild - เซิร์ฟที่รันคำสั่ง (เก็บพารามิเตอร์นี้
+ *   ไว้เผื่ออนาคตอยากเอาข้อมูลเซิร์ฟมาใช้เพิ่ม — ตอนนี้ยังไม่ได้ใช้ในตัว schema แล้ว
+ *   หลังจากตัดรูปไอคอนเซิร์ฟออกจาก gallery)
  * @param {import('discord.js').ClientUser} clientUser - บอทเอง (ใช้ดึง avatar มาโชว์)
  * @returns {object} schema พร้อมส่งเข้า buildMessageFromSchema()
  */
 function buildHelpSchema(guild, clientUser) {
   const botAvatarUrl = clientUser.displayAvatarURL({ size: 256, extension: 'png' });
-  // guild อาจเป็น null ได้ (เผื่อมีคนแอบยิงคำสั่งนี้ผ่าน DM ในอนาคต) และ guild.iconURL()
-  // เองก็คืน null ได้ถ้าเซิร์ฟยังไม่ได้ตั้งไอคอน — เช็ค optional chaining กันพังทั้งคู่
-  const guildIconUrl = guild?.iconURL({ size: 256, extension: 'png' }) ?? null;
 
   const blocks = [
     // ── 0: เกริ่นนำ — บอกตรงๆ เลยว่าข้อความนี้คือตัวอย่างของ /builder ──────────
@@ -116,16 +114,16 @@ function buildHelpSchema(guild, clientUser) {
 
     { type: 'separator', spacing: 'large' },
 
-    // ── 1: gallery — โชว์ว่าใส่ได้ทั้งไฟล์แนบ (attachment://) และ URL ปกติ ──────
-    // รูปแรกใช้ attachment:// อ้างอิงไฟล์ banner ที่แนบไปกับข้อความจริง (ดู execute()
-    // ด้านล่าง — ต้องมี files: [bannerAttachment] คู่กันเสมอ ไม่งั้นรูปจะแตก)
-    // รูปที่สองใช้ URL ของไอคอนเซิร์ฟตรงๆ (https://) ถ้าเซิร์ฟมีไอคอน — โชว์ว่า gallery
-    // ใส่รูปจากคนละแหล่งพร้อมกันในบล็อกเดียวได้
+    // ── 1: gallery — รูปเดียวรูปใหญ่เต็มความกว้าง (banner หลักของบอท) ─────────
+    // เดิมเคยใส่ 2 รูป (banner + ไอคอนเซิร์ฟ) เพื่อโชว์ว่า gallery ใส่ได้หลายรูป แต่
+    // พอมี 2 รูป Discord จะหั่นพื้นที่แบ่งครึ่งให้แต่ละรูป ทำให้รูป banner เล็กลงครึ่งนึง
+    // ไม่สวย — ตามที่น้องหนาวขอ เปลี่ยนมาใส่รูปเดียวแทน จะได้เห็นแบนเนอร์เต็มๆ ไปเลย
+    // (ยังใช้ attachment:// อ้างอิงไฟล์ banner ที่แนบไปกับข้อความจริงเหมือนเดิม — ดู
+    // execute() ด้านล่าง ต้องมี files: [bannerAttachment] คู่กันเสมอ ไม่งั้นรูปจะแตก)
     {
       type: 'gallery',
       items: [
         { url: `attachment://${BANNER_FILENAME}`, description: `${BOT_DISPLAY_NAME} mascot banner` },
-        ...(guildIconUrl ? [{ url: guildIconUrl, description: `${guild.name} server icon` }] : []),
       ],
     },
 
