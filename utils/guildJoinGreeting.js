@@ -31,6 +31,11 @@ const {
   MessageFlags,             // ใช้ธง IsComponentsV2 บอก Discord ว่าข้อความนี้เป็น Components V2
 } = require('discord.js');
 
+// 🆕 ใช้เช็คว่าเซิร์ฟนี้เคยตั้งค่า /role-setup ไว้ก่อนหน้านี้ไหม (ดูคอมเมนต์จุดที่ใช้งาน
+// ด้านล่างในฟังก์ชัน buildIntroContainer — เอาไว้เตือนเรื่อง role hierarchy ตอนเชิญกลับเข้ามาใหม่)
+// อยู่ไฟล์เดียวกัน (utils/) เลย require แบบ relative path './roleSetupStorage' ตรงๆ
+const { listSetups } = require('./roleSetupStorage');
+
 // ชื่อเต็มของบอทที่จะโชว์ในข้อความแนะนำตัว — ไม่ได้ดึงจาก client.user.username
 // เพราะชื่อบอทบน Discord (application name) กับชื่อที่อยากให้แนะนำตัวอาจไม่ตรงกันเป๊ะๆ
 // เก็บเป็นค่าคงที่ไว้ตรงนี้ที่เดียว แก้ง่ายถ้าจะเปลี่ยนชื่อทีหลัง
@@ -236,6 +241,7 @@ function findGreetingChannel(guild) {
  * โครงสร้างเรียงจากบนลงล่าง:
  *   MediaGallery (banner) → Section (header + คำแนะนำตัว พร้อม thumbnail avatar) →
  *   เส้นคั่น → "## 🎨 What I Do" + คำอธิบาย → เส้นคั่น → "## ⚡ Get Started" + รายการคำสั่ง
+ *   → 🆕 [ถ้ามีข้อมูล role-setup เดิมอยู่] เส้นคั่น + คำเตือนเรื่อง role hierarchy (ไทย+อังกฤษ)
  *   → เส้นคั่นเล็ก → footer เล็กๆ
  * @param {import('discord.js').Guild} guild
  * @returns {import('discord.js').ContainerBuilder}
@@ -246,113 +252,158 @@ function buildIntroContainer(guild) {
   // ด้านล่าง displayAvatarURL({ size: 256 }) ได้ URL รูปโปรไฟล์บอท ขนาด 256x256 พิกเซล
   const botAvatarUrl = guild.client.user.displayAvatarURL({ size: 256 });
 
-  return (
-    new ContainerBuilder()
-      // setAccentColor = สีแถบทางซ้ายของ Container ทำหน้าที่เหมือน .setColor() ของ
-      // embed เดิม — เปลี่ยนจากเขียว (0x57f287) เป็นน้ำเงินเข้ม (0x3b4e89) ตามที่สั่ง
-      // ให้เข้ากับโทนภาพ banner ที่เพิ่มเข้ามา
-      .setAccentColor(0x3b4e89)
+  // 🆕 เช็คว่าเซิร์ฟนี้เคยตั้งค่า /role-setup ไว้ก่อนหน้านี้บ้างไหม — listSetups(guildId)
+  // อ่านจาก data/role-setups.json (คนละไฟล์กับ ข้อมูล guild ปกติ) แล้วคืน array ของ
+  // setup ทั้งหมดที่ key ขึ้นต้นด้วย guildId นี้ ถ้าไม่เคยตั้งเลยจะได้ array ว่าง []
+  //
+  // ทำไมต้องเช็คตรงนี้: event guildCreate ยิงทุกครั้งที่บอทถูก "เพิ่ม" เข้าเซิร์ฟ ไม่ว่า
+  // จะเป็นเซิร์ฟใหม่เอี่ยม หรือเป็นเซิร์ฟเดิมที่เคยเตะบอทออกแล้วเชิญกลับเข้ามาใหม่ — ถ้า
+  // เจอว่ามี role-setup เดิมอยู่แล้ว แปลว่า "น่าจะ" เป็นเคสหลัง ซึ่งมักตามมาด้วยปัญหา
+  // role-setup ใช้งานไม่ได้ เพราะ Discord ดัน role ของบอทไปอยู่ล่างสุดของลิสต์ role
+  // ให้ใหม่ทุกครั้งที่ถูกเพิ่มเข้าเซิร์ฟ (คนละเรื่องกับข้อมูล role-setup เอง ซึ่งไม่ได้หาย
+  // ไปไหน ยังอยู่ครบใน data/role-setups.json ปกติ) — เลยเตือนตรงนี้เลยตั้งแต่ข้อความ
+  // แรกที่บอทส่ง กันแอดมินงงว่า "ทำไมของเดิมใช้ไม่ได้" ทีหลัง
+  const existingRoleSetups = listSetups(guild.id);
+  const hasExistingRoleSetups = existingRoleSetups.length > 0;
 
-      // ── 🆕 MediaGallery: banner รูปใหญ่ ด้านบนสุดของข้อความ ────────────────
-      // MediaGallery คือ component สำหรับโชว์รูปภาพเต็มความกว้าง (เหมือนแกลเลอรีรูป
-      // ในแชตทั่วไป) รับรูปได้หลายรูปพร้อมกัน แต่ตรงนี้เราใส่แค่รูปเดียวคือ banner
-      //
-      // MediaGalleryItemBuilder แต่ละอันคือ "รูป 1 รูป" ในแกลเลอรี — .setURL() ตรงนี้
-      // ใช้รูปแบบพิเศษ "attachment://ชื่อไฟล์" (ไม่ใช่ URL เว็บทั่วไปที่ขึ้นต้นด้วย
-      // https://) ซึ่งเป็นวิธีที่ Discord ใช้บอกว่า "เอารูปจากไฟล์แนบ (attachment) ของ
-      // ข้อความนี้เอง ที่ชื่อไฟล์ตรงกับตรงนี้เป๊ะๆ" — ไฟล์จริงถูกแนบมาคู่กันผ่าน
-      // key `files: [bannerAttachment]` ตอนเรียก channel.send() ใน sendGuildJoinGreeting()
-      // (ถ้าชื่อไฟล์ตรงนี้กับตอนสร้าง AttachmentBuilder ไม่ตรงกัน Discord จะหารูปไม่เจอ
-      // แล้วโชว์เป็นภาพแตก — เพราะงั้นทั้งสองจุดใช้ตัวแปร BANNER_FILENAME ตัวเดียวกัน)
-      //
-      // .setDescription() ใส่ alt text สั้นๆ ให้ screen reader อ่านได้ (accessibility)
-      .addMediaGalleryComponents(
-        new MediaGalleryBuilder().addItems(
-          new MediaGalleryItemBuilder()
-            .setURL(`attachment://${BANNER_FILENAME}`)
-            .setDescription('Cavin Milo mascot banner')
+  const container = new ContainerBuilder()
+    // setAccentColor = สีแถบทางซ้ายของ Container ทำหน้าที่เหมือน .setColor() ของ
+    // embed เดิม — เปลี่ยนจากเขียว (0x57f287) เป็นน้ำเงินเข้ม (0x3b4e89) ตามที่สั่ง
+    // ให้เข้ากับโทนภาพ banner ที่เพิ่มเข้ามา
+    .setAccentColor(0x3b4e89)
+
+    // ── 🆕 MediaGallery: banner รูปใหญ่ ด้านบนสุดของข้อความ ────────────────
+    // MediaGallery คือ component สำหรับโชว์รูปภาพเต็มความกว้าง (เหมือนแกลเลอรีรูป
+    // ในแชตทั่วไป) รับรูปได้หลายรูปพร้อมกัน แต่ตรงนี้เราใส่แค่รูปเดียวคือ banner
+    //
+    // MediaGalleryItemBuilder แต่ละอันคือ "รูป 1 รูป" ในแกลเลอรี — .setURL() ตรงนี้
+    // ใช้รูปแบบพิเศษ "attachment://ชื่อไฟล์" (ไม่ใช่ URL เว็บทั่วไปที่ขึ้นต้นด้วย
+    // https://) ซึ่งเป็นวิธีที่ Discord ใช้บอกว่า "เอารูปจากไฟล์แนบ (attachment) ของ
+    // ข้อความนี้เอง ที่ชื่อไฟล์ตรงกับตรงนี้เป๊ะๆ" — ไฟล์จริงถูกแนบมาคู่กันผ่าน
+    // key `files: [bannerAttachment]` ตอนเรียก channel.send() ใน sendGuildJoinGreeting()
+    // (ถ้าชื่อไฟล์ตรงนี้กับตอนสร้าง AttachmentBuilder ไม่ตรงกัน Discord จะหารูปไม่เจอ
+    // แล้วโชว์เป็นภาพแตก — เพราะงั้นทั้งสองจุดใช้ตัวแปร BANNER_FILENAME ตัวเดียวกัน)
+    //
+    // .setDescription() ใส่ alt text สั้นๆ ให้ screen reader อ่านได้ (accessibility)
+    .addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(
+        new MediaGalleryItemBuilder()
+          .setURL(`attachment://${BANNER_FILENAME}`)
+          .setDescription('Cavin Milo mascot banner')
+      )
+    )
+
+    // ── 🆕 Section: header + คำแนะนำตัว พร้อมรูป avatar เล็กด้านขวา ────────
+    // Section คือ component ที่เอาไว้ "จับคู่" ข้อความกับรูปเล็ก/ปุ่ม 1 อัน — คิดง่ายๆ
+    // ว่าเหมือน embed เดิมที่มี thumbnail มุมขวาบนคู่กับ title/description แต่ตอนนี้
+    // ทำเป็น component แยกต่างหากแทน
+    //
+    // .addTextDisplayComponents(...) ใส่ข้อความของ section ได้สูงสุด 3 TextDisplay
+    // (ตรงนี้ใส่ 2 อัน: header ใหญ่ กับ ประโยคแนะนำตัวสั้นๆ — เนื้อหาเดิมจากเวอร์ชัน
+    // ก่อนหน้า ไม่ได้แก้คำเลย)
+    //
+    // .setThumbnailAccessory(...) คือ "accessory" ของ section นี้ — เลือกได้ว่าจะเป็น
+    // ThumbnailBuilder (รูปเล็ก) หรือ ButtonBuilder (ปุ่ม) อย่างใดอย่างหนึ่งเท่านั้น
+    // ต่อ 1 section ตรงนี้เราใช้ ThumbnailBuilder ใส่รูป avatar ของบอทเอง (จาก
+    // botAvatarUrl ด้านบน) มันจะไปโผล่ที่ "ฝั่งขวา" ของ section โดยอัตโนมัติ — ตำแหน่ง
+    // นี้ Discord จัดให้เอง ไม่ต้องกำหนดพิกัดเพิ่ม
+    .addSectionComponents(
+      new SectionBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`# ˙𓈒 👋 Hi, I'm ${BOT_DISPLAY_NAME}!  🐻‍❄️`),
+          new TextDisplayBuilder().setContent('A decoration & customization bot for your Discord server.')
         )
-      )
+        .setThumbnailAccessory(
+          new ThumbnailBuilder().setURL(botAvatarUrl).setDescription(`${BOT_DISPLAY_NAME} avatar`)
+        )
+    )
 
-      // ── 🆕 Section: header + คำแนะนำตัว พร้อมรูป avatar เล็กด้านขวา ────────
-      // Section คือ component ที่เอาไว้ "จับคู่" ข้อความกับรูปเล็ก/ปุ่ม 1 อัน — คิดง่ายๆ
-      // ว่าเหมือน embed เดิมที่มี thumbnail มุมขวาบนคู่กับ title/description แต่ตอนนี้
-      // ทำเป็น component แยกต่างหากแทน
-      //
-      // .addTextDisplayComponents(...) ใส่ข้อความของ section ได้สูงสุด 3 TextDisplay
-      // (ตรงนี้ใส่ 2 อัน: header ใหญ่ กับ ประโยคแนะนำตัวสั้นๆ — เนื้อหาเดิมจากเวอร์ชัน
-      // ก่อนหน้า ไม่ได้แก้คำเลย)
-      //
-      // .setThumbnailAccessory(...) คือ "accessory" ของ section นี้ — เลือกได้ว่าจะเป็น
-      // ThumbnailBuilder (รูปเล็ก) หรือ ButtonBuilder (ปุ่ม) อย่างใดอย่างหนึ่งเท่านั้น
-      // ต่อ 1 section ตรงนี้เราใช้ ThumbnailBuilder ใส่รูป avatar ของบอทเอง (จาก
-      // botAvatarUrl ด้านบน) มันจะไปโผล่ที่ "ฝั่งขวา" ของ section โดยอัตโนมัติ — ตำแหน่ง
-      // นี้ Discord จัดให้เอง ไม่ต้องกำหนดพิกัดเพิ่ม
-      .addSectionComponents(
-        new SectionBuilder()
-          .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`# ˙𓈒 👋 Hi, I'm ${BOT_DISPLAY_NAME}!  🐻‍❄️`),
-            new TextDisplayBuilder().setContent('A decoration & customization bot for your Discord server.')
-          )
-          .setThumbnailAccessory(
-            new ThumbnailBuilder().setURL(botAvatarUrl).setDescription(`${BOT_DISPLAY_NAME} avatar`)
-          )
-      )
+    // ── Separator #1: เส้นคั่นจริง ────────────────────────────────────────
+    // .setDivider(true) = ให้ Discord วาดเส้นขีดจริงๆ (ถ้า false จะเป็นแค่ช่องว่าง
+    // ไม่มีเส้น) .setSpacing(Large) = ระยะห่างบน-ล่างกว้างหน่อย เหมาะกับการคั่น
+    // "section ใหญ่" ที่เปลี่ยนหัวข้อจริงๆ (ต่างจาก Separator #3 ท้ายสุดที่เบากว่า)
+    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
 
-      // ── Separator #1: เส้นคั่นจริง ────────────────────────────────────────
-      // .setDivider(true) = ให้ Discord วาดเส้นขีดจริงๆ (ถ้า false จะเป็นแค่ช่องว่าง
-      // ไม่มีเส้น) .setSpacing(Large) = ระยะห่างบน-ล่างกว้างหน่อย เหมาะกับการคั่น
-      // "section ใหญ่" ที่เปลี่ยนหัวข้อจริงๆ (ต่างจาก Separator #3 ท้ายสุดที่เบากว่า)
+    // ── TextDisplay: "## 🎨 What I Do" + คำอธิบาย ────────────────────────
+    // "## " คือ markdown header ระดับ 2 (เล็กกว่า # นิดหน่อย) — เขียนหัวข้อกับ
+    // เนื้อหาไว้ใน TextDisplay เดียวกัน คั่นด้วย "\n\n" (เว้นบรรทัดว่าง 1 บรรทัด
+    // ให้อ่านง่าย เหมือนย่อหน้าในเอกสารทั่วไป) เนื้อหาเป็นข้อความเดิม ไม่ได้แก้คำเลย
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        '## 🎨 What I Do\n\n' +
+          "I'm a decoration & customization bot — I help you make your Discord server look polished and welcoming. " +
+          'From custom welcome/goodbye cards to self-assign role menus and rich message layouts, ' +
+          "I've got you covered."
+      )
+    )
+
+    // ── Separator #2: เส้นคั่นจริง (เหมือน Separator #1) ──────────────────
+    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
+
+    // ── TextDisplay: "## ⚡ Get Started" + รายการคำสั่ง ──────────────────
+    // ⚠️ ชื่อคำสั่งกับคำอธิบายตรงนี้ต้อง "ตรงกับที่ deploy จริง" เป๊ะๆ — ดึงมาจาก
+    // .setName()/.setDescription() จริงในแต่ละไฟล์ commands/*.js (deploy-commands.js
+    // เป็นตัวอ่านไฟล์พวกนี้ไปลงทะเบียนกับ Discord จริงๆ) ห้ามพิมพ์ชื่อคำสั่งเดาเอง —
+    // รายการนี้เหมือนเวอร์ชันก่อนหน้าทุกตัวอักษร ไม่ได้แก้อะไร
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        '## ⚡ Get Started\n\n' +
+          [
+            '`/builder` — Build custom message layouts', // ตรงกับ commands/builder.js
+            '`/role-setup` — Set up automatic role assignment (menu / button / reaction)', // ตรงกับ commands/role-setup.js
+            '`/welcome-setup` — Set up new member welcome cards', // ตรงกับ commands/welcome-setup.js
+            '`/goodbye-setup` — Set up member farewell cards', // ตรงกับ commands/goodbye-setup.js
+            "`/premium` — Manage this server's premium subscription", // ตรงกับ commands/premium.js
+          ].join('\n')
+      )
+    );
+
+  // ── 🆕 [เงื่อนไข] เตือนเรื่อง Role Hierarchy — เฉพาะเซิร์ฟที่เคยตั้งค่า role-setup มาก่อน ──
+  // ทำไมแยกออกมาเป็น if แทนที่จะ chain ต่อในก้อนบนเลย: เพราะ component นี้จะใส่หรือ
+  // ไม่ใส่ก็ได้ ขึ้นอยู่กับ hasExistingRoleSetups (คำนวณไว้ด้านบนสุดของฟังก์ชันแล้ว)
+  // ContainerBuilder ทุก .add___Components() คืนค่า "this" กลับมา (mutate ตัวเองแล้ว
+  // return ตัวเอง) เลยเรียกต่อจากตัวแปร container ที่ประกาศไว้ข้างบนได้ตามปกติ ไม่ต้อง
+  // สร้างใหม่หรือ reassign
+  if (hasExistingRoleSetups) {
+    container
+      // เส้นคั่นแบบ Large เหมือน section ใหญ่อันอื่นๆ ด้านบน เพราะนี่คือคำเตือนสำคัญ
+      // ไม่ใช่แค่ footer เล็กๆ — ควรเด่นพอให้แอดมินสังเกตเห็นตั้งแต่เลื่อนผ่าน
       .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
-
-      // ── TextDisplay: "## 🎨 What I Do" + คำอธิบาย ────────────────────────
-      // "## " คือ markdown header ระดับ 2 (เล็กกว่า # นิดหน่อย) — เขียนหัวข้อกับ
-      // เนื้อหาไว้ใน TextDisplay เดียวกัน คั่นด้วย "\n\n" (เว้นบรรทัดว่าง 1 บรรทัด
-      // ให้อ่านง่าย เหมือนย่อหน้าในเอกสารทั่วไป) เนื้อหาเป็นข้อความเดิม ไม่ได้แก้คำเลย
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          '## 🎨 What I Do\n\n' +
-            "I'm a decoration & customization bot — I help you make your Discord server look polished and welcoming. " +
-            'From custom welcome/goodbye cards to self-assign role menus and rich message layouts, ' +
-            "I've got you covered."
+          // เขียน 2 ภาษาไว้ในก้อนเดียวกัน (ไทยก่อน แล้วตามด้วยอังกฤษ) — ไม่ผ่านระบบ
+          // i18n เหมือนข้อความอื่นในไฟล์นี้ทั้งหมด เพราะตอนนี้ยังไม่รู้ว่าเซิร์ฟนี้ตั้ง
+          // ภาษาไว้เป็นอะไร (หรือยังไม่เคยตั้งเลยด้วยซ้ำ — ต้องรอ /language ก่อนถึงจะรู้)
+          // ใส่ให้ครบทั้งสองภาษาไปเลยชัวร์กว่า ทุกคนอ่านเข้าใจแน่นอน
+          `## ⚠️ สำคัญ / Important\n\n` +
+            `🇹🇭 เราเจอว่าเซิร์ฟนี้เคยตั้งค่าระบบแจกยศ (\`/role-setup\`) ไว้ **${existingRoleSetups.length}** ` +
+            `รายการ ถ้าปุ่ม/เมนู/รีแอคชันแจกยศใช้งานไม่ได้หลังเชิญบอทกลับเข้ามา ให้ไปที่ ` +
+            `**Server Settings → Roles** แล้วเลื่อน role ของบอทให้อยู่ **สูงกว่า** ทุกยศที่เคยตั้งไว้ ` +
+            `อีกครั้งนะครับ (ข้อมูล role-setup ไม่ได้หายไปไหน ยังอยู่ครบ แค่ Discord จะดัน role ` +
+            `ของบอทไปอยู่ล่างสุดทุกครั้งที่เพิ่มบอทเข้าเซิร์ฟใหม่ ซึ่งเป็นกฎของ Discord เอง)\n\n` +
+            `🇬🇧 We found **${existingRoleSetups.length}** existing role-setup(s) (\`/role-setup\`) in this server. ` +
+            `If the role buttons/menus/reactions stop working after re-inviting the bot, go to ` +
+            `**Server Settings → Roles** and move the bot's role **higher** than every role it used to ` +
+            `manage. (Your role-setup data is not lost — Discord just puts the bot's role at the bottom ` +
+            `of the list every time it's added to a server, by Discord's own design.)`
         )
-      )
+      );
+  }
 
-      // ── Separator #2: เส้นคั่นจริง (เหมือน Separator #1) ──────────────────
-      .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
+  return container
+    // ── Separator #3: เส้นคั่นแบบเบา (spacing เล็กกว่า 2 อันบน) ────────────
+    // ตามที่สั่งว่า "แบบเส้นเล็ก/spacing น้อยกว่า" — ใช้ SeparatorSpacingSize.Small
+    // แทน Large เพื่อให้ระยะห่างก่อนถึง footer แคบกว่า ดูเป็น "ส่วนปิดท้าย" ไม่ใช่
+    // section ใหญ่เท่าๆ กับสองอันบน
+    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
 
-      // ── TextDisplay: "## ⚡ Get Started" + รายการคำสั่ง ──────────────────
-      // ⚠️ ชื่อคำสั่งกับคำอธิบายตรงนี้ต้อง "ตรงกับที่ deploy จริง" เป๊ะๆ — ดึงมาจาก
-      // .setName()/.setDescription() จริงในแต่ละไฟล์ commands/*.js (deploy-commands.js
-      // เป็นตัวอ่านไฟล์พวกนี้ไปลงทะเบียนกับ Discord จริงๆ) ห้ามพิมพ์ชื่อคำสั่งเดาเอง —
-      // รายการนี้เหมือนเวอร์ชันก่อนหน้าทุกตัวอักษร ไม่ได้แก้อะไร
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          '## ⚡ Get Started\n\n' +
-            [
-              '`/builder` — Build custom message layouts', // ตรงกับ commands/builder.js
-              '`/role-setup` — Set up automatic role assignment (menu / button / reaction)', // ตรงกับ commands/role-setup.js
-              '`/welcome-setup` — Set up new member welcome cards', // ตรงกับ commands/welcome-setup.js
-              '`/goodbye-setup` — Set up member farewell cards', // ตรงกับ commands/goodbye-setup.js
-              "`/premium` — Manage this server's premium subscription", // ตรงกับ commands/premium.js
-            ].join('\n')
-        )
-      )
-
-      // ── Separator #3: เส้นคั่นแบบเบา (spacing เล็กกว่า 2 อันบน) ────────────
-      // ตามที่สั่งว่า "แบบเส้นเล็ก/spacing น้อยกว่า" — ใช้ SeparatorSpacingSize.Small
-      // แทน Large เพื่อให้ระยะห่างก่อนถึง footer แคบกว่า ดูเป็น "ส่วนปิดท้าย" ไม่ใช่
-      // section ใหญ่เท่าๆ กับสองอันบน
-      .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-
-      // ── TextDisplay: footer เล็กๆ ปิดท้าย ─────────────────────────────────
-      // "-# " ที่ขึ้นต้นบรรทัด คือ markdown "subtext" ของ Discord (ตัวหนังสือเล็กสีเทา
-      // จางๆ) ใกล้เคียงกับหน้าตาของ .setFooter() ใน embed เดิมที่สุด — Components V2
-      // ไม่มี component "footer" ให้ใช้ตรงๆ เหมือน embed เลยใช้ syntax นี้แทน
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent('-# Type /builder to get started, or try any command above!')
-      )
-  );
+    // ── TextDisplay: footer เล็กๆ ปิดท้าย ─────────────────────────────────
+    // "-# " ที่ขึ้นต้นบรรทัด คือ markdown "subtext" ของ Discord (ตัวหนังสือเล็กสีเทา
+    // จางๆ) ใกล้เคียงกับหน้าตาของ .setFooter() ใน embed เดิมที่สุด — Components V2
+    // ไม่มี component "footer" ให้ใช้ตรงๆ เหมือน embed เลยใช้ syntax นี้แทน
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('-# Type /builder to get started, or try any command above!')
+    );
 }
 
 module.exports = { sendGuildJoinGreeting };
