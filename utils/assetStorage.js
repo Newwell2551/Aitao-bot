@@ -36,7 +36,34 @@ async function getOrCreateAssetChannel(guild) {
   const existing = guild.channels.cache.find(
     (channel) => channel.name === ASSET_CHANNEL_NAME && channel.type === ChannelType.GuildText
   );
-  if (existing) return existing;
+
+  if (existing) {
+    // ── เจอห้องเดิมแล้ว แต่ต้องเช็คก่อนว่าบอทยังมีสิทธิ์โพสต์อยู่ไหม ──────────────
+    // สิทธิ์ของห้องนี้หายไปทีหลังได้หลายทางครับ (มีคนย้ายห้องไปหมวดหมู่ใหม่แล้ว
+    // "Sync Permissions" ทับสิทธิ์เดิม, หรือมีคนแก้ permission ห้องนี้เองตอนจัดเซิร์ฟ)
+    // ถ้าไม่เช็คตรงนี้ พอบอทพยายาม assetChannel.send() จะเจอ
+    // DiscordAPIError[50001]: Missing Access ทันที — เช็คแล้วซ่อมให้อัตโนมัติดีกว่า
+    // รอให้แอดมินมานั่งไล่หาว่าห้องไหนพังเพราะอะไร
+    const me = guild.members.me;
+    const currentPerms = existing.permissionsFor(me);
+    const hasRequiredAccess = currentPerms?.has([
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.AttachFiles,
+    ]);
+
+    if (!hasRequiredAccess) {
+      // permissionOverwrites.edit() ตั้ง overwrite เฉพาะของบอทในห้องนี้ใหม่ ไม่กระทบ
+      // สิทธิ์ของ role อื่นหรือ @everyone เลย (ต่างจาก sync ที่ล้างทั้งห้อง)
+      await existing.permissionOverwrites.edit(me.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        AttachFiles: true,
+      });
+    }
+
+    return existing;
+  }
 
   return guild.channels.create({
     name: ASSET_CHANNEL_NAME,

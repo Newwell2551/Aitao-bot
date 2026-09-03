@@ -20,7 +20,40 @@ async function getOrCreateAssetChannel(guild, t) {
   const existing = guild.channels.cache.find(
     (channel) => channel.name === ASSET_CHANNEL_NAME && channel.type === ChannelType.GuildText
   );
-  if (existing) return existing;
+
+  if (existing) {
+    // ── เจอห้องเดิมแล้ว แต่ก่อนใช้งานต้องเช็คก่อนว่าบอทยังมีสิทธิ์โพสต์ในห้องนี้อยู่ไหม ──
+    // เดิมโค้ดจุดนี้เจอห้องเก่าแล้ว "เชื่อเลย" ว่าสิทธิ์ยังตั้งไว้ถูกต้องเหมือนตอนสร้าง
+    // แต่ในความเป็นจริงสิทธิ์ของห้องหายไปทีหลังได้หลายทางครับ เช่น:
+    //   - มีคนลากห้องนี้ไปไว้ในหมวดหมู่ (category) ใหม่ แล้วกด "Sync Permissions"
+    //     (การซิงค์จะล้างสิทธิ์เฉพาะห้องทิ้งทั้งหมด แล้วก็อปสิทธิ์ของหมวดหมู่มาแทน —
+    //     ถ้าหมวดหมู่นั้นไม่มีการอนุญาตพิเศษให้บอท ห้องนี้ก็จะกลายเป็นห้องที่บอทเข้าไม่ได้ทันที)
+    //   - มีคนเผลอไปแก้ permission ของห้องนี้เอง ตอนจัดระเบียบ/ตกแต่งเซิร์ฟ
+    // ผลคือ error DiscordAPIError[50001]: Missing Access ตอนบอทพยายามส่งรูปเข้าห้องนี้
+    //
+    // ทางแก้: เช็คสิทธิ์จริง ณ ตอนนี้ทุกครั้งที่เจอห้องเดิม ถ้าขาดสิทธิ์ที่จำเป็นไป
+    // ให้บอทตั้งสิทธิ์ของตัวเองกลับคืนให้อัตโนมัติเลย ไม่ต้องรอให้แอดมินมานั่งไล่หาว่า
+    // ห้องไหนพังเพราะอะไร
+    const me = guild.members.me;
+    const currentPerms = existing.permissionsFor(me);
+    const hasRequiredAccess = currentPerms?.has([
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.AttachFiles,
+    ]);
+
+    if (!hasRequiredAccess) {
+      // permissionOverwrites.edit() ตั้ง overwrite เฉพาะของบอทในห้องนี้ใหม่ ไม่กระทบ
+      // สิทธิ์ของ role อื่นหรือ @everyone เลย (ต่างจาก sync ที่ล้างทั้งห้อง)
+      await existing.permissionOverwrites.edit(me.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        AttachFiles: true,
+      });
+    }
+
+    return existing;
+  }
 
   // ยังไม่มีห้องนี้ในเซิร์ฟเวอร์ -> สร้างใหม่ พร้อมตั้งสิทธิ์ตั้งแต่ตอนสร้างเลย
   return guild.channels.create({
