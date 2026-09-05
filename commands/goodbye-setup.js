@@ -80,6 +80,41 @@ const DEFAULT_CONFIG = {
   farewellText: '{username} ออกจากเซิร์ฟเวอร์ไปแล้วครับ 👋',
 };
 
+/**
+ * คืนค่า "สำเนาใหม่" ของ DEFAULT_CONFIG ทุกครั้งที่เรียก — ห้ามใช้ DEFAULT_CONFIG
+ * ตรงๆ หรือ spread ตื้นๆ แบบ { ...DEFAULT_CONFIG } เด็ดขาดตอนสร้าง session ใหม่
+ *
+ * 🐛 บัคจริงที่เคยเกิด (cross-guild "ผี" — ข้อมูลข้ามเซิร์ฟ ทั้งที่ไฟล์เก็บข้อมูล
+ * แยกกันถูกต้องทุกเซิร์ฟอยู่แล้ว): { ...DEFAULT_CONFIG } เป็นการก็อปปี้ "ตื้น"
+ * (shallow copy) — field ธรรมดาอย่าง avatarX/overlayOpacity ก็อปปี้ค่าจริงไป
+ * ก็จริง แต่ field ที่เป็น array/object ซ้อนอยู่ข้างใน (คือ textBlocks) จะ
+ * "ชี้ไปที่ array/object ก้อนเดิม" ไม่ได้แยกก้อนใหม่ให้เลย (เหมือนถ่ายสำเนา
+ * กุญแจแทนที่จะสร้างประตูใหม่ — เปิดประตูไหนก็เจอห้องเดียวกัน)
+ *
+ * พอเซิร์ฟที่ยังไม่เคยตั้งค่าเลย (saved === null) ได้ session แบบนี้ไป แล้ว
+ * user กดปุ่ม "แก้ไขข้อความ" บล็อกเริ่มต้น (tb_default) → โค้ดในโมดัลจะเจอ
+ * block object ตัวเดียวกับที่อยู่ใน DEFAULT_CONFIG.textBlocks[0] เป๊ะๆ แล้ว
+ * เขียนทับ block.content = ... ลงไปตรงนั้นเลย (ไม่ได้สร้าง object ใหม่) —
+ * ผลคือ DEFAULT_CONFIG ตัวกลาง (ใช้ร่วมกันทั้งไฟล์ ทั้งโปรเซส) โดนเปลี่ยนค่า
+ * ถาวรไปจนกว่าจะ restart บอท ทำให้เซิร์ฟอื่นๆ ที่ยังไม่เคยตั้งค่าเลยเหมือนกัน
+ * (saved === null เหมือนกัน) พลอยได้ข้อความ "เปื้อน" อันเดียวกันนี้ไปด้วย —
+ * นี่คือที่มาของอาการ "ข้อความจากเซิร์ฟนึงไปโผล่อีกเซิร์ฟ" ทั้งที่ตรวจไฟล์
+ * per-guild ยังไงก็ไม่เจอบัค เพราะบัคไม่ได้อยู่ในไฟล์เลย อยู่ใน object กลาง
+ * ที่ค้างอยู่ใน memory ของบอทต่างหาก
+ *
+ * แก้โดยสร้าง array/object ใหม่ทุกครั้งที่เรียกฟังก์ชันนี้ (deep clone เฉพาะ
+ * textBlocks ที่เป็นจุดเสี่ยง) — session แต่ละเซิร์ฟจะได้ก็อปปี้อิสระของตัวเอง
+ * แก้เท่าไหร่ก็แก้เฉพาะของตัวเอง ไม่ไปกระทบ DEFAULT_CONFIG ตัวกลางอีกต่อไป
+ *
+ * @returns {object} DEFAULT_CONFIG ฉบับสำเนาใหม่ ปลอดภัยต่อการแก้ไข
+ */
+function cloneDefaultConfig() {
+  return {
+    ...DEFAULT_CONFIG,
+    textBlocks: DEFAULT_CONFIG.textBlocks.map(block => ({ ...block })),
+  };
+}
+
 // ขนาดการขยับต่อครั้ง (nudge step)
 const STEP_XY = 5;  // % — ขยับตำแหน่ง X หรือ Y ทีละ 5%
 const STEP_R  = 2;  // % — ขยับขนาด radius/font ทีละ 2% (avatar ใช้ค่านี้)
@@ -659,9 +694,12 @@ module.exports = {
 
     // ── โหลด config จากไฟล์ (ถ้ามี) มาเป็น session ใหม่
     const saved = loadGoodbyeConfig(guildId);
+
+    // ⚠️ ใช้ cloneDefaultConfig() เสมอ (ห้าม spread { ...DEFAULT_CONFIG } ตรงๆ)
+    // ดู comment ยาวๆ ที่ตัวฟังก์ชัน cloneDefaultConfig() ด้านบนว่าทำไมถึงสำคัญมาก
     sessions.set(sessionKey(guildId, userId), saved
-      ? { ...DEFAULT_CONFIG, ...saved, lastPreview: null, currentTextBlockId: null }
-      : { ...DEFAULT_CONFIG, lastPreview: null, currentTextBlockId: null });
+      ? { ...cloneDefaultConfig(), ...saved, lastPreview: null, currentTextBlockId: null }
+      : { ...cloneDefaultConfig(), lastPreview: null, currentTextBlockId: null });
 
     // ── acknowledge ก่อนภายใน 3 วิ แล้วค่อยทำงานหนัก (genPreview อาจช้า
     // โดยเฉพาะ background เป็น GIF) — กัน error "Unknown interaction" (10062)
@@ -1360,12 +1398,22 @@ module.exports = {
 
     // ─── Modal: แก้ไขเนื้อหา text block
     if (interaction.customId === WGS.MODAL_TXB_EDIT) {
-      const text = interaction.fields.getTextInputValue(WGS.INPUT_TXB_EDIT).trim();
+      const text    = interaction.fields.getTextInputValue(WGS.INPUT_TXB_EDIT).trim();
       const blockId = config?.currentTextBlockId;
       const block   = blockId ? findTextBlock(config, blockId) : null;
 
+      // ── แปลง :ชื่ออิโมจิ: เป็น <:ชื่อ:id> ก่อนบันทึก (เหมือนที่ทำกับ wgs_farewell ด้านบน)
+      // เหตุผลที่เพิ่งเพิ่มตรงนี้ (เดิมไม่มี): กล่องข้อความในโมดัลของ Discord พิมพ์
+      // อิโมจิในเซิร์ฟแบบ picker ไม่ได้ (โมดัลเป็นแค่กล่องข้อความธรรมดา ไม่มี
+      // emoji picker ให้กด) ผู้ใช้ทั่วไปแทบไม่มีทางรู้ syntax ดิบ <:ชื่อ:id> เลย
+      // การแปลงจาก :ชื่อ: ให้อัตโนมัติแบบนี้เลยทำให้ใช้งานได้จริงในทางปฏิบัติ
+      // ส่วนอิโมจิทั่วไป (Unicode เช่น 😀) พิมพ์ผ่าน emoji keyboard ของเครื่องได้อยู่แล้ว
+      // ไม่ต้องแปลงอะไร ผ่านมาเฉยๆ — canvasDrawHelpers.js จะไปจัดการเรื่องโหลดรูป
+      // มาวาดแทนตอน generate การ์ดเอง (ดูฟังก์ชัน drawAllTextBlocks ในไฟล์นั้น)
+      const resolvedText = resolveCustomEmojis(text, interaction.guild);
+
       if (block) {
-        block.content = text;
+        block.content = resolvedText;
         persist(interaction.guildId, config);
       }
 

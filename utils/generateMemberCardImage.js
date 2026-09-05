@@ -51,7 +51,10 @@ async function generateMemberCardStatic(avatarImg, config) {
   else          { drawFallbackBg(ctx, canvasW, canvasH); }
   drawOverlay(ctx, config.overlayOpacity, canvasW, canvasH);
   if (config.avatarEnabled && avatarImg) drawAvatar(ctx, avatarImg, config, canvasW, canvasH);
-  drawAllTextBlocks(ctx, config, canvasW, canvasH);
+  // ⚠️ drawAllTextBlocks ตอนนี้เป็น async แล้ว (ต้องโหลดรูปอิโมจิก่อนวาด ถ้ามี)
+  // ต้องมี await ไม่งั้น canvas.toBuffer() ด้านล่างจะรันไปก่อนที่วาดข้อความเสร็จ
+  // (จะได้รูปที่ไม่มีข้อความ/ข้อความมาไม่ครบ) — ฟังก์ชันนี้เป็น async อยู่แล้ว เลยแค่เติม await คำเดียว
+  await drawAllTextBlocks(ctx, config, canvasW, canvasH);
   return canvas.toBuffer('image/png');
 }
 

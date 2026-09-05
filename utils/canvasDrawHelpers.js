@@ -12,12 +12,29 @@
 //   V8 isolate คนละตัว (เหมือนเปิด Node process ใหม่ในหัว) โมดูล native
 //   อย่าง @napi-rs/canvas จึงต้อง register font ใหม่ทุกครั้งที่ require()
 //   ในแต่ละ thread ซึ่งเป็นเรื่องปกติ ไม่ใช่บั๊ก — ทดสอบแล้วว่าทำงานถูกต้อง
+//   (แคชรูปอิโมจิด้านล่าง — EMOJI_CACHE — ก็เป็นแบบเดียวกัน: แต่ละ thread
+//   มีแคชของตัวเองแยกกัน ไม่ได้แชร์ข้าม thread แต่ไม่เป็นไร เพราะแคชอยู่แค่
+//   ในหน่วยความจำระหว่างบอทรันอยู่ ไม่ได้ fetch ซ้ำทุกครั้งที่วาดการ์ดอยู่แล้ว)
 //
-// (ตัด custom emoji / NotoEmoji fallback ออกแล้วตามที่ตกลง — ข้อความเพียวๆ
-// เร็วกว่า ไม่ต้องพึ่งไฟล์ฟอนต์เพิ่ม ไม่ต้อง async ทั้งสาย)
+// 🎉 อัปเดต: รองรับอิโมจิในบล็อกข้อความ (text block) ของการ์ด welcome/goodbye แล้ว!
+//   - อิโมจิทั่วไป (Unicode เช่น 😀🎉💖) → โหลดรูปจาก Twemoji CDN มาวาดแทน
+//   - อิโมจิในเซิร์ฟ (<:name:id> / <a:name:id>) → โหลดรูปจาก Discord CDN มาวาดแทน
+//   ทำไมใช้วิธี "โหลดรูปมาวาดทับ" แทนการลงฟอนต์สีอีโมจิ (เช่น Noto Color Emoji):
+//     1. ฟอนต์อีโมจิสีเป็นไฟล์ใหญ่มาก (10-25MB) และ @napi-rs/canvas รองรับ
+//        การเรนเดอร์สีของฟอนต์แบบนี้ไม่แน่นอน (ขึ้นกับเวอร์ชัน Skia ข้างใน)
+//     2. อิโมจิในเซิร์ฟเป็น "รูปภาพ" ที่ Discord โฮสต์ไว้อยู่แล้ว ไม่มีทางวาด
+//        ด้วยฟอนต์ได้เลยไม่ว่ากรณีไหน ต้องโหลดรูปมาวาดอยู่ดี
+//     3. ใช้วิธีเดียวกันทั้งสองแบบ (โหลดรูป + drawImage) โค้ดเลยเรียบง่ายกว่า
+//        เขียนแค่ทางเดียว ไม่ต้องแยก logic ฟอนต์สีกับ logic รูปภาพ
+//   ⚠️ ข้อควรรู้: วิธีนี้ต้องยิง network request ไปโหลดรูปตอน render ครั้งแรก
+//   (ครั้งต่อๆ ไปจะเร็วเพราะมีแคชในหน่วยความจำแล้ว — ดู EMOJI_CACHE) ถ้าโหลด
+//   รูปไม่สำเร็จ (เน็ตหลุด, CDN ล่ม ฯลฯ) โค้ดจะ "ข้ามการวาดอิโมจิตัวนั้นไปเฉยๆ"
+//   ไม่ error ไม่ทำให้การ์ดทั้งใบพังหรือส่งไม่ออก
 
-const { GlobalFonts } = require('@napi-rs/canvas');
-const path             = require('path');
+const { GlobalFonts, loadImage } = require('@napi-rs/canvas');
+const path                       = require('path');
+const emojiRegex                 = require('emoji-regex');
+const twemoji                    = require('twemoji');
 
 // ─── Register Fonts ────────────────────────────────────────────────────────────
 const FONTS_DIR = path.join(__dirname, '..', 'assets', 'fonts');
@@ -50,7 +67,7 @@ const DEFAULT_H = 300;
 
 /** ตรวจว่ามีตัวอักษรไทยใน Unicode range U+0E00–U+0E7F */
 function hasThai(text) {
-  return /[\u0E00-\u0E7F]/.test(text);
+  return /[฀-๿]/.test(text);
 }
 
 /**
@@ -72,7 +89,153 @@ function pickFontFamily(text, fontStyle) {
   return hasThai(text) ? 'Mali, sans-serif' : 'Fredoka, sans-serif';
 }
 
-// ─── wrapText ─────────────────────────────────────────────────────────────────
+// ─── Emoji Helpers (ใหม่) ───────────────────────────────────────────────────────
+//
+// แนวคิด: สแกนข้อความหา 2 แบบ
+//   1. อิโมจิในเซิร์ฟ  <:name:id> หรือ <a:name:id>  (regex เดียวกับ resolveCustomEmojis.js
+//      เพื่อให้ทั้งไฟล์ตรวจจับรูปแบบนี้เหมือนกันหมด ไม่มีจุดไหน parse ไม่ตรงกัน)
+//   2. อิโมจิทั่วไป Unicode (😀🎉💖 ฯลฯ) ด้วย package `emoji-regex` (แม่นยำกว่าเขียน
+//      regex เองมาก เพราะอิโมจิ Unicode มีเคสซับซ้อน เช่น ผิวสี, ครอบครัว 👨‍👩‍👧,
+//      ธงชาติ ฯลฯ ที่จริงๆ คือหลาย code point ต่อกันด้วย ZWJ)
+//
+// สร้าง regex ใหม่ทุกครั้งที่เรียก (ไม่ใช้ regex ตัวเดียวใช้ซ้ำ) — กันปัญหา
+// `lastIndex` ค้างจากการ .test()/.exec() ครั้งก่อนที่ทำให้ครั้งถัดไปเพี้ยน
+function customEmojiPattern() {
+  return /<a?:[^\s:]+:(\d+)>/g;
+}
+
+const ZWJ      = '‍';   // Zero-Width Joiner — ใช้ต่ออิโมจิหลายตัวเป็นตัวเดียว (เช่น 👨‍👩‍👧)
+const UFE0F_RE = /️/g;  // variation selector (บอกว่า "อยากได้เวอร์ชันสี") — ตัดออกก่อนแปลงเป็นชื่อไฟล์
+
+/**
+ * แปลงอิโมจิ Unicode ดิบ (เช่น "😀") เป็นรหัส code point แบบที่ Twemoji ใช้ตั้งชื่อไฟล์
+ * (เช่น "1f600") — ใช้ฟังก์ชันจาก package twemoji ตรงๆ เพื่อให้ตรงกับชื่อไฟล์จริง
+ * บน CDN เป๊ะๆ (ไม่ต้องเขียน logic แปลงเองให้เสี่ยงผิด)
+ */
+function toTwemojiCodepoint(raw) {
+  // มี ZWJ (ต่ออิโมจิหลายตัว) → ห้ามตัด variation selector ออก เพราะบางเคสต้องใช้
+  // แยกแยะว่าเป็นอิโมจิตัวไหน ถ้าไม่มี ZWJ → ตัดออกได้ปลอดภัย (ตาม convention ของ twemoji เอง)
+  const stripped = raw.indexOf(ZWJ) < 0 ? raw.replace(UFE0F_RE, '') : raw;
+  return twemoji.convert.toCodePoint(stripped);
+}
+
+// CDN ที่ใช้โหลดรูปอิโมจิ Unicode — jsdelivr proxy ของ repo jdecked/twemoji
+// (fork ที่ดูแลต่อจาก twitter/twemoji เดิมที่เลิกดูแลไปแล้ว) โครงสร้างโฟลเดอร์
+// รูปเหมือนเดิมทุกอย่าง (assets/72x72/<codepoint>.png)
+//
+// ⚠️ ถ้าวัน ไหนโหลดรูปจาก CDN นี้ไม่ได้ (เช่น Railway บล็อก โดเมนนี้ไว้ ซึ่งไม่ควรเกิด
+// เพราะบอทคุยกับอินเทอร์เน็ตภายนอกได้ปกติอยู่แล้ว) แก้แค่บรรทัดเดียวนี้พอครับ
+const TWEMOJI_CDN_BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72';
+
+/**
+ * สแกนข้อความ 1 ก้อน หา "อิโมจิทุกตัว" (ทั้งในเซิร์ฟและ Unicode) เรียงตามตำแหน่งที่เจอ
+ * แต่ละตัวที่เจอจะได้ข้อมูลพอสำหรับทั้ง (ก) โหลดรูปมาแคช (ข) ตัดข้อความเป็นชิ้นๆ ตอนวาด
+ *
+ * @param {string} text
+ * @returns {Array<{start:number, end:number, key:string, url:string}>}
+ */
+function findEmojiMatches(text) {
+  if (!text) return [];
+  const found = [];
+  let m;
+
+  const customRe = customEmojiPattern();
+  while ((m = customRe.exec(text))) {
+    const id = m[1];
+    found.push({
+      start: m.index,
+      end:   m.index + m[0].length,
+      key:   `custom:${id}`,
+      // ต่อ .png เสมอแม้เป็นอิโมจิเคลื่อนไหว (animated) — Discord CDN จะคืนภาพนิ่ง
+      // เฟรมแรกให้อัตโนมัติ (ทำให้เคลื่อนไหวในภาพ PNG/GIF ที่วาดเองไม่ได้อยู่แล้ว)
+      url:   `https://cdn.discordapp.com/emojis/${id}.png?size=96`,
+    });
+  }
+
+  const uniRe = emojiRegex();
+  while ((m = uniRe.exec(text))) {
+    const codepoint = toTwemojiCodepoint(m[0]);
+    found.push({
+      start: m.index,
+      end:   m.index + m[0].length,
+      key:   `unicode:${codepoint}`,
+      url:   `${TWEMOJI_CDN_BASE}/${codepoint}.png`,
+    });
+  }
+
+  found.sort((a, b) => a.start - b.start);
+
+  // กันเหนียว: ถ้ามีการจับซ้อนกัน (ไม่ควรเกิดในทางปฏิบัติ เพราะอิโมจิในเซิร์ฟ
+  // กับ Unicode คนละรูปแบบกันชัดเจน) ตัดตัวที่ทับออก กันวาดซ้ำ/พังตอน slice
+  const result = [];
+  let lastEnd = -1;
+  for (const f of found) {
+    if (f.start < lastEnd) continue;
+    result.push(f);
+    lastEnd = f.end;
+  }
+  return result;
+}
+
+/** เช็คไวๆ ว่าข้อความมีอิโมจิ (แบบไหนก็ได้) อยู่หรือเปล่า — ใช้เลือกเส้นทางวาด */
+function containsEmoji(text) {
+  if (!text) return false;
+  if (customEmojiPattern().test(text)) return true;
+  return emojiRegex().test(text);
+}
+
+// แคชรูปอิโมจิที่โหลดมาแล้ว (key → Image ที่โหลดสำเร็จ, หรือ null ถ้าโหลดไม่สำเร็จ)
+// อยู่ในหน่วยความจำเท่านั้น (หายเมื่อ restart บอท/worker thread) — ตั้งใจให้ง่าย
+// ไม่ persist ลงดิสก์ เพราะแค่กันยิง network ซ้ำระหว่างบอทกำลังรันอยู่ก็พอแล้ว
+const EMOJI_CACHE = new Map();
+const EMOJI_FETCH_TIMEOUT_MS = 5000;
+
+/** โหลดรูป 1 อัน จาก URL — คืน Image ถ้าสำเร็จ, null ถ้าล้มเหลว (ไม่ throw ออกไปข้างนอก) */
+async function fetchEmojiImage(url, keyForLog) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), EMOJI_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    return await loadImage(buf);
+  } catch (e) {
+    // โหลดไม่สำเร็จ → log ไว้เฉยๆ แล้วคืน null ให้ผู้เรียกไปตัดสินใจ "ข้ามวาด" เอง
+    // ไม่ throw ต่อ เพราะอิโมจิตัวเดียวโหลดพังไม่ควรทำให้การ์ดทั้งใบ generate ไม่ได้
+    console.warn(`[canvasDrawHelpers] โหลดรูปอิโมจิไม่สำเร็จ (${keyForLog}): ${e.message}`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * เตรียมรูปอิโมจิทั้งหมดที่ text blocks ใน config ต้องใช้ ให้พร้อมอยู่ใน EMOJI_CACHE
+ * ก่อนเริ่มวาดจริง (ต้องทำก่อนเสมอ เพราะขั้นตอนวาดเป็น sync วาดรูปที่ยังโหลดไม่เสร็จไม่ได้)
+ *
+ * เช็ค EMOJI_CACHE.has(key) ก่อนทุกตัว → อิโมจิที่เคยโหลดมาแล้วรอบก่อน (เช่น
+ * เฟรมก่อนหน้าของ GIF เดียวกัน หรือ preview ที่กดดูซ้ำๆ) จะไม่ยิง fetch ซ้ำอีกเลย
+ */
+async function preloadEmojisForBlocks(blocks) {
+  const toFetch = new Map(); // key → url (ใช้ Map กันซ้ำ ถ้ามีอิโมจิเดียวกันหลาย block/หลายจุด)
+  for (const block of blocks) {
+    for (const match of findEmojiMatches(block?.content)) {
+      if (EMOJI_CACHE.has(match.key) || toFetch.has(match.key)) continue;
+      toFetch.set(match.key, match.url);
+    }
+  }
+  if (toFetch.size === 0) return;
+
+  await Promise.all(
+    Array.from(toFetch, ([key, url]) =>
+      fetchEmojiImage(url, key).then(img => EMOJI_CACHE.set(key, img))
+    )
+  );
+}
+
+// ─── wrapText (ของเดิม — ไม่แก้อะไรเลยแม้แต่บรรทัดเดียว) ───────────────────────
+// ใช้กับข้อความที่ "ไม่มีอิโมจิ" เท่านั้น (ดูจุดเลือกเส้นทางใน drawTextBlock ด้านล่าง)
+// คงไว้แบบเดิมทั้งหมดเพื่อไม่ให้การ์ดของ user ที่ไม่ได้ใช้อิโมจิเปลี่ยนหน้าตาแม้แต่พิกเซลเดียว
 
 /**
  * word-wrap ข้อความ "1 ย่อหน้า" (ไม่มี \n ภายใน) ตาม maxWidth
@@ -121,6 +284,125 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   return currentY;
 }
 
+// ─── wrapTextMixed (ใหม่) — เหมือน wrapText ทุกอย่าง แต่วาดอิโมจิเป็นรูปภาพแทรกกลางได้ด้วย
+//
+// ใช้เฉพาะตอน containsEmoji(text) เป็น true เท่านั้น (ดู drawTextBlock) — ข้อความ
+// ที่ไม่มีอิโมจิเลยจะไม่มาแตะโค้ดส่วนนี้เลยสักบรรทัด
+
+/**
+ * แตกคำ 1 คำ (คั่นด้วยช่องว่างแล้ว) เป็นชิ้นย่อยๆ สลับข้อความ/อิโมจิ
+ * เช่น "สวัสดี<:hi:123>ครับ" → [{type:'text',value:'สวัสดี'}, {type:'emoji',key:'custom:123'}, {type:'text',value:'ครับ'}]
+ */
+function splitWordIntoParts(word) {
+  const matches = findEmojiMatches(word);
+  if (matches.length === 0) return [{ type: 'text', value: word }];
+
+  const parts = [];
+  let cursor = 0;
+  for (const m of matches) {
+    if (m.start > cursor) parts.push({ type: 'text', value: word.slice(cursor, m.start) });
+    parts.push({ type: 'emoji', key: m.key });
+    cursor = m.end;
+  }
+  if (cursor < word.length) parts.push({ type: 'text', value: word.slice(cursor) });
+  return parts;
+}
+
+/** วัดความกว้างรวม (พิกเซล) ของคำ 1 คำ (ที่แตกเป็น parts แล้ว) */
+function measureWordParts(ctx, parts, emojiSizePx) {
+  let w = 0;
+  for (const part of parts) {
+    w += part.type === 'emoji' ? emojiSizePx : ctx.measureText(part.value).width;
+  }
+  return w;
+}
+
+/**
+ * วาด parts ของ 1 คำ เรียงจากซ้ายไปขวา เริ่มที่ startX
+ * (สลับ ctx.textAlign เป็น 'left' ชั่วคราว เพราะต้องคุมตำแหน่งเองทีละชิ้น
+ * ต่างจาก wrapParagraph เดิมที่ใช้ ctx.fillText ทั้งบรรทัดรวด แล้วปล่อยให้
+ * textAlign:'center' จัดกลางให้อัตโนมัติ — วิธีนั้นทำกับรูปภาพแทรกกลางไม่ได้)
+ * @returns {number} ตำแหน่ง x หลังวาดคำนี้จบ (ต่อคำถัดไปได้เลย)
+ */
+function drawWordParts(ctx, parts, startX, y, emojiSizePx) {
+  let cx = startX;
+  const prevAlign = ctx.textAlign;
+  ctx.textAlign = 'left';
+  for (const part of parts) {
+    if (part.type === 'text') {
+      if (part.value) {
+        ctx.fillText(part.value, cx, y);
+        cx += ctx.measureText(part.value).width;
+      }
+    } else {
+      const img = EMOJI_CACHE.get(part.key);
+      // ถ้า img เป็น null (โหลดไม่สำเร็จ) หรือ undefined (ไม่น่าเกิด เพราะ preload
+      // ไปก่อนแล้วเสมอ) → ข้ามการวาดไปเฉยๆ ไม่ error ไม่เว้นช่องว่างแปลกๆ ให้เห็น
+      if (img) {
+        ctx.drawImage(img, cx, y - emojiSizePx / 2, emojiSizePx, emojiSizePx);
+      }
+      cx += emojiSizePx;
+    }
+  }
+  ctx.textAlign = prevAlign;
+  return cx;
+}
+
+/**
+ * เหมือน wrapParagraph เดิมทุกอย่าง (word-wrap ตาม maxWidth) แต่รองรับอิโมจิ
+ * แทรกกลางคำได้ — จัดกลางบรรทัด (จำลอง textAlign:'center') ด้วยมือเอง เพราะ
+ * บรรทัดที่มีรูปภาพผสมกับข้อความ ใช้ ctx.fillText(บรรทัดเดียวรวด) แบบเดิมไม่ได้
+ */
+function wrapParagraphMixed(ctx, text, x, y, maxWidth, lineHeight, emojiSizePx) {
+  if (!text) return y;
+
+  const spaceWidth = ctx.measureText(' ').width;
+  const words       = text.split(' ').map(splitWordIntoParts);
+
+  // ── ขั้น 1: จัดคำเป็นบรรทัดๆ ตาม maxWidth (greedy wrap เหมือน wrapParagraph เดิม)
+  const lines = [];
+  let currentLine = [];
+  let currentWidth = 0;
+  for (const parts of words) {
+    const wWidth = measureWordParts(ctx, parts, emojiSizePx);
+    const extra  = currentLine.length ? spaceWidth : 0;
+    if (currentLine.length && currentWidth + extra + wWidth > maxWidth) {
+      lines.push({ parts: currentLine, width: currentWidth });
+      currentLine  = [parts];
+      currentWidth = wWidth;
+    } else {
+      currentLine.push(parts);
+      currentWidth += extra + wWidth;
+    }
+  }
+  if (currentLine.length) lines.push({ parts: currentLine, width: currentWidth });
+
+  // ── ขั้น 2: วาดทีละบรรทัด จัดกลางด้วยมือ (คำนวณจุดเริ่มจากความกว้างรวมของบรรทัด)
+  let currentY = y;
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    let cx = x - line.width / 2;
+    for (let i = 0; i < line.parts.length; i++) {
+      if (i > 0) cx += spaceWidth;
+      cx = drawWordParts(ctx, line.parts[i], cx, currentY, emojiSizePx);
+    }
+    if (li < lines.length - 1) currentY += lineHeight;
+  }
+  return currentY;
+}
+
+/** เหมือน wrapText เดิมทุกอย่าง แต่เรียก wrapParagraphMixed แทน wrapParagraph */
+function wrapTextMixed(ctx, text, x, y, maxWidth, lineHeight, emojiSizePx) {
+  if (!text) return y;
+  const paragraphs = text.replace(/\r\n/g, '\n').split('\n');
+  let currentY = y;
+  for (let i = 0; i < paragraphs.length; i++) {
+    currentY = wrapParagraphMixed(ctx, paragraphs[i], x, currentY, maxWidth, lineHeight, emojiSizePx);
+    if (i < paragraphs.length - 1) currentY += lineHeight;
+  }
+  return currentY;
+}
+
 // ─── ฟังก์ชันวาดย่อย (รับ w, h ทุกตัว — ไม่ hardcode) ────────────────────────
 
 function drawFallbackBg(ctx, w, h) {
@@ -148,6 +430,10 @@ function drawAvatar(ctx, avatarImg, config, w, h) {
 
 /**
  * วาดข้อความ 1 "block" — รับ block object เดี่ยว { content, x, y, size, bold, fontStyle }
+ *
+ * ❗ ต้องเรียก preloadEmojisForBlocks() (async) ให้เสร็จก่อนเสมอ ถ้า block.content
+ * มีอิโมจิอยู่ — ฟังก์ชันนี้เอง "ไม่โหลดรูปเอง" (เป็น sync function ทำไม่ได้อยู่แล้ว)
+ * แค่ไปอ่านรูปที่โหลดเสร็จแล้วจาก EMOJI_CACHE เท่านั้น (ดู drawAllTextBlocks ด้านล่าง)
  */
 function drawTextBlock(ctx, block, w, h) {
   const text = block.content || '';
@@ -166,15 +452,30 @@ function drawTextBlock(ctx, block, w, h) {
   ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 8;
   ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
   ctx.fillStyle = '#ffffff';
-  wrapText(ctx, text, tx, ty, w * 0.85, Math.ceil(fontSizePx * 1.35));
+
+  if (containsEmoji(text)) {
+    // มีอิโมจิ → ใช้เส้นทางใหม่ที่วาดรูปภาพแทรกกลางข้อความได้
+    // ขนาดอิโมจิ = เท่ากับความสูงตัวอักษรพอดี (ให้ดูกลมกลืนไปกับข้อความรอบๆ)
+    wrapTextMixed(ctx, text, tx, ty, w * 0.85, Math.ceil(fontSizePx * 1.35), fontSizePx);
+  } else {
+    // ไม่มีอิโมจิเลย → เส้นทางเดิมของเก่าทุกอย่าง ไม่เปลี่ยนพฤติกรรมแม้แต่พิกเซลเดียว
+    wrapText(ctx, text, tx, ty, w * 0.85, Math.ceil(fontSizePx * 1.35));
+  }
+
   ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
 }
 
 /**
  * วาดทุก text block ที่มีใน config.textBlocks (loop ผ่านแต่ละ block อิสระ)
+ *
+ * ⚠️ กลายเป็น async แล้ว (เดิมเป็น sync ธรรมดา) — เพราะต้องโหลดรูปอิโมจิ
+ * (ถ้ามี) ให้เสร็จก่อนเริ่มวาดจริง ผู้เรียกทั้ง 2 จุด (generateMemberCardImage.js,
+ * welcomeImageWorker.js) ต้องเติม await หน้าฟังก์ชันนี้ด้วย — ทั้งคู่เป็น async
+ * function อยู่แล้วตั้งแต่เดิม เลยแค่เติม await คำเดียว ไม่ต้องแก้โครงสร้างอะไรเพิ่ม
  */
-function drawAllTextBlocks(ctx, config, w, h) {
+async function drawAllTextBlocks(ctx, config, w, h) {
   const blocks = config.textBlocks ?? [];
+  await preloadEmojisForBlocks(blocks);
   for (const block of blocks) {
     drawTextBlock(ctx, block, w, h);
   }

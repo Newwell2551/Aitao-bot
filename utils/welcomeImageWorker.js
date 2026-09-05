@@ -137,6 +137,11 @@ async function generateWelcomeGif(config) {
   encoder.setRepeat(0);
   encoder.start();
 
+  // ❗ อิโมจิใน text block (ถ้ามี) ถูกโหลด+แคชไว้ครั้งแรกที่ drawAllTextBlocks()
+  // เรียกด้านล่าง (เฟรมที่ 0) — เฟรมถัดๆ ไปที่เหลือจะอ่านจากแคชในหน่วยความจำ
+  // (EMOJI_CACHE ใน canvasDrawHelpers.js) แทบจะทันที ไม่ยิง network ซ้ำทุกเฟรม
+  // ดังนั้นถึง drawAllTextBlocks จะเป็น async แล้ว ก็แทบไม่กระทบความเร็วรวมของ
+  // การ encode GIF เลย (ยกเว้นเฟรมแรกที่ต้องรอโหลดรูปจริงๆ ครั้งเดียว)
   for (let i = 0; i < framePngs.length; i++) {
     const originalIndex = i * GIF_FRAME_STEP;
 
@@ -147,7 +152,7 @@ async function generateWelcomeGif(config) {
     ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
     drawOverlay(ctx, config.overlayOpacity, canvasW, canvasH);
     if (config.avatarEnabled && avatarImg) drawAvatar(ctx, avatarImg, config, canvasW, canvasH);
-    drawAllTextBlocks(ctx, config, canvasW, canvasH);
+    await drawAllTextBlocks(ctx, config, canvasW, canvasH);
 
     encoder.setDelay((delays[originalIndex] ?? 100) * GIF_FRAME_STEP);
     encoder.addFrame(ctx.getImageData(0, 0, canvasW, canvasH).data);
