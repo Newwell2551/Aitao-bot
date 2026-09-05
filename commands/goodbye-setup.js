@@ -51,6 +51,7 @@ const { runWelcomeGifJob }                      = require('../utils/imageWorkerP
 const { resolveCustomEmojis }                   = require('../utils/resolveCustomEmojis');
 const { getGuildLanguage }                      = require('../utils/languageStorage');
 const { createTranslator }                      = require('../utils/i18n');
+const { getGuildFonts }                         = require('../utils/fontStorage');
 
 // ─── ค่า Default ─────────────────────────────────────────────────────────────
 // ค่าเริ่มต้นของ config ทุก field — ใช้ตอน guild ยังไม่เคย setup เลย
@@ -70,14 +71,19 @@ const DEFAULT_CONFIG = {
   avatarX:        50,   // % ของ canvas width  (ค่า default: กลางแนวนอน)
   avatarY:        33,   // % ของ canvas height (ค่า default: 1/3 จากบน)
   avatarRadius:   19,   // % ของ canvas height (radius ของวงกลม avatar)
+  // ⚠️ ข้อความ default นี้เป็น "ข้อความจริงที่วาดลงรูป" (ไม่ผ่านระบบแปลภาษา
+  // i18n เหมือนปุ่ม/label ต่างๆ) ตั้งใจใช้ภาษาอังกฤษเป็นค่าเริ่มต้นให้ตรงกับ
+  // ภาษาเริ่มต้นของทั้งบอท (ดู languageStorage.js — getGuildLanguage() คืนค่า
+  // 'en' เสมอถ้ายังไม่เคยตั้งค่า) กันสมาชิกต่างชาติงงว่าทำไมมีข้อความไทยโผล่มา
+  // ในเซิร์ฟที่ตั้งภาษาเป็นอังกฤษ — ถ้าอยากได้ข้อความไทย แก้เองผ่านปุ่ม 💬 ข้อความ ได้เลย
   textBlocks: [
-    { id: 'tb_default', content: 'ลาก่อน {username} 👋', x: 50, y: 72, size: 12, bold: false, fontStyle: 'default' },
+    { id: 'tb_default', content: 'Goodbye {username} 👋', x: 50, y: 72, size: 12, bold: false, fontStyle: 'default' },
   ],
   // farewellText: ข้อความ "จริง" ของ Discord message ที่อยู่นอกรูป (ไม่ได้ baked เข้าไปในภาพ)
   // ต่างจาก textBlocks ตรงที่ตัวนี้เป็น message content จริง
   // รองรับ placeholder แค่ 2 ตัว: {username} = ชื่อ, {server} = ชื่อเซิร์ฟเวอร์
   // ❌ ไม่รองรับ {user} mention เลย — คนออกจากเซิร์ฟไปแล้ว ping ไปก็ไม่มีความหมาย
-  farewellText: '{username} ออกจากเซิร์ฟเวอร์ไปแล้วครับ 👋',
+  farewellText: '{username} has left the server 👋',
 };
 
 /**
@@ -254,6 +260,24 @@ function generateBlockId() {
 /** หา text block จาก id ใน config.textBlocks (คืน null ถ้าไม่เจอ) */
 function findTextBlock(config, blockId) {
   return config.textBlocks?.find(b => b.id === blockId) ?? null;
+}
+
+/**
+ * แปลงค่า fontStyle เก่า (ก่อนอัปเดตรองรับหลายฟอนต์ต่อเซิร์ฟ) ให้เป็นรูปแบบใหม่
+ * เดิม: fontStyle === 'custom' (bare string) แปลว่า "ใช้ฟอนต์เดียวของเซิร์ฟที่เคยอัปโหลดไว้"
+ * ใหม่: fontStyle === 'customFont:<id>' (ต้องระบุว่าเป็นฟอนต์ไหน เพราะอัปโหลดได้หลายไฟล์แล้ว)
+ *
+ * ตอน migrate ข้อมูลเก่าใน fontStorage.js จะตั้ง id ของฟอนต์เก่าเป็น
+ * `font_legacy_<guildId>` เสมอ (ดู comment ในไฟล์นั้น) เลยแปลงตรงนี้ให้ตรงกันเป๊ะ
+ * กัน block เก่าที่เคยเลือกฟอนต์ของเซิร์ฟไว้ก่อนอัปเดต แล้วจู่ๆ ฟอนต์หายไปเฉยๆ
+ *
+ * @param {string|undefined} fontStyle
+ * @param {string} guildId
+ * @returns {string}
+ */
+function normalizeFontStyle(fontStyle, guildId) {
+  if (fontStyle === 'custom') return `customFont:font_legacy_${guildId}`;
+  return fontStyle || 'default';
 }
 
 /**
@@ -592,18 +616,46 @@ function buildTextBlockEditorPayload(userId, guildId, blockId, preview = null) {
   // ── select menu เลือกสไตล์ฟอนต์ต่อบล็อกนี้
   // block เก่าที่สร้างก่อนฟีเจอร์นี้จะไม่มี field fontStyle เลย → fallback
   // เป็น 'default' เสมอ (backward compatible เหมือนที่ทำกับ farewellText)
-  const fontStyle = block.fontStyle || 'default';
+  // ผ่าน normalizeFontStyle() ด้วย เผื่อเป็นค่าเก่าแบบ 'custom' (ก่อนรองรับ
+  // หลายฟอนต์ต่อเซิร์ฟ) จะได้แปลงเป็น 'customFont:<id>' ให้ตรงกับของใหม่
+  const fontStyle  = normalizeFontStyle(block.fontStyle, guildId);
+  const guildFonts = getGuildFonts(guildId);
+  const fontOptions = [
+    { label: t('goodbye_setup.text_editor.font_default'), value: 'default', default: fontStyle === 'default' },
+    { label: t('goodbye_setup.text_editor.font_charmonman'), value: 'charmonman', default: fontStyle === 'charmonman' },
+    { label: t('goodbye_setup.text_editor.font_chonburi'), value: 'chonburi', default: fontStyle === 'chonburi' },
+    { label: t('goodbye_setup.text_editor.font_kanit'), value: 'kanit', default: fontStyle === 'kanit' },
+    { label: t('goodbye_setup.text_editor.font_sarabun'), value: 'sarabun', default: fontStyle === 'sarabun' },
+  ];
+  // ── ฟอนต์ของเซิร์ฟนี้ทั้งหมดที่เคยอัปโหลดไว้ (ผ่าน /fonts upload) — 🆕 อัปโหลด
+  // ได้หลายไฟล์แล้ว เลยลิสต์มาทุกไฟล์ ไม่ใช่แค่ไฟล์เดียวเหมือนก่อน เซิร์ฟที่ไม่
+  // เคยอัปโหลดเลยจะไม่เห็นตัวเลือกกลุ่มนี้เลย กันงงว่าเลือกแล้วทำไมไม่มีอะไรเปลี่ยน
+  // (สูงสุด 20 ไฟล์ตาม MAX_FONTS_PER_GUILD ใน fontStorage.js บวกกับ 5 ตัวข้างบน
+  // = 25 พอดีกับขีดจำกัด option ของ Discord select menu ไม่ต้องตัดลิสต์เอง)
+  for (const font of guildFonts) {
+    const value = `customFont:${font.id}`;
+    // ── label ใช้ "ชื่อไฟล์จริง" ที่แอดมินอัปโหลดมาเลย (เช่น MyCoolFont.ttf)
+    // ไม่ใช้ข้อความตายตัวแบบเดิมแล้ว เพราะดูแปลกๆ ไม่รู้ว่าคือฟอนต์ไหนกันแน่
+    // ถ้าเกิดกรณีแปลกๆ ที่ originalName หายไป (ไม่ควรเกิด) ค่อย fallback เป็น
+    // ข้อความทั่วไปแทน กัน label ว่างจน Discord API ปฏิเสธ
+    fontOptions.push({
+      label: (font.originalName || t('goodbye_setup.text_editor.font_custom')).slice(0, 100),
+      description: t('goodbye_setup.text_editor.font_custom'),
+      value,
+      default: fontStyle === value,
+    });
+  }
   const fontSelectMenu = new StringSelectMenuBuilder()
     .setCustomId(WGS.TXB_FONT_STYLE)
     .setPlaceholder(t('goodbye_setup.text_editor.font_placeholder'))
-    .addOptions(
-      { label: t('goodbye_setup.text_editor.font_default'), value: 'default', default: fontStyle === 'default' },
-      { label: t('goodbye_setup.text_editor.font_charmonman'), value: 'charmonman', default: fontStyle === 'charmonman' },
-      { label: t('goodbye_setup.text_editor.font_chonburi'), value: 'chonburi', default: fontStyle === 'chonburi' },
-      { label: t('goodbye_setup.text_editor.font_kanit'), value: 'kanit', default: fontStyle === 'kanit' },
-      { label: t('goodbye_setup.text_editor.font_sarabun'), value: 'sarabun', default: fontStyle === 'sarabun' },
-    );
+    .addOptions(fontOptions);
   components.push(new ActionRowBuilder().addComponents(fontSelectMenu));
+
+  // ── ยังไม่เคยอัปโหลดฟอนต์ของเซิร์ฟนี้เลยสักไฟล์ → แนะนำ /fonts upload ไว้เบาๆ
+  // ให้เห็นเป็นตัวเลือกเสมอ ไม่ต้องไปเปิดอ่านเอกสารที่ไหนถึงจะรู้ว่ามีฟีเจอร์นี้
+  if (guildFonts.length === 0) {
+    components.push(new TextDisplayBuilder().setContent(t('goodbye_setup.text_editor.font_custom_hint')));
+  }
 
   // ── ปุ่มแก้ไขเนื้อหา + ลบ + toggle bold
   // 🔒 Chonburi ไม่มี Bold จริง (weight เดียว) — ปิดปุ่มไปเลยถ้าเลือกฟอนต์นี้อยู่
@@ -652,13 +704,24 @@ function buildTextBlockEditorPayload(userId, guildId, blockId, preview = null) {
  * @returns {Promise<{ buffer: Buffer, ext: string }>}
  */
 async function genPreview(interaction, config) {
+  // ── เช็คฟอนต์ของเซิร์ฟนี้ (ถ้าเคยอัปโหลดผ่าน /fonts upload ไว้บ้าง)
+  // ถ้ามี แนบทุกไฟล์เข้าไปใน config ที่ส่งไปวาดรูป — canvasDrawHelpers.js
+  // จะไปเจอค่านี้เองใน drawAllTextBlocks() แล้ว register + ใช้ให้อัตโนมัติ
+  // (เฉพาะ block ที่เลือก fontStyle เป็น 'customFont:<id>' ตรงกับไฟล์ไหน
+  // เท่านั้นที่จะใช้ฟอนต์นั้นจริง — ดู pickFontFamily() ใน canvasDrawHelpers.js)
+  const guildFonts = getGuildFonts(interaction.guildId);
+  const customFonts = guildFonts.map(f => ({ id: f.id, family: f.family, path: f.path }));
+
   const previewConfig = {
     ...config,
     // แทน {username} ในทุก block (ไม่ใช่แค่ field เดียวเหมือนตอนเป็นก้อนเดียว)
+    // พร้อมแปลง fontStyle เก่า (ถ้ามี) ให้เป็นรูปแบบใหม่ด้วย normalizeFontStyle()
     textBlocks: (config.textBlocks ?? []).map(block => ({
       ...block,
-      content: (block.content || '').replace('{username}', interaction.user.username),
+      content:   (block.content || '').replace('{username}', interaction.user.username),
+      fontStyle: normalizeFontStyle(block.fontStyle, interaction.guildId),
     })),
+    customFonts,
   };
   // previewMode: true → คืน PNG เสมอ แม้ background เป็น GIF
   // เพราะ Discord render animated GIF ใน ephemeral MediaGallery ไม่ได้
@@ -1478,6 +1541,13 @@ module.exports = {
 
     if (!config || !config.enabled || !config.channelId) return;
 
+    // ── เช็คฟอนต์ของเซิร์ฟนี้ (ถ้าเคยอัปโหลดผ่าน /fonts upload ไว้บ้าง) — แนบ
+    // ไปกับทั้ง 2 เส้นทางด้านล่าง (PNG ในเธรดหลัก / GIF ใน worker thread) เพื่อให้
+    // block ที่เลือกฟอนต์ 'customFont:<id>' render ออกมาถูกต้องตอนมีสมาชิกออกจากเซิร์ฟจริง
+    // 🆕 อัปโหลดได้หลายไฟล์แล้ว เลยส่งไปทั้งลิสต์ ไม่ใช่แค่ไฟล์เดียวเหมือนก่อน
+    const guildFonts  = getGuildFonts(guildId);
+    const customFonts = guildFonts.map(f => ({ id: f.id, family: f.family, path: f.path }));
+
     const channel = member.guild.channels.cache.get(config.channelId)
       ?? await member.guild.channels.fetch(config.channelId).catch(() => null);
 
@@ -1486,9 +1556,11 @@ module.exports = {
     try {
       // ── แทน placeholder ในเนื้อหาทุก text block (ใช้ร่วมกันทั้ง 2 เส้นทาง)
       // ไม่มี {user} ให้แทนเลย (ตัดออกตั้งแต่ design) — แค่ {username} ธรรมดา
+      // พร้อมแปลง fontStyle เก่า (ถ้ามี) ให้เป็นรูปแบบใหม่ด้วย normalizeFontStyle()
       const sendTextBlocks = (config.textBlocks ?? []).map(block => ({
         ...block,
         content: (block.content || '').replace('{username}', member.user.username),
+        fontStyle: normalizeFontStyle(block.fontStyle, guildId),
       }));
 
       // ── เช็คว่าควรใช้ background แบบ animated GIF ไหม — ตัดสินใจเส้นทางตรงนี้
@@ -1533,13 +1605,22 @@ module.exports = {
           avatarY:        config.avatarY,
           avatarRadius:   config.avatarRadius,
           textBlocks:     sendTextBlocks,
+          // customFonts เป็น array ของ {id, family, path} — path เป็น path บนดิสก์
+          // ธรรมดา (string) ส่งข้าม thread ได้ปกติ (structured-clonable) ต่างจาก
+          // Image object ที่ส่งไม่ได้แบบ avatarUrl ด้านบน — worker เป็นคนไป
+          // GlobalFonts.registerFromPath() เองอีกทีทุกไฟล์ในลิสต์
+          customFonts,
         };
 
         buffer = await runWelcomeGifJob(jobConfig);
         ext    = 'gif';
       } else {
         // ── เส้นทาง PNG: เร็วพออยู่แล้ว ไม่ต้องย้ายไป worker
-        const sendConfig = { ...config, textBlocks: sendTextBlocks };
+        const sendConfig = {
+          ...config,
+          textBlocks: sendTextBlocks,
+          customFonts,
+        };
         const result = await generateMemberCardImage(member, sendConfig);
         buffer = result.buffer;
         ext    = result.ext;

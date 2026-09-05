@@ -321,6 +321,19 @@ client.on('interactionCreate', async interaction => {
       }
       return;
     }
+    // fonts_ = StringSelectMenu ใน /fonts (เลือกฟอนต์ที่จะลบ)
+    if (interaction.customId.startsWith('fonts_')) {
+      const fontsCommand = client.commands.get('fonts');
+      try {
+        await fontsCommand.handleSelectMenu(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', flags: MessageFlags.Ephemeral });
+        }
+      }
+      return;
+    }
     if (interaction.customId.startsWith('builder_')) {
       const builderCommand = client.commands.get('builder');
       try {

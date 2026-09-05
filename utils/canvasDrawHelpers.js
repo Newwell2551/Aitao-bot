@@ -70,6 +70,55 @@ function hasThai(text) {
   return /[฀-๿]/.test(text);
 }
 
+// ─── ฟอนต์ที่แอดมินอัปโหลดเอง (per-guild custom font) ──────────────────────────
+//
+// ต่างจากฟอนต์มาตรฐาน 6 ตัวข้างบน (register ครั้งเดียวตอนบอทเปิด) ฟอนต์ของ
+// แต่ละเซิร์ฟจะถูก "อัปโหลดเข้ามาทีหลัง" ระหว่างบอทกำลังรันอยู่ (ผ่านคำสั่ง
+// /fonts upload) เลย register แบบ static ตอนเปิดไฟล์นี้ไม่ได้ ต้อง register
+// "แบบไดนามิก" ตอนกำลังจะใช้จริง (ดู ensureCustomFontRegistered ด้านล่าง)
+//
+// registeredCustomFonts: เก็บ "ชื่อ family ที่เคย register ไปแล้วใน thread นี้"
+// กันเรียก GlobalFonts.registerFromPath() ซ้ำโดยไม่จำเป็นทุกครั้งที่วาดการ์ด
+// (แต่ละ thread มี Set ของตัวเอง เหมือน EMOJI_CACHE ด้านล่าง — เป็นเรื่องปกติ
+// ไม่ใช่บั๊ก อ่าน comment บนสุดของไฟล์นี้เรื่อง worker_threads ประกอบ)
+const registeredCustomFonts = new Set();
+
+/**
+ * ลงทะเบียนฟอนต์ของเซิร์ฟ (ถ้ายังไม่เคย register ชื่อ family นี้ใน thread ปัจจุบัน)
+ * เรียกจาก drawAllTextBlocks() ก่อนเริ่มวาดทุกครั้ง — ปลอดภัยเรียกซ้ำได้เสมอ
+ * (เช็ค Set ก่อน ถ้าเคย register แล้วจะ return ทันทีโดยไม่ทำอะไรซ้ำ)
+ *
+ * ไม่ throw ออกไปข้างนอกเด็ดขาด แม้ path ไฟล์จะหายไปหรือไฟล์ฟอนต์เสีย —
+ * แค่ log ไว้แล้วปล่อยผ่าน (การ์ดจะ fallback ไปใช้ฟอนต์ default แทนเงียบๆ)
+ *
+ * @param {string|undefined} fontPath - path เต็มของไฟล์ฟอนต์บนดิสก์
+ * @param {string|undefined} fontFamily - ชื่อ family ที่จะใช้เรียก (ต้องตรงกับตอน register)
+ */
+function ensureCustomFontRegistered(fontPath, fontFamily) {
+  if (!fontPath || !fontFamily) return;
+  if (registeredCustomFonts.has(fontFamily)) return;
+  try {
+    GlobalFonts.registerFromPath(fontPath, fontFamily);
+    registeredCustomFonts.add(fontFamily);
+  } catch (e) {
+    console.warn(`[canvasDrawHelpers] ⚠️ ลงทะเบียนฟอนต์ของเซิร์ฟไม่สำเร็จ (${fontFamily}):`, e.message);
+  }
+}
+
+/**
+ * ลงทะเบียนฟอนต์ของเซิร์ฟ "ทุกไฟล์" ที่อาจถูกใช้ในการ์ดนี้ในคราวเดียว —
+ * 🆕 เปลี่ยนจากเดิมที่มีแค่ฟอนต์เดียวต่อเซิร์ฟ ตอนนี้แต่ละเซิร์ฟอัปโหลดได้
+ * หลายไฟล์ แต่ละ text block เลือกฟอนต์ของตัวเองได้อิสระ เลยต้อง register
+ * ทุกไฟล์ที่ config ส่งมาให้ ไม่ใช่แค่ไฟล์เดียวเหมือนก่อน
+ *
+ * @param {{path:string, family:string}[]} customFonts
+ */
+function ensureAllCustomFontsRegistered(customFonts) {
+  for (const font of customFonts ?? []) {
+    ensureCustomFontRegistered(font?.path, font?.family);
+  }
+}
+
 /**
  * เลือก font family ตาม fontStyle ที่ user เลือกไว้ต่อ block (ถ้ามี)
  * ไม่งั้น fallback เป็นพฤติกรรมเดิม: ไทย → Mali | อังกฤษ → Fredoka
@@ -77,10 +126,24 @@ function hasThai(text) {
  * Charmonman/Chonburi/Kanit/Sarabun รองรับทั้งไทย+อังกฤษในไฟล์เดียว
  * ไม่ต้องเช็ค hasThai() แยกเหมือน Mali/Fredoka — เลือกฟอนต์เดียวจบทั้งบล็อก
  *
+ * fontStyle === 'customFont:<id>' → ใช้ฟอนต์ที่เซิร์ฟอัปโหลดเอง (ผ่าน
+ * /fonts upload) โดย <id> บอกว่าเป็นไฟล์ไหน (เซิร์ฟนึงอัปโหลดได้หลายไฟล์แล้ว
+ * — ดู utils/fontStorage.js) ต้องส่ง customFonts (array ของฟอนต์ทั้งหมดที่
+ * เซิร์ฟนี้มี) มาด้วยเสมอตอนเลือกแบบนี้ ถ้าหา id ไม่เจอในลิสต์ (เช่น block
+ * เก่าอ้างถึงฟอนต์ที่ถูกลบไปแล้ว) จะ fallback ไปใช้กฎเดิม (ไทย → Mali |
+ * อังกฤษ → Fredoka) แทนเงียบๆ ไม่พัง
+ *
  * @param {string} text
- * @param {string} [fontStyle] - 'default' | 'charmonman' | 'chonburi' | 'kanit' | 'sarabun' | undefined
+ * @param {string} [fontStyle] - 'default' | 'charmonman' | 'chonburi' | 'kanit' | 'sarabun' | 'customFont:<id>' | undefined
+ * @param {{id:string, family:string}[]} [customFonts] - ฟอนต์ที่เซิร์ฟนี้อัปโหลดไว้ทั้งหมด
  */
-function pickFontFamily(text, fontStyle) {
+function pickFontFamily(text, fontStyle, customFonts) {
+  if (fontStyle && fontStyle.startsWith('customFont:')) {
+    const fontId = fontStyle.slice('customFont:'.length);
+    const match  = (customFonts ?? []).find(f => f.id === fontId);
+    if (match) return `${match.family}, sans-serif`;
+    // หาไม่เจอ → ไหลลงไป fallback ด้านล่างต่อ (ไม่ return ทันที)
+  }
   if (fontStyle === 'charmonman') return 'Charmonman, sans-serif';
   if (fontStyle === 'chonburi')   return 'Chonburi, sans-serif';
   if (fontStyle === 'kanit')      return 'Kanit, sans-serif';
@@ -435,7 +498,7 @@ function drawAvatar(ctx, avatarImg, config, w, h) {
  * มีอิโมจิอยู่ — ฟังก์ชันนี้เอง "ไม่โหลดรูปเอง" (เป็น sync function ทำไม่ได้อยู่แล้ว)
  * แค่ไปอ่านรูปที่โหลดเสร็จแล้วจาก EMOJI_CACHE เท่านั้น (ดู drawAllTextBlocks ด้านล่าง)
  */
-function drawTextBlock(ctx, block, w, h) {
+function drawTextBlock(ctx, block, w, h, customFonts) {
   const text = block.content || '';
   if (!text) return;
   const tx = (block.x / 100) * w;
@@ -444,10 +507,13 @@ function drawTextBlock(ctx, block, w, h) {
   // 🔒 กันเหนียว: Chonburi ไม่มี Bold จริง (มีแค่ weight เดียว) — ไม่ว่า
   // block.bold จะเป็น true ค้างมาจากตอนใช้ฟอนต์อื่นก่อนสลับมาหรือไม่ก็ตาม
   // บังคับ fontWeight ว่างเสมอเมื่อเลือก Chonburi อยู่
+  // (ฟอนต์ของเซิร์ฟที่อัปโหลดเอง — fontStyle 'customFont:<id>' — ก็ไม่รู้ว่ามี
+  // Bold จริงไหมเหมือนกัน แต่ปล่อยให้ลองใช้ 'bold ' ได้ตามปกติ ถ้าฟอนต์ไม่มี
+  // weight ตัวหนา เบราว์เซอร์/Skia จะ fallback ไปใช้ weight ปกติแทนเองเงียบๆ)
   const fontWeight = (fontStyle === 'chonburi') ? '' : (block.bold ? 'bold ' : '');
   const fontSizePx = (block.size / 100) * h;
 
-  ctx.font = `${fontWeight}${fontSizePx}px ${pickFontFamily(text, fontStyle)}`;
+  ctx.font = `${fontWeight}${fontSizePx}px ${pickFontFamily(text, fontStyle, customFonts)}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 8;
   ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
@@ -474,10 +540,18 @@ function drawTextBlock(ctx, block, w, h) {
  * function อยู่แล้วตั้งแต่เดิม เลยแค่เติม await คำเดียว ไม่ต้องแก้โครงสร้างอะไรเพิ่ม
  */
 async function drawAllTextBlocks(ctx, config, w, h) {
+  // ── ฟอนต์ของเซิร์ฟ (ถ้ามี): config.customFonts เป็น array ของฟอนต์ที่เซิร์ฟ
+  // นี้อัปโหลดไว้ทั้งหมด (🆕 เปลี่ยนจากเดิมที่มีแค่ฟอนต์เดียว — ดู comment ที่
+  // ensureAllCustomFontsRegistered ด้านบน) แนบมาโดยผู้เรียก (welcome-setup.js /
+  // goodbye-setup.js) จากการเช็ค utils/fontStorage.js ด้วย guildId — ลงทะเบียน
+  // ให้ครบทุกไฟล์ก่อนวาดจริงเสมอ (ปลอดภัยเรียกซ้ำได้ทุกครั้ง)
+  const customFonts = config.customFonts ?? [];
+  ensureAllCustomFontsRegistered(customFonts);
+
   const blocks = config.textBlocks ?? [];
   await preloadEmojisForBlocks(blocks);
   for (const block of blocks) {
-    drawTextBlock(ctx, block, w, h);
+    drawTextBlock(ctx, block, w, h, customFonts);
   }
 }
 
@@ -486,6 +560,8 @@ module.exports = {
   DEFAULT_H,
   hasThai,
   pickFontFamily,
+  ensureCustomFontRegistered,
+  ensureAllCustomFontsRegistered,
   wrapParagraph,
   wrapText,
   drawFallbackBg,

@@ -621,17 +621,17 @@
       "field_greeting": "Greeting Message"
     },
     "panel": {
-      "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
+      "hint": "💡 Tap **Background** and paste an image link — use `/upload-image` first to get a permanent link",
       "button": {
-        "background": "🖼️ Background",
-        "text": "💬 Text",
-        "avatar": "👤 Avatar",
-        "opacity": "🎨 Opacity",
-        "greeting": "📢 Greeting Message",
-        "preview": "👀 Preview",
-        "toggle_on": "🔛 On",
-        "toggle_off": "⬛ Off",
-        "done": "✅ Done"
+        "background": "Background",
+        "text": "Text",
+        "avatar": "Avatar",
+        "opacity": "Opacity",
+        "greeting": "Greeting Message",
+        "preview": "Preview",
+        "toggle_on": "On",
+        "toggle_off": "Off",
+        "done": "Done"
       },
       "channel_placeholder_set": "Change welcome channel (currently set)",
       "channel_placeholder_unset": "Choose welcome channel…"
@@ -664,18 +664,20 @@
       "bold_tag": "**[B Bold]**",
       "normal_tag": "[Normal]",
       "font_placeholder": "Choose font style",
-      "font_default": "🎈 Default (Mali/Fredoka)",
-      "font_charmonman": "✨ Charmonman (dreamy)",
-      "font_chonburi": "🎉 Chonburi (festive, no bold)",
-      "font_kanit": "🔹 Kanit (minimal, modern)",
-      "font_sarabun": "🔹 Sarabun (minimal, formal)",
+      "font_default": "Default (Mali/Fredoka)",
+      "font_charmonman": "Charmonman (dreamy)",
+      "font_chonburi": "Chonburi (festive, no bold)",
+      "font_kanit": "Kanit (minimal, modern)",
+      "font_sarabun": "Sarabun (minimal, formal)",
       "bold_disabled": "⛔ No Bold",
       "bold_on": "B Bold",
       "bold_off": "⬛ Normal",
       "edit_button": "✏️ Edit Text",
       "delete_button": "🗑️ Delete Block",
       "custom_button": "🎯 Custom",
-      "back_button": "← Back to List"
+      "back_button": "← Back to List",
+      "font_custom": "Uploaded font",
+      "font_custom_hint": "💡 No custom font uploaded for this server yet. Use `/fonts upload` to upload your own font file (.ttf/.otf) — it'll only be visible on this server."
     },
     "modal": {
       "example_number": "e.g. {n}",
@@ -751,17 +753,17 @@
       "field_farewell": "Farewell Message"
     },
     "panel": {
-      "hint": "💡 Tap **🖼️ Background** and paste an image link — use `/upload-image` first to get a permanent link",
+      "hint": "💡 Tap **Background** and paste an image link — use `/upload-image` first to get a permanent link",
       "button": {
-        "background": "🖼️ Background",
-        "text": "💬 Text",
-        "avatar": "👤 Avatar",
-        "opacity": "🎨 Opacity",
-        "farewell": "📢 Farewell Message",
-        "preview": "👀 Preview",
-        "toggle_on": "🔛 On",
-        "toggle_off": "⬛ Off",
-        "done": "✅ Done"
+        "background": "Background",
+        "text": "Text",
+        "avatar": "Avatar",
+        "opacity": "Opacity",
+        "farewell": "Farewell Message",
+        "preview": "Preview",
+        "toggle_on": "On",
+        "toggle_off": "Off",
+        "done": "Done"
       },
       "channel_placeholder_set": "Change goodbye channel (currently set)",
       "channel_placeholder_unset": "Choose goodbye channel…"
@@ -794,18 +796,20 @@
       "bold_tag": "**[B Bold]**",
       "normal_tag": "[Normal]",
       "font_placeholder": "Choose font style",
-      "font_default": "🎈 Default (Mali/Fredoka)",
-      "font_charmonman": "✨ Charmonman (dreamy)",
-      "font_chonburi": "🎉 Chonburi (festive, no bold)",
-      "font_kanit": "🔹 Kanit (minimal, modern)",
-      "font_sarabun": "🔹 Sarabun (minimal, formal)",
+      "font_default": "Default (Mali/Fredoka)",
+      "font_charmonman": "Charmonman (dreamy)",
+      "font_chonburi": "Chonburi (festive, no bold)",
+      "font_kanit": "Kanit (minimal, modern)",
+      "font_sarabun": "Sarabun (minimal, formal)",
       "bold_disabled": "⛔ No Bold",
       "bold_on": "B Bold",
       "bold_off": "⬛ Normal",
       "edit_button": "✏️ Edit Text",
       "delete_button": "🗑️ Delete Block",
       "custom_button": "🎯 Custom",
-      "back_button": "← Back to List"
+      "back_button": "← Back to List",
+      "font_custom": "Uploaded font",
+      "font_custom_hint": "💡 No custom font uploaded for this server yet. Use `/fonts upload` to upload your own font file (.ttf/.otf) — it'll only be visible on this server."
     },
     "modal": {
       "example_number": "e.g. {n}",
@@ -880,7 +884,7 @@
     "manage_no_customer": "⚠️ No Stripe subscription found on file for this server yet. If your admin was set to premium manually, there's nothing to manage here.",
     "already_premium": "✅ This server is already Premium — no need to subscribe again",
     "dm": {
-      "activated": "🎉 Your Aitao Bot Premium subscription is now active for **{guildName}**! Thank you for supporting us 💚"
+      "activated": "🎉 Your Milo Bot Premium subscription is now active for **{guildName}**! Thank you for supporting us 💚"
     }
   },
   "premium_gate": {
@@ -900,6 +904,35 @@
     },
     "reply": {
       "success": "✅ Upload successful!\n{url}\n\nCopy this link to use anywhere an image link is needed (e.g. /builder, /welcome-setup, /goodbye-setup)"
+    }
+  },
+  "fonts": {
+    "error": {
+      "guild_only": "❌ This command can only be used in a server (not in DMs)."
+    },
+    "panel": {
+      "title": "🔤 Fonts",
+      "builtin_header": "**Built-in fonts** (always available in the font menu inside /welcome-setup and /goodbye-setup):",
+      "builtin_list": "Default, Charmonman, Chonburi, Kanit, Sarabun",
+      "custom_header": "**Custom fonts uploaded to this server** ({count}/{max}):",
+      "custom_empty": "No custom fonts uploaded yet. Use `/fonts upload` to add one.",
+      "delete_placeholder": "Select font(s) to delete",
+      "upload_hint": "💡 Want to add another font? Use `/fonts upload`."
+    },
+    "delete": {
+      "confirm": "✅ Deleted {count} font(s)."
+    },
+    "upload": {
+      "error": {
+        "invalid_file": "❌ This file isn't a supported font. Only these extensions are allowed: {extensions}",
+        "too_large": "❌ File is too large. Must be under {max}MB",
+        "download_failed": "❌ Couldn't download the font file from Discord. Please try uploading it again.",
+        "invalid_font_data": "❌ This isn't a valid font file (registration failed). Please check the file and try uploading it again.",
+        "max_reached": "❌ This server already has the maximum of {max} custom fonts. Delete one with `/fonts list` first, then try uploading again."
+      },
+      "reply": {
+        "success": "✅ Uploaded **{name}** successfully!"
+      }
     }
   }
 }

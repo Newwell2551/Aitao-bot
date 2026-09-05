@@ -602,16 +602,16 @@
   },
   "welcome_setup": {
     "status": {
-      "on": "เปิดอยู่",
-      "off": "ปิดอยู่",
+      "on": "🟢 เปิดอยู่",
+      "off": "⭕ ปิดอยู่",
       "channel_unset": "*ยังไม่เลือก*",
-      "bg_gif": "มี (GIF)",
-      "bg_set": "มี",
-      "bg_none": "ไม่มี (ใช้ gradient)",
-      "avatar_on": "เปิด",
-      "avatar_off": "ปิด",
-      "text_none": "ยังไม่มีข้อความ",
-      "text_count": "{count} บล็อก",
+      "bg_gif": "✅ มี (GIF ⭐)",
+      "bg_set": "✅ มี",
+      "bg_none": "❌ ไม่มี (ใช้ gradient)",
+      "avatar_on": "🟢 เปิด",
+      "avatar_off": "⭕ ปิด",
+      "text_none": "❌ ยังไม่มีข้อความ",
+      "text_count": "✅ {count} บล็อก",
       "field_status": "สถานะ",
       "field_channel": "ช่อง",
       "field_background": "พื้นหลัง",
@@ -621,7 +621,7 @@
       "field_greeting": "ข้อความทักทาย"
     },
     "panel": {
-      "hint": "💡 กดปุ่ม **🖼️ พื้นหลัง** แล้ววางลิงก์รูป — ใช้ `/upload-image` ก่อนเพื่อแปลงไฟล์เป็นลิงก์ถาวร",
+      "hint": "💡 กดปุ่ม **พื้นหลัง** แล้ววางลิงก์รูป — ใช้ `/upload-image` ก่อนเพื่อแปลงไฟล์เป็นลิงก์ถาวร",
       "button": {
         "background": "พื้นหลัง",
         "text": "ข้อความ",
@@ -664,18 +664,20 @@
       "bold_tag": "**[B ตัวหนา]**",
       "normal_tag": "[ปกติ]",
       "font_placeholder": "เลือกสไตล์ฟอนต์",
-      "font_default": "🎈 ค่าเริ่มต้น (Mali/Fredoka)",
-      "font_charmonman": "✨ Charmonman (ฝันๆ)",
-      "font_chonburi": "🎉 Chonburi (สนุกสนาน ไม่มีตัวหนา)",
-      "font_kanit": "🔹 Kanit (มินิมอล ทันสมัย)",
-      "font_sarabun": "🔹 Sarabun (มินิมอล เป็นทางการ)",
+      "font_default": "ค่าเริ่มต้น (Mali/Fredoka)",
+      "font_charmonman": "Charmonman (ฝันๆ)",
+      "font_chonburi": "Chonburi (สนุกสนาน ไม่มีตัวหนา)",
+      "font_kanit": "Kanit (มินิมอล ทันสมัย)",
+      "font_sarabun": "Sarabun (มินิมอล เป็นทางการ)",
       "bold_disabled": "⛔ ไม่มีตัวหนา",
       "bold_on": "B ตัวหนา",
       "bold_off": "⬛ ปกติ",
       "edit_button": "✏️ แก้ไขข้อความ",
       "delete_button": "🗑️ ลบบล็อกนี้",
       "custom_button": "🎯 ปรับแต่งเอง",
-      "back_button": "← กลับไปรายการ"
+      "back_button": "← กลับไปรายการ",
+      "font_custom": "ฟอนต์ที่อัปโหลดเอง",
+      "font_custom_hint": "💡 ยังไม่มีฟอนต์ของเซิร์ฟนี้เลย ใช้คำสั่ง `/fonts upload` เพื่ออัปโหลดไฟล์ฟอนต์ (.ttf/.otf) ของตัวเองได้เลยนะครับ (เห็นแค่เซิร์ฟนี้เท่านั้น)"
     },
     "modal": {
       "example_number": "เช่น {n}",
@@ -732,16 +734,16 @@
   },
   "goodbye_setup": {
     "status": {
-      "on": "เปิดอยู่",
-      "off": "ปิดอยู่",
+      "on": "🟢 เปิดอยู่",
+      "off": "⭕ ปิดอยู่",
       "channel_unset": "*ยังไม่เลือก*",
-      "bg_gif": "มี (GIF)",
-      "bg_set": "มี",
-      "bg_none": "ไม่มี (ใช้ gradient)",
-      "avatar_on": "เปิด",
-      "avatar_off": "ปิด",
-      "text_none": "ยังไม่มีข้อความ",
-      "text_count": "{count} บล็อก",
+      "bg_gif": "✅ มี (GIF ⭐)",
+      "bg_set": "✅ มี",
+      "bg_none": "❌ ไม่มี (ใช้ gradient)",
+      "avatar_on": "🟢 เปิด",
+      "avatar_off": "⭕ ปิด",
+      "text_none": "❌ ยังไม่มีข้อความ",
+      "text_count": "✅ {count} บล็อก",
       "field_status": "สถานะ",
       "field_channel": "ช่อง",
       "field_background": "พื้นหลัง",
@@ -751,7 +753,7 @@
       "field_farewell": "ข้อความอำลา"
     },
     "panel": {
-      "hint": "💡 กดปุ่ม **🖼️ พื้นหลัง** แล้ววางลิงก์รูป — ใช้ `/upload-image` ก่อนเพื่อแปลงไฟล์เป็นลิงก์ถาวร",
+      "hint": "💡 กดปุ่ม **พื้นหลัง** แล้ววางลิงก์รูป — ใช้ `/upload-image` ก่อนเพื่อแปลงไฟล์เป็นลิงก์ถาวร",
       "button": {
         "background": "พื้นหลัง",
         "text": "ข้อความ",
@@ -794,18 +796,20 @@
       "bold_tag": "**[B ตัวหนา]**",
       "normal_tag": "[ปกติ]",
       "font_placeholder": "เลือกสไตล์ฟอนต์",
-      "font_default": "🎈 ค่าเริ่มต้น (Mali/Fredoka)",
-      "font_charmonman": "✨ Charmonman (ฝันๆ)",
-      "font_chonburi": "🎉 Chonburi (สนุกสนาน ไม่มีตัวหนา)",
-      "font_kanit": "🔹 Kanit (มินิมอล ทันสมัย)",
-      "font_sarabun": "🔹 Sarabun (มินิมอล เป็นทางการ)",
+      "font_default": "ค่าเริ่มต้น (Mali/Fredoka)",
+      "font_charmonman": "Charmonman (ฝันๆ)",
+      "font_chonburi": "Chonburi (สนุกสนาน ไม่มีตัวหนา)",
+      "font_kanit": "Kanit (มินิมอล ทันสมัย)",
+      "font_sarabun": "Sarabun (มินิมอล เป็นทางการ)",
       "bold_disabled": "⛔ ไม่มีตัวหนา",
       "bold_on": "B ตัวหนา",
       "bold_off": "⬛ ปกติ",
       "edit_button": "✏️ แก้ไขข้อความ",
       "delete_button": "🗑️ ลบบล็อกนี้",
       "custom_button": "🎯 ปรับแต่งเอง",
-      "back_button": "← กลับไปรายการ"
+      "back_button": "← กลับไปรายการ",
+      "font_custom": "ฟอนต์ที่อัปโหลดเอง",
+      "font_custom_hint": "💡 ยังไม่มีฟอนต์ของเซิร์ฟนี้เลย ใช้คำสั่ง `/fonts upload` เพื่ออัปโหลดไฟล์ฟอนต์ (.ttf/.otf) ของตัวเองได้เลยนะครับ (เห็นแค่เซิร์ฟนี้เท่านั้น)"
     },
     "modal": {
       "example_number": "เช่น {n}",
@@ -880,7 +884,7 @@
     "manage_no_customer": "⚠️ ยังไม่พบข้อมูลการสมัครพรีเมียมผ่าน Stripe ของเซิร์ฟนี้ ถ้าแอดมินตั้ง premium ไว้ด้วยมือ จะไม่มีอะไรให้จัดการตรงนี้",
     "already_premium": "✅ เซิร์ฟนี้เป็นพรีเมี่ยมอยู่แล้ว ไม่ต้องสมัครซ้ำ",
     "dm": {
-      "activated": "🎉 เปิดใช้งาน Aitao Bot Premium สำหรับ **{guildName}** เรียบร้อยแล้ว! ขอบคุณที่สนับสนุน 💚"
+      "activated": "🎉 เปิดใช้งาน Milo Bot Premium สำหรับ **{guildName}** เรียบร้อยแล้ว! ขอบคุณที่สนับสนุน 💚"
     }
   },
   "premium_gate": {
@@ -900,6 +904,35 @@
     },
     "reply": {
       "success": "✅ อัปโหลดสำเร็จครับ!\n{url}\n\nคัดลอกลิงก์นี้ไปใช้ได้เลยครับ ใช้ได้กับทุกจุดที่ต้องใส่ลิงก์รูปภาพ (เช่น /builder, /welcome-setup, /goodbye-setup)"
+    }
+  },
+  "fonts": {
+    "error": {
+      "guild_only": "❌ คำสั่งนี้ใช้ได้เฉพาะในเซิร์ฟเวอร์เท่านั้นครับ (ใช้ในข้อความส่วนตัวไม่ได้)"
+    },
+    "panel": {
+      "title": "🔤 ฟอนต์ทั้งหมด",
+      "builtin_header": "**ฟอนต์มาตรฐานของบอท** (เลือกได้เสมอในเมนูฟอนต์ของ /welcome-setup และ /goodbye-setup):",
+      "builtin_list": "ค่าเริ่มต้น, Charmonman, Chonburi, Kanit, Sarabun",
+      "custom_header": "**ฟอนต์ที่อัปโหลดเองในเซิร์ฟนี้** ({count}/{max}):",
+      "custom_empty": "ยังไม่มีฟอนต์ที่อัปโหลดเองเลยครับ ใช้คำสั่ง `/fonts upload` เพื่ออัปโหลดได้เลยนะครับ",
+      "delete_placeholder": "เลือกฟอนต์ที่จะลบ (เลือกได้หลายไฟล์)",
+      "upload_hint": "💡 อยากเพิ่มฟอนต์ใหม่ ใช้คำสั่ง `/fonts upload` ได้เลยครับ"
+    },
+    "delete": {
+      "confirm": "✅ ลบฟอนต์ไปแล้ว {count} ไฟล์ครับ"
+    },
+    "upload": {
+      "error": {
+        "invalid_file": "❌ ไฟล์นี้ไม่ใช่ไฟล์ฟอนต์ที่รองรับครับ ใช้ได้เฉพาะไฟล์นามสกุล {extensions} เท่านั้น",
+        "too_large": "❌ ไฟล์ใหญ่เกินไปครับ ต้องไม่เกิน {max}MB",
+        "download_failed": "❌ โหลดไฟล์ฟอนต์จาก Discord ไม่สำเร็จครับ ลองอัปโหลดใหม่อีกครั้งนะครับ",
+        "invalid_font_data": "❌ ไฟล์นี้ไม่ใช่ไฟล์ฟอนต์จริงครับ (register ไม่ผ่าน) ลองเช็คไฟล์แล้วอัปโหลดใหม่อีกครั้งนะครับ",
+        "max_reached": "❌ เซิร์ฟนี้มีฟอนต์ครบ {max} ไฟล์แล้วครับ (เต็มจำนวนสูงสุด) ลบตัวที่ไม่ใช้ผ่าน `/fonts list` ก่อน แล้วค่อยอัปโหลดใหม่นะครับ"
+      },
+      "reply": {
+        "success": "✅ อัปโหลด **{name}** สำเร็จแล้วครับ!"
+      }
     }
   }
 }
