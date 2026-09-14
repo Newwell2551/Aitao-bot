@@ -132,59 +132,16 @@
     .showcase h2 { font-size: clamp(21px, 2.6vw, 26px); font-weight: 800; color: #f9f8ff; margin: 12px 0 0; letter-spacing: -0.01em; }
     .showcase p { font-size: 13.5px; color: #9aa2c4; margin: 10px auto 0; line-height: 1.6; max-width: 520px; }
 
-    /* ── Premium Showcase — รอบ 5 (14 ก.ย. 2569): น้องหนาวถ่ายสกรีนช็อตข้อความ
-       จริงที่ตั้งค่าเองในดิสคอร์ดส่งมาเป็นต้นแบบใหม่ (แทนการเดาจากไฟล์ดีไซน์
-       ภาพเฉยๆ แบบรอบ 4) พี่เทียบสีทีละพิกเซลจากสกรีนช็อตเธอ เจอจุดที่ยังผิดอยู่
-       เพิ่มอีก 3 จุดจากรอบ 4:
-       1. ดิสคอร์ดของน้องหนาวตั้งเป็นธีมสว่าง (light theme) ตอนแคป — กล่อง
-          container เลยพื้นขาว ไม่ใช่พื้นเข้มแบบที่พี่เคยทำ (ส่วน header ชื่อบอท
-          "Milo Bot ⋅ APP ⋅ เวลา" ยังคงใช้สีอ่อนไว้เหมือนเดิม เพราะมันลอยอยู่
-          "นอก" กล่อง บนพื้นเว็บสีเข้ม — ถ้าใช้สีเข้มจริงตามธีมสว่างจะกลืนมอง
-          ไม่เห็น อันนี้พี่ตัดสินใจเองเพื่อความอ่านง่าย)
-       2. **จุดสำคัญที่พลาดมาตั้งแต่รอบ 4**: รูปภาพ (gallery block) ไม่ได้ชนขอบ
-          กล่องเต็มๆ แบบ banner — เทียบพิกเซลจากสกรีนช็อตจริงแล้วมีระยะห่างจาก
-          ขอบกล่องซ้าย/ขวาอยู่ (~12px) และมุมโค้งมนทุกด้าน (ไม่ใช่โค้งแค่บน)
-          นี่แหละคือส่วนที่ "ดูไม่เป็นธรรมชาติ" ที่น้องหนาวทักไว้รอบก่อนแบบไม่
-          ระบุจุด — Components V2 จริงมันมีระยะขอบแบบนี้
-       3. เพิ่มรูปที่ 2 เป็นแถบสั้นๆ ต่อจากรูปแรก — ยังเป็น block ชนิด "Image"
-          เดิม (แค่ใส่ block รูปภาพ 2 อันติดกันได้ ไม่ใช่ type ใหม่)
-       4. mention ห้อง/ผู้ใช้ในสกรีนช็อตจริงเป็น pill สีม่วงอ่อน กับ inline code
-          (`...`) สำหรับคำเน้น — พี่จำลองด้วย .cv2-mention/.cv2-code แทนตัวหนา
-          ธรรมดาแบบรอบ 4
-       5. เอาริบบิ้น "Premium Crafted" สีทองออก เพราะสกรีนช็อตจริงไม่มี ── */
-    .showcase-card-wrap { max-width: 640px; margin: 36px auto 0; text-align: left; }
-    .showcase-msg { display: flex; gap: 14px; align-items: flex-start; }
-    .showcase-msg-avatar { width: 40px; height: 40px; border-radius: 999px; object-fit: cover; flex: 0 0 auto; }
-    .showcase-msg-body { flex: 1; min-width: 0; }
-    .showcase-msg-header { display: flex; align-items: baseline; gap: 7px; margin-bottom: 8px; flex-wrap: wrap; }
-    .showcase-msg-header .uname { font-size: 15px; font-weight: 700; color: #f2f3f5; }
-    .showcase-msg-header .app-badge { font-size: 9px; font-weight: 700; color: #fff; background: #5865f2; border-radius: 3px; padding: 1px 5px; }
-    .showcase-msg-header .ts { font-size: 11.5px; color: #949ba4; }
-
-    /* .cv2-container = ContainerBuilder จริง พื้นขาว (ธีมสว่างตามสกรีนช็อตของ
-       น้องหนาว) + แถบสี accent ฟ้าพาสเทลด้านซ้าย (สีที่เธอตั้งไว้ในตัว container) */
-    .cv2-container { background: #ffffff; border-radius: 8px; overflow: hidden; border-left: 4px solid #8fd3f4; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
-    /* รูปภาพ (gallery) เว้นระยะจากขอบกล่อง + มุมโค้งมนทุกด้าน — แก้จุดที่ผิดมา
-       ตั้งแต่รอบ 4 (ตอนนั้นให้รูปชนขอบเต็มแบบ banner ซึ่งไม่ตรงกับสกรีนช็อตจริง) */
-    .cv2-gallery-pad { padding: 10px 12px 0; }
-    .cv2-gallery-pad img { width: 100%; display: block; border-radius: 6px; object-fit: cover; }
-    .cv2-gallery-pad.main img { height: 150px; object-position: 65% 20%; }
-    .cv2-gallery-pad.strip { padding-top: 5px; padding-bottom: 10px; }
-    .cv2-gallery-pad.strip img { height: 24px; object-position: 50% 55%; }
-    .cv2-block { padding: 13px 18px; }
-    .cv2-block.tight { padding-top: 4px; }
-    .cv2-block.center { text-align: center; }
-    .cv2-heading-deco { font-size: 17px; font-weight: 800; color: #060607; }
-    .cv2-body { font-size: 13px; color: #2e3338; line-height: 1.65; }
-    .cv2-muted { font-size: 12px; color: #6d7078; line-height: 1.6; }
-    .cv2-code { font-family: 'Courier New', monospace; background: #f2f3f5; border: 1px solid #e3e5e8; border-radius: 3px; padding: 1px 5px; font-size: 12px; color: #4a4d53; }
-    .cv2-code.italic { font-style: italic; }
-    .cv2-mention { background: rgba(88,101,242,0.14); color: #4752c4; border-radius: 3px; padding: 0 3px; font-weight: 500; }
-    .cv2-separator { height: 1px; background: #e3e5e8; margin: 2px 18px; }
-    .cv2-section { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 18px; }
-    .cv2-section .txt { flex: 1; min-width: 0; font-size: 13px; color: #2e3338; line-height: 1.6; }
-    .cv2-thumb-sticker { width: 48px; height: 48px; border-radius: 8px; flex: 0 0 auto; background: #ddeffb; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .cv2-btn-light { flex: 0 0 auto; height: 30px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #dcdee1; background: #f2f2f3; color: #313338; cursor: default; white-space: nowrap; }
+    /* ── Premium Showcase — รอบ 7 (14 ก.ย. 2569): น้องหนาวขอให้เอาสกรีนช็อต
+       จริงที่ถ่ายมาเอง มาครอปแล้วใช้เป็นรูปภาพตรงๆ เลย ไม่ให้พี่จำลองด้วย
+       HTML/CSS อีกต่อไป (จำลองเองมันคลาดเคลื่อนจากของจริงได้เรื่อยๆ ตามที่
+       เจอมาหลายรอบ) เลยเปลี่ยนวิธีทั้งหมด: ครอปขอบขาวบางๆ ของสกรีนช็อตออก
+       (/images/premium-showcase-real.png) แล้ววางเป็น <img> รูปเดียวจบ ไม่มี
+       การสร้าง header/ข้อความ/ปุ่มจำลองอีกเลย — สิ่งที่เห็นในการ์ดนี้คือ
+       ภาพจริง 100% ที่น้องหนาวส่งมา พี่แค่ใส่กรอบมุมโค้ง + เงา ให้ดูเข้ากับ
+       หน้าเว็บเฉยๆ เท่านั้น */
+    .showcase-card-wrap { max-width: 460px; margin: 36px auto 0; }
+    .showcase-shot { width: 100%; display: block; border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
 
     .powered-by { text-align: center; font-size: 10px; letter-spacing: 0.16em; color: rgba(244,184,96,0.55); margin-top: 16px; text-transform: uppercase; }
 
@@ -488,75 +445,11 @@
     <h2>See how far decoration can go</h2>
     <p>Not a single feature — one flagship message built entirely from real Layout Builder blocks, dressed up to the max.</p>
 
-    <!-- รอบ 5 (14 ก.ย. 2569): น้องหนาวส่งสกรีนช็อตข้อความจริงที่ตั้งค่าเองใน
-         ดิสคอร์ดมาเป็นต้นแบบ พี่จำลองตามนั้นละเอียดที่สุด (สี/ระยะห่าง/โครงสร้าง
-         block ทั้งหมดเทียบพิกเซลจากสกรีนช็อตจริง) ยกเว้น 2 จุดที่ไม่มีไฟล์รูป
-         ต้นฉบับให้ — สติกเกอร์แมวข้างหัวข้อ กับสติกเกอร์ผีขาวข้าง "New here?"
-         พี่วาด SVG ง่ายๆ แทนไปก่อน ถ้าน้องหนาวมีไฟล์รูปจริงส่งมาได้เลย จะเปลี่ยน
-         ให้ตรงเป๊ะ — โครงสร้าง block ยังอยู่ในกรอบ 7 type จริงเหมือนเดิม (ดู
-         buildMessageFromSchema.js) แค่ใส่ block ชนิด Image ซ้ำ 2 อันติดกัน:
-         gallery → gallery → text(กึ่งกลาง) → text → separator →
-         section(+thumbnail) → separator → section_channel_button →
-         section_button(link) -->
+    <!-- รอบ 7 (14 ก.ย. 2569): น้องหนาวขอให้ใช้สกรีนช็อตจริงที่ถ่ายมาเองตรงๆ
+         เลย ไม่ต้องจำลองใหม่ด้วยโค้ด — รูปนี้คือสกรีนช็อตจริงที่ครอปขอบขาว
+         บางๆ ออกแล้ว ไม่มีการแต่งเติม/เปลี่ยนแปลงเนื้อหาใดๆ ในรูปเลย -->
     <div class="showcase-card-wrap">
-      <div class="showcase-msg">
-        <img class="showcase-msg-avatar" src="/images/avatar-icon.jpg" alt="" />
-        <div class="showcase-msg-body">
-          <div class="showcase-msg-header">
-            <span class="uname">Milo Bot</span><span class="app-badge">APP</span><span class="ts">Today at 10:33 PM</span>
-          </div>
-
-          <div class="cv2-container">
-
-            <!-- block: gallery (รูปใหญ่ — เว้นระยะขอบกล่อง มุมโค้งมนทุกด้าน
-                 ตามสกรีนช็อตจริง ไม่ใช่ชนขอบเต็มแบบ banner แบบรอบ 4) -->
-            <div class="cv2-gallery-pad main"><img src="/images/hero-crisp.jpg" alt="" /></div>
-
-            <!-- block: gallery ที่ 2 (แถบสั้นต่อกัน — ยังเป็น block ชนิด Image
-                 เดิม ใส่ 2 อันติดกันได้ ไม่ใช่ type ใหม่) -->
-            <div class="cv2-gallery-pad strip"><img src="/images/hero-crisp.jpg" alt="" /></div>
-
-            <!-- block: text (หัวข้อ — จัดกึ่งกลาง) -->
-            <div class="cv2-block center">
-              <div class="cv2-heading-deco">🌙 &nbsp;&middot;&nbsp; <b>Grand Opening</b> &nbsp;&middot;&nbsp; ⊂ 🐱 ⊃</div>
-            </div>
-
-            <!-- block: text (ย่อหน้า — ใช้ inline code + mention pill จำลอง
-                 ให้เหมือนข้อความจริงในสกรีนช็อต) -->
-            <div class="cv2-block tight">
-              <div class="cv2-body"><b style="color:#060607;">Milo Community</b> is <code class="cv2-code">officially open!</code> Grab a role, say hi in <span class="cv2-mention">#🍃・general</span>, and make yourself at home.</div>
-            </div>
-
-            <!-- block: separator -->
-            <div class="cv2-separator"></div>
-
-            <!-- block: section (text + thumbnail) -->
-            <div class="cv2-section">
-              <div class="txt">🔗 <b style="color:#060607;">New here?</b> <code class="cv2-code italic">Pick a role</code> in <span class="cv2-mention">#(🌙)role.&lt;3</span></div>
-              <span class="cv2-thumb-sticker">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M6 9c0-3 2.5-5.5 6-5.5S18 6 18 9c0 1-.3 1.8-.8 2.6.6.4 1 1 1 1.8 0 1.3-1.2 2.1-2.5 2.1H8.3C7 15.5 5.8 14.7 5.8 13.4c0-.8.4-1.4 1-1.8C6.3 10.8 6 10 6 9z" fill="#fff" stroke="#c9def0" stroke-width="1.1"/><circle cx="9.3" cy="9.3" r="0.9" fill="#3a3a3a"/><circle cx="14.7" cy="9.3" r="0.9" fill="#3a3a3a"/><path d="M10.8 11.2q1.2.9 2.4 0" stroke="#3a3a3a" stroke-width="0.9" stroke-linecap="round" fill="none"/></svg>
-              </span>
-            </div>
-
-            <!-- block: separator -->
-            <div class="cv2-separator"></div>
-
-            <!-- block: section_channel_button (text + channel button) -->
-            <div class="cv2-section">
-              <div class="txt">🔗 Updates land in <code class="cv2-code">#annoucement</code> &nbsp;&middot;&nbsp; ⭐🧸</div>
-              <button class="cv2-btn-light">📦 Go to annoucement <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="#313338" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-            </div>
-
-            <!-- block: section_button (text + link button — ไม่มีเส้นคั่น/ไอคอน
-                 นำหน้าข้อความ ตามสกรีนช็อตจริง) -->
-            <div class="cv2-section">
-              <div class="txt">Tag <span class="cv2-mention">@Milo Bot</span> anytime == When report every bug.</div>
-              <button class="cv2-btn-light">🐱 bug_report．33． <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="#313338" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-            </div>
-
-          </div>
-        </div>
-      </div>
+      <img class="showcase-shot" src="/images/premium-showcase-real.png" alt="ตัวอย่างข้อความ Premium ที่ตกแต่งด้วย Layout Builder จริงในดิสคอร์ด" />
       <div class="powered-by">Powered by Milo Bot Premium</div>
     </div>
 
