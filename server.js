@@ -33,7 +33,7 @@ const express = require('express');
 const session = require('express-session');
 const { TextDisplayBuilder, MessageFlags } = require('discord.js');
 const stripe = require('./utils/stripeClient');
-const { setGuildTier, setSubscriptionInfo, getSubscriptionInfo } = require('./utils/tierManager');
+const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo } = require('./utils/tierManager');
 const { getGuildLanguage } = require('./utils/languageStorage');
 const { createTranslator } = require('./utils/i18n');
 // การ์ดพรีเมียมตัวเดียวกับที่ /premium ใช้ (ดูคอมเมนต์ในไฟล์นั้นสำหรับเหตุผล
@@ -46,7 +46,16 @@ const {
   exchangeCodeForToken,
   fetchCurrentUser,
   fetchUserGuilds,
+  hasManageGuild,
 } = require('./utils/discordAuth');
+// 🆕 หน้า Server Picker (การ์ดกริดเลือกเซิร์ฟหลัง login) — แยกไว้คนละไฟล์เพราะเป็น
+// โค้ดสร้าง HTML ล้วนๆ ยาวๆ ไม่อยากให้ server.js (ที่จัดการ route) ยาวเทอะทะเกินไป
+// ดูคำอธิบายเต็มๆ ในไฟล์นั้นเลย
+const { renderServerPickerPage } = require('./utils/renderServerPicker');
+// 🆕 ใช้ buildInviteUrl() ตัวเดียวกับที่ /help ใช้สร้างลิงก์เชิญบอท — ไม่เขียนซ้ำใหม่
+// ที่นี่ เพราะถ้าวันหน้ามีคนไปแก้สิทธิ์ที่บอทขอตอนเชิญ (invitePermissions ใน help.js)
+// จะได้แก้จุดเดียวแล้วสองที่นี้อัปเดตตามกันอัตโนมัติ ไม่ต้องมาคอยจำว่าต้องแก้ 2 จุด
+const { buildInviteUrl } = require('./commands/help');
 
 // 🆕 โดเมนจริงของเว็บเรา — ใช้สร้าง "redirect_uri" ตอนคุยกับ Discord OAuth2 (Discord
 // บังคับว่าต้องส่งค่าเดียวกันเป๊ะทั้งตอนขอ authorize และตอนแลก token ดูคอมเมนต์ใน
@@ -230,23 +239,108 @@ function createWebhookServer(client) {
     });
   });
 
-  // 🚧 หน้าทดสอบชั่วคราว — จะถูกแทนที่ด้วยหน้า Server Picker จริงในขั้นตอนถัดไป (ตามแผน
-  // ที่วางไว้) ตอนนี้มีไว้แค่ยืนยันว่า login ผ่านจริง เห็นชื่อ+รายชื่อเซิร์ฟถูกต้อง ก่อนจะไป
-  // สร้างหน้าตาสวยๆ ต่อ — requireAuth ด้านล่างกันไม่ให้คนที่ยังไม่ login เข้ามาดูหน้านี้ได้
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 GET /dashboard — หน้า Server Picker จริง (ขั้นที่ 2 จาก 10 ของแผน Dashboard)
+  //
+  // logic หลักคือ 3 ขั้นตอน:
+  //   1) กรอง req.session.guilds (ทุกเซิร์ฟที่ผู้ใช้เป็นสมาชิกอยู่ — เก็บไว้ตอน login
+  //      ใน /auth/callback ด้านบน) ให้เหลือแค่เซิร์ฟที่เขามีสิทธิ์ "Manage Server" เท่านั้น
+  //      (ตามที่ milo-bot-design-brief.md ข้อ 3.2 กำหนดไว้ — เซิร์ฟที่เขาแค่เป็นสมาชิก
+  //      ธรรมดาไม่ควรโผล่ในหน้านี้ เพราะเขาไม่มีสิทธิ์ตั้งค่าอะไรอยู่แล้ว)
+  //   2) เอาแต่ละเซิร์ฟที่เหลือ ไปเทียบกับ client.guilds.cache (แคชเซิร์ฟทั้งหมดที่บอท
+  //      ตัวเองอยู่จริงๆ ตอนนี้ — อ่านจาก cache ในหน่วยความจำ ไม่ยิง API เพิ่ม เร็วมาก)
+  //      ว่า "บอทอยู่ในเซิร์ฟนี้ด้วยไหม" ถ้าอยู่ ก็ดึงจำนวนสมาชิกจริง + สถานะ Free/Premium
+  //      จริงจาก tierManager มาด้วยเลย ถ้าไม่อยู่ ก็ทำเครื่องหมายไว้ให้โชว์ปุ่ม "เชิญบอท" แทน
+  //   3) เรียง (sort) ให้เซิร์ฟที่มีบอทอยู่แล้วขึ้นก่อนเสมอ (ใช้งานได้เลย สำคัญกว่า) แล้ว
+  //      ค่อยเป็นเซิร์ฟที่ยังไม่มีบอท ต่อท้าย เรียงตามตัวอักษรในแต่ละกลุ่มให้หาง่าย
+  //
+  // ⚠️ นี่คือ "ข้อมูลจริง" ทั้งหมด ไม่มีตรงไหน hardcode/mock เลย: รายชื่อเซิร์ฟมาจาก
+  // Discord API จริงตอน login, จำนวนสมาชิกมาจาก client.guilds.cache จริงของบอท,
+  // สถานะ Free/Premium มาจากไฟล์ data/guild-tiers.json จริงที่ webhook Stripe เป็นคน
+  // อัปเดต — ตรงตาม checklist ข้อ 2 ใน milo-bot-ai-build-prompt.md เป๊ะ
   app.get('/dashboard', requireAuth, (req, res) => {
-    const guildListHtml = req.session.guilds
-      .map((g) => `<li>${g.name} (${g.id}) — owner: ${g.owner}, permissions: ${g.permissions}</li>`)
-      .join('');
+    const manageableGuilds = req.session.guilds.filter((g) => hasManageGuild(g.permissions));
+
+    const servers = manageableGuilds.map((g) => {
+      // client.guilds.cache คือรายชื่อเซิร์ฟที่ "บอทตัวเองอยู่จริง" ตอนนี้ (อัปเดตสดๆ
+      // ทุกครั้งที่บอทถูกเชิญเข้า/ถูกเตะออกจากเซิร์ฟไหน ผ่าน gateway event ของ Discord)
+      const botGuild = client.guilds.cache.get(g.id);
+      return {
+        id: g.id,
+        name: g.name,
+        // guild.icon เป็นแค่ "hash" สั้นๆ ไม่ใช่ URL เต็ม ต้องประกอบเป็น URL เอง
+        // (รูปแบบ URL ตายตัวตามเอกสาร Discord CDN) — ถ้าเซิร์ฟไม่มีไอคอนเลย icon จะเป็น null
+        iconUrl: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null,
+        hasBot: Boolean(botGuild),
+        // memberCount อ่านจาก cache ของบอทที่ออนไลน์อยู่ตอนนี้เลย (ไม่ใช่เลขนิ่งที่จด
+        // ไว้ครั้งเดียวแล้วไม่อัปเดต) ถ้าบอทไม่ได้อยู่ในเซิร์ฟนี้ก็ไม่มีค่าให้ดึง เลยเป็น null
+        memberCount: botGuild ? botGuild.memberCount : null,
+        // tier เช็คเฉพาะเซิร์ฟที่มีบอทอยู่เท่านั้น (เซิร์ฟที่ไม่มีบอทไม่มีความหมายจะเช็ค tier)
+        tier: botGuild ? getGuildTier(g.id) : null,
+      };
+    });
+
+    // เรียง: เซิร์ฟที่มีบอทอยู่แล้วขึ้นก่อน (ใช้งานได้จริงตอนนี้) แล้วเรียงชื่อ ก-ฮ/A-Z
+    // ในแต่ละกลุ่ม (locale 'th' ให้เรียงภาษาไทยถูกต้องตามพจนานุกรม ไม่ใช่เรียงตาม
+    // รหัส unicode ดิบๆ ซึ่งจะได้ลำดับที่แปลกๆ)
+    servers.sort((a, b) => {
+      if (a.hasBot !== b.hasBot) return a.hasBot ? -1 : 1;
+      return a.name.localeCompare(b.name, 'th');
+    });
+
+    res.send(renderServerPickerPage({
+      user: req.session.user,
+      servers,
+      inviteUrl: buildInviteUrl(),
+    }));
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 Middleware กันหน้า "เจาะจงเซิร์ฟ" — ใช้ห่อทุกหน้าที่ผูกกับเซิร์ฟใดเซิร์ฟหนึ่ง
+  // (เช่น /dashboard/:guildId, /dashboard/:guildId/welcome ที่จะสร้างในขั้นตอนถัดๆ ไป)
+  //
+  // ⚠️ นี่คือจุดสำคัญที่สุดจุดหนึ่งของทั้งระบบด้านความปลอดภัย ตรงตามข้อ 4.6 ใน
+  // milo-bot-ai-build-prompt.md: "ทุก endpoint ที่แก้ไขข้อมูลเซิร์ฟ ต้องเช็ค 2 ชั้นเสมอ"
+  //   ชั้นที่ 1) requireAuth ด้านบน — เช็คว่า "login อยู่จริง" (มี req.session.user ไหม)
+  //   ชั้นที่ 2) ฟังก์ชันนี้ — เช็คว่า "คนที่ login อยู่ มีสิทธิ์ Manage Server ของ
+  //             :guildId ที่กำลังจะเข้าถึง จริงๆ" ไม่ใช่แค่ login สำเร็จเฉยๆ
+  //
+  // ทำไมต้องเช็คชั้นที่ 2 ด้วย? เพราะถ้าเช็คแค่ "login อยู่ไหม" อย่างเดียว คนร้ายที่
+  // login ด้วยบัญชีตัวเองสำเร็จ (เป็นสมาชิกธรรมดาเซิร์ฟไหนก็ได้) จะพิมพ์ guild ID ของ
+  // เซิร์ฟคนอื่นใส่ URL ตรงๆ (เช่น /dashboard/1234567890) แล้วเข้าไปแก้การ์ดต้อนรับ/
+  // ตั้งค่าเซิร์ฟที่ตัวเองไม่มีสิทธิ์เลยได้ทันที — เช็คตรงนี้ปิดช่องโหว่นั้น
+  //
+  // เช็ค 2 อย่าง: (1) :guildId นี้อยู่ในรายชื่อเซิร์ฟที่เขามีสิทธิ์ Manage Server จริง
+  // (เทียบกับ req.session.guilds ที่เก็บไว้ตอน login) (2) บอทต้องอยู่ในเซิร์ฟนี้จริงด้วย
+  // (กันกรณี guild ID ถูกต้อง มีสิทธิ์จริง แต่บอทไม่ได้อยู่ในเซิร์ฟนั้น — ไม่มีอะไรให้ตั้งค่า)
+  function requireGuildAccess(req, res, next) {
+    const { guildId } = req.params;
+    const guildInSession = req.session.guilds?.find((g) => g.id === guildId);
+
+    if (!guildInSession || !hasManageGuild(guildInSession.permissions)) {
+      console.warn(`[dashboard] ${req.session.user?.id} พยายามเข้าเซิร์ฟ ${guildId} โดยไม่มีสิทธิ์ Manage Server`);
+      return res.status(403).send('คุณไม่มีสิทธิ์จัดการเซิร์ฟเวอร์นี้ครับ');
+    }
+    if (!client.guilds.cache.has(guildId)) {
+      return res.status(404).send('บอทยังไม่ได้อยู่ในเซิร์ฟเวอร์นี้ครับ ลองกดเชิญบอทจากหน้า Server Picker ก่อนนะครับ');
+    }
+    next();
+  }
+
+  // 🚧 หน้าทดสอบชั่วคราว — จะถูกแทนที่ด้วยหน้า "ภาพรวม (Overview)" จริงในขั้นตอนถัดไป
+  // (ขั้นที่ 3 จาก 10 ของแผน) ตอนนี้มีไว้แค่ให้ปุ่ม "จัดการ" ในหน้า Server Picker
+  // ข้างบนกดแล้วไม่เจอหน้า 404 เฉยๆ — requireAuth + requireGuildAccess กันไว้ 2 ชั้น
+  // ตามที่อธิบายไว้ด้านบนแล้ว
+  app.get('/dashboard/:guildId', requireAuth, requireGuildAccess, (req, res) => {
+    const guild = client.guilds.cache.get(req.params.guildId);
     res.send(`
       <!DOCTYPE html>
       <html lang="th">
-        <head><meta charset="UTF-8" /><title>Dashboard (ทดสอบ)</title></head>
-        <body style="font-family: sans-serif; padding: 24px;">
-          <h1>เข้าสู่ระบบสำเร็จ! สวัสดีคุณ ${req.session.user.username}</h1>
-          <p>User ID: ${req.session.user.id}</p>
-          <p>เซิร์ฟที่พบทั้งหมด (${req.session.guilds.length} แห่ง):</p>
-          <ul>${guildListHtml}</ul>
-          <a href="/auth/logout">ออกจากระบบ</a>
+        <head><meta charset="UTF-8" /><title>${guild.name} — Aitao Bot</title></head>
+        <body style="font-family: sans-serif; padding: 24px; background:#0a0e1a; color:#fff;">
+          <p><a href="/dashboard" style="color:#7c83fd;">← กลับไปเลือกเซิร์ฟอื่น</a></p>
+          <h1>${guild.name}</h1>
+          <p>หน้า "ภาพรวม (Overview)" กำลังจะมาเร็วๆ นี้ครับ 🚧</p>
         </body>
       </html>
     `);
