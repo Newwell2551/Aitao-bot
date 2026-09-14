@@ -292,6 +292,9 @@ function createWebhookServer(client) {
       user: req.session.user,
       servers,
       inviteUrl: buildInviteUrl(),
+      // รูป avatar จริงของบอทเอง (ไม่ใช่ภาพตัวละครสมมติแบบใน mockup) โชว์ตรงหัวข้อ
+      // ทักทายกลางหน้า — client.user คือบอทตัวเอง มี .displayAvatarURL() ให้ใช้ตรงๆ
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
     }));
   });
 
