@@ -345,7 +345,17 @@ function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
 </html>`;
 }
 
-module.exports = { renderServerPickerPage, escapeHtml, defaultAvatarUrl, guildMonogram };
+// 🆕 เพิ่ม export monogramColorForGuild + serverIconHtml ตอนสร้างหน้า Overview (utils/dashboardShell.js)
+// เพราะแถบ "สลับเซิร์ฟ" (guild switcher) บนแถบข้างของทุกหน้าแดชบอร์ดต้องโชว์ไอคอนเซิร์ฟแบบ
+// เดียวกันเป๊ะกับหน้า Server Picker (สีโมโนแกรมเดิม ไม่ใช่สุ่มใหม่) — ใช้ของเดิมตรงๆ ไม่เขียนซ้ำ
+module.exports = {
+  renderServerPickerPage,
+  escapeHtml,
+  defaultAvatarUrl,
+  guildMonogram,
+  monogramColorForGuild,
+  serverIconHtml,
+};
 
 // ─────────────────────────────────────────────────────────────────────────
 // ทำไมไม่ใช้ React/Vue/template engine (เช่น EJS)?

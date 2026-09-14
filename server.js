@@ -36,6 +36,18 @@ const stripe = require('./utils/stripeClient');
 const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo } = require('./utils/tierManager');
 const { getGuildLanguage } = require('./utils/languageStorage');
 const { createTranslator } = require('./utils/i18n');
+// 🆕 หน้า Overview ของแดชบอร์ด (task #15) — เช็กลิสต์เริ่มต้นใช้งาน 6 ข้อ + พรีวิวการ์ด
+// ต้อนรับ/บอกลาแบบเรนเดอร์สดจริง ใช้ storage module พวกนี้เช็คว่าแต่ละข้อ "เสร็จหรือยัง"
+// จากข้อมูลจริงของเซิร์ฟ (ไม่มีตรงไหน hardcode) ดูรายละเอียดเหตุผลแต่ละจุดในคอมเมนต์หัวไฟล์
+// utils/renderOverview.js
+const { renderOverviewPage } = require('./utils/renderOverview');
+const { renderComingSoonPage } = require('./utils/dashboardShell');
+const { loadWelcomeConfig } = require('./utils/welcomeStorage');
+const { loadGoodbyeConfig } = require('./utils/goodbyeStorage');
+const { getGuildFonts } = require('./utils/fontStorage');
+const { listSetups } = require('./utils/roleSetupStorage');
+const { listDrafts } = require('./utils/builderStorage');
+const { generateMemberCardImage } = require('./utils/generateMemberCardImage');
 // การ์ดพรีเมียมตัวเดียวกับที่ /premium ใช้ (ดูคอมเมนต์ในไฟล์นั้นสำหรับเหตุผล
 // ที่แยกออกมาเป็น util กลาง) เอามาใช้ตรงนี้เพื่อให้ DM แจ้งเตือนตอนสมัคร
 // สำเร็จ หน้าตาตรงกับการ์ดใน /premium เป๊ะๆ ไม่ต้องคอยแก้พร้อมกัน 2 ที่
@@ -333,24 +345,146 @@ function createWebhookServer(client) {
     next();
   }
 
-  // 🚧 หน้าทดสอบชั่วคราว — จะถูกแทนที่ด้วยหน้า "ภาพรวม (Overview)" จริงในขั้นตอนถัดไป
-  // (ขั้นที่ 3 จาก 10 ของแผน) ตอนนี้มีไว้แค่ให้ปุ่ม "จัดการ" ในหน้า Server Picker
-  // ข้างบนกดแล้วไม่เจอหน้า 404 เฉยๆ — requireAuth + requireGuildAccess กันไว้ 2 ชั้น
-  // ตามที่อธิบายไว้ด้านบนแล้ว
-  app.get('/dashboard/:guildId', requireAuth, requireGuildAccess, (req, res) => {
-    const guild = client.guilds.cache.get(req.params.guildId);
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="en">
-        <head><meta charset="UTF-8" /><title>${guild.name} — Aitao Bot</title></head>
-        <body style="font-family: sans-serif; padding: 24px; background:#0a0e1a; color:#fff;">
-          <p><a href="/dashboard" style="color:#7c83fd;">← Back to server picker</a></p>
-          <h1>${guild.name}</h1>
-          <p>The Overview page is coming soon 🚧</p>
-        </body>
-      </html>
-    `);
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 GET /dashboard/:guildId — หน้า "Overview" จริง (ขั้นที่ 3 จาก 10 ของแผน Dashboard)
+  //
+  // แปลง req.session.user/req.session.guilds (ที่มีอยู่แล้วจากตอน login) + client (bot
+  // instance ตัวเดียวกับที่ล็อกอินอยู่) ให้เป็นก้อนข้อมูลที่ renderOverviewPage() ต้องการ
+  // จุดสำคัญคือ "เช็กลิสต์เริ่มต้นใช้งาน" 6 ข้อ — ทุกข้อคำนวณจากไฟล์ข้อมูลจริงของเซิร์ฟนี้
+  // เท่านั้น (ไม่มีตรงไหน hardcode ค่า true/false เอง):
+  //   - การ์ดต้อนรับ/บอกลา: มีไฟล์ config บันทึกไว้ไหม (loadWelcomeConfig/loadGoodbyeConfig
+  //     คืน null ถ้ายังไม่เคยตั้งค่า)
+  //   - ฟอนต์: อัปโหลดฟอนต์ของเซิร์ฟไว้กี่ไฟล์ (getGuildFonts().length > 0)
+  //   - ระบบยศ: เคยสร้างชุดตั้งค่ายศไว้ไหม (listSetups().length > 0)
+  //   - Builder: เคยมีดราฟต์ที่ "บันทึกลงดิสก์แล้ว" ไหม (listDrafts() อ่านจาก data/drafts.json
+  //     ผ่าน builderStorage.js — ไม่ใช้ builderDrafts.js ตัว in-memory เพราะรีสตาร์ตเซิร์ฟเวอร์
+  //     ทีก็ว่างเปล่าใหม่ทุกที ใช้เช็คสถานะถาวรแบบนี้ไม่ได้)
+  //   - พรีเมียม: getGuildTier() === 'premium' จริง (ข้อมูลเดียวกับที่หน้า Server Picker ใช้)
+  app.get('/dashboard/:guildId', requireAuth, requireGuildAccess, async (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const tier = getGuildTier(guildId);
+
+    const welcomeConfig = loadWelcomeConfig(guildId);
+    const goodbyeConfig = loadGoodbyeConfig(guildId);
+    const roleSetupCount = listSetups(guildId).length;
+    const fontCount = getGuildFonts(guildId).length;
+    const draftCount = listDrafts(guildId).length;
+
+    // ลำดับ 6 ข้อนี้ต้องตรงกับลำดับสไลด์ carousel ใน renderOverviewPage() เป๊ะๆ (สไลด์ 0-5)
+    // เพราะปุ่ม "กดตัวพรีวิว" ของแต่ละสไลด์ใช้ index เดียวกันนี้หาลิงก์ปลายทาง
+    const checklistItems = [
+      { key: 'welcome', label: 'Set up the welcome card', done: Boolean(welcomeConfig), href: `/dashboard/${guildId}/welcome` },
+      { key: 'roles', label: 'Create an auto-role system', done: roleSetupCount > 0, href: `/dashboard/${guildId}/roles` },
+      { key: 'fonts', label: 'Upload a server font', done: fontCount > 0, href: `/dashboard/${guildId}/fonts` },
+      { key: 'builder', label: 'Try the Message Builder', done: draftCount > 0, href: `/dashboard/${guildId}/builder` },
+      { key: 'goodbye', label: 'Set up the goodbye card', done: Boolean(goodbyeConfig), href: `/dashboard/${guildId}/goodbye` },
+      { key: 'premium', label: 'Upgrade to Premium', done: tier === 'premium', href: `/dashboard/${guildId}/premium`, optional: true },
+    ];
+
+    res.send(renderOverviewPage({
+      guild: {
+        id: guildId,
+        name: guild.name,
+        iconUrl: guild.iconURL({ size: 64 }),
+      },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      tier,
+      checklistItems,
+      // configured ใช้แค่เช็คว่ามี config ไหม (Boolean) — ตัว preview ของจริงไปเรนเดอร์ตอน
+      // เบราว์เซอร์ขอรูปจาก route ด้านล่างต่างหาก (ไม่ต้องเรนเดอร์ภาพในนี้ ช้าโดยใช่เหตุถ้า
+      // ผู้ใช้ไม่ได้เลื่อนไปดูสไลด์นั้นเลย)
+      welcomeCard: { configured: Boolean(welcomeConfig), previewUrl: welcomeConfig ? `/dashboard/${guildId}/preview/welcome-card.png` : null },
+      goodbyeCard: { configured: Boolean(goodbyeConfig), previewUrl: goodbyeConfig ? `/dashboard/${guildId}/preview/goodbye-card.png` : null },
+    }));
   });
+
+  // 🆕 fontStyle เก่าที่เคยบันทึกเป็น 'custom' ต้องแปลงเป็นรูปแบบใหม่ 'customFont:<id>' ก่อน
+  // ส่งเข้า generateMemberCardImage() เสมอ — ก๊อปมาจาก normalizeFontStyle() ใน
+  // commands/welcome-setup.js และ commands/goodbye-setup.js เป๊ะๆ (สองไฟล์นั้นมีฟังก์ชันนี้
+  // เหมือนกันทุกตัวอักษรแต่ไม่ได้ export ออกมา เลยต้องมีสำเนาเล็กๆ นี้ไว้ที่นี่ด้วย — ถ้าวันหน้า
+  // แก้ logic นี้ที่ไฟล์ใดไฟล์หนึ่ง อย่าลืมแก้ให้ตรงกันทั้ง 3 ที่)
+  function normalizeFontStyleForPreview(fontStyle, guildId) {
+    if (fontStyle === 'custom') return `customFont:font_legacy_${guildId}`;
+    return fontStyle || 'default';
+  }
+
+  // 🆕 สร้างรูปพรีวิว "การ์ดต้อนรับ/การ์ดบอกลา" แบบสดๆ จาก config จริงของเซิร์ฟ ใช้ฟังก์ชัน
+  // เดียวกับที่คำสั่ง /welcome-setup, /goodbye-setup ใช้ทำพรีวิวใน Discord (genPreview() —
+  // ดูคอมเมนต์อ้างอิงใน utils/renderOverview.js ข้อ 4) ต่างกันแค่ "สมาชิกตัวอย่าง" ตรงนี้ใช้
+  // ผู้ใช้ที่ login เข้าแดชบอร์ดอยู่ตอนนี้แทน interaction.user (คนละบริบท แต่หลักการเดียวกัน:
+  // เอาคนที่กำลังดูอยู่ตอนนี้มาเป็นตัวอย่าง ไม่ใช้ชื่อ/รูปสมมติ)
+  //
+  // client.users.fetch(id) คืน discord.js User object จริงจาก Discord API (ไม่ต้องพึ่ง cache
+  // เพราะดึงจาก API ตรงๆ) generateMemberCardImage() รองรับทั้ง GuildMember และ User อยู่แล้ว
+  // (ดูคอมเมนต์ JSDoc ในไฟล์นั้น) — genPreview() ของจริงก็ส่ง interaction.user (เป็น User
+  // เหมือนกัน ไม่ใช่ GuildMember) เข้าไปตรงๆ แบบนี้
+  async function renderCardPreview(req, res, { loadConfig, kind }) {
+    const { guildId } = req.params;
+    const config = loadConfig(guildId);
+    if (!config) {
+      return res.status(404).send(`This server hasn't set up its ${kind} card yet.`);
+    }
+    try {
+      const previewUser = await client.users.fetch(req.session.user.id);
+      const guildFonts = getGuildFonts(guildId);
+      const customFonts = guildFonts.map((f) => ({ id: f.id, family: f.family, path: f.path }));
+      const previewConfig = {
+        ...config,
+        textBlocks: (config.textBlocks ?? []).map((block) => ({
+          ...block,
+          content: (block.content || '').replace('{username}', previewUser.username),
+          fontStyle: normalizeFontStyleForPreview(block.fontStyle, guildId),
+        })),
+        customFonts,
+      };
+      const result = await generateMemberCardImage(previewUser, previewConfig, { previewMode: true });
+      // no-store: การ์ดเปลี่ยนได้ทุกครั้งที่แก้ไขในหน้า Welcome/Goodbye Card เลยไม่อยากให้
+      // เบราว์เซอร์แคชรูปเก่าค้างไว้
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-store');
+      res.send(result.buffer);
+    } catch (err) {
+      console.error(`[dashboard] สร้างพรีวิวการ์ด${kind === 'welcome' ? 'ต้อนรับ' : 'บอกลา'}ของเซิร์ฟ ${guildId} ไม่สำเร็จ:`, err);
+      res.status(500).send('Failed to render the card preview.');
+    }
+  }
+
+  app.get('/dashboard/:guildId/preview/welcome-card.png', requireAuth, requireGuildAccess, (req, res) => {
+    renderCardPreview(req, res, { loadConfig: loadWelcomeConfig, kind: 'welcome' });
+  });
+  app.get('/dashboard/:guildId/preview/goodbye-card.png', requireAuth, requireGuildAccess, (req, res) => {
+    renderCardPreview(req, res, { loadConfig: loadGoodbyeConfig, kind: 'goodbye' });
+  });
+
+  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 7 หน้าที่ยังไม่ได้สร้างจริง (task #16-22 ทั้งหมด รวม
+  // Premium ด้วย — ยังไม่มี route จริงของหน้านั้นเลยตอนนี้) กันไม่ให้เมนู sidebar/เช็กลิสต์ของ
+  // หน้า Overview กดแล้วเจอ 404 เฉยๆ ระหว่างที่ยังทยอยสร้างทีละหน้าตามแผน — แต่ละเส้นทางในนี้
+  // จะถูกแทนที่ด้วย route จริงทีละหน้าเรื่อยๆ ต่อจากนี้ (ลบออกจากลิสต์นี้ทันทีที่หน้านั้นมีของจริง)
+  const COMING_SOON_PAGES = [
+    { path: 'welcome', key: 'welcome', label: 'Welcome Card' },
+    { path: 'goodbye', key: 'goodbye', label: 'Goodbye Card' },
+    { path: 'fonts', key: 'fonts', label: 'Fonts' },
+    { path: 'roles', key: 'roles', label: 'Role Setup' },
+    { path: 'builder', key: 'builder', label: 'Message Builder' },
+    { path: 'premium', key: 'premium', label: 'Premium' },
+    { path: 'language', key: 'language', label: 'Language' },
+  ];
+  for (const page of COMING_SOON_PAGES) {
+    app.get(`/dashboard/:guildId/${page.path}`, requireAuth, requireGuildAccess, (req, res) => {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      res.send(renderComingSoonPage({
+        pageLabel: page.label,
+        activeKey: page.key,
+        guild: { id: req.params.guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+        user: req.session.user,
+        botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+        botName: client.user.username,
+      }));
+    });
+  }
 
   // ⚠️ จุดสำคัญที่สุดของทั้งไฟล์: express.raw({ type: 'application/json' })
   //
