@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milo Bot — Marketplace</title>
+  <meta name="description" content="ตัวอย่างพรีวิวหน้า Marketplace ของ Milo Bot — เลือกซื้อของตกแต่งเซิร์ฟจากครีเอเตอร์คนอื่น หรือเปิดร้านขายเองได้ (ฟีเจอร์นี้ยังไม่เปิดใช้งานจริง)" />
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    หน้า Marketplace (public/marketplace.html) — หน้าที่ 4 ของเว็บ สร้างจาก
+    ไฟล์ดีไซน์อ้างอิงจริง Marketplace.dc.html (จาก Marketplace-html.zip ที่
+    น้องหนาวส่งมา) แทบทั้งหมด
+
+    สิ่งสำคัญที่ต้องรู้ก่อนอ่านโค้ดต่อ (อธิบายละเอียดเพราะเป็นเรื่องใหญ่):
+      ตอนนี้ฟีเจอร์ Marketplace "ยังไม่มีจริง" ในตัวบอทเลยครับ — เช็คจาก
+      claude/roadmap-marketplace-idea.md แล้วมันเป็นแค่ไอเดียในโรดแมป ยังไม่ได้
+      เริ่มสร้างระบบหลังบ้านอะไรทั้งสิ้น (ไม่มีฐานข้อมูลสินค้า ไม่มีระบบร้านค้า
+      ไม่มี Stripe Connect ฯลฯ) เพราะงั้นหน้านี้จึงเป็น "ตัวอย่างพรีวิว" ล้วนๆ
+      สินค้าทั้ง 9 ชิ้น (PRODUCTS ในสคริปต์ด้านล่าง) เป็นข้อมูลสมมติที่ก็อปปี้
+      มาจากไฟล์ดีไซน์ตรงๆ เพื่อโชว์ว่าหน้าตาจะเป็นยังไง ไม่ใช่สินค้าจริง
+
+      พี่เลยใส่แถบเล็กๆ สีทองบางๆ ใต้ Nav ไว้บอกคนที่เข้ามาดูเว็บตรงๆ ว่านี่คือ
+      ตัวอย่าง ยังไม่เปิดขายจริง (ดูใน .preview-strip ด้านล่าง) — เป็นการตัดสินใจ
+      เองของพี่นะครับ เพราะหน้านี้มีปุ่ม "ทักแชทผู้ขาย" และมีราคาสินค้าจริงๆ โชว์
+      อยู่ ถ้าไม่บอกไว้เลยคนอาจเข้าใจผิดว่าซื้อขายได้จริงแล้ว ถ้าน้องหนาวดูแล้ว
+      ไม่ชอบ อยากเอาแถบนี้ออก หรืออยากเปลี่ยนข้อความ บอกพี่ได้เลยครับ แก้ได้ไว
+
+      ส่วนตัว interaction อื่นๆ ในหน้า (ทักแชทผู้ขาย, รายงานเนื้อหา) พี่ทำตามที่
+      ไฟล์ดีไซน์ตั้งใจไว้เป๊ะๆ คือ "ทำงานได้จริงแบบ client-side" แต่ไม่มี backend
+      จริงรองรับ — กดแล้วมี toast ยืนยันให้เห็นผล ไม่ใช่กดแล้วเงียบเฉย (คอมเมนต์
+      ในไฟล์ดีไซน์เรียกแนวทางนี้ว่า "honesty over fakery" — ทำให้เห็นว่า flow
+      มันทำงานยังไง แต่ก็ไม่หลอกว่ามันต่อกับระบบจริงแล้ว)
+
+    โครงสร้างหน้า (แปลงจาก canvas ตายตัว 1440×828px ของเครื่องมือออกแบบ ให้เป็น
+    responsive จริง):
+      1. Nav — ต่างจาก Home/Features/Pricing ตรงที่หน้านี้ใช้แถบทึบเต็มความกว้าง
+         (ไม่ใช่แคปซูลกระจกลอย) เพราะไฟล์ดีไซน์ตั้งใจให้หน้านี้ "รู้สึกเหมือนเปิด
+         แอพเข้าไปดูร้านค้าจริงๆ" มากกว่าหน้าโฆษณาทั่วไป — เมนู Marketplace ขีด
+         เส้นใต้บอกว่าอยู่หน้านี้ ส่วน Feed พี่ซ่อนไว้ก่อนเพราะยังไม่มีไฟล์ดีไซน์
+         ของหน้านั้นเลยครับ (เหมือนที่เคยซ่อน Dashboard บางเมนูไว้ก่อนหน้านี้)
+      2. แถบ "ตัวอย่างพรีวิว" (preview-strip) — พี่ใส่เพิ่มเอง อธิบายไว้ข้างบนแล้ว
+      3. โครงหลัก 3 คอลัมน์: sidebar ซ้าย (หมวดหมู่ + แท็ก + ร้านมาใหม่) /
+         คอลัมน์กลาง (แบนเนอร์โปรโม + ค้นหา/เรียง/กรองราคา + กริดสินค้า 9 ชิ้น) /
+         sidebar ขวา (โปรโมท Premium + อันดับยอดนิยม + ร้านค้าแนะนำ)
+         [ปรับจากดีไซน์] ไฟล์ต้นฉบับล็อกความสูงทั้งหน้าไว้ 828px แล้วให้สกรอลล์
+         เฉพาะคอลัมน์กลางข้างใน (แบบหน้าจอแอพ) — พี่เปลี่ยนเป็นให้ทั้งหน้าสกรอลล์
+         ได้ตามปกติเหมือนหน้า Features/Pricing แทน เพราะถ้าล็อกความสูงไว้ จอที่
+         เตี้ยกว่า 900px (โน้ตบุ๊กเล็กๆ หรือเบราว์เซอร์ซูมเข้า) เนื้อหาจะโดนตัด
+         มองไม่เห็นครับ ส่วนบนจอมือถือ/แท็บเล็ต 3 คอลัมน์จะเรียงซ้อนกันเป็น
+         คอลัมน์กลาง(สินค้า) → sidebar ซ้าย(หมวดหมู่) → sidebar ขวา ตามลำดับ
+         เพื่อให้เห็นสินค้าก่อนเป็นอันดับแรก
+      4. Modal รายละเอียดสินค้า (คลิกการ์ดสินค้าแล้วเปิด) — ทำสไตล์ "glow" ขอบ
+         ไล่สีตามดีไซน์ มีปุ่มเดียวคือ "ทักแชทผู้ขายใน Discord" (ไม่มีปุ่มซื้อ/
+         ตะกร้า เพราะระบบนี้เป็นแบบคุยตกลงราคากันเองกับผู้ขายโดยตรง ไม่มีการ
+         หักค่าคอมมิชชั่น — ตามที่ไฟล์ดีไซน์อธิบายไว้ในตัวหน้าเลย)
+      5. Modal รายงานเนื้อหา (เปิดจากเมนู ⋮ ในหน้ารายละเอียดสินค้า) — เลือกเหตุผล
+         จากลิสต์ แนบรูป/วิดีโอเป็นหลักฐานได้สูงสุด 4 ไฟล์ กดส่งแล้วมี toast
+         ยืนยัน (ยังไม่มีระบบตรวจสอบจริงรองรับหลังบ้าน เหมือนปุ่มรายงานอื่นๆ)
+
+    สี/ธีมของหน้านี้เข้มกว่าหน้า Home/Features/Pricing เล็กน้อย (ใช้โทนกล่อง
+    เข้ม #131a2e/#0d1220/#1b2338 แทน glass panel โปร่งแสง) — เป็นความตั้งใจของ
+    ไฟล์ดีไซน์เอง เพราะหน้านี้ต้องโชว์การ์ดสินค้าหลายสีพร้อมกัน พื้นเข้มกว่า
+    ช่วยให้สีสินค้าแต่ละใบเด่นและอ่านง่ายกว่าครับ
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <style>
+    * { box-sizing: border-box; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 300; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cy_gIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W__XJnvUD7dzB2KYNoY.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Ck_kIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cv_4IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2C2_8IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: #05070f; color: #f3f1fb; font-family: 'MiloEN', 'Athiti', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif; line-height: 1.6; }
+    a { color: #7783be; text-decoration: none; }
+    a.plain { color: inherit; }
+    a:hover { text-decoration: underline; }
+
+    .pill-btn { transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; cursor: pointer; }
+    .pill-btn:hover { transform: translateY(-1px); }
+    .pill-btn.primary:hover { box-shadow: 0 8px 24px rgba(74,90,168,0.4); }
+    .nav-link { transition: color .15s ease; }
+    .nav-link:hover { color: #f3f1fb !important; }
+    .cat-tab, .side-cat-row { transition: background .15s ease, color .15s ease, border-color .15s ease; cursor: pointer; }
+    .side-cat-row:hover { background: rgba(74,90,168,0.08); }
+    .listing-card { transition: border-color .15s ease, transform .15s ease; cursor: pointer; border: 1px solid transparent; }
+    .listing-card:hover { border-color: #4a5aa8; transform: translateY(-3px); }
+    .tag-chip { transition: background .15s ease, color .15s ease, border-color .15s ease; }
+    .market-toolbar-btn { transition: border-color .15s ease; }
+    .market-toolbar-btn:hover { border-color: #4a5aa8; }
+    .market-dropdown-item { display: block; width: 100%; text-align: left; background: none; border: none; padding: 9px 10px; font-size: 12.5px; color: #c3c8e6; border-radius: 3px; cursor: pointer; font-family: inherit; }
+    .market-dropdown-item:hover { background: rgba(255,255,255,0.06); }
+    .market-dropdown-item.active { background: rgba(74,90,168,0.16); color: #f3f1fb; font-weight: 600; }
+
+    /* สกรอลล์บาร์บางๆ เฉพาะ 2 ลิสต์ย่อยของหมวดหมู่ (Image & Media / Role ตอนกางออก)
+       ไม่ได้ใช้กับทั้งหน้าแล้ว เพราะทั้งหน้าเปลี่ยนไปสกรอลล์ปกติตามที่อธิบายไว้ข้างบน */
+    .thin-scroll::-webkit-scrollbar { width: 3px; }
+    .thin-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+    .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+    .thin-scroll::-webkit-scrollbar-thumb { background: rgba(154,162,196,0.45); border-radius: 0; }
+    .thin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(244,184,96,0.65); }
+
+    /* ── แถบ "ตัวอย่างพรีวิว" — พี่เพิ่มเองไม่ได้อยู่ในไฟล์ดีไซน์ อธิบายเหตุผลไว้ในคอมเมนต์บนสุดแล้ว ── */
+    .preview-strip { background: rgba(244,184,96,0.07); border-bottom: 1px solid rgba(244,184,96,0.22); padding: 9px 20px; text-align: center; }
+    .preview-strip span { font-size: 12px; color: #e2c48f; line-height: 1.5; }
+    .preview-strip strong { color: #f4b860; font-weight: 700; }
+
+    /* ── NAV — แถบทึบเต็มความกว้าง (ต่างจากแคปซูลลอยของหน้าอื่น ตามที่ไฟล์ดีไซน์ตั้งใจ) ── */
+    .mkt-nav { position: sticky; top: 0; z-index: 30; height: 64px; background: rgba(10,14,26,0.94); border-bottom: 1px solid #1c2340; backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); display: flex; align-items: center; padding: 0 18px; gap: 14px; }
+    .mkt-nav .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+    .mkt-nav .brand img { width: 26px; height: 26px; border-radius: 999px; object-fit: cover; border: 1.5px solid rgba(74,90,168,0.5); }
+    .mkt-nav .brand span { font-size: 15px; font-weight: 700; color: #f3f1fb; }
+    .mkt-nav .center-links { display: flex; align-items: center; gap: 26px; flex: 1 1 auto; justify-content: center; flex-wrap: wrap; }
+    .mkt-nav .center-links .nav-link { font-size: 13.5px; color: #c3c8e6; }
+    .mkt-nav .center-links .nav-link.active { color: #f3f1fb; border-bottom: 1.5px solid #4a5aa8; padding-bottom: 2px; }
+    .mkt-nav .right-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .lang-btn { height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(154,162,196,0.3); background: rgba(255,255,255,0.04); color: #f3f1fb; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .add-bot-btn { height: 38px; padding: 0 16px; border-radius: 999px; border: none; background: #4a5aa8; color: #f3f1fb; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    @media (max-width: 900px) {
+      .mkt-nav .center-links { display: none; }
+      .lang-btn span.lang-label { display: none; }
+    }
+
+    /* ── โครงหลัก 3 คอลัมน์ — mobile-first: ซ้อนเป็นคอลัมน์เดียวก่อน แล้วค่อยกางเป็น 3 คอลัมน์ตอนจอกว้างพอ ── */
+    .mkt-shell { max-width: 1680px; margin: 0 auto; padding: 18px 16px 48px; }
+    .mkt-body { display: flex; flex-direction: column; gap: 26px; }
+    .mkt-side-left { order: 2; width: 100%; }
+    .mkt-main { order: 1; width: 100%; min-width: 0; }
+    .mkt-side-right { order: 3; width: 100%; }
+    @media (min-width: 900px) {
+      .mkt-shell { padding: 24px 24px 56px; }
+    }
+    @media (min-width: 1180px) {
+      .mkt-body { flex-direction: row; align-items: flex-start; gap: 28px; }
+      .mkt-side-left { order: 0; flex: 0 0 230px; }
+      .mkt-main { order: 0; flex: 1 1 0%; }
+      .mkt-side-right { order: 0; flex: 0 0 260px; }
+    }
+
+    /* ── promo banner ── */
+    .promo-banner { position: relative; width: 100%; height: 190px; border-radius: 5px; overflow: hidden; }
+    .promo-banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 75% 20%; }
+    .promo-banner .wash { position: absolute; inset: 0; background: linear-gradient(100deg, rgba(5,7,15,0.9) 0%, rgba(5,7,15,0.6) 42%, rgba(5,7,15,0.15) 78%, rgba(5,7,15,0.03) 100%); }
+    .promo-banner .txt { position: absolute; top: 22px; left: 22px; max-width: calc(100% - 44px); }
+    .promo-banner .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; color: #f4b860; text-transform: uppercase; }
+    .promo-banner h1 { font-size: clamp(19px, 4vw, 26px); font-weight: 800; color: #f9f8ff; margin: 8px 0 0; letter-spacing: -0.02em; line-height: 1.2; }
+    .promo-banner p { font-size: 12.5px; color: #c3c8e6; margin-top: 8px; line-height: 1.6; }
+    .promo-banner .dots { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+
+    /* ── search + sort + price toolbar ── */
+    .mkt-toolbar { display: flex; align-items: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; row-gap: 10px; }
+    .mkt-search { flex: 1 1 220px; display: flex; align-items: center; gap: 10px; height: 46px; background: rgba(19,26,46,0.6); border: 1px solid #262f4d; border-radius: 4px; padding: 0 16px; }
+    .mkt-search input { flex: 1 1 auto; height: 100%; background: transparent; border: none; outline: none; color: #f3f1fb; font-size: 13px; font-family: inherit; min-width: 0; }
+    .mkt-dropdown-wrap { position: relative; flex: 0 0 auto; }
+    .mkt-dropdown-panel { display: none; position: absolute; top: 52px; right: 0; z-index: 30; background: #1b2338; border: 1px solid #2c3559; border-radius: 4px; box-shadow: 0 12px 28px rgba(0,0,0,0.45); }
+
+    /* ── product grid — auto-fill/minmax ทำให้กริดปรับจำนวนคอลัมน์เองตามความกว้างจริงของคอลัมน์กลาง
+       (แทนที่จะล็อก 3 คอลัมน์ตายตัวแบบไฟล์ดีไซน์ ซึ่งจะแตกบนจอแคบ) ── */
+    #productGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; margin-top: 20px; }
+
+    /* ── product detail modal — สไตล์ "glow" ตามดีไซน์ ── */
+    .pdm-outer { padding: 1.5px; border-radius: 6px; background: linear-gradient(135deg, #7783be, #66a099 55%, #f4b860); box-shadow: 0 0 46px rgba(119,131,190,0.32), 0 24px 60px rgba(0,0,0,0.5); width: min(560px, 92vw); max-height: 85vh; }
+    .pdm-inner { background: #0d1220; border-radius: 5px; }
+    .pdm-glow-blob { position: absolute; top: -60px; right: -50px; width: 220px; height: 220px; border-radius: 999px; background: radial-gradient(circle, rgba(102,160,153,0.5), transparent 70%); filter: blur(6px); pointer-events: none; }
+    .pdm-badge-glow { background: rgba(102,160,153,0.22); border: 1px solid rgba(102,160,153,0.6); box-shadow: 0 0 14px rgba(102,160,153,0.35); backdrop-filter: blur(6px); }
+    .pdm-avatar-glow { box-shadow: 0 0 0 2px #0d1220, 0 0 0 3.5px rgba(119,131,190,0.55), 0 0 14px rgba(119,131,190,0.4); }
+    .pdm-tag-glow { background: rgba(19,26,46,0.7); border: 1px solid rgba(119,131,190,0.5); box-shadow: 0 0 8px rgba(102,160,153,0.22); }
+    .pdm-contact-btn { border-radius: 999px; border: none; background: linear-gradient(120deg, #4a5aa8, #5f7fc4 55%, #4b8f87); box-shadow: 0 0 30px rgba(74,90,168,0.5), 0 6px 18px rgba(0,0,0,0.35); position: relative; overflow: hidden; transition: box-shadow .2s ease, transform .15s ease; font-family: inherit; }
+    .pdm-contact-btn:hover { box-shadow: 0 0 40px rgba(74,90,168,0.65), 0 6px 18px rgba(0,0,0,0.35); transform: translateY(-1px); }
+    .pdm-contact-btn::after { content: ''; position: absolute; top: 0; left: -30%; width: 30%; height: 100%; background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent); transform: skewX(-20deg); }
+
+    /* ── report modal — เจตนาให้เป็นกล่องเรียบๆ ไม่มี glow เหมือน modal สินค้า (ตามที่ไฟล์ดีไซน์ระบุไว้) ── */
+    .report-modal-outer { border-radius: 5px; background: #131a2e; border: 1px solid #262f4d; box-shadow: 0 24px 60px rgba(0,0,0,0.5); width: min(440px, 92vw); }
+    .report-reason-row { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 3px; cursor: pointer; transition: background .15s ease; border: 1px solid transparent; }
+    .report-reason-row:hover { background: rgba(119,131,190,0.08); }
+    .report-reason-row.selected { background: rgba(119,131,190,0.12); border-color: rgba(119,131,190,0.4); }
+    .report-radio-dot { width: 16px; height: 16px; border-radius: 999px; border: 1.6px solid #6b7394; flex: 0 0 auto; position: relative; transition: border-color .15s ease; }
+    .report-reason-row.selected .report-radio-dot { border-color: #7783be; }
+    .report-reason-row.selected .report-radio-dot::after { content: ''; position: absolute; inset: 3px; border-radius: 999px; background: #7783be; }
+    .report-submit-btn { border-radius: 999px; border: none; background: #4a5aa8; color: #fff; font-weight: 700; font-size: 13.5px; cursor: pointer; transition: opacity .15s ease, background-color .15s ease; font-family: inherit; }
+    .report-submit-btn:hover:not(:disabled) { background: #5566b8; }
+    .report-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .report-attach-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #9aa2c4; background: rgba(19,26,46,0.7); border: 1px solid #262f4d; border-radius: 999px; padding: 7px 14px; cursor: pointer; transition: border-color .15s ease, color .15s ease, opacity .15s ease; font-family: inherit; }
+    .report-attach-btn:hover { border-color: rgba(119,131,190,0.5); color: #c8cdea; }
+    .report-attach-btn.has-file { color: #7783be; background: rgba(74,90,168,0.12); border-color: rgba(74,90,168,0.35); }
+    .report-attach-btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+    .report-evidence-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .report-evidence-tile { width: 56px; height: 56px; border-radius: 3px; background: #131a2e; border: 1px solid #262f4d; position: relative; overflow: visible; }
+    .report-evidence-thumb { width: 100%; height: 100%; border-radius: 3px; object-fit: cover; display: block; }
+    .report-evidence-remove { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 999px; border: none; background: rgba(5,7,15,0.9); color: #f3f1fb; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════ NAV ═══════════ -->
+  <nav class="mkt-nav">
+    <a href="/" class="brand plain">
+      <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+      <span>Milo Bot</span>
+    </a>
+    <div class="center-links">
+      <a href="/" class="nav-link" style="color:#c3c8e6;">Home</a>
+      <a href="/features" class="nav-link" style="color:#c3c8e6;">Features</a>
+      <a href="/pricing" class="nav-link" style="color:#c3c8e6;">Pricing</a>
+      <a href="/marketplace" class="nav-link active">Marketplace</a>
+      <a href="/auth/login" class="nav-link" style="color:#c3c8e6;">Dashboard</a>
+    </div>
+    <div class="right-actions">
+      <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+        <span class="lang-label">EN</span>
+      </button>
+      <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+         class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
+        Add Bot
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- ═══════════ แถบตัวอย่างพรีวิว (พี่เพิ่มเอง) ═══════════ -->
+  <div class="preview-strip">
+    <span>🔍 <strong>ตัวอย่างพรีวิว</strong> — ฟีเจอร์ Marketplace ยังไม่เปิดใช้งานจริง สินค้าที่เห็นในหน้านี้เป็นข้อมูลตัวอย่างเพื่อโชว์ดีไซน์เท่านั้นครับ</span>
+  </div>
+
+  <div class="mkt-shell">
+    <div class="mkt-body">
+
+      <!-- ═══════════ SIDEBAR ซ้าย: หมวดหมู่ + แท็ก + ร้านมาใหม่ ═══════════ -->
+      <div class="mkt-side-left">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;margin-bottom:14px;">หมวดหมู่</div>
+
+        <div id="side-cat-all" class="side-cat-row" onclick="selectCat('all')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;background:rgba(74,90,168,0.14);color:#f3f1fb;margin-bottom:2px;">
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg><span style="font-size:13.5px;font-weight:600;">สินค้าทั้งหมด</span></div>
+          <span style="font-size:12px;color:#6b7394;">42</span>
+        </div>
+
+        <div id="side-cat-servers" class="side-cat-row" onclick="selectCat('servers')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M4 10h16M10 10v10" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;">Servers</span></div>
+          <span style="font-size:12px;color:#6b7394;">4</span>
+        </div>
+
+        <!-- Image & Media — กางออกได้ -->
+        <div style="margin-bottom:2px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;">
+            <div id="side-cat-media" onclick="selectCat('media')" style="display:flex;align-items:center;gap:10px;flex:1 1 auto;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Image &amp; Media</span></div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:#6b7394;">9</span>
+              <svg id="chev-media" onclick="event.stopPropagation(); toggleExpand('media')" width="11" height="11" viewBox="0 0 24 24" fill="none" style="cursor:pointer;transition:transform .15s ease;color:#6b7394;"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div id="sub-media" class="thin-scroll" style="display:none;padding-left:16px;margin-top:2px;max-height:140px;overflow-y:auto;">
+            <div id="side-sub-media-all" class="side-cat-row" onclick="selectCat('media')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">ทั้งหมด</div>
+            <div id="side-sub-media-banner" class="side-cat-row" onclick="selectSubcat('media','banner')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Banner</div>
+            <div id="side-sub-media-thumbnail" class="side-cat-row" onclick="selectSubcat('media','thumbnail')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Thumbnail</div>
+            <div id="side-sub-media-wallpaper" class="side-cat-row" onclick="selectSubcat('media','wallpaper')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Wallpaper</div>
+            <div id="side-sub-media-divider" class="side-cat-row" onclick="selectSubcat('media','divider')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Img Divider</div>
+          </div>
+        </div>
+
+        <div id="side-cat-emoji-sticker" class="side-cat-row" onclick="selectCat('emoji-sticker')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 14V6a2 2 0 0 1 2-2h8l6 6v4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 14l6 6h6a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Emoji &amp; Sticker</span></div>
+          <span style="font-size:12px;color:#6b7394;">11</span>
+        </div>
+
+        <div id="side-cat-builder" class="side-cat-row" onclick="selectCat('builder')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 8l8-5 8 5-8 5-8-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Builder</span></div>
+          <span style="font-size:12px;color:#6b7394;">3</span>
+        </div>
+
+        <!-- Role — กางออกได้ (ชนิดย่อยตรงกับ /role-setup จริงของบอท: Menu / Button / Reaction) -->
+        <div style="margin-bottom:2px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;">
+            <div id="side-cat-role" onclick="selectCat('role')" style="display:flex;align-items:center;gap:10px;flex:1 1 auto;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Role</span></div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:#6b7394;">6</span>
+              <svg id="chev-role" onclick="event.stopPropagation(); toggleExpand('role')" width="11" height="11" viewBox="0 0 24 24" fill="none" style="cursor:pointer;transition:transform .15s ease;color:#6b7394;"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div id="sub-role" class="thin-scroll" style="display:none;padding-left:16px;margin-top:2px;max-height:120px;overflow-y:auto;">
+            <div id="side-sub-role-all" class="side-cat-row" onclick="selectCat('role')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">ทั้งหมด</div>
+            <div id="side-sub-role-menu" class="side-cat-row" onclick="selectSubcat('role','menu')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">เมนู (Dropdown)</div>
+            <div id="side-sub-role-button" class="side-cat-row" onclick="selectSubcat('role','button')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">ปุ่มกด (Button)</div>
+            <div id="side-sub-role-reaction" class="side-cat-row" onclick="selectSubcat('role','reaction')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Reaction</div>
+          </div>
+        </div>
+
+        <div id="side-cat-welcome-goodbye" class="side-cat-row" onclick="selectCat('welcome-goodbye')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;">Welcome / Goodbye</span></div>
+          <span style="font-size:12px;color:#6b7394;">5</span>
+        </div>
+
+        <div id="side-cat-package" class="side-cat-row" onclick="selectCat('package')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;">
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;">Package</span></div>
+          <span style="font-size:12px;color:#6b7394;">4</span>
+        </div>
+
+        <div style="height:1px;background:#1c2340;margin:20px 0;"></div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;margin-bottom:12px;">แท็กยอดนิยม</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <span class="tag-chip" style="font-size:12px;color:#c3c8e6;background:rgba(19,26,46,0.7);border:1px solid #262f4d;border-radius:999px;padding:6px 12px;">#ยอดนิยม</span>
+          <span class="tag-chip" style="font-size:12px;color:#c3c8e6;background:rgba(19,26,46,0.7);border:1px solid #262f4d;border-radius:999px;padding:6px 12px;">#ใหม่</span>
+          <span class="tag-chip" style="font-size:12px;color:#c3c8e6;background:rgba(19,26,46,0.7);border:1px solid #262f4d;border-radius:999px;padding:6px 12px;">#ฟรี</span>
+          <span class="tag-chip" style="font-size:12px;color:#c3c8e6;background:rgba(19,26,46,0.7);border:1px solid #262f4d;border-radius:999px;padding:6px 12px;">#พรีเมียม</span>
+          <span class="tag-chip" style="font-size:12px;color:#c3c8e6;background:rgba(19,26,46,0.7);border:1px solid #262f4d;border-radius:999px;padding:6px 12px;">#เกม</span>
+          <span class="tag-chip" style="font-size:12px;color:#c3c8e6;background:rgba(19,26,46,0.7);border:1px solid #262f4d;border-radius:999px;padding:6px 12px;">#เพลง</span>
+        </div>
+
+        <!-- ร้านค้ามาใหม่ — carousel เลื่อนอัตโนมัติ (สไลด์เป็น HTML ธรรมดาซ้อนกันไว้ JS แค่สลับว่าอันไหนโชว์) -->
+        <div style="height:1px;background:#1c2340;margin:20px 0;"></div>
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M3 12h18" stroke="#4b8f87" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;">ร้านค้ามาใหม่</span>
+        </div>
+
+        <div id="new-shop-slide-0" style="display:block;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#3a2e5c,#6b52d6 75%);display:inline-block;flex:0 0 auto;"></span>
+            <div style="flex:1 1 auto;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@studio.lumen</span><span style="font-size:8.5px;font-weight:700;color:#0a0e1a;background:#4b8f87;border-radius:999px;padding:2px 6px;">ใหม่</span></div>
+              <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">ไอคอนแชท Minimal &middot; เปิดเมื่อ 2 วันก่อน</div>
+            </div>
+          </div>
+        </div>
+        <div id="new-shop-slide-1" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#332a55,#5865f2 75%);display:inline-block;flex:0 0 auto;"></span>
+            <div style="flex:1 1 auto;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@pixelmochi</span><span style="font-size:8.5px;font-weight:700;color:#0a0e1a;background:#4b8f87;border-radius:999px;padding:2px 6px;">ใหม่</span></div>
+              <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">วอลเปเปอร์ธีม Y2K &middot; เปิดเมื่อ 3 วันก่อน</div>
+            </div>
+          </div>
+        </div>
+        <div id="new-shop-slide-2" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#1f2937,#94a3b8 75%);display:inline-block;flex:0 0 auto;"></span>
+            <div style="flex:1 1 auto;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@nokbot.studio</span><span style="font-size:8.5px;font-weight:700;color:#0a0e1a;background:#4b8f87;border-radius:999px;padding:2px 6px;">ใหม่</span></div>
+              <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">เมนูยศจัดเรียง &middot; เปิดเมื่อ 5 วันก่อน</div>
+            </div>
+          </div>
+        </div>
+        <div id="new-shop-slide-3" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#3d1f3a,#f472b6 75%);display:inline-block;flex:0 0 auto;"></span>
+            <div style="flex:1 1 auto;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@tinytown</span><span style="font-size:8.5px;font-weight:700;color:#0a0e1a;background:#4b8f87;border-radius:999px;padding:2px 6px;">ใหม่</span></div>
+              <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">การ์ดต้อนรับพิกเซล &middot; เปิดเมื่อ 1 สัปดาห์ก่อน</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+          <div style="display:flex;gap:5px;">
+            <span id="new-shop-dot-0" onclick="showNewShop(0)" style="width:5px;height:5px;border-radius:999px;background:#4b8f87;cursor:pointer;"></span>
+            <span id="new-shop-dot-1" onclick="showNewShop(1)" style="width:5px;height:5px;border-radius:999px;background:#262f4d;cursor:pointer;"></span>
+            <span id="new-shop-dot-2" onclick="showNewShop(2)" style="width:5px;height:5px;border-radius:999px;background:#262f4d;cursor:pointer;"></span>
+            <span id="new-shop-dot-3" onclick="showNewShop(3)" style="width:5px;height:5px;border-radius:999px;background:#262f4d;cursor:pointer;"></span>
+          </div>
+          <a href="#" style="font-size:11px;font-weight:600;">ดูร้านค้าเปิดใหม่ &rarr;</a>
+        </div>
+      </div>
+
+      <!-- ═══════════ คอลัมน์กลาง: แบนเนอร์ + ค้นหา/เรียง/กรอง + กริดสินค้า ═══════════ -->
+      <div class="mkt-main">
+
+        <div class="promo-banner">
+          <img src="/images/hero-crisp.jpg" alt="" />
+          <div class="wash"></div>
+          <div class="txt">
+            <div class="eyebrow">Marketplace</div>
+            <h1>ตกแต่งเซิร์ฟ ซื้อ-ขายกันได้จริง</h1>
+            <p>ซื้อของตกแต่งจากคนอื่นได้เลย หรือเปิดร้านขายเองก็ได้</p>
+          </div>
+          <div class="dots">
+            <span style="width:16px;height:5px;border-radius:999px;background:#f4b860;display:inline-block;"></span>
+            <span style="width:5px;height:5px;border-radius:999px;background:rgba(255,255,255,0.35);display:inline-block;"></span>
+            <span style="width:5px;height:5px;border-radius:999px;background:rgba(255,255,255,0.35);display:inline-block;"></span>
+          </div>
+        </div>
+
+        <div class="mkt-toolbar">
+          <div class="mkt-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#6b7394" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="#6b7394" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input id="marketSearchInput" type="text" oninput="setMarketSearch(this.value)" placeholder="ค้นหาสินค้า ธีม หรือแท็ก..." />
+            <button type="button" id="marketSearchClearBtn" onclick="clearMarketSearch()" aria-label="ล้างคำค้นหา" style="display:none;width:20px;height:20px;border-radius:999px;border:none;background:rgba(154,162,196,0.18);color:#9aa2c4;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          <div class="mkt-dropdown-wrap">
+            <button type="button" class="market-toolbar-btn" onclick="toggleSortMenu(event)" style="height:46px;padding:0 16px;border:1px solid #262f4d;border-radius:4px;background:rgba(19,26,46,0.6);display:flex;align-items:center;gap:8px;white-space:nowrap;cursor:pointer;font:inherit;color:inherit;">
+              <span style="color:#6b7394;font-size:12px;">เรียงตาม</span><span id="sortLabel" style="color:#f3f1fb;font-size:13px;font-weight:600;">ยอดนิยม</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M7 9l5 5 5-5" stroke="#9aa2c4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div id="sortMenu" class="mkt-dropdown-panel" style="min-width:190px;padding:4px;">
+              <button type="button" class="market-dropdown-item" data-sort="popular" onclick="setSort('popular')">ยอดนิยม</button>
+              <button type="button" class="market-dropdown-item" data-sort="price-asc" onclick="setSort('price-asc')">ราคา: ต่ำ → สูง</button>
+              <button type="button" class="market-dropdown-item" data-sort="price-desc" onclick="setSort('price-desc')">ราคา: สูง → ต่ำ</button>
+              <button type="button" class="market-dropdown-item" data-sort="rating" onclick="setSort('rating')">คะแนนสูงสุด</button>
+            </div>
+          </div>
+
+          <div class="mkt-dropdown-wrap">
+            <button type="button" class="market-toolbar-btn" onclick="togglePriceMenu(event)" style="height:46px;padding:0 16px;border:1px solid #262f4d;border-radius:4px;background:rgba(19,26,46,0.6);display:flex;align-items:center;gap:8px;white-space:nowrap;cursor:pointer;font:inherit;color:inherit;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 12h18" stroke="#6b7394" stroke-width="1.8" stroke-linecap="round"/><circle cx="8.5" cy="12" r="3" fill="#131a2e" stroke="#4a5aa8" stroke-width="1.8"/><circle cx="16.5" cy="12" r="3" fill="#131a2e" stroke="#4a5aa8" stroke-width="1.8"/></svg>
+              <span style="color:#6b7394;font-size:12px;">ราคา</span><span id="priceLabel" style="color:#f3f1fb;font-size:13px;font-weight:600;">฿0 &ndash; ฿500</span>
+            </button>
+            <div id="priceMenu" class="mkt-dropdown-panel" style="width:224px;padding:14px;box-sizing:border-box;">
+              <div style="display:flex;align-items:flex-end;gap:8px;">
+                <div style="flex:1 1 0;min-width:0;">
+                  <div style="font-size:10px;color:#6b7394;margin-bottom:4px;">ต่ำสุด (฿)</div>
+                  <input id="priceMinInput" type="number" min="0" step="10" value="0" style="width:100%;height:32px;border-radius:3px;background:#0a0e1a;border:1px solid #262f4d;color:#f3f1fb;font-size:12px;padding:0 8px;box-sizing:border-box;font-family:inherit;" />
+                </div>
+                <div style="color:#6b7394;padding-bottom:8px;">–</div>
+                <div style="flex:1 1 0;min-width:0;">
+                  <div style="font-size:10px;color:#6b7394;margin-bottom:4px;">สูงสุด (฿)</div>
+                  <input id="priceMaxInput" type="number" min="0" step="10" value="500" style="width:100%;height:32px;border-radius:3px;background:#0a0e1a;border:1px solid #262f4d;color:#f3f1fb;font-size:12px;padding:0 8px;box-sizing:border-box;font-family:inherit;" />
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <button type="button" onclick="resetPriceFilter()" style="flex:1 1 0;height:32px;border-radius:3px;border:1px solid #262f4d;background:none;color:#9aa2c4;font-size:12px;cursor:pointer;font-family:inherit;">รีเซ็ต</button>
+                <button type="button" onclick="applyPriceFilter()" style="flex:1 1 0;height:32px;border-radius:3px;border:none;background:#4a5aa8;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">ใช้ตัวกรอง</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="productGrid">
+
+          <div class="listing-card" data-id="p1" data-cat="servers" onclick="openProductDetail('p1')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#4a3420,#f4b860 70%);">
+            <svg width="110" height="110" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-18px;right:-14px;opacity:0.16;"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#0f1424" stroke-width="1.4"/><path d="M4 10h16M10 10v10" stroke="#0f1424" stroke-width="1.4"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#9a6a1f;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Servers</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">ธีมเซิร์ฟ Cozy Cafe</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@cafe.dev &middot; &#9733; 4.9 (128)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;450</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p2" data-cat="media" data-subcat="wallpaper" onclick="openProductDetail('p2')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#332a55,#5865f2 75%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="#fff" stroke-width="1.4"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#3d4ed6;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Image &amp; Media &middot; Wallpaper</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">พื้นหลัง Cyber City</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@studio.pixel &middot; &#9733; 4.8 (93)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;150</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p3" data-cat="media" data-subcat="banner" onclick="openProductDetail('p3')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#4a2340,#fb7185 75%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8L12 3z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#c23458;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Image &amp; Media &middot; Banner</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">แบนเนอร์ Sakura Dream</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@studio.pixel &middot; &#9733; 4.9 (61)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;150</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p4" data-cat="emoji-sticker" onclick="openProductDetail('p4')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#3a2e5c,#4a5aa8 75%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.4"/><path d="M8.5 14c1 1.2 2 1.7 3.5 1.7s2.5-.5 3.5-1.7" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#6b52d6;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Emoji &amp; Sticker</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">Pastel Cat (24 ตัว)</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@nadia.designs &middot; &#9733; 4.8 (86)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;120</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p5" data-cat="emoji-sticker" onclick="openProductDetail('p5')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#1c4a48,#4b8f87 75%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M4 14V6a2 2 0 0 1 2-2h8l6 6v4" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M4 14l6 6h6a2 2 0 0 0 2-2v-4" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#6b52d6;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Emoji &amp; Sticker</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(5,7,15,0.92) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">Neon Wave (12 แบบ)</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@kittyarts &middot; &#9733; 4.7 (102)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;89</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p6" data-cat="builder" onclick="openProductDetail('p6')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#2c2450,#4a5aa8 75%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M4 8l8-5 8 5-8 5-8-5z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#1f8f86;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Builder</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">แพ็ก Builder เมนูร้านค้า</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@shopkit.th &middot; &#9733; 4.7 (45)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;200</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p7" data-cat="role" data-subcat="menu" onclick="openProductDetail('p7')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#94a3b8 75%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#4b5563;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Role &middot; Menu</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">แผงยศ RPG Ranks</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@shopkit.th &middot; &#9733; 4.6 (38)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;180</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p8" data-cat="welcome-goodbye" onclick="openProductDetail('p8')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#3d1f3a,#f472b6 75%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="#fff" stroke-width="1.4"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#b23e91;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Welcome / Goodbye</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(5,7,15,0.92) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">การ์ดต้อนรับ Pastel Dreams</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@cardcraft.th &middot; &#9733; 4.8 (72)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;130</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="listing-card" data-id="p9" data-cat="package" onclick="openProductDetail('p9')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#4a3420,#4a5aa8 70%);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="#fff" stroke-width="1.4"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="#fff" stroke-width="1.4"/></svg>
+            <div style="position:absolute;top:10px;left:10px;background:#2f8f4e;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Package</div>
+            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(5,7,15,0.92) 100%);"></div>
+            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+              <div style="font-size:14px;font-weight:700;color:#fff;">แพ็กครบเซ็ต Builder + ยศ</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@shopkit.th &middot; &#9733; 4.9 (29)</span>
+                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;320</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- empty state — โชว์ตอนกรองหมวด+ค้นหา+ราคารวมกันแล้วไม่เหลือการ์ดเลย -->
+        <div id="marketEmpty" style="display:none;text-align:center;padding:48px 20px;">
+          <div style="font-size:13.5px;color:#9aa2c4;">ไม่พบสินค้าที่ตรงกับคำค้นหา</div>
+          <button type="button" onclick="clearMarketSearch()" style="margin-top:12px;height:36px;padding:0 18px;border-radius:999px;border:1px solid #262f4d;background:rgba(19,26,46,0.6);color:#c3c8e6;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">ล้างคำค้นหา</button>
+        </div>
+
+        <div style="margin-top:24px;display:flex;align-items:center;gap:12px;background:rgba(19,26,46,0.5);border:1px solid #262f4d;border-radius:4px;padding:18px 24px;flex-wrap:wrap;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/></svg>
+          <span style="font-size:13px;color:#c3c8e6;flex:1 1 240px;">เข้าถึง Marketplace ได้จากเมนูใน Dashboard ของคุณเช่นกัน &mdash; จัดการร้านค้าและออเดอร์ได้ที่เดียวกับที่ตั้งค่าบอท</span>
+          <span style="font-size:12.5px;font-weight:600;color:#7783be;white-space:nowrap;">ไปที่ Dashboard &rarr;</span>
+        </div>
+      </div>
+
+      <!-- ═══════════ SIDEBAR ขวา: Premium + อันดับยอดนิยม + ร้านค้าแนะนำ ═══════════ -->
+      <div class="mkt-side-right">
+
+        <div style="background:linear-gradient(135deg, rgba(244,184,96,0.14), rgba(74,90,168,0.10));border:1px solid rgba(244,184,96,0.3);border-radius:5px;padding:20px;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 8l3 3 5-7 5 7 3-3-2 10H6L4 8z" fill="#f4b860"/></svg>
+            <span style="font-size:12px;font-weight:700;color:#f4b860;letter-spacing:0.04em;">Premium Plan</span>
+          </div>
+          <div style="font-size:13.5px;color:#e8e6f7;line-height:1.6;margin-top:10px;">มี Premium อยู่แล้ว? เปิดร้านขายของตกแต่งของตัวเองได้ทันที ไม่มีค่าคอมมิชชั่นเพิ่ม</div>
+          <a href="/pricing" class="pill-btn plain" style="width:100%;height:42px;margin-top:14px;border-radius:4px;border:none;background:#4a5aa8;color:#f3f1fb;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">ดูแพ็กเกจ &rarr;</a>
+        </div>
+
+        <div style="height:1px;background:#1c2340;margin:24px 0 20px;"></div>
+        <div style="padding:0 4px;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6L12 3z" fill="#f4b860"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#f3f1fb;">อันดับยอดนิยม</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+            <span style="font-size:12px;color:#6b7394;width:14px;">1</span>
+            <span style="width:28px;height:28px;border-radius:3px;background:linear-gradient(135deg,#4a3420,#f4b860 70%);display:inline-block;"></span>
+            <span style="flex:1 1 auto;font-size:12.5px;color:#e8e6f7;">Cozy Cafe Theme</span>
+            <span style="font-size:11.5px;color:#f4b860;font-weight:600;">4.9 &#9733;</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+            <span style="font-size:12px;color:#6b7394;width:14px;">2</span>
+            <span style="width:28px;height:28px;border-radius:3px;background:linear-gradient(135deg,#4a2340,#fb7185 75%);display:inline-block;"></span>
+            <span style="flex:1 1 auto;font-size:12.5px;color:#e8e6f7;">Sakura Dream</span>
+            <span style="font-size:11.5px;color:#f4b860;font-weight:600;">4.9 &#9733;</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+            <span style="font-size:12px;color:#6b7394;width:14px;">3</span>
+            <span style="width:28px;height:28px;border-radius:3px;background:linear-gradient(135deg,#4a3420,#4a5aa8 70%);display:inline-block;"></span>
+            <span style="flex:1 1 auto;font-size:12.5px;color:#e8e6f7;">Builder+ยศ Pkg</span>
+            <span style="font-size:11.5px;color:#f4b860;font-weight:600;">4.9 &#9733;</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+            <span style="font-size:12px;color:#6b7394;width:14px;">4</span>
+            <span style="width:28px;height:28px;border-radius:3px;background:linear-gradient(135deg,#3a2e5c,#4a5aa8 75%);display:inline-block;"></span>
+            <span style="flex:1 1 auto;font-size:12.5px;color:#e8e6f7;">Pastel Cat</span>
+            <span style="font-size:11.5px;color:#f4b860;font-weight:600;">4.8 &#9733;</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+            <span style="font-size:12px;color:#6b7394;width:14px;">5</span>
+            <span style="width:28px;height:28px;border-radius:3px;background:linear-gradient(135deg,#1c4a48,#4b8f87 75%);display:inline-block;"></span>
+            <span style="flex:1 1 auto;font-size:12.5px;color:#e8e6f7;">Neon Wave</span>
+            <span style="font-size:11.5px;color:#f4b860;font-weight:600;">4.7 &#9733;</span>
+          </div>
+        </div>
+
+        <!-- ร้านค้าแนะนำ — carousel อีกอันแยกจากร้านมาใหม่ (คนละ interval กัน ไม่เลื่อนพร้อมกัน) -->
+        <div style="border-left:2px solid rgba(75,143,135,0.4);padding:4px 0 4px 14px;margin-top:22px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.963 2.286a.75.75 0 00-1.071-.136 9.742 9.742 0 00-3.539 6.176 7.547 7.547 0 01-1.705-1.715.75.75 0 00-1.152-.082A9 9 0 1015.68 4.534a7.46 7.46 0 01-2.717-2.248zM15.75 14.25a3.75 3.75 0 11-7.313-1.172c.628.465 1.35.81 2.133 1a5.99 5.99 0 011.925-3.545 3.75 3.75 0 013.255 3.717z" fill="#f4b860"/></svg>
+            <span style="font-size:12px;font-weight:700;color:#f3f1fb;">ร้านค้าแนะนำ</span>
+          </div>
+
+          <div id="spotlight-slide-0" style="display:block;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#4a3420,#f4b860 70%);display:inline-block;flex:0 0 auto;"></span>
+              <div style="flex:1 1 auto;min-width:0;">
+                <div style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@cafe.dev</div>
+                <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">ธีมเซิร์ฟ Cozy Cafe</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+              <span style="font-size:11px;color:#f4b860;font-weight:600;">&#9733; 4.9 (128)</span>
+              <span style="font-size:11px;color:#66a099;font-weight:600;">&#8593; ยอดขายพุ่ง 32%</span>
+            </div>
+          </div>
+          <div id="spotlight-slide-1" style="display:none;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#332a55,#5865f2 75%);display:inline-block;flex:0 0 auto;"></span>
+              <div style="flex:1 1 auto;min-width:0;">
+                <div style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@studio.pixel</div>
+                <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">พื้นหลัง Cyber City</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+              <span style="font-size:11px;color:#f4b860;font-weight:600;">&#9733; 4.8 (93)</span>
+              <span style="font-size:11px;color:#66a099;font-weight:600;">&#8593; ยอดขายพุ่ง 24%</span>
+            </div>
+          </div>
+          <div id="spotlight-slide-2" style="display:none;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#3a2e5c,#4a5aa8 75%);display:inline-block;flex:0 0 auto;"></span>
+              <div style="flex:1 1 auto;min-width:0;">
+                <div style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@nadia.designs</div>
+                <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Pastel Cat (24 ตัว)</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+              <span style="font-size:11px;color:#f4b860;font-weight:600;">&#9733; 4.8 (86)</span>
+              <span style="font-size:11px;color:#66a099;font-weight:600;">&#8593; ยอดขายพุ่ง 19%</span>
+            </div>
+          </div>
+          <div id="spotlight-slide-3" style="display:none;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#1c4a48,#4b8f87 75%);display:inline-block;flex:0 0 auto;"></span>
+              <div style="flex:1 1 auto;min-width:0;">
+                <div style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@kittyarts</div>
+                <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Neon Wave (12 แบบ)</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+              <span style="font-size:11px;color:#f4b860;font-weight:600;">&#9733; 4.7 (102)</span>
+              <span style="font-size:11px;color:#66a099;font-weight:600;">&#8593; ยอดขายพุ่ง 41%</span>
+            </div>
+          </div>
+          <div id="spotlight-slide-4" style="display:none;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="width:32px;height:32px;border-radius:3px;background:linear-gradient(135deg,#3d1f3a,#f472b6 75%);display:inline-block;flex:0 0 auto;"></span>
+              <div style="flex:1 1 auto;min-width:0;">
+                <div style="font-size:12.5px;font-weight:700;color:#e8e6f7;">@cardcraft.th</div>
+                <div style="font-size:11px;color:#9aa2c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">การ์ดต้อนรับ Pastel Dreams</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+              <span style="font-size:11px;color:#f4b860;font-weight:600;">&#9733; 4.8 (72)</span>
+              <span style="font-size:11px;color:#66a099;font-weight:600;">&#8593; ยอดขายพุ่ง 27%</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+            <div style="display:flex;gap:5px;">
+              <span id="spotlight-dot-0" onclick="showSpotlight(0)" style="width:5px;height:5px;border-radius:999px;background:#f4b860;cursor:pointer;"></span>
+              <span id="spotlight-dot-1" onclick="showSpotlight(1)" style="width:5px;height:5px;border-radius:999px;background:#262f4d;cursor:pointer;"></span>
+              <span id="spotlight-dot-2" onclick="showSpotlight(2)" style="width:5px;height:5px;border-radius:999px;background:#262f4d;cursor:pointer;"></span>
+              <span id="spotlight-dot-3" onclick="showSpotlight(3)" style="width:5px;height:5px;border-radius:999px;background:#262f4d;cursor:pointer;"></span>
+              <span id="spotlight-dot-4" onclick="showSpotlight(4)" style="width:5px;height:5px;border-radius:999px;background:#262f4d;cursor:pointer;"></span>
+            </div>
+            <a href="#" style="font-size:11.5px;font-weight:600;">ดูทั้งหมด &rarr;</a>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ Modal รายละเอียดสินค้า — เปิดตอนคลิกการ์ด ═══════════ -->
+  <div id="productDetailModal" onclick="productModalBackdropClick(event)" style="display:none;position:fixed;inset:0;background:rgba(5,7,15,0.72);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center;padding:16px;">
+    <div class="pdm-outer">
+      <div class="pdm-inner thin-scroll" style="max-height:calc(85vh - 3px);overflow-y:auto;position:relative;">
+        <button type="button" onclick="closeProductDetail()" aria-label="ปิด" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:999px;border:none;background:rgba(5,7,15,0.5);color:#f3f1fb;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" id="pdmReportKebabBtn" onclick="toggleProductReportMenu(event)" aria-label="ตัวเลือกเพิ่มเติม" style="position:absolute;top:14px;right:58px;width:32px;height:32px;border-radius:999px;border:none;background:rgba(5,7,15,0.5);color:#f3f1fb;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/></svg>
+        </button>
+        <div id="pdmReportMenu" style="display:none;position:absolute;top:50px;right:14px;width:196px;background:#1b2338;border:1px solid #2c3559;border-radius:4px;padding:6px;box-shadow:0 12px 28px rgba(0,0,0,0.4);z-index:3;">
+          <button type="button" onclick="openReportForm()" style="width:100%;text-align:left;padding:9px 10px;border-radius:3px;border:none;background:transparent;color:#d9758a;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:inherit;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 4v16M5 4h11l-2 4 2 4H5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            รายงานเนื้อหา
+          </button>
+        </div>
+        <div id="pdmHero" style="height:190px;border-radius:5px 5px 0 0;position:relative;overflow:hidden;">
+          <div class="pdm-glow-blob"></div>
+          <div id="pdmHeroIcon" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 14px rgba(255,255,255,0.4));"></div>
+          <div id="pdmBadge" class="pdm-badge-glow" style="position:absolute;top:14px;left:14px;border-radius:999px;padding:5px 12px;font-size:10px;font-weight:700;color:#fff;"></div>
+        </div>
+        <div style="padding:22px 24px 26px;">
+          <div id="pdmTitle" style="font-size:18px;font-weight:700;color:#f9f8ff;"></div>
+          <div style="display:flex;align-items:center;gap:11px;margin-top:12px;flex-wrap:wrap;">
+            <span id="pdmSellerAvatar" class="pdm-avatar-glow" style="width:34px;height:34px;border-radius:999px;display:inline-block;flex:0 0 auto;"></span>
+            <div style="flex:1 1 140px;min-width:0;">
+              <div id="pdmSeller" style="font-size:13px;font-weight:700;color:#e8e6f7;"></div>
+              <div id="pdmRating" style="font-size:11.5px;color:#9aa2c4;margin-top:1px;"></div>
+            </div>
+            <div id="pdmPrice" style="font-size:21px;font-weight:700;color:#f4b860;white-space:nowrap;text-shadow:0 0 16px rgba(244,184,96,0.55);"></div>
+          </div>
+          <div style="height:1px;background:linear-gradient(90deg, transparent, #2c3559, transparent);margin:20px 0;"></div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#9aa2c4;text-transform:uppercase;margin-bottom:8px;">รายละเอียดสินค้า</div>
+          <div id="pdmDesc" style="font-size:13.5px;color:#c3c8e6;line-height:1.75;"></div>
+          <div id="pdmTags" style="display:flex;flex-wrap:wrap;gap:9px;margin-top:16px;"></div>
+          <button type="button" id="pdmContactBtn" class="pdm-contact-btn" onclick="contactSeller()" style="width:100%;height:48px;margin-top:24px;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5.5c3.2-1.2 6.4-1.6 9.5-1.6M4 5.5C4 5.5 3 12 4 18c2.4 1.4 5 2 5 2l1-2.2M4 5.5C4 5.5 5 4.2 8 4M20 5.5c-3.2-1.2-6.4-1.6-9.5-1.6M20 5.5c0 0 1 6.5 0 12.5-2.4 1.4-5 2-5 2l-1-2.2M20 5.5c0 0-1-1.3-4-1.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="12.5" r="1.4" fill="#fff"/><circle cx="15" cy="12.5" r="1.4" fill="#fff"/></svg>
+            ทักแชทผู้ขายใน Discord
+          </button>
+          <div style="font-size:11px;color:#6b7394;text-align:center;margin-top:10px;">ตกลงราคา/รายละเอียดกับผู้ขายเองโดยตรง ไม่มีการหักค่าธรรมเนียมจากแพลตฟอร์ม</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- toast ยืนยัน (ทักแชทผู้ขาย / ส่งรายงาน) -->
+  <div id="pdmToast" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(10px);background:#1b2338;border:1px solid #2c3559;border-radius:999px;padding:10px 20px;font-size:12.5px;color:#f3f1fb;box-shadow:0 12px 28px rgba(0,0,0,0.4);z-index:60;opacity:0;transition:opacity .2s ease, transform .2s ease;align-items:center;gap:8px;max-width:calc(100vw - 32px);text-align:center;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex:0 0 auto;"><path d="M5 12l4 4 10-10" stroke="#4b8f87" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span id="pdmToastText"></span>
+  </div>
+
+  <!-- ═══════════ Modal รายงานเนื้อหา ═══════════ -->
+  <div id="reportModal" onclick="reportModalBackdropClick(event)" style="display:none;position:fixed;inset:0;background:rgba(5,7,15,0.72);backdrop-filter:blur(4px);z-index:70;align-items:center;justify-content:center;padding:16px;">
+    <div class="report-modal-outer">
+      <div style="padding:24px 22px 22px;position:relative;">
+        <button type="button" onclick="closeReportForm()" aria-label="ปิด" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:999px;border:none;background:rgba(5,7,15,0.5);color:#f3f1fb;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div style="font-size:16.5px;font-weight:700;color:#f9f8ff;padding-right:30px;">รายงานเนื้อหา</div>
+        <div style="font-size:12px;color:#9aa2c4;margin-top:6px;line-height:1.6;">บอกเราหน่อยว่าเกิดอะไรขึ้น ทีมงานจะตรวจสอบก่อนดำเนินการต่อไปครับ</div>
+
+        <div id="reportReasonList" style="margin-top:16px;display:flex;flex-direction:column;gap:3px;"></div>
+
+        <textarea id="reportDetailInput" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" style="width:100%;min-height:70px;margin-top:12px;border-radius:4px;background:rgba(5,7,15,0.5);border:1px solid #262f4d;padding:11px 13px;color:#f3f1fb;font-size:12.5px;line-height:1.6;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+
+        <input type="file" id="reportEvidenceInput" accept="image/*,video/*" multiple style="display:none;" onchange="handleReportEvidenceSelect(this)" />
+        <button type="button" id="reportAttachBtn" class="report-attach-btn" onclick="document.getElementById('reportEvidenceInput').click()" style="margin-top:12px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="10" r="1.4" stroke="currentColor" stroke-width="1.4"/><path d="M5 17l4.5-4.5 3 3 3-3 4.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="reportAttachLabel">แนบรูปภาพ/วิดีโอเป็นหลักฐาน (0/4)</span>
+        </button>
+
+        <div id="reportEvidenceGrid" class="report-evidence-grid" style="display:none;"></div>
+
+        <div style="margin-top:18px;">
+          <button type="button" id="reportSubmitBtn" class="report-submit-btn" onclick="submitReport()" disabled style="width:100%;height:44px;">ส่งรายงาน</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════════
+  // สคริปต์ทั้งหมดด้านล่างนี้ พี่พอร์ตมาจากไฟล์ดีไซน์ Marketplace.dc.html
+  // เกือบทั้งหมด (เป็น vanilla JS ล้วนๆ ไม่ต้องพึ่งไลบรารีอะไร) — โครงสร้าง
+  // ชื่อฟังก์ชัน/ตัวแปรตั้งใจให้ตรงกับต้นฉบับเป๊ะๆ เพื่อลดโอกาสพลาดตอนพอร์ต
+  // ═══════════════════════════════════════════════════════════════════
+
+  // หมวดหมู่แบบลิสต์เดียว โดย "media" กับ "role" กางออกดูหมวดย่อยได้
+  // currentCat + currentSubcat สองตัวนี้รวมกันตัดสินว่าการ์ดไหนโชว์ ส่วนการ
+  // กาง/หุบเมนูเป็นสถานะแยกต่างหาก (กางดูหมวดย่อยเฉยๆ ไม่ได้แปลว่าเปลี่ยนตัวกรอง)
+  var TOP_CATS = ['all', 'servers', 'media', 'emoji-sticker', 'builder', 'role', 'welcome-goodbye', 'package'];
+  var SUBS = { media: ['banner', 'thumbnail', 'wallpaper', 'divider'], role: ['menu', 'button', 'reaction'] };
+  var currentCat = 'all';
+  var currentSubcat = null;
+  var currentSearchQuery = '';
+  var currentSort = 'popular'; // popular = ลำดับเดิมในหน้า (การ์ดเรียงแบบ "ยอดนิยม" อยู่แล้วตั้งแต่แรก)
+  var priceMin = 0;
+  var priceMax = 500;
+  var SORT_LABELS = { popular: 'ยอดนิยม', 'price-asc': 'ราคา: ต่ำ → สูง', 'price-desc': 'ราคา: สูง → ต่ำ', rating: 'คะแนนสูงสุด' };
+
+  // ข้อมูลสินค้าทั้ง 9 ชิ้น — "จุดเดียว" ที่การ์ดในกริด, การค้นหา, และ modal รายละเอียด
+  // อ่านข้อมูลจากตรงนี้ทั้งหมด แทนที่จะแยกก็อปปี้กันไว้คนละที่จนข้อมูลเพี้ยนได้
+  // ⚠️ ย้ำอีกครั้ง: นี่คือข้อมูลสมมติทั้งหมด ไม่ใช่สินค้าจริง (ดูคอมเมนต์บนสุดของไฟล์)
+  var PRODUCTS = {
+    p1: { title: 'ธีมเซิร์ฟ Cozy Cafe', seller: '@cafe.dev', rating: 4.9, reviews: 128, price: 450, categoryLabel: 'Servers', gradient: 'linear-gradient(135deg,#4a3420,#f4b860 70%)', desc: 'ธีมตกแต่งเซิร์ฟสไตล์คาเฟ่อบอุ่น ครบชุดทั้งไอคอนยศ แบนเนอร์ และสีธีมที่เข้าคู่กัน ติดตั้งง่ายผ่าน Layout Builder ของบอทได้ทันที เหมาะกับเซิร์ฟแนวชิลๆ พูดคุยสบายๆ', tags: ['#เซิร์ฟ', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.28;"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#0f1424" stroke-width="1.2"/><path d="M4 10h16M10 10v10" stroke="#0f1424" stroke-width="1.2"/></svg>' },
+    p2: { title: 'พื้นหลัง Cyber City', seller: '@studio.pixel', rating: 4.8, reviews: 93, price: 150, categoryLabel: 'Image & Media · Wallpaper', gradient: 'linear-gradient(135deg,#332a55,#5865f2 75%)', desc: 'พื้นหลังธีมไซเบอร์พังก์เมืองยามค่ำคืน ความละเอียดสูงพร้อมใช้เป็นวอลเปเปอร์หรือแบนเนอร์เซิร์ฟ สีสันจัดจ้านเข้ากับธีมเซิร์ฟแนวเกม/ไซไฟ', tags: ['#วอลเปเปอร์', '#เกม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="#fff" stroke-width="1.2"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+    p3: { title: 'แบนเนอร์ Sakura Dream', seller: '@studio.pixel', rating: 4.9, reviews: 61, price: 150, categoryLabel: 'Image & Media · Banner', gradient: 'linear-gradient(135deg,#4a2340,#fb7185 75%)', desc: 'แบนเนอร์ธีมซากุระโทนพาสเทล ให้ความรู้สึกอบอุ่นนุ่มนวล ใช้ตกแต่งหน้าประกาศกฎหรือหน้าต้อนรับก็สวยครับ', tags: ['#แบนเนอร์', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8L12 3z" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
+    p4: { title: 'Pastel Cat (24 ตัว)', seller: '@nadia.designs', rating: 4.8, reviews: 86, price: 120, categoryLabel: 'Emoji & Sticker', gradient: 'linear-gradient(135deg,#3a2e5c,#4a5aa8 75%)', desc: 'แพ็กอีโมจิแมวพาสเทล 24 ตัว วาดมือทั้งชุด ใช้แทนความรู้สึกในแชทได้หลากหลายอารมณ์ อัปโหลดเป็น custom emoji ได้เลย', tags: ['#อีโมจิ', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.2"/><path d="M8.5 14c1 1.2 2 1.7 3.5 1.7s2.5-.5 3.5-1.7" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>' },
+    p5: { title: 'Neon Wave (12 แบบ)', seller: '@kittyarts', rating: 4.7, reviews: 102, price: 89, categoryLabel: 'Emoji & Sticker', gradient: 'linear-gradient(135deg,#1c4a48,#4b8f87 75%)', desc: 'สติกเกอร์ไฟนีออนธีมไซเบอร์ 12 แบบ สีสดจัดจ้าน เหมาะกับเซิร์ฟแนวเกมหรือดนตรีอิเล็กทรอนิกส์', tags: ['#สติกเกอร์', '#เกม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M4 14V6a2 2 0 0 1 2-2h8l6 6v4" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/><path d="M4 14l6 6h6a2 2 0 0 0 2-2v-4" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
+    p6: { title: 'แพ็ก Builder เมนูร้านค้า', seller: '@shopkit.th', rating: 4.7, reviews: 45, price: 200, categoryLabel: 'Builder', gradient: 'linear-gradient(135deg,#2c2450,#4a5aa8 75%)', desc: 'แพ็กเทมเพลตสำหรับ Layout Builder ของบอท ออกแบบมาเฉพาะเมนูร้านค้า/ราคาสินค้า วางแล้วใช้ได้เลยไม่ต้องเริ่มจากศูนย์', tags: ['#Builder', '#ใหม่'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M4 8l8-5 8 5-8 5-8-5z" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
+    p7: { title: 'แผงยศ RPG Ranks', seller: '@shopkit.th', rating: 4.6, reviews: 38, price: 180, categoryLabel: 'Role · Menu', gradient: 'linear-gradient(135deg,#1f2937,#94a3b8 75%)', desc: 'แผงเมนูเลือกยศธีม RPG ใช้กับ /role-setup ของบอทได้ทันที มีไอคอนยศครบทุกระดับพร้อมสี', tags: ['#ยศ', '#เกม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
+    p8: { title: 'การ์ดต้อนรับ Pastel Dreams', seller: '@cardcraft.th', rating: 4.8, reviews: 72, price: 130, categoryLabel: 'Welcome / Goodbye', gradient: 'linear-gradient(135deg,#3d1f3a,#f472b6 75%)', desc: 'การ์ดต้อนรับสมาชิกใหม่โทนพาสเทล ออกแบบให้เข้ากับระบบการ์ดต้อนรับของบอท ใส่ชื่อ-รูปสมาชิกอัตโนมัติ', tags: ['#ต้อนรับ', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="#fff" stroke-width="1.2"/></svg>' },
+    p9: { title: 'แพ็กครบเซ็ต Builder + ยศ', seller: '@shopkit.th', rating: 4.9, reviews: 29, price: 320, categoryLabel: 'Package', gradient: 'linear-gradient(135deg,#4a3420,#4a5aa8 70%)', desc: 'แพ็กครบชุดรวม Builder เทมเพลต + แผงยศ ซื้อคู่กันถูกกว่าซื้อแยก เหมาะกับคนอยากตกแต่งเซิร์ฟให้ครบในทีเดียว', tags: ['#แพ็กเกจ', '#คุ้มสุด'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="#fff" stroke-width="1.2"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="#fff" stroke-width="1.2"/></svg>' }
+  };
+
+  // กด chevron ข้างหมวด "Image & Media" / "Role" แล้วกาง/หุบลิสต์หมวดย่อย
+  function toggleExpand(key) {
+    var sub = document.getElementById('sub-' + key);
+    var chev = document.getElementById('chev-' + key);
+    var opening = sub.style.display === 'none';
+    sub.style.display = opening ? 'block' : 'none';
+    chev.style.transform = opening ? 'rotate(90deg)' : 'rotate(0deg)';
+  }
+
+  // render() คือหัวใจของหน้านี้ — เรียกทุกครั้งที่มีอะไรเปลี่ยน (เลือกหมวด, พิมพ์ค้นหา,
+  // เปลี่ยนการเรียง, กรองราคา) แล้ววาดผลลัพธ์ใหม่ทั้งหมด: ไฮไลต์หมวดที่เลือกอยู่ใน
+  // sidebar, จัดลำดับการ์ดใหม่ตาม currentSort, และซ่อน/โชว์การ์ดตาม 3 เงื่อนไข
+  // (หมวด + คำค้นหา + ช่วงราคา) ต้องผ่านครบทั้ง 3 การ์ดถึงจะโชว์
+  function render() {
+    TOP_CATS.forEach(function (c) {
+      var row = document.getElementById('side-cat-' + c);
+      if (!row) return;
+      var active = (c === currentCat);
+      row.style.background = active ? 'rgba(74,90,168,0.14)' : 'transparent';
+      row.style.color = active ? '#f3f1fb' : '#c3c8e6';
+    });
+    Object.keys(SUBS).forEach(function (group) {
+      var allRow = document.getElementById('side-sub-' + group + '-all');
+      if (allRow) {
+        var activeAll = (currentCat === group && currentSubcat === null);
+        allRow.style.background = activeAll ? 'rgba(74,90,168,0.14)' : 'transparent';
+        allRow.style.color = activeAll ? '#f3f1fb' : '#9aa2c4';
+      }
+      SUBS[group].forEach(function (sub) {
+        var row = document.getElementById('side-sub-' + group + '-' + sub);
+        if (!row) return;
+        var active = (currentCat === group && currentSubcat === sub);
+        row.style.background = active ? 'rgba(74,90,168,0.14)' : 'transparent';
+        row.style.color = active ? '#f3f1fb' : '#9aa2c4';
+      });
+    });
+    applySortOrder();
+
+    var cards = document.querySelectorAll('.listing-card');
+    var visibleCount = 0;
+    cards.forEach(function (card) {
+      var cat = card.getAttribute('data-cat');
+      var subcat = card.getAttribute('data-subcat') || '';
+      var matchesCat = currentCat === 'all' || (cat === currentCat && (!currentSubcat || subcat === currentSubcat));
+      var product = PRODUCTS[card.dataset.id];
+      var searchText = product ? (product.title + ' ' + product.seller + ' ' + product.tags.join(' ')).toLowerCase() : '';
+      var matchesSearch = !currentSearchQuery || searchText.indexOf(currentSearchQuery) !== -1;
+      var matchesPrice = !product || (product.price >= priceMin && product.price <= priceMax);
+      var show = matchesCat && matchesSearch && matchesPrice;
+      card.style.display = show ? 'block' : 'none';
+      if (show) visibleCount++;
+    });
+    var emptyEl = document.getElementById('marketEmpty');
+    if (emptyEl) emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
+  }
+
+  // ---------- เรียงตาม / กรองช่วงราคา — กดแล้วมีผลกับกริดสินค้าจริง ----------
+  var ORIGINAL_CARD_ORDER = null; // จับลำดับการ์ดตั้งต้นในไฮสม์ไว้ครั้งเดียว ใช้เป็นลำดับ "ยอดนิยม"
+
+  function applySortOrder() {
+    var grid = document.getElementById('productGrid');
+    if (!grid) return;
+    if (!ORIGINAL_CARD_ORDER) {
+      ORIGINAL_CARD_ORDER = Array.prototype.slice.call(grid.children);
+    }
+    var order = ORIGINAL_CARD_ORDER;
+    if (currentSort !== 'popular') {
+      order = ORIGINAL_CARD_ORDER.slice().sort(function (a, b) {
+        var pa = PRODUCTS[a.dataset.id];
+        var pb = PRODUCTS[b.dataset.id];
+        if (!pa || !pb) return 0;
+        if (currentSort === 'price-asc') return pa.price - pb.price;
+        if (currentSort === 'price-desc') return pb.price - pa.price;
+        if (currentSort === 'rating') return (pb.rating - pa.rating) || (pb.reviews - pa.reviews);
+        return 0;
+      });
+    }
+    order.forEach(function (el) { grid.appendChild(el); });
+  }
+
+  function updateSortMenuHighlight() {
+    document.querySelectorAll('#sortMenu .market-dropdown-item').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-sort') === currentSort);
+    });
+  }
+
+  function setSort(sort) {
+    currentSort = sort;
+    document.getElementById('sortLabel').textContent = SORT_LABELS[sort] || SORT_LABELS.popular;
+    updateSortMenuHighlight();
+    closeMarketMenus();
+    render();
+  }
+
+  function applyPriceFilter() {
+    var minEl = document.getElementById('priceMinInput');
+    var maxEl = document.getElementById('priceMaxInput');
+    var min = parseInt(minEl.value, 10);
+    var max = parseInt(maxEl.value, 10);
+    if (isNaN(min) || min < 0) min = 0;
+    if (isNaN(max) || max < 0) max = 0;
+    if (min > max) { var tmp = min; min = max; max = tmp; } // สลับให้ถูกอัตโนมัติถ้าใส่กลับด้าน ไม่ต้องเด้ง error
+    priceMin = min;
+    priceMax = max;
+    minEl.value = min;
+    maxEl.value = max;
+    document.getElementById('priceLabel').textContent = '฿' + min + ' – ฿' + max;
+    closeMarketMenus();
+    render();
+  }
+
+  function resetPriceFilter() {
+    document.getElementById('priceMinInput').value = 0;
+    document.getElementById('priceMaxInput').value = 500;
+    priceMin = 0;
+    priceMax = 500;
+    document.getElementById('priceLabel').textContent = '฿0 – ฿500';
+    closeMarketMenus();
+    render();
+  }
+
+  function toggleSortMenu(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('sortMenu');
+    var wasOpen = menu.style.display === 'block';
+    closeMarketMenus();
+    if (!wasOpen) { updateSortMenuHighlight(); menu.style.display = 'block'; }
+  }
+
+  function togglePriceMenu(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('priceMenu');
+    var wasOpen = menu.style.display === 'block';
+    closeMarketMenus();
+    if (!wasOpen) menu.style.display = 'block';
+  }
+
+  function closeMarketMenus() {
+    var sortMenu = document.getElementById('sortMenu');
+    var priceMenu = document.getElementById('priceMenu');
+    if (sortMenu) sortMenu.style.display = 'none';
+    if (priceMenu) priceMenu.style.display = 'none';
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('#sortMenu') && !e.target.closest('#priceMenu') &&
+        !e.target.closest('.market-toolbar-btn')) {
+      closeMarketMenus();
+    }
+  });
+
+  function selectCat(cat) {
+    currentCat = cat;
+    currentSubcat = null;
+    render();
+  }
+
+  function selectSubcat(group, sub) {
+    currentCat = group;
+    currentSubcat = sub;
+    render();
+  }
+
+  // ช่องค้นหา — เทียบคำค้นหาแบบ substring ธรรมดา กับ title/seller/tags ของสินค้า
+  function setMarketSearch(v) {
+    currentSearchQuery = v.trim().toLowerCase();
+    var clearBtn = document.getElementById('marketSearchClearBtn');
+    if (clearBtn) clearBtn.style.display = currentSearchQuery ? 'flex' : 'none';
+    render();
+  }
+
+  function clearMarketSearch() {
+    currentSearchQuery = '';
+    var input = document.getElementById('marketSearchInput');
+    if (input) input.value = '';
+    var clearBtn = document.getElementById('marketSearchClearBtn');
+    if (clearBtn) clearBtn.style.display = 'none';
+    render();
+  }
+
+  // ---------- modal รายละเอียดสินค้า ----------
+  var currentProductId = null;
+
+  function openProductDetail(id) {
+    var p = PRODUCTS[id];
+    if (!p) return;
+    currentProductId = id;
+    document.getElementById('pdmReportMenu').style.display = 'none'; // รีเซ็ตกันเมนูค้างจากสินค้าชิ้นก่อนหน้า
+    document.getElementById('pdmHero').style.background = p.gradient;
+    document.getElementById('pdmHeroIcon').innerHTML = p.heroIcon;
+    var badge = document.getElementById('pdmBadge');
+    badge.textContent = p.categoryLabel;
+    document.getElementById('pdmTitle').textContent = p.title;
+    document.getElementById('pdmSellerAvatar').style.background = p.gradient;
+    document.getElementById('pdmSeller').textContent = p.seller;
+    document.getElementById('pdmRating').textContent = '★ ' + p.rating.toFixed(1) + ' (' + p.reviews + ' รีวิว)';
+    document.getElementById('pdmPrice').textContent = '฿' + p.price;
+    document.getElementById('pdmDesc').textContent = p.desc;
+    var tagsWrap = document.getElementById('pdmTags');
+    tagsWrap.innerHTML = '';
+    p.tags.forEach(function (t) {
+      var span = document.createElement('span');
+      span.className = 'tag-chip pdm-tag-glow';
+      span.style.cssText = 'font-size:11.5px;color:#d6d9ee;border-radius:999px;padding:5px 12px;';
+      span.textContent = t;
+      tagsWrap.appendChild(span);
+    });
+    document.getElementById('productDetailModal').style.display = 'flex';
+  }
+
+  function closeProductDetail() {
+    document.getElementById('productDetailModal').style.display = 'none';
+    document.getElementById('pdmReportMenu').style.display = 'none';
+    document.getElementById('reportModal').style.display = 'none';
+  }
+
+  function productModalBackdropClick(e) {
+    if (e.target.id === 'productDetailModal') closeProductDetail();
+  }
+
+  function toggleProductReportMenu(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('pdmReportMenu');
+    menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+  }
+  document.addEventListener('click', function (e) {
+    var menu = document.getElementById('pdmReportMenu');
+    if (menu && menu.style.display === 'block' && !e.target.closest('#pdmReportMenu') && !e.target.closest('#pdmReportKebabBtn')) {
+      menu.style.display = 'none';
+    }
+  });
+
+  // รายงานสินค้า/ผู้ขาย — เลือกเหตุผลจากลิสต์ แล้วส่ง (จำลองผล — ยังไม่มี backend จริง
+  // รองรับ เหมือนปุ่มรายงานอื่นๆ ในเว็บนี้ตอนนี้)
+  var REPORT_REASONS = [
+    { id: 'r1', label: 'สินค้าไม่ตรงปก / เป็นของลอกเลียนแบบ' },
+    { id: 'r2', label: 'โอนเงินแล้วไม่ได้รับสินค้า (โดนโกง)' },
+    { id: 'r3', label: 'ผู้ขายหายตัว ไม่ตอบหลังตกลงซื้อขาย' },
+    { id: 'r4', label: 'ผิดกฎชุมชน/สิ่งผิดกฎหมาย' },
+    { id: 'r5', label: 'เนื้อหาล่อแหลม/ทางเพศ' },
+    { id: 'r6', label: 'เกี่ยวกับการพนัน' },
+    { id: 'r7', label: 'สแปม/ลงซ้ำหลายรอบ' },
+    { id: 'r8', label: 'อื่นๆ' }
+  ];
+  var selectedReportReason = null;
+
+  function openReportForm() {
+    document.getElementById('pdmReportMenu').style.display = 'none';
+    selectedReportReason = null;
+    document.getElementById('reportDetailInput').value = '';
+    removeAllReportEvidence();
+    var list = document.getElementById('reportReasonList');
+    list.innerHTML = '';
+    REPORT_REASONS.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'report-reason-row';
+      row.dataset.reason = r.id;
+      row.onclick = function () { selectReportReason(r.id); };
+      row.innerHTML = '<span class="report-radio-dot"></span><span style="font-size:13px;color:#e8e6f7;">' + r.label + '</span>';
+      list.appendChild(row);
+    });
+    updateReportSubmitState();
+    document.getElementById('reportModal').style.display = 'flex';
+  }
+
+  function selectReportReason(id) {
+    selectedReportReason = id;
+    document.querySelectorAll('.report-reason-row').forEach(function (row) {
+      row.classList.toggle('selected', row.dataset.reason === id);
+    });
+    updateReportSubmitState();
+  }
+
+  function updateReportSubmitState() {
+    document.getElementById('reportSubmitBtn').disabled = !selectedReportReason;
+  }
+
+  function closeReportForm() {
+    document.getElementById('reportModal').style.display = 'none';
+  }
+
+  function reportModalBackdropClick(e) {
+    if (e.target.id === 'reportModal') closeReportForm();
+  }
+
+  // แนบรูป/วิดีโอเป็นหลักฐาน — สูงสุด REPORT_EVIDENCE_MAX ไฟล์ เก็บสะสมไว้ใน
+  // reportEvidenceFiles[] เอง (ไม่พึ่ง input.files ตรงๆ เพราะเลือกไฟล์รอบใหม่จะล้าง
+  // ของเก่าทิ้งเสมอ) อ่านไฟล์เข้าเบราว์เซอร์ตรงๆ ด้วย FileReader ไม่มีการอัปโหลด
+  // ขึ้นเซิร์ฟเวอร์จริง แค่พรีวิวให้เห็นว่าไฟล์ถูกเลือกไว้ก่อนส่งรายงาน
+  var REPORT_EVIDENCE_MAX = 4;
+  var reportEvidenceFiles = []; // { dataUrl, isVideo, name }
+  function handleReportEvidenceSelect(input) {
+    var picked = input.files ? Array.from(input.files) : [];
+    input.value = '';
+    var remaining = REPORT_EVIDENCE_MAX - reportEvidenceFiles.length;
+    if (remaining <= 0) return;
+    picked.slice(0, remaining).forEach(function (file) {
+      var isImage = file.type && file.type.indexOf('image/') === 0;
+      var isVideo = file.type && file.type.indexOf('video/') === 0;
+      if (!isImage && !isVideo) return;
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        reportEvidenceFiles.push({ dataUrl: e.target.result, isVideo: isVideo, name: file.name });
+        renderReportEvidenceGrid();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function removeReportEvidenceAt(i) {
+    reportEvidenceFiles.splice(i, 1);
+    renderReportEvidenceGrid();
+  }
+  function removeAllReportEvidence() {
+    reportEvidenceFiles = [];
+    renderReportEvidenceGrid();
+    var input = document.getElementById('reportEvidenceInput');
+    if (input) input.value = '';
+  }
+  function renderReportEvidenceGrid() {
+    var grid = document.getElementById('reportEvidenceGrid');
+    var count = reportEvidenceFiles.length;
+    grid.innerHTML = '';
+    grid.style.display = count ? 'flex' : 'none';
+    reportEvidenceFiles.forEach(function (item, i) {
+      var tile = document.createElement('div');
+      tile.className = 'report-evidence-tile';
+      if (item.isVideo) {
+        tile.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;" title="' + item.name + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="14" height="13" rx="2" stroke="#7783be" stroke-width="1.6"/><path d="M16.5 9.5l5-3v11l-5-3" stroke="#7783be" stroke-width="1.6" stroke-linejoin="round"/></svg></div>';
+      } else {
+        tile.innerHTML = '<img class="report-evidence-thumb" src="' + item.dataUrl + '" alt="" title="' + item.name + '" />';
+      }
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'report-evidence-remove';
+      removeBtn.setAttribute('aria-label', 'ลบไฟล์ที่แนบ');
+      removeBtn.onclick = function () { removeReportEvidenceAt(i); };
+      removeBtn.innerHTML = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+      tile.appendChild(removeBtn);
+      grid.appendChild(tile);
+    });
+    var btn = document.getElementById('reportAttachBtn');
+    var label = document.getElementById('reportAttachLabel');
+    btn.classList.toggle('has-file', count > 0);
+    if (count >= REPORT_EVIDENCE_MAX) {
+      btn.disabled = true;
+      label.textContent = 'แนบครบแล้ว (' + count + '/' + REPORT_EVIDENCE_MAX + ')';
+    } else {
+      btn.disabled = false;
+      label.textContent = (count > 0 ? 'เพิ่มไฟล์อีก' : 'แนบรูปภาพ/วิดีโอเป็นหลักฐาน') + ' (' + count + '/' + REPORT_EVIDENCE_MAX + ')';
+    }
+  }
+
+  function submitReport() {
+    if (!selectedReportReason) return;
+    var evidenceCount = reportEvidenceFiles.length;
+    closeReportForm();
+    var toast = document.getElementById('pdmToast');
+    var evidenceSuffix = evidenceCount === 0 ? '' : (evidenceCount === 1 ? ' พร้อมไฟล์แนบ' : ' พร้อมไฟล์แนบ ' + evidenceCount + ' ไฟล์');
+    document.getElementById('pdmToastText').textContent = 'ส่งรายงานเรียบร้อยแล้วครับ' + evidenceSuffix + ' ทีมงานจะตรวจสอบต่อไป (ตัวอย่าง)';
+    toast.style.display = 'flex';
+    requestAnimationFrame(function () {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    if (contactToastTimer) clearTimeout(contactToastTimer);
+    contactToastTimer = setTimeout(function () {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(10px)';
+      setTimeout(function () { toast.style.display = 'none'; }, 220);
+    }, 2200);
+  }
+
+  var contactToastTimer = null;
+  function contactSeller() {
+    var p = PRODUCTS[currentProductId];
+    if (!p) return;
+    var toast = document.getElementById('pdmToast');
+    document.getElementById('pdmToastText').textContent = 'เปิดแชท Discord กับ ' + p.seller + ' แล้ว (ตัวอย่าง)';
+    toast.style.display = 'flex';
+    requestAnimationFrame(function () {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    if (contactToastTimer) clearTimeout(contactToastTimer);
+    contactToastTimer = setTimeout(function () {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(10px)';
+      setTimeout(function () { toast.style.display = 'none'; }, 220);
+    }, 2200);
+  }
+
+  // --- carousel เล็กๆ 2 อัน: "ร้านค้าแนะนำ" (ขวา) กับ "ร้านค้ามาใหม่" (ซ้าย) ---
+  // แต่ละสไลด์เป็น HTML ธรรมดาซ้อนกันไว้แล้ว (display:none ยกเว้นตัวที่โชว์อยู่)
+  // ฟังก์ชันแค่สลับว่าอันไหนโชว์ + จุดไหนสว่าง แต่ละอันมี setInterval ของตัวเอง
+  // จะได้ไม่เลื่อนพร้อมกันทั้งคู่ กดจุดเพื่อกระโดดไปสไลด์นั้นได้เลย
+  var spotlightIndex = 0;
+  var SPOTLIGHT_COUNT = 5;
+  function showSpotlight(i) {
+    for (var k = 0; k < SPOTLIGHT_COUNT; k++) {
+      document.getElementById('spotlight-slide-' + k).style.display = (k === i) ? 'block' : 'none';
+      document.getElementById('spotlight-dot-' + k).style.background = (k === i) ? '#f4b860' : '#262f4d';
+    }
+    spotlightIndex = i;
+  }
+  setInterval(function () { showSpotlight((spotlightIndex + 1) % SPOTLIGHT_COUNT); }, 4000);
+
+  var newShopIndex = 0;
+  var NEW_SHOP_COUNT = 4;
+  function showNewShop(i) {
+    for (var k = 0; k < NEW_SHOP_COUNT; k++) {
+      document.getElementById('new-shop-slide-' + k).style.display = (k === i) ? 'block' : 'none';
+      document.getElementById('new-shop-dot-' + k).style.background = (k === i) ? '#4b8f87' : '#262f4d';
+    }
+    newShopIndex = i;
+  }
+  setInterval(function () { showNewShop((newShopIndex + 1) % NEW_SHOP_COUNT); }, 4600);
+</script>
+</body>
+</html>
