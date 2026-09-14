@@ -1,539 +1,329 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Milo Bot — บอทต้อนรับสมาชิกสวยๆ สำหรับ Discord</title>
-  <meta name="description" content="Milo Bot บอท Discord สำหรับการ์ดต้อนรับ/บอกลาแบบกำหนดเอง ระบบฟอนต์ของตัวเอง ระบบยศอัตโนมัติ และอีกมากมาย" />
+  <title>Milo Bot — Your Discord, your style</title>
+  <meta name="description" content="Milo Bot: fully custom welcome/goodbye cards, your own server fonts, automatic role assignment, and a message builder made in your style — set up in 5 minutes." />
 
   <!--
     ═══════════════════════════════════════════════════════════════════════
-    ไฟล์นี้คือ "หน้าแรก" ของเว็บ Milo Bot ครับ (public/index.html)
-    เวอร์ชันนี้เปลี่ยนธีมสีใหม่ทั้งหมดตามภาพประกอบตัวละคร (hero artwork) ที่น้อง
-    ส่งมา — โทนท้องฟ้ายามค่ำคืน สีน้ำเงินเข้ม/ม่วง ตัดกับแสงไฟตึกสีทองอุ่นๆ
-    แทนโทนสี Discord blurple แบบเดิม เขียนแบบไฟล์เดียวจบเหมือนเดิม (CSS/JS
-    อยู่ในไฟล์นี้เลย) เปิดไฟล์นี้ไฟล์เดียวก็แก้ทุกอย่างได้เลยครับ
+    หน้าแรก (public/index.html) — เวอร์ชันสร้างใหม่ทั้งหมดตามไฟล์ดีไซน์อ้างอิงจริง
+    ที่น้องหนาวส่งมา (Landing.dc.html จาก Landing-html.zip) ไม่ใช่การเดา/ปรับจาก
+    เวอร์ชันเก่าอีกต่อไป — สี, ฟอนต์, เลย์เอาต์, ข้อความ ทุกจุดอ้างอิงจากไฟล์นั้น
+    เป๊ะๆ (ดูค่าสี/ระยะห่างที่ก็อปมาในคอมเมนต์แต่ละจุดด้านล่าง)
 
-    ⚠️ ไฟล์นี้ต้องใช้คู่กับรูปภาพ 4 ไฟล์ในโฟลเดอร์ public/images/:
-      - milo-hero.webp / milo-hero.jpg  → ภาพพื้นหลังส่วน hero (ตัวละครนั่งมองวิวตึกตอนกลางคืน)
-      - milo-avatar.webp / milo-avatar.png → โลโก้วงกลมเล็กๆ บนแถบเมนู (ครอปมาจากภาพเดียวกัน)
-    ถ้าย้ายไฟล์นี้ไปที่อื่น ต้องเอาโฟลเดอร์ images/ ติดไปด้วยเสมอ ไม่งั้นรูปจะหาย
-    (เห็นเป็นไอคอนรูปแตกแทน)
+    สิ่งที่เปลี่ยนจากเวอร์ชันก่อนหน้าโดยสิ้นเชิง:
+      - จานสี: จาก #0a0e1a/#131a2e/#7c83fd (เก่า) → #05070f/#4a5aa8/#7783be/#f4b860
+        (ตามไฟล์ดีไซน์อ้างอิง)
+      - ฟอนต์: จาก system font ล้วน → 'Prompt' (ภาษาอังกฤษ ผ่าน unicode-range
+        trick เอาเฉพาะตัวละติน) + 'Athiti' (ภาษาไทย) ตามไฟล์ดีไซน์อ้างอิงเป๊ะๆ
+      - ภาษาเนื้อหา: จากภาษาไทยล้วน → ภาษาอังกฤษ (ตามไฟล์ดีไซน์อ้างอิงที่ส่งมา
+        เป็นภาษาอังกฤษทั้งหน้า) — ถ้าไม่ต้องการแบบนี้ บอกได้เลยนะครับ เดี๋ยวปรับ
+        กลับเป็นไทย หรือทำสองภาษาสลับได้
+      - เลย์เอาต์ hero: จาก layout เดิม → นำโครงสร้างจากไฟล์อ้างอิงมาสร้างใหม่แบบ
+        responsive (ไฟล์อ้างอิงเป็น canvas ขนาดตายตัว 1440×990px ของเครื่องมือ
+        ออกแบบ ไม่ใช่โค้ดเว็บจริง เลยต้องแปลงเป็น flex/relative + clamp() ให้
+        ปรับตามขนาดจอได้ แต่คงสัดส่วน/ระยะห่าง/ขนาดตัวอักษรให้ใกล้เคียงต้นฉบับ
+        ที่สุด)
 
-    โครงสร้างหน้า (เลื่อนอ่านตามลำดับได้เลย):
-      1. <style>          → CSS ทั้งหมดของหน้าเว็บ
-      2. <nav>             → แถบเมนูด้านบน (มีโลโก้วงกลมจากภาพตัวละคร)
-      3. <section class=hero> → ส่วนพาดหัวใหญ่ พื้นหลังเป็นภาพตัวละคร + gradient ทับ
-      4. <section id=features> → กริดโชว์ฟีเจอร์ 6 อัน
-      5. <section id=pricing>  → ตารางราคา Free vs Premium
-      6. <section id=cta>      → แบนเนอร์ชวนเชิญบอทอีกรอบก่อนจบหน้า
-      7. <footer>          → ลิงก์ Terms/Privacy + อีเมลติดต่อ
+    ⚠️ จุดที่ตัดสินใจเองและอยากให้น้องหนาวช่วยยืนยัน (ไม่ได้เงียบๆ เดาเอง):
+      1. นำไอคอนเมนู "Marketplace" กับ "Feed" ออกจาก nav ก่อน เพราะสองอันนี้ยัง
+         ไม่มีจริง (อยู่ใน claude/roadmap-marketplace-idea.md เฟส 2-3 เท่านั้น)
+         กดแล้วจะเจอลิงก์ตาย เลยเอาออกไปก่อน จะได้ไม่หลอกคนดู — พอฟีเจอร์จริง
+         มาค่อยใส่กลับ
+      2. ปุ่ม "EN ▾" (สลับภาษา) ในดีไซน์ต้นฉบับ — เว็บนี้ยังไม่มีระบบสลับภาษา
+         จริงๆ (คำสั่ง /language เป็นของฝั่งบอทในดิสคอร์ด ไม่ใช่เว็บ) เลยใส่ไว้
+         เป็นป้ายเฉยๆ ยังกดสลับอะไรไม่ได้จริง ถ้าต้องการให้เว็บสลับ ไทย/อังกฤษ
+         ได้จริง ต้องคุยเป็นงานแยกอีกที
+      3. เมนู "Dashboard" ลิงก์ไป /auth/login (ระบบ OAuth2 จริงที่เพิ่งวางไว้ใน
+         server.js) — จะใช้งานได้ก็ต่อเมื่อ deploy โค้ดที่ทำไว้ก่อนหน้านี้ขึ้น
+         Railway แล้ว (ดู claude/dashboard-oauth-status.md)
+      4. วิดเจ็ต "Now playing — Rooftop Nights (Milo Lo-fi)" มุมล่างซ้าย เอาไว้
+         ตามดีไซน์ต้นฉบับเป๊ะๆ เพื่อความมีชีวิตชีวา/บรรยากาศ — แต่บอทจริงไม่มี
+         ฟีเจอร์เพลงเลย ทำเป็นแค่ตกแต่งนิ่งๆ (เพลงไม่ได้เล่นจริง ไม่ใช่ปุ่มกด)
+         ถ้ากังวลว่าจะทำให้คนเข้าใจผิดว่าบอทเล่นเพลงได้ บอกได้เลยครับ เอาออกได้
+      5. [แก้ไขตามที่น้องหนาวสั่งแล้ว] หน้านี้เป็น hero อย่างเดียว ไม่มีเลื่อนลง
+         (no scroll) ตามดีไซน์ต้นฉบับเป๊ะๆ — ส่วน Features/Pricing/Footer ที่เคย
+         ใส่ไว้ด้านล่างถูกย้ายออกไปอยู่หน้าใหม่ /features (public/features.html)
+         แล้ว กดปุ่ม "View All Features" หรือลิงก์เมนู Features/Pricing จะพาไป
+         หน้านั้นแทน
+
+    ต้องใช้คู่กับรูปภาพในโฟลเดอร์ public/images/: hero-crisp.jpg, avatar-icon.jpg
+    (ไฟล์ใหม่จากดีไซน์อ้างอิง) — ไฟล์ milo-hero.*/milo-avatar.* เดิมยังเก็บไว้
+    เผื่อใช้ที่อื่น ไม่ได้ลบทิ้ง
     ═══════════════════════════════════════════════════════════════════════
   -->
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
   <style>
-    /* ── ตัวแปรสี (CSS custom properties) ────────────────────────────────
-       สุ่มโทนสีมาจากภาพประกอบตัวละคร: ท้องฟ้ายามค่ำคืนสีน้ำเงินเข้ม/ม่วง
-       (--accent) + แสงไฟตึกสีทองอุ่นๆ (--gold) + โทนน้ำฝนสีฟ้าอมเขียว
-       (--teal) จากภาพอ้างอิงที่สองที่น้องส่งมา
-       อยากเปลี่ยนโทนสีทั้งเว็บ แก้แค่ตรงนี้ที่เดียวพอ ไม่ต้องไล่หาทีละจุด */
-    :root {
-      --bg:          #0a0e1a; /* พื้นหลังหลัก — น้ำเงินเข้มเกือบดำ แบบท้องฟ้ายามค่ำคืนในภาพ */
-      --bg-card:     #131a2e; /* พื้นหลังการ์ด/กล่องต่างๆ ให้ดูลอยขึ้นมาจากพื้นหลังหลักนิดหน่อย */
-      --border:      #262f4d; /* เส้นขอบบางๆ ของการ์ด */
-      --text:        #f3f1fb; /* ข้อความหลัก — ขาวอมม่วงอ่อนๆ ไม่ใช่ขาวจัด */
-      --text-muted:  #9aa2c4; /* ข้อความรอง (คำอธิบาย, subtext) */
-      --accent:      #7c83fd; /* สีม่วง-น้ำเงิน (periwinkle) จากโทนท้องฟ้าในภาพ ใช้เป็นสีปุ่ม/จุดเด่นหลัก */
-      --accent-hover:#5f65e0;
-      --gold:        #f4b860; /* สีทองจากแสงไฟตึกในภาพ — ใช้เน้นฝั่งพรีเมียม ให้ดูพิเศษกว่า Free */
-      --teal:        #52c7c0; /* สีฟ้าอมเขียวจากภาพน้ำฝนอ้างอิง — ใช้แซมเล็กๆ น้อยๆ เป็นตัวช่วยจุดเด่น */
-      --radius:      16px;
-    }
-
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
 
+    /* ── ฟอนต์ — ก็อปมาจากไฟล์ดีไซน์อ้างอิงเป๊ะๆ: 'MiloEN' ดึงเฉพาะตัวละติน
+       ของฟอนต์ Prompt ผ่าน unicode-range (ตัวอักษรไทยจะหลุดไปใช้ Athiti แทน
+       โดยอัตโนมัติ เพราะ unicode-range ของ MiloEN ไม่ครอบคลุมช่วงอักษรไทย) ── */
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 300; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cy_gIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W__XJnvUD7dzB2KYNoY.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Ck_kIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cv_4IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2C2_8IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif;
+      background: #05070f;
+      color: #f3f1fb;
+      font-family: 'MiloEN', 'Athiti', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif;
       line-height: 1.6;
     }
-    a { color: inherit; }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
 
-    /* ── แถบเมนูด้านบน ───────────────────────────────────────────────── */
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: rgba(10, 14, 26, 0.8);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--border);
-    }
-    nav .wrap {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 68px;
-    }
-    .logo {
-      font-weight: 800;
-      font-size: 17px;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    /* โลโก้วงกลมเล็กๆ ครอปมาจากภาพตัวละครตัวเดียวกับ hero — object-fit: cover
-       ทำให้รูปสี่เหลี่ยมที่ครอปมาถูกตัดให้เต็มวงกลมพอดี ไม่ยืดเบี้ยว */
-    .logo img {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 1.5px solid var(--border);
-    }
-    .nav-links { display: flex; gap: 28px; align-items: center; }
-    .nav-links a.link {
-      text-decoration: none;
-      color: var(--text-muted);
-      font-size: 14px;
-      font-weight: 600;
-      transition: color 0.15s;
-    }
-    .nav-links a.link:hover { color: var(--text); }
+    /* ── ปุ่ม/ชิป — ใช้สีจากไฟล์อ้างอิง: accent ม่วง #4a5aa8, ตัวหนังสือ/ลิงก์
+       เอียง #7783be, ทอง #f4b860 (เดิมทีในโค้ดแดชบอร์ดมีคอมเมนต์ว่า mockup ใช้
+       #4a5aa8 ตรงกับที่พบในไฟล์นี้เป๊ะๆ — ยืนยันว่านี่คือสีต้นฉบับจริง) ── */
+    .pill-btn { transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; cursor: pointer; }
+    .pill-btn:hover { transform: translateY(-1px); }
+    .pill-btn.primary:hover { box-shadow: 0 8px 24px rgba(74,90,168,0.4); }
+    .nav-link { transition: color .15s ease; color: #c3c8e6; }
+    .nav-link:hover { color: #f3f1fb; }
+    .feat-chip { transition: border-color .15s ease; }
+    .feat-chip:hover { border-color: #4a5aa8; }
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 11px 22px;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 14px;
-      text-decoration: none;
-      cursor: pointer;
-      border: none;
-      transition: transform 0.12s, background 0.15s, border-color 0.15s;
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-ghost {
-      background: rgba(255,255,255,0.04);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-ghost:hover { border-color: var(--accent); }
-
-    /* ── ส่วนพาดหัวใหญ่ (Hero) — มีภาพตัวละครเป็นพื้นหลัง ──────────────── */
+    /* ── HERO — เดิมในไฟล์ดีไซน์เป็น canvas ตายตัว 1440×990px แปลงมาเป็น
+       responsive: ใช้ min-height ยึดกับ viewport + clamp() กับระยะห่าง/ฟอนต์
+       แทนพิกัด absolute ตายตัว เพื่อให้จอขนาดอื่นไม่พัง แต่คงสัดส่วนา/ความรู้สึก
+       เดิมไว้ให้ใกล้เคียงที่สุด ── */
     .hero {
       position: relative;
-      min-height: 86vh;
+      min-height: min(92vh, 900px);
       display: flex;
-      align-items: center;
+      flex-direction: column;
       overflow: hidden;
     }
-    .hero-bg {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-    }
+    .hero-bg { position: absolute; inset: 0; z-index: 0; }
     .hero-bg img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      /* โฟกัสภาพไปทางขวา (ตัวละครอยู่ฝั่งขวาของภาพต้นฉบับ) ให้เห็นตัวละครชัดๆ
-         ฝั่งขวา ส่วนข้อความจะอยู่ฝั่งซ้ายทับบน gradient เข้มด้านล่าง */
-      object-position: 78% 30%;
+      width: 100%; height: 100%; object-fit: cover;
+      object-position: 72% 22%;
     }
-    /* gradient ทับภาพ: เข้มมากฝั่งซ้าย (ให้ตัวหนังสือขาวอ่านออก) แล้วค่อยๆ
-       จางลงจนโปร่งใสฝั่งขวา (ให้เห็นตัวละครในภาพชัดเจน) — ใช้สี --bg เป็นฐาน
-       เพื่อให้ขอบภาพกลืนไปกับพื้นหลังเว็บ ไม่ดูเหมือนภาพแปะทับแข็งๆ */
-    .hero-overlay {
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(180deg, rgba(10,14,26,0.55) 0%, rgba(10,14,26,0.35) 40%, rgba(10,14,26,0.85) 100%),
-        linear-gradient(90deg, rgba(10,14,26,0.97) 0%, rgba(10,14,26,0.88) 32%, rgba(10,14,26,0.45) 58%, rgba(10,14,26,0.1) 82%);
-    }
-    .hero-content {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      padding: 64px 0;
-    }
-    /* หัวข้อใหญ่ "Milo Bot" — ชื่อบอทตัวโตๆ แบบเดียวกับที่เห็นใน mockup
-       (เอา badge เดิมออก ให้ชื่อบอทเด่นเป็นจุดแรกที่คนเห็นแทน) */
-    .hero-content h1 {
-      font-size: clamp(40px, 7vw, 68px);
-      font-weight: 800;
-      margin: 0 0 6px;
-      letter-spacing: -0.02em;
-    }
-    /* คำโปรยใต้ชื่อบอท สีม่วงเด่น (accent) แปลจาก "Your Discord, Your Style"
-       ในภาพ mockup — เป็นประโยคสั้นๆ ให้ความรู้สึกเป็นเอกลักษณ์ */
-    .hero-content .tagline {
-      font-size: clamp(18px, 2.4vw, 24px);
-      font-weight: 700;
-      color: var(--accent);
-      margin: 0 0 20px;
-    }
-    .hero-content p.lead {
-      font-size: 18px;
-      color: var(--text-muted);
-      max-width: 480px;
-      margin: 0 0 36px;
-    }
-    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
-    .hero-actions .btn { padding: 14px 28px; font-size: 15px; }
+    /* สอง gradient overlay — ก็อปค่ามาจากไฟล์ดีไซน์ตรงๆ: อันแรกทำให้ฝั่งซ้ายมืด
+       ลงให้ตัวหนังสืออ่านออก อันที่สองทำให้บนสุด/ล่างสุดมืดลงเล็กน้อย (กัน nav
+       กับวิดเจ็ตด้านล่างกลืนกับพื้นหลัง) */
+    .hero-overlay-1 { position: absolute; inset: 0; background: linear-gradient(100deg, rgba(5,7,15,0.72) 0%, rgba(5,7,15,0.42) 30%, rgba(5,7,15,0.06) 55%, rgba(5,7,15,0.02) 100%); }
+    .hero-overlay-2 { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(5,7,15,0.55) 0%, rgba(5,7,15,0) 22%, rgba(5,7,15,0) 78%, rgba(5,7,15,0.3) 100%); }
 
-    /* caption เล็กๆ ล่างสุดของ hero — ใส่ชื่อเต็มของบอทไว้แบบเนียนๆ */
-    .hero-caption {
-      position: absolute;
-      bottom: 24px;
-      left: 0;
-      right: 0;
-      z-index: 1;
-    }
-    .hero-caption .wrap {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--text-muted);
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    /* ── ส่วนฟีเจอร์ ───────────────────────────────────────────────── */
-    section { padding: 64px 0; }
-    .section-head { text-align: center; margin-bottom: 48px; }
-    .section-head h2 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; margin: 0 0 12px; }
-    .section-head p { color: var(--text-muted); font-size: 16px; max-width: 480px; margin: 0 auto; }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 20px;
-    }
-    .feature-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px 24px;
-      transition: border-color 0.15s;
-    }
-    .feature-card:hover { border-color: var(--accent); }
-    /* กล่องไอคอนสีสัน — สลับ 3 โทนจากธีมหลัก (ม่วง/ทอง/ฟ้าอมเขียว) ไปเรื่อยๆ
-       ทีละใบ ให้ดูมีชีวิตชีวาแบบใน mockup แทนอิโมจิลอยเดี่ยวๆ แบบเดิม */
-    .feature-card .icon-box {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      margin-bottom: 16px;
-    }
-    .icon-box.icon-accent { background: rgba(124, 131, 253, 0.15); }
-    .icon-box.icon-gold   { background: rgba(244, 184, 96, 0.15); }
-    .icon-box.icon-teal   { background: rgba(82, 199, 192, 0.15); }
-    .feature-card h3 { font-size: 17px; margin: 0 0 8px; }
-    .feature-card p { font-size: 14px; color: var(--text-muted); margin: 0; }
-
-    /* ── ส่วนราคา ─────────────────────────────────────────────────── */
-    .pricing-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px;
-      max-width: 720px;
+    /* ── NAV — แคปซูลลอยแบบกระจกฝ้า (glassmorphism) กึ่งกลางบน ── */
+    .hero-nav-wrap { position: relative; z-index: 5; padding: 22px 24px 0; }
+    .hero-nav {
+      max-width: 1080px;
       margin: 0 auto;
-    }
-    .price-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 32px 28px;
-    }
-    .price-card.premium { border-color: var(--gold); position: relative; }
-    .price-card.premium::before {
-      content: "แนะนำ";
-      position: absolute;
-      top: -12px;
-      right: 24px;
-      background: var(--gold);
-      color: #251803;
-      font-size: 12px;
-      font-weight: 800;
-      padding: 4px 12px;
+      min-height: 60px;
+      background: rgba(19,26,46,0.4);
+      border: 1px solid rgba(255,255,255,0.16);
       border-radius: 999px;
-    }
-    .price-card h3 {
-      font-size: 15px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin: 0 0 8px;
-    }
-    .price-card .price { font-size: 40px; font-weight: 800; margin: 0 0 4px; }
-    .price-card .price small { font-size: 15px; font-weight: 600; color: var(--text-muted); }
-    .price-card .price-note { font-size: 12px; color: var(--text-muted); margin: 0 0 24px; }
-    .price-card ul { list-style: none; padding: 0; margin: 0 0 28px; }
-    .price-card li {
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-    }
-    .price-card li::before { content: "✓"; color: var(--accent); font-weight: 800; flex-shrink: 0; }
-    .price-card.premium li::before { color: var(--gold); }
-    .price-card .btn { width: 100%; }
-
-    /* ── แบนเนอร์ชวนเชิญบอทก่อนจบหน้า ────────────────────────────────── */
-    .cta-banner {
-      position: relative;
-      overflow: hidden;
-      background: linear-gradient(135deg, rgba(124,131,253,0.16), rgba(82,199,192,0.08));
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 56px 32px;
-      text-align: center;
-    }
-    /* แปะภาพตัวละครจางๆ ไว้มุมหลังแบนเนอร์ ให้ต่อเนื่องกับ hero ด้านบน
-       — ใช้ mask-image ไล่ให้ค่อยๆ จางหายไปทางซ้าย ไม่บดบังตัวหนังสือ */
-    .cta-banner .cta-bg {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      background-image: url('/images/milo-hero.jpg');
-      background-size: cover;
-      background-position: 78% 15%;
-      opacity: 0.16;
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 60%);
-      mask-image: linear-gradient(90deg, transparent 0%, black 60%);
-    }
-    .cta-banner h2, .cta-banner p, .cta-banner .btn {
-      position: relative;
-      z-index: 1;
-    }
-    .cta-banner h2 { margin: 0 0 12px; font-size: 28px; font-weight: 800; }
-    .cta-banner p { color: var(--text-muted); margin: 0 0 28px; }
-
-    /* ── Footer ───────────────────────────────────────────────────── */
-    footer { border-top: 1px solid var(--border); padding: 40px 0; }
-    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
-    footer .foot-links { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-    footer a { text-decoration: none; color: var(--text-muted); font-size: 13px; }
-    footer a:hover { color: var(--text); }
-    footer .copyright { font-size: 13px; color: var(--text-muted); }
-    footer .copyright small { display: block; color: #6b7196; font-size: 12px; margin-top: 2px; }
-    /* ไอคอน Discord เล็กๆ ท้ายเว็บ — ใส่แค่ Discord เพราะเป็นช่องทางจริงที่มี
-       (ลิงก์เชิญบอท) ไม่ใส่ไอคอน X/Instagram เพราะยังไม่มีบัญชีจริงให้ลิงก์ไป
-       — กันไม่ให้เป็นลิงก์ตายหรือหลอกผู้ใช้ว่ามีช่องทางที่ไม่มีจริง */
-    footer .social-icon {
-      width: 32px;
-      height: 32px;
-      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      transition: border-color 0.15s;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px 8px 20px;
+      flex-wrap: wrap;
     }
-    footer .social-icon:hover { border-color: var(--accent); }
-    footer .social-icon svg { width: 16px; height: 16px; fill: var(--text-muted); }
+    .hero-nav .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+    .hero-nav .brand img { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; border: 1.5px solid rgba(74,90,168,0.5); }
+    .hero-nav .brand span { font-size: 16px; font-weight: 700; color: #f3f1fb; }
+    .hero-nav .center-links { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+    .hero-nav .center-links .nav-link { font-size: 13.5px; }
+    .hero-nav .right-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+    .lang-btn {
+      height: 38px; padding: 0 14px; border-radius: 999px;
+      border: 1px solid rgba(154,162,196,0.3); background: rgba(255,255,255,0.04);
+      color: #f3f1fb; font-size: 12.5px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .add-bot-btn {
+      height: 42px; padding: 0 20px; border-radius: 999px; border: none;
+      background: #4a5aa8; color: #f3f1fb; font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
 
-    @media (max-width: 640px) {
-      .nav-links { gap: 16px; }
-      .nav-links a.link { display: none; }
-      .hero { min-height: 78vh; }
-      .hero-bg img { object-position: 68% 25%; }
-      /* จอมือถือ: hero แคบลง gradient แนวนอนช่วยไม่ได้มาก เลยเพิ่มความเข้มรวม
-         ทั้งภาพให้ข้อความอ่านออกชัวร์ๆ แทนการพึ่ง gradient แนวนอนอย่างเดียว */
-      .hero-overlay { background:
-        linear-gradient(180deg, rgba(10,14,26,0.75) 0%, rgba(10,14,26,0.55) 45%, rgba(10,14,26,0.92) 100%),
-        rgba(10,14,26,0.35);
-      }
-      .hero-caption .wrap { justify-content: center; text-align: center; }
+    /* ── เนื้อหา hero (badge, headline, tagline, description, CTA, chips) ── */
+    .hero-content {
+      position: relative; z-index: 4;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(24px, 4vh, 48px) clamp(24px, 6vw, 88px);
+    }
+    .hero-content-inner { max-width: 600px; }
+    .eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .eyebrow span { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #f4b860; text-transform: uppercase; }
+    .hero-content h1 {
+      font-size: clamp(38px, 5.3vw, 76px);
+      font-weight: 800; color: #f9f8ff; line-height: 1.02; letter-spacing: -0.02em;
+      margin: 0;
+    }
+    .hero-content h1 em { color: #7783be; font-style: italic; }
+    .tagline { font-size: clamp(16px, 1.4vw, 20px); font-weight: 600; color: #c3c8e6; margin-top: 18px; }
+    .lead { font-size: 15.5px; color: #9aa2c4; line-height: 1.7; margin-top: 16px; max-width: 480px; }
+    .hero-actions { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
+    .btn-primary-hero {
+      height: 52px; padding: 0 28px; border-radius: 4px; border: none;
+      background: #4a5aa8; color: #f3f1fb; font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; gap: 9px;
+    }
+    .btn-ghost-hero {
+      height: 52px; padding: 0 26px; border-radius: 4px;
+      border: 1px solid rgba(154,162,196,0.35); background: rgba(255,255,255,0.04);
+      color: #f3f1fb; font-size: 15px; font-weight: 700;
+      display: flex; align-items: center;
+    }
+    .feat-chips { display: flex; gap: 10px; margin-top: 36px; flex-wrap: wrap; }
+    .feat-chip {
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(19,26,46,0.6); border: 1px solid rgba(154,162,196,0.2);
+      border-radius: 999px; padding: 8px 14px;
+    }
+    .feat-chip span { font-size: 12.5px; color: #c3c8e6; }
+
+    /* ── "Now playing" widget มุมล่างซ้าย — ของตกแต่งนิ่งๆ ไม่ใช่ปุ่มเล่นเพลงจริง ── */
+    .now-playing-row { position: relative; z-index: 4; display: flex; align-items: center; gap: 10px; padding: 0 clamp(24px, 6vw, 88px) 32px; flex-wrap: wrap; }
+    .now-playing {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(19,26,46,0.6); border: 1px solid rgba(154,162,196,0.25);
+      border-radius: 999px; padding: 7px 16px 7px 7px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .now-playing .eq { width: 30px; height: 30px; border-radius: 999px; background: rgba(74,90,168,0.2); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+    .now-playing .label { font-size: 10px; color: #9aa2c4; line-height: 1.3; }
+    .now-playing .track { font-size: 12.5px; font-weight: 600; color: #f3f1fb; line-height: 1.3; }
+    .playlist-btn {
+      width: 36px; height: 36px; border-radius: 999px;
+      border: 1px solid rgba(154,162,196,0.25); background: rgba(19,26,46,0.6);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    }
+
+    /* ── มือถือ/จอแคบ — nav กลาง (Home/Features/…) ซ่อนไว้ก่อน เหลือแค่โลโก้ +
+       ปุ่ม Add Bot ให้กดง่ายบนจอเล็ก ส่วน now-playing ยังโชว์ได้เพราะเป็น pill
+       เล็กพอ ── */
+    @media (max-width: 760px) {
+      .hero-nav .center-links { display: none; }
+      .hero-nav .lang-btn span.lang-label { display: none; }
+      .hero { min-height: auto; padding-bottom: 24px; }
+      .hero-bg { position: absolute; }
+      .hero-content { padding-top: 32px; }
+      .now-playing-row { padding-bottom: 24px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ═══ แถบเมนูด้านบน ═══ -->
-  <nav>
-    <div class="wrap">
-      <a href="/" class="logo">
-        <picture>
-          <source srcset="/images/milo-avatar.webp" type="image/webp">
-          <img src="/images/milo-avatar.png" alt="Milo Bot" />
-        </picture>
-        Milo Bot
-      </a>
-      <div class="nav-links">
-        <a href="#features" class="link">ฟีเจอร์</a>
-        <a href="#pricing" class="link">ราคา</a>
-        <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-           class="btn btn-primary" target="_blank" rel="noopener">เชิญบอท</a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- ═══ Hero — พื้นหลังเป็นภาพตัวละครนั่งมองวิวตึกยามค่ำคืน ═══ -->
+  <!-- ═══ HERO (fold แรก — ตรงกับไฟล์ดีไซน์อ้างอิง Landing.dc.html) ═══ -->
   <section class="hero">
     <div class="hero-bg">
-      <picture>
-        <source srcset="/images/milo-hero.webp" type="image/webp">
-        <img src="/images/milo-hero.jpg" alt="ภาพประกอบตัวละคร Milo Bot นั่งมองวิวตึกยามค่ำคืน" />
-      </picture>
-      <div class="hero-overlay"></div>
+      <img src="/images/hero-crisp.jpg" alt="Milo Bot mascot illustration overlooking a night city skyline" />
+      <div class="hero-overlay-1"></div>
+      <div class="hero-overlay-2"></div>
     </div>
 
-    <div class="wrap hero-content">
-      <h1>Milo Bot</h1>
-      <p class="tagline">ดิสคอร์ดของคุณ ในสไตล์ของคุณ</p>
-      <p class="lead">
-        การ์ดต้อนรับ/บอกลาแบบกำหนดเองได้ทุกจุด ระบบฟอนต์ของตัวเอง
-        ระบบยศอัตโนมัติ และเครื่องมือสร้างข้อความในสไตล์ของคุณ — ตั้งค่าเสร็จใน 5 นาที
-      </p>
-      <div class="hero-actions">
-        <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-           class="btn btn-primary" target="_blank" rel="noopener">
-          ➕ เชิญ Milo Bot เข้าเซิร์ฟ
+    <div class="hero-nav-wrap">
+      <nav class="hero-nav">
+        <a href="/" class="brand">
+          <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+          <span>Milo Bot</span>
         </a>
-        <a href="#features" class="btn btn-ghost">ดูฟีเจอร์ทั้งหมด</a>
-      </div>
-    </div>
-
-    <div class="hero-caption">
-      <div class="wrap">
-        <span>ชื่อเต็ม: Cavin Milo</span>
-        <span>Discord Bot · Node.js + discord.js</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ ฟีเจอร์ ═══ -->
-  <section id="features">
-    <div class="wrap">
-      <div class="section-head">
-        <h2>ทำอะไรได้บ้าง</h2>
-        <p>ฟีเจอร์หลักที่ Milo Bot มีให้ใช้งานตอนนี้</p>
-      </div>
-      <div class="features-grid">
-        <div class="feature-card">
-          <span class="icon-box icon-accent">🖼️</span>
-          <h3>การ์ดต้อนรับ/บอกลา</h3>
-          <p>ออกแบบการ์ดต้อนรับและบอกลาสมาชิกได้เองทุกจุด ทั้งพื้นหลัง ข้อความ ตำแหน่งรูปโปรไฟล์</p>
+        <div class="center-links">
+          <a href="/" class="nav-link">Home</a>
+          <a href="/features" class="nav-link">Features</a>
+          <a href="/features#pricing" class="nav-link">Pricing</a>
+          <a href="/auth/login" class="nav-link">Dashboard</a>
         </div>
-        <div class="feature-card">
-          <span class="icon-box icon-gold">🔤</span>
-          <h3>ฟอนต์ของเซิร์ฟตัวเอง</h3>
-          <p>อัปโหลดไฟล์ฟอนต์ (.ttf/.otf) ของตัวเองผ่าน <code>/fonts upload</code> ได้หลายไฟล์ต่อเซิร์ฟ เลือกใช้แยกแต่ละบล็อกข้อความ</p>
-        </div>
-        <div class="feature-card">
-          <span class="icon-box icon-teal">🎬</span>
-          <h3>การ์ดเคลื่อนไหว (GIF)</h3>
-          <p>อัปเกรดพรีเมียมเพื่อปลดล็อกการ์ดต้อนรับแบบ GIF เคลื่อนไหว โดดเด่นกว่าการ์ดภาพนิ่งทั่วไป</p>
-        </div>
-        <div class="feature-card">
-          <span class="icon-box icon-accent">👑</span>
-          <h3>ระบบยศอัตโนมัติ</h3>
-          <p>ตั้งค่าแจก/ถอดยศอัตโนมัติผ่านปุ่มหรือ reaction ได้เอง ไม่ต้องมานั่งแจกยศทีละคน</p>
-        </div>
-        <div class="feature-card">
-          <span class="icon-box icon-gold">🧩</span>
-          <h3>Builder สร้างข้อความเอง</h3>
-          <p>ออกแบบข้อความ/embed สวยๆ ในสไตล์ของเซิร์ฟตัวเองได้ด้วยเครื่องมือ builder ในตัว</p>
-        </div>
-        <div class="feature-card">
-          <span class="icon-box icon-teal">🌐</span>
-          <h3>รองรับหลายภาษา</h3>
-          <p>สลับภาษาของบอทได้ทั้งไทยและอังกฤษ ให้เหมาะกับสมาชิกในเซิร์ฟของคุณ</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ ราคา ═══ -->
-  <section id="pricing">
-    <div class="wrap">
-      <div class="section-head">
-        <h2>ราคา</h2>
-        <p>เริ่มใช้งานฟรีได้เลย อัปเกรดพรีเมียมเมื่อพร้อม</p>
-      </div>
-      <div class="pricing-grid">
-        <div class="price-card">
-          <h3>Free</h3>
-          <div class="price">฿0</div>
-          <p class="price-note">ใช้งานได้ตลอดไป ไม่มีค่าใช้จ่าย</p>
-          <ul>
-            <li>การ์ดต้อนรับ/บอกลาแบบภาพนิ่ง (PNG)</li>
-            <li>ระบบฟอนต์ของเซิร์ฟตัวเอง</li>
-            <li>ระบบยศอัตโนมัติ</li>
-            <li>Builder สร้างข้อความ</li>
-          </ul>
+        <div class="right-actions">
+          <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+            <span class="lang-label">EN</span>
+          </button>
           <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-             class="btn btn-ghost" target="_blank" rel="noopener">เริ่มใช้งานฟรี</a>
+             class="add-bot-btn pill-btn primary" target="_blank" rel="noopener">
+            Add Bot
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
         </div>
-        <div class="price-card premium">
-          <h3>Premium</h3>
-          <div class="price">฿89 <small>/ เดือน</small></div>
-          <p class="price-note">เรียกเก็บเป็นเงินบาทไทยผ่าน Stripe ต่ออายุอัตโนมัติทุกเดือน ยกเลิกได้ทุกเมื่อผ่านคำสั่ง /premium</p>
-          <ul>
-            <li>ทุกอย่างในแพ็กเกจ Free</li>
-            <li>การ์ดต้อนรับ/บอกลาแบบ GIF เคลื่อนไหว</li>
-            <li>สนับสนุนการพัฒนาฟีเจอร์ใหม่ๆ ต่อไป</li>
-          </ul>
+      </nav>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-content-inner">
+        <div class="eyebrow">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2z" fill="#f4b860"/></svg>
+          <span>Server Styling Bot</span>
+        </div>
+
+        <h1>Milo <em>Bot</em></h1>
+        <div class="tagline">Your Discord, your style</div>
+        <p class="lead">
+          Fully custom welcome/goodbye cards, your own server fonts, automatic role
+          assignment, and a message builder made in your style — set up in 5 minutes.
+        </p>
+
+        <div class="hero-actions">
           <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-             class="btn btn-primary" target="_blank" rel="noopener">เชิญบอทแล้วสมัครใน Discord</a>
+             class="btn-primary-hero pill-btn primary" target="_blank" rel="noopener">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path fill="#0a0e1a" d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+            Add Milo Bot to Server
+          </a>
+          <a href="/features" class="btn-ghost-hero pill-btn">View All Features</a>
+        </div>
+
+        <div class="feat-chips">
+          <div class="feat-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-10" stroke="#4b8f87" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Set up in 5 minutes</span>
+          </div>
+          <div class="feat-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-10" stroke="#4b8f87" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Thai &amp; English support</span>
+          </div>
+          <div class="feat-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-10" stroke="#4b8f87" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Free to get started</span>
+          </div>
         </div>
       </div>
     </div>
-  </section>
 
-  <!-- ═══ แบนเนอร์ชวนเชิญก่อนจบหน้า ═══ -->
-  <section>
-    <div class="wrap">
-      <div class="cta-banner">
-        <div class="cta-bg"></div>
-        <h2>พร้อมให้ Milo Bot ดูแลเซิร์ฟของคุณหรือยัง?</h2>
-        <p>เชิญเข้าเซิร์ฟฟรี ตั้งค่าการ์ดต้อนรับแรกได้ในไม่กี่นาที</p>
-        <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-           class="btn btn-primary" target="_blank" rel="noopener">➕ เชิญ Milo Bot ตอนนี้</a>
+    <div class="now-playing-row">
+      <div class="now-playing">
+        <div class="eq">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <rect x="4" y="7" width="3" height="12" rx="1.5" fill="#4a5aa8"/>
+            <rect x="10.5" y="4" width="3" height="15" rx="1.5" fill="#4a5aa8"/>
+            <rect x="17" y="9" width="3" height="10" rx="1.5" fill="#4a5aa8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="label">Now playing</div>
+          <div class="track">Rooftop Nights — Milo Lo-fi</div>
+        </div>
+      </div>
+      <div class="playlist-btn" title="Decorative only — not a real player">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M4 6h12M4 12h12M4 18h7" stroke="#c3c8e6" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="19" cy="16" r="3.2" stroke="#c3c8e6" stroke-width="1.6"/>
+          <path d="M18.2 14.7l2 1.3-2 1.3v-2.6z" fill="#c3c8e6"/>
+        </svg>
       </div>
     </div>
   </section>
 
-  <!-- ═══ Footer ═══ -->
-  <footer>
-    <div class="wrap">
-      <div class="copyright">
-        © <span id="year"></span> Milo Bot
-        <small>Cavin Milo</small>
-      </div>
-      <div class="foot-links">
-        <a href="/terms">ข้อกำหนดการใช้งาน</a>
-        <a href="/privacy">นโยบายความเป็นส่วนตัว</a>
-        <a href="mailto:cavinmilo@gmail.com">ติดต่อเรา</a>
-        <a class="social-icon" href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-           target="_blank" rel="noopener" aria-label="เชิญ Milo Bot บน Discord" title="เชิญ Milo Bot บน Discord">
-          <svg viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-        </a>
-      </div>
-    </div>
-  </footer>
-
-  <script>
-    // แสดงปี ค.ศ. ปัจจุบันที่ท้ายเว็บอัตโนมัติ ไม่ต้องมาแก้เลขปีเองทุกปีที่ขึ้นปีใหม่
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
+  <!-- ═══ จบแค่นี้ — ตามที่น้องหนาวสั่ง: หน้านี้ (loading/landing page) ไม่มี
+       เลื่อนลง (no scroll) มีแค่ hero เท่านั้น ไม่มี Features/Pricing/Footer
+       ต่อท้าย เนื้อหาพวกนั้นย้ายไปอยู่หน้า /features (public/features.html)
+       แทนแล้ว ปุ่ม "View All Features" ข้างบนพาไปที่นั่น ═══ -->
 </body>
 </html>

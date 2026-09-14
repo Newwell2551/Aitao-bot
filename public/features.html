@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milo Bot — Features</title>
+  <meta name="description" content="Everything Milo Bot ships with today: welcome/goodbye cards, custom server fonts, auto roles, message builder, GIF cards, and multi-language support." />
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    หน้า Features (public/features.html) — หน้าใหม่ที่แยกออกมาจากหน้าแรกตามที่
+    น้องหนาวสั่ง: "หน้าแรกไม่ต้องเลื่อนลง ฟีเจอร์ต่างๆ ไปอีกหน้านึงตอนกด View All
+    Features" สร้างตามไฟล์ดีไซน์อ้างอิงจริง Features.dc.html (จาก
+    Features-html.zip ที่ส่งมา) แทบทั้งหมด
+
+    โครงสร้างหน้า:
+      1. แถบพื้นหลังภาพเบลอ (hero-crisp.jpg เบลอ+มืดลง) อยู่แค่ช่วงบนสุด
+         ต่อเนื่องความรู้สึกจากหน้าแรก
+      2. Nav แคปซูลกระจกฝ้าเหมือนหน้าแรก เมนู "Features" ขีดเส้นใต้บอกว่าอยู่
+         หน้านี้
+      3. หัวข้อ + รายการฟีเจอร์ 6 อัน (คลิกได้ทีละอัน) ฝั่งซ้าย
+      4. แผง "Live Preview" ฝั่งขวา — สลับเนื้อหาโชว์ตามฟีเจอร์ที่เลือก บางอัน
+         มีแท็บเทียบ Free/Premium ในตัว (Role, Builder, GIF, ภาษา) โค้ด JS
+         เอามาจากไฟล์ดีไซน์เกือบทั้งหมด (เป็น vanilla JS ธรรมดา ไม่ต้องพึ่ง
+         React ของเครื่องมือออกแบบเลย)
+      5. ปุ่มชวนเชิญบอทอีกรอบ
+      6. Premium Showcase — ตัวอย่างข้อความพรีเมียมที่ประกอบจาก block จริงใน
+         Builder ทั้งหมด (นิ่งๆ ไม่ต้องคลิก) + legend รายชื่อ block
+      7. 🆕 ส่วน Pricing + Footer จริง — ไม่มีในไฟล์ดีไซน์ที่ส่งมา (ไฟล์นั้นมีแค่
+         ส่วนฟีเจอร์) เอามาต่อท้ายเพราะเมนู "Pricing" ในหน้านี้ต้องมีที่ไปจริง
+         และเป็นข้อมูลจำเป็นตาม milo-bot-ai-build-prompt.md — ถ้ามีไฟล์ดีไซน์
+         Pricing แยกเฉพาะส่งมาทีหลัง จะเอามาแทนส่วนนี้ให้ตรงเป๊ะอีกที
+
+    เดิมไฟล์ดีไซน์เป็น canvas ขนาดตายตัว 1440×1850px ของเครื่องมือออกแบบ แปลง
+    เป็น responsive (สองคอลัมน์ฝั่งซ้าย/ขวา → เรียงซ้อนกันบนจอแคบ, แผงพรีวิว
+    ฝั่งขวาเป็น sticky ตอนจอกว้างพอ)
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <style>
+    * { box-sizing: border-box; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 300; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cy_gIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W__XJnvUD7dzB2KYNoY.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Ck_kIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cv_4IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2C2_8IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: #05070f; color: #f3f1fb; font-family: 'MiloEN', 'Athiti', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif; line-height: 1.6; }
+    a { color: #7783be; text-decoration: none; }
+    a.plain { color: inherit; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+    .pill-btn { transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; cursor: pointer; }
+    .pill-btn:hover { transform: translateY(-1px); }
+    .pill-btn.primary:hover { box-shadow: 0 8px 24px rgba(74,90,168,0.4); }
+    .nav-link { transition: color .15s ease; color: #c3c8e6; }
+    .nav-link:hover { color: #f3f1fb; }
+
+    /* ── แถบภาพเบลอด้านหลัง (แค่ช่วงบนสุด) ── */
+    .top-glow { position: absolute; top: 0; left: 0; right: 0; height: 1000px; overflow: hidden; z-index: 0; pointer-events: none; }
+    .top-glow img { position: absolute; top: -40px; left: 50%; transform: translateX(-50%) scale(1.06); width: 110%; min-width: 1200px; height: 1040px; object-fit: cover; object-position: 72% 22%; filter: blur(30px) saturate(85%); }
+    .top-glow .wash { position: absolute; inset: 0; background: rgba(5,7,15,0.8); }
+    .top-glow .radial { position: absolute; inset: 0; background: radial-gradient(ellipse 900px 500px at 22% 0%, rgba(74,90,168,0.14), transparent 65%); }
+
+    /* ── NAV — เหมือนหน้าแรกเป๊ะๆ ── */
+    .site-nav-wrap { position: sticky; top: 16px; z-index: 20; padding: 0 24px; margin-bottom: 8px; }
+    .site-nav {
+      max-width: 1080px; margin: 16px auto 0;
+      background: rgba(19,26,46,0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
+      backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 8px 10px 8px 20px; flex-wrap: wrap;
+    }
+    .site-nav .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+    .site-nav .brand img { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; border: 1.5px solid rgba(74,90,168,0.5); }
+    .site-nav .brand span { font-size: 16px; font-weight: 700; color: #f3f1fb; }
+    .site-nav .center-links { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+    .site-nav .center-links .nav-link { font-size: 13.5px; }
+    .site-nav .center-links .nav-link.active { color: #f3f1fb; border-bottom: 1.5px solid #4a5aa8; padding-bottom: 2px; }
+    .site-nav .right-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+    .lang-btn { height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(154,162,196,0.3); background: rgba(255,255,255,0.04); color: #f3f1fb; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .add-bot-btn { height: 42px; padding: 0 20px; border-radius: 999px; border: none; background: #4a5aa8; color: #f3f1fb; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+    /* ── หัวข้อหน้า ── */
+    .page-head { position: relative; z-index: 2; padding: 56px 0 10px; }
+    .page-head .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #f4b860; text-transform: uppercase; }
+    .page-head h1 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; color: #f9f8ff; margin: 14px 0 0; letter-spacing: -0.01em; }
+    .page-head p { font-size: 14.5px; color: #9aa2c4; margin-top: 12px; line-height: 1.6; max-width: 480px; }
+
+    /* ── สองคอลัมน์: รายการฟีเจอร์ / แผงพรีวิว ── */
+    .feat-layout { position: relative; z-index: 2; display: flex; gap: 60px; align-items: flex-start; padding: 40px 0 60px; flex-wrap: wrap; }
+    .feat-list { flex: 1 1 480px; min-width: 280px; max-width: 560px; }
+    .feat-row { cursor: pointer; display: flex; align-items: flex-start; gap: 20px; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .feat-row:first-child { padding-top: 0; }
+    .feat-num { font-weight: 300; color: #4a5278; font-size: 20px; line-height: 1; width: 36px; flex: 0 0 auto; transition: color .15s ease, font-size .15s ease; }
+    .feat-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .feat-title { font-size: 15px; font-weight: 600; color: #9aa2c4; transition: color .15s ease, font-size .15s ease; }
+    .feat-desc { font-size: 13.5px; color: #9aa2c4; line-height: 1.65; margin-top: 8px; max-width: 460px; }
+    .feat-row.active .feat-num { color: #7783be; font-size: 26px; }
+    .feat-row.active .feat-title { color: #f9f8ff; font-size: 19px; font-weight: 700; }
+    .premium-tag { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #f4b860; border: 1px solid rgba(244,184,96,0.4); border-radius: 999px; padding: 2px 8px; text-transform: uppercase; }
+    #tryName { transition: border-color .15s ease; margin-top: 8px; width: 100%; background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.25); color: #f3f1fb; font-size: 15px; font-family: inherit; padding: 6px 2px; outline: none; }
+    #tryName:focus { border-bottom-color: #4a5aa8; }
+    #tryName::placeholder { color: #5c6488; }
+    .try-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; color: #7783be; text-transform: uppercase; }
+
+    .preview-col { flex: 1 1 420px; min-width: 300px; max-width: 480px; position: sticky; top: 110px; }
+    .preview-panel { background: rgba(19,26,46,0.6); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; padding: 24px; backdrop-filter: blur(24px) saturate(140%); box-shadow: 0 24px 50px rgba(0,0,0,0.35); }
+    .preview-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #f4b860; text-transform: uppercase; }
+    .preview-caption { font-size: 12.5px; color: #9aa2c4; line-height: 1.6; margin-top: 16px; }
+
+    .type-tab { flex: 1; height: 34px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); color: #c3c8e6; }
+    .discord-mock { background: #313338; border-radius: 6px; padding: 14px 16px; position: relative; margin-top: 12px; }
+    .discord-mock .badge-corner { position: absolute; top: 12px; right: 14px; font-size: 8.5px; font-weight: 700; letter-spacing: 0.05em; color: #66a099; border: 1px solid #4b8f87; border-radius: 999px; padding: 2px 8px; text-transform: uppercase; }
+
+    /* ── CTA ── */
+    .cta-band { position: relative; z-index: 2; text-align: center; padding: 40px 0 70px; }
+    .cta-band h2 { font-size: 19px; font-weight: 700; color: #f3f1fb; margin: 0; }
+    .cta-band .add-bot-btn-lg { margin-top: 18px; height: 50px; padding: 0 26px; border-radius: 4px; border: none; background: #4a5aa8; color: #f3f1fb; font-size: 14.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 9px; }
+
+    /* ── Premium showcase ── */
+    .showcase { position: relative; z-index: 2; text-align: center; padding: 30px 0 10px; }
+    .showcase .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #f4b860; text-transform: uppercase; }
+    .showcase h2 { font-size: clamp(21px, 2.6vw, 26px); font-weight: 800; color: #f9f8ff; margin: 12px 0 0; letter-spacing: -0.01em; }
+    .showcase p { font-size: 13.5px; color: #9aa2c4; margin: 10px auto 0; line-height: 1.6; max-width: 520px; }
+
+    .showcase-card-wrap { max-width: 640px; margin: 36px auto 0; position: relative; }
+    .showcase-card {
+      background: rgba(19,26,46,0.55); border: 1px solid rgba(244,184,96,0.35); border-radius: 8px; padding: 22px;
+      backdrop-filter: blur(24px) saturate(140%); box-shadow: 0 30px 70px rgba(0,0,0,0.45), 0 0 60px rgba(244,184,96,0.08);
+      position: relative;
+    }
+    .showcase-ribbon { position: absolute; top: -14px; right: 26px; background: linear-gradient(90deg,#f4b860,#e2a04e); color: #0a0e1a; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; box-shadow: 0 6px 16px rgba(244,184,96,0.4); display: flex; align-items: center; gap: 5px; }
+    .showcase-embed { background: #2b2d31; border-radius: 6px; overflow: hidden; border-left: 4px solid #f4b860; }
+    .showcase-embed img.banner { width: 100%; height: 150px; object-fit: cover; object-position: 65% 20%; display: block; }
+    .showcase-embed img.divider { width: 100%; height: 46px; object-fit: cover; object-position: 40% 60%; display: block; filter: saturate(1.1); }
+    .embed-author { display: flex; align-items: center; gap: 8px; }
+    .embed-author img { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; }
+    .embed-author .app-badge { font-size: 8px; font-weight: 700; color: #fff; background: #5865f2; border-radius: 2px; padding: 1px 4px; }
+    .powered-by { text-align: center; font-size: 10px; letter-spacing: 0.16em; color: rgba(244,184,96,0.55); margin-top: 14px; text-transform: uppercase; }
+
+    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 860px; margin: 44px auto 0; }
+    .legend-chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 6px 13px; font-size: 11px; color: #c3c8e6; display: inline-flex; align-items: center; gap: 6px; }
+    .legend-note { text-align: center; font-size: 12px; color: #6d7079; font-style: italic; margin: 18px 0 0; }
+
+    /* ── Pricing + Footer (ของจริง ไม่ได้อยู่ในไฟล์ดีไซน์) ── */
+    .below-fold { position: relative; z-index: 2; margin-top: 80px; border-top: 1px solid rgba(154,162,196,0.14); background: #090c18; }
+    .section-head { text-align: center; padding: 64px 0 40px; }
+    .section-head h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; margin: 0 0 10px; color: #f9f8ff; }
+    .section-head p { color: #9aa2c4; font-size: 15px; max-width: 460px; margin: 0 auto; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 22px; max-width: 700px; margin: 0 auto; padding-bottom: 72px; }
+    .price-card { background: rgba(19,26,46,0.6); border: 1px solid rgba(154,162,196,0.16); border-radius: 16px; padding: 30px 26px; }
+    .price-card.premium { border-color: #f4b860; position: relative; }
+    .price-card.premium::before { content: "Recommended"; position: absolute; top: -12px; right: 24px; background: #f4b860; color: #251803; font-size: 11.5px; font-weight: 800; padding: 4px 12px; border-radius: 999px; }
+    .price-card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #9aa2c4; margin: 0 0 8px; }
+    .price-card .price { font-size: 36px; font-weight: 800; margin: 0 0 4px; color: #f9f8ff; }
+    .price-card .price small { font-size: 14px; font-weight: 600; color: #9aa2c4; }
+    .price-card .price-note { font-size: 12px; color: #9aa2c4; margin: 0 0 22px; }
+    .price-card ul { list-style: none; padding: 0; margin: 0 0 26px; }
+    .price-card li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: #c3c8e6; margin-bottom: 11px; }
+    .price-card li::before { content: "✓"; color: #7783be; font-weight: 800; flex-shrink: 0; }
+    .price-card.premium li::before { color: #f4b860; }
+    .price-card .btn-block { width: 100%; height: 46px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: none; }
+    .price-card .btn-block.ghost { background: rgba(255,255,255,0.04); border: 1px solid rgba(154,162,196,0.3); color: #f3f1fb; }
+    .price-card .btn-block.solid { background: #4a5aa8; color: #f3f1fb; }
+    footer { border-top: 1px solid rgba(154,162,196,0.14); padding: 36px 0; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+    footer .foot-links { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    footer a.foot-link { color: #9aa2c4; font-size: 13px; }
+    footer a.foot-link:hover { color: #f3f1fb; }
+    footer .copyright { font-size: 13px; color: #9aa2c4; }
+    footer .social-icon { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(19,26,46,0.6); border: 1px solid rgba(154,162,196,0.2); }
+    footer .social-icon svg { width: 16px; height: 16px; fill: #9aa2c4; }
+
+    @media (max-width: 900px) {
+      .preview-col { position: static; max-width: 100%; }
+      .site-nav .center-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <svg width="0" height="0" style="position:absolute;">
+    <defs>
+      <symbol id="ic-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 2.5l2.6 6.2 6.7.5-5.1 4.4 1.6 6.6L12 16.8l-5.8 3.4 1.6-6.6-5.1-4.4 6.7-.5L12 2.5z" fill="currentColor"/></symbol>
+      <symbol id="ic-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3z" fill="currentColor"/></symbol>
+      <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="ic-megaphone" viewBox="0 0 24 24"><path d="M3 11v2a2 2 0 0 0 2 2h1l4 4V5L6 9H5a2 2 0 0 0-2 2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 8.5a4 4 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 5.5a8 8 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="ic-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 12 22l-9-9 8.6-8.6A2 2 0 0 1 13 4h6a1 1 0 0 1 1 1v6a2 2 0 0 1-.4 1.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16.5" cy="7.5" r="1" fill="currentColor"/></symbol>
+      <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10.5" r="1.5" fill="currentColor"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-pencil" viewBox="0 0 24 24"><path d="M4 20l.8-3.8L16.2 4.8a1.5 1.5 0 0 1 2.1 0l1 1a1.5 1.5 0 0 1 0 2.1L7.8 19.3 4 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 7l2.5 2.5" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="ic-divider" viewBox="0 0 24 24"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="ic-button" viewBox="0 0 24 24"><rect x="3.5" y="8" width="17" height="8" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="ic-list" viewBox="0 0 24 24"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4" cy="7" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="17" r="1" fill="currentColor"/></symbol>
+      <symbol id="ic-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10.5" r="1" fill="currentColor"/><circle cx="15" cy="10.5" r="1" fill="currentColor"/><path d="M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="top-glow">
+    <img src="/images/hero-crisp.jpg" alt="" />
+    <div class="wash"></div>
+    <div class="radial"></div>
+  </div>
+
+  <div class="site-nav-wrap">
+    <nav class="site-nav">
+      <a href="/" class="brand plain">
+        <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+        <span>Milo Bot</span>
+      </a>
+      <div class="center-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/features" class="nav-link active">Features</a>
+        <a href="/features#pricing" class="nav-link">Pricing</a>
+        <a href="/auth/login" class="nav-link">Dashboard</a>
+      </div>
+      <div class="right-actions">
+        <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+          EN
+        </button>
+        <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+           class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
+          Add Bot
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="wrap">
+    <div class="page-head">
+      <div class="eyebrow">Features</div>
+      <h1>Everything your server needs</h1>
+      <p>One bot, six core tools — click one to see it in action.</p>
+    </div>
+
+    <div class="feat-layout">
+      <div class="feat-list">
+
+        <div id="row-1" class="feat-row active" onclick="selectFeature(1)">
+          <div id="num-1" class="feat-num">01</div>
+          <div style="flex:1;">
+            <div class="feat-title-row"><div id="title-1" class="feat-title">Welcome &amp; Goodbye Cards</div></div>
+            <div id="desc-1" class="feat-desc">
+              Fully custom card designs that greet new members and say goodbye — pick a layout, drop in your own background and font, Milo does the rest.
+              <div style="margin-top:14px;max-width:380px;">
+                <div class="try-label">Try it — type a name</div>
+                <input id="tryName" type="text" placeholder="e.g. Aiko" maxlength="24" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="row-2" class="feat-row" onclick="selectFeature(2)">
+          <div id="num-2" class="feat-num">02</div>
+          <div style="flex:1;">
+            <div class="feat-title-row"><div id="title-2" class="feat-title">Custom Server Fonts</div></div>
+            <div id="desc-2" class="feat-desc" hidden>Upload your own font files (.ttf/.otf) and use them across every card — welcome, goodbye, and role cards all keep your server's own look.</div>
+          </div>
+        </div>
+
+        <div id="row-3" class="feat-row" onclick="selectFeature(3)">
+          <div id="num-3" class="feat-num">03</div>
+          <div style="flex:1;">
+            <div class="feat-title-row"><div id="title-3" class="feat-title">Auto Role Assignment</div></div>
+            <div id="desc-3" class="feat-desc" hidden>Set up self-serve roles your way — Reaction is free (up to 2 roles per panel), Menu and Button unlock on Premium with more roles and richer layouts.</div>
+          </div>
+        </div>
+
+        <div id="row-4" class="feat-row" onclick="selectFeature(4)">
+          <div id="num-4" class="feat-num">04</div>
+          <div style="flex:1;">
+            <div class="feat-title-row"><div id="title-4" class="feat-title">Visual Message Builder</div></div>
+            <div id="desc-4" class="feat-desc" hidden>Design embeds and announcements by clicking, not coding. Free gives you 1 simple builder; Premium unlocks unlimited builders, multiple blocks, buttons, and @mentions.</div>
+          </div>
+        </div>
+
+        <div id="row-5" class="feat-row" onclick="selectFeature(5)">
+          <div id="num-5" class="feat-num">05</div>
+          <div style="flex:1;">
+            <div class="feat-title-row"><div id="title-5" class="feat-title">Animated GIF Cards</div> <span class="premium-tag">Premium</span></div>
+            <div id="desc-5" class="feat-desc" hidden>Free backgrounds are sharp PNG/JPG/WebP images. Premium adds animated GIF backgrounds — same layout, now in motion. Tap Free/Premium to compare.</div>
+          </div>
+        </div>
+
+        <div id="row-6" class="feat-row" onclick="selectFeature(6)" style="border-bottom:none;">
+          <div id="num-6" class="feat-num">06</div>
+          <div style="flex:1;">
+            <div class="feat-title-row"><div id="title-6" class="feat-title">Multi-language Support</div></div>
+            <div id="desc-6" class="feat-desc" hidden>Set with <code>/language</code> (admins only) — Milo replies in Thai or English per server, switching instantly, no re-setup needed. Tap Thai/English to see it run.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="preview-col">
+        <div class="preview-panel">
+          <div class="preview-label">Live Preview</div>
+
+          <!-- panel 1: Welcome & Goodbye Cards -->
+          <div id="panel-1">
+            <div style="margin-top:14px;width:100%;height:236px;border-radius:5px;position:relative;overflow:hidden;background:linear-gradient(135deg, #171c38 0%, #262c58 55%, #3a3570 100%);">
+              <div style="position:absolute;top:-40px;right:-30px;width:160px;height:160px;border-radius:999px;background:radial-gradient(circle, rgba(74,90,168,0.5), transparent 70%);filter:blur(6px);"></div>
+              <div style="position:absolute;bottom:-50px;left:-30px;width:150px;height:150px;border-radius:999px;background:radial-gradient(circle, rgba(75,143,135,0.35), transparent 70%);filter:blur(6px);"></div>
+              <div style="position:absolute;top:28px;left:50%;transform:translateX(-50%);width:76px;height:76px;border-radius:999px;border:3px solid #4a5aa8;box-shadow:0 0 24px rgba(74,90,168,0.5);overflow:hidden;">
+                <img src="/images/avatar-icon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;" />
+              </div>
+              <div style="position:absolute;top:118px;left:0;width:100%;padding:0 20px;text-align:center;font-size:18px;font-weight:700;color:#f9f8ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Welcome, <span id="previewName">Aiko</span>!</div>
+              <div style="position:absolute;top:146px;left:0;width:100%;text-align:center;font-size:12px;color:#c3c8e6;">Member #482 · Milo Community</div>
+              <div style="position:absolute;bottom:16px;left:0;width:100%;text-align:center;font-size:10.5px;letter-spacing:0.1em;color:rgba(255,255,255,0.4);text-transform:uppercase;">milo bot · welcome</div>
+            </div>
+            <div class="preview-caption">This is what new members see the moment they join — fully customizable, no template lock-in.</div>
+          </div>
+
+          <!-- panel 2: Custom Server Fonts -->
+          <div id="panel-2" hidden>
+            <div style="margin-top:14px;width:100%;height:236px;border-radius:5px;position:relative;overflow:hidden;background:linear-gradient(135deg, #171c38 0%, #262c58 55%, #3a3570 100%);">
+              <div style="position:absolute;top:-40px;right:-30px;width:160px;height:160px;border-radius:999px;background:radial-gradient(circle, rgba(74,90,168,0.5), transparent 70%);filter:blur(6px);"></div>
+              <div style="position:absolute;bottom:-50px;left:-30px;width:150px;height:150px;border-radius:999px;background:radial-gradient(circle, rgba(75,143,135,0.35), transparent 70%);filter:blur(6px);"></div>
+              <div style="position:absolute;top:26px;left:0;width:100%;text-align:center;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;">Your Font, Your Style</div>
+              <div style="position:absolute;top:82px;left:0;width:100%;text-align:center;font-size:17px;color:#f9f8ff;font-family:-apple-system,'Segoe UI',sans-serif;font-weight:700;">Aa Bb Cc — Modern</div>
+              <div style="position:absolute;top:120px;left:0;width:100%;text-align:center;font-size:17px;color:#f9f8ff;font-family:Georgia,serif;">Aa Bb Cc — Serif</div>
+              <div style="position:absolute;top:158px;left:0;width:100%;text-align:center;font-size:17px;color:#f9f8ff;font-family:'Courier New',monospace;">Aa Bb Cc — Mono</div>
+              <div style="position:absolute;bottom:16px;left:0;width:100%;text-align:center;font-size:10.5px;letter-spacing:0.1em;color:rgba(255,255,255,0.4);text-transform:uppercase;">milo bot · fonts</div>
+            </div>
+            <div class="preview-caption">Upload once, apply everywhere — every card matches your server's own typography.</div>
+          </div>
+
+          <!-- panel 3: Auto Role Assignment -->
+          <div id="panel-3" hidden>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">3 Ways To Assign Roles</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <div id="tab-reaction" class="type-tab" onclick="selectRoleType('reaction')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-smile"/></svg> Reaction</div>
+              <div id="tab-menu" class="type-tab" onclick="selectRoleType('menu')"><svg width="13" height="13"><use href="#ic-list"/></svg> Menu</div>
+              <div id="tab-button" class="type-tab" onclick="selectRoleType('button')"><svg width="13" height="13"><use href="#ic-button"/></svg> Button</div>
+            </div>
+            <div class="discord-mock">
+              <span id="typeBadge" class="badge-corner" style="color:#66a099;border-color:#4b8f87;">Free · up to 2</span>
+              <div style="display:flex;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:999px;overflow:hidden;flex:0 0 auto;"><img src="/images/avatar-icon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;" /></div>
+                <div style="flex:1;padding-right:70px;">
+                  <div class="embed-author"><span style="font-size:12.5px;font-weight:700;color:#f2f3f5;">Milo Bot</span><span class="app-badge">APP</span><span style="font-size:10px;color:#949ba4;">Today at 3:14 PM</span></div>
+                  <div style="font-size:12.5px;color:#dbdee1;margin-top:3px;line-height:1.5;">Pick a role below to customize your server experience!</div>
+                  <div id="dmock-reaction">
+                    <div style="display:flex;gap:6px;margin-top:10px;">
+                      <div style="background:#2b2d31;border:1px solid #3f4147;border-radius:3px;padding:3px 9px;display:flex;align-items:center;gap:5px;font-size:12px;color:#dbdee1;">😀 <span>4</span></div>
+                      <div style="background:#2b2d31;border:1px solid #3f4147;border-radius:3px;padding:3px 9px;display:flex;align-items:center;gap:5px;font-size:12px;color:#dbdee1;">🎨 <span>2</span></div>
+                    </div>
+                  </div>
+                  <div id="dmock-menu" hidden>
+                    <div style="margin-top:10px;width:100%;max-width:230px;height:34px;border-radius:3px;background:#2b2d31;border:1px solid #3f4147;display:flex;align-items:center;justify-content:space-between;padding:0 12px;">
+                      <span style="font-size:12px;color:#949ba4;">Choose your role...</span><span style="font-size:10px;color:#949ba4;">▾</span>
+                    </div>
+                  </div>
+                  <div id="dmock-button" hidden>
+                    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+                      <button style="height:30px;padding:0 12px;border-radius:3px;background:#5865f2;color:#fff;font-size:11px;font-weight:600;border:none;">🎮 Gamer</button>
+                      <button style="height:30px;padding:0 12px;border-radius:3px;background:#2b2d31;color:#dbdee1;font-size:11px;font-weight:600;border:1px solid #3f4147;">🎨 Artist</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="typeCaption" class="preview-caption">Free forever — up to 2 reaction roles per panel.</div>
+          </div>
+
+          <!-- panel 4: Visual Message Builder -->
+          <div id="panel-4" hidden>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">Free Vs Premium Builder</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <div id="tab-builder-free" class="type-tab" onclick="selectBuilderTier('free')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-check"/></svg> Free</div>
+              <div id="tab-builder-premium" class="type-tab" onclick="selectBuilderTier('premium')"><svg width="13" height="13"><use href="#ic-star"/></svg> Premium</div>
+            </div>
+            <div class="discord-mock">
+              <span id="typeBadge4" class="badge-corner" style="color:#66a099;border-color:#4b8f87;">Free · 1 builder</span>
+              <div style="display:flex;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:999px;overflow:hidden;flex:0 0 auto;"><img src="/images/avatar-icon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;" /></div>
+                <div style="flex:1;padding-right:70px;">
+                  <div class="embed-author"><span style="font-size:12.5px;font-weight:700;color:#f2f3f5;">Milo Bot</span><span class="app-badge">APP</span><span style="font-size:10px;color:#949ba4;">Today at 3:14 PM</span></div>
+                  <div id="dmock-builder-free" style="margin-top:8px;background:#2b2d31;border-left:4px solid #4a5aa8;border-radius:2px;padding:10px 12px;">
+                    <div style="font-size:12.5px;color:#dbdee1;line-height:1.6;">New event this weekend — drop by the announcements channel for details!</div>
+                  </div>
+                  <div id="dmock-builder-premium" hidden style="margin-top:8px;border-radius:3px;overflow:hidden;border-left:4px solid #4a5aa8;">
+                    <img src="/images/hero-crisp.jpg" alt="" style="width:100%;height:64px;object-fit:cover;object-position:70% 15%;display:block;" />
+                    <div style="background:#2b2d31;padding:10px 12px;">
+                      <div style="font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-align:center;text-transform:uppercase;">Server Update</div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;">
+                        <div style="font-size:11.5px;color:#dbdee1;line-height:1.6;min-width:0;">Use <span style="background:#1e1f22;color:#e3e5e8;border-radius:2px;padding:1px 5px;font-family:'Courier New',monospace;font-size:10.5px;white-space:nowrap;">/builder new</span> to create your own announcement</div>
+                        <img src="/images/avatar-icon.jpg" alt="" style="width:30px;height:30px;border-radius:3px;object-fit:cover;flex:0 0 auto;" />
+                      </div>
+                      <div style="font-size:11px;color:#c3c8e6;margin-top:6px;line-height:1.6;">New event channel now open for <span style="background:rgba(88,101,242,0.3);color:#c9cdfb;border-radius:2px;padding:0 3px;">@Members</span></div>
+                      <button style="margin-top:9px;height:26px;padding:0 10px;border-radius:3px;background:#5865f2;color:#fff;font-size:10.5px;font-weight:600;border:none;display:inline-flex;align-items:center;gap:5px;"><svg width="11" height="11"><use href="#ic-bell"/></svg> Get Notified</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="typeCaption4" class="preview-caption">Free gives you 1 builder with a text + image block — enough for a simple announcement.</div>
+          </div>
+
+          <!-- panel 5: Animated GIF Cards -->
+          <div id="panel-5" hidden>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">Free Vs Premium Backgrounds</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <div id="tab-gif-free" class="type-tab" onclick="selectGifTier('free')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-check"/></svg> Free</div>
+              <div id="tab-gif-premium" class="type-tab" onclick="selectGifTier('premium')"><svg width="13" height="13"><use href="#ic-star"/></svg> Premium</div>
+            </div>
+            <div style="margin-top:12px;width:100%;height:200px;border-radius:5px;position:relative;overflow:hidden;background:linear-gradient(135deg, #171c38 0%, #262c58 55%, #3a3570 100%);">
+              <div style="position:absolute;top:-40px;right:-30px;width:160px;height:160px;border-radius:999px;background:radial-gradient(circle, rgba(75,143,135,0.4), transparent 70%);filter:blur(6px);"></div>
+              <div style="position:absolute;bottom:-50px;left:-30px;width:150px;height:150px;border-radius:999px;background:radial-gradient(circle, rgba(75,143,135,0.35), transparent 70%);filter:blur(6px);"></div>
+              <div id="gifBadge" style="position:absolute;top:12px;left:12px;font-size:9px;font-weight:700;letter-spacing:0.08em;color:#0a0e1a;background:#4b8f87;border-radius:999px;padding:3px 10px;text-transform:uppercase;">PNG</div>
+              <div id="gifAvatarWrap" style="position:absolute;top:20px;left:50%;transform:translateX(-50%);width:66px;height:66px;border-radius:999px;border:3px solid #4b8f87;box-shadow:0 0 24px rgba(75,143,135,0.5);overflow:hidden;">
+                <img src="/images/avatar-icon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;" />
+                <div id="gifPlayOverlay" style="position:absolute;inset:0;background:rgba(10,14,26,0.35);display:none;align-items:center;justify-content:center;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 7l9 5-9 5V7z" fill="#f9f8ff"/></svg>
+                </div>
+              </div>
+              <div style="position:absolute;top:100px;left:0;width:100%;text-align:center;font-size:16px;font-weight:700;color:#f9f8ff;">Welcome, Aiko!</div>
+              <div style="position:absolute;top:126px;left:0;width:100%;text-align:center;font-size:11.5px;color:#c3c8e6;">Member #482 · Milo Community</div>
+              <div id="gifFooterLabel" style="position:absolute;bottom:12px;left:0;width:100%;text-align:center;font-size:10px;letter-spacing:0.1em;color:rgba(255,255,255,0.4);text-transform:uppercase;">milo bot · static background</div>
+            </div>
+            <div id="gifCaption" class="preview-caption">Free backgrounds support PNG, JPG, and WebP — sharp, lightweight, and always free.</div>
+          </div>
+
+          <!-- panel 6: Multi-language Support -->
+          <div id="panel-6" hidden>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">Switch Server Language</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <div id="tab-lang-th" class="type-tab" onclick="selectLangTier('th')" style="background:rgba(74,90,168,0.15);border-color:#4a5aa8;color:#f3f1fb;"><span style="font-size:9px;font-weight:800;letter-spacing:0.04em;opacity:0.7;">TH</span> Thai</div>
+              <div id="tab-lang-en" class="type-tab" onclick="selectLangTier('en')"><span style="font-size:9px;font-weight:800;letter-spacing:0.04em;opacity:0.7;">EN</span> English</div>
+            </div>
+            <div class="discord-mock">
+              <span style="position:absolute;top:12px;right:14px;font-size:8.5px;font-weight:700;letter-spacing:0.05em;color:#9aa2c4;border:1px solid rgba(154,162,196,0.4);border-radius:999px;padding:2px 8px;text-transform:uppercase;">Admin only</span>
+              <div style="display:flex;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:999px;overflow:hidden;flex:0 0 auto;"><img src="/images/avatar-icon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;" /></div>
+                <div style="flex:1;padding-right:70px;">
+                  <div class="embed-author"><span style="font-size:12.5px;font-weight:700;color:#f2f3f5;">Milo Bot</span><span class="app-badge">APP</span><span style="font-size:10px;color:#949ba4;">Today at 3:14 PM</span></div>
+                  <div style="font-size:11px;color:#949ba4;margin-top:4px;">used <span id="langCmdPill" style="background:rgba(88,101,242,0.18);color:#c9cdfb;border-radius:2px;padding:1px 6px;font-family:'Courier New',monospace;">/language lang: Thai</span></div>
+                  <div id="langReplyText" style="font-size:12.5px;color:#dbdee1;margin-top:8px;line-height:1.6;">✅ เปลี่ยนภาษาบอทเป็น ไทย แล้ว</div>
+                  <div style="font-size:10px;color:#6d7079;margin-top:6px;font-style:italic;display:flex;align-items:center;gap:4px;"><svg width="10" height="10"><use href="#ic-lock"/></svg> Only you can see this</div>
+                </div>
+              </div>
+            </div>
+            <div id="langCaption" class="preview-caption">Admins run <code>/language</code> to switch — every reply updates instantly, no re-setup needed.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-band">
+    <h2>Ready to set this up on your server?</h2>
+    <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+       class="add-bot-btn-lg pill-btn primary plain" target="_blank" rel="noopener">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path fill="#0a0e1a" d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+      Add Milo Bot to Server
+    </a>
+  </div>
+
+  <div class="showcase">
+    <div class="eyebrow">Premium Showcase</div>
+    <h2>See how far decoration can go</h2>
+    <p>Not a single feature — one flagship message built entirely from real Layout Builder blocks, dressed up to the max.</p>
+
+    <div class="showcase-card-wrap">
+      <div class="showcase-card">
+        <div class="showcase-ribbon"><svg width="10" height="10"><use href="#ic-sparkle"/></svg> Premium Crafted</div>
+        <div class="showcase-embed">
+          <img class="banner" src="/images/hero-crisp.jpg" alt="" />
+          <div style="padding:16px 20px 4px;">
+            <div class="embed-author"><img src="/images/avatar-icon.jpg" alt="" /><span style="font-size:12.5px;font-weight:700;color:#f2f3f5;">Milo Bot</span><span class="app-badge">APP</span><span style="font-size:10px;color:#949ba4;">Today at 8:00 PM</span></div>
+            <div style="text-align:center;font-size:12px;letter-spacing:0.22em;color:#f9f8ff;font-weight:800;margin-top:12px;">GRAND OPENING</div>
+            <div style="font-size:13px;color:#dbdee1;line-height:1.7;margin-top:8px;"><b style="color:#f9f8ff;">Milo Community</b> is officially open! Grab a role, say hi in <b style="color:#f9f8ff;">#general</b>, and make yourself at home.</div>
+          </div>
+          <div style="margin:18px 20px;height:1px;background:rgba(255,255,255,0.12);"></div>
+          <div style="padding:0 20px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="font-size:12.5px;color:#dbdee1;line-height:1.6;"><b style="color:#f9f8ff;">VIP Role unlocked</b> — tap below to claim it</div>
+            <img src="/images/avatar-icon.jpg" alt="" style="width:38px;height:38px;border-radius:3px;object-fit:cover;flex:0 0 auto;" />
+          </div>
+          <div style="padding:0 20px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="font-size:12.5px;color:#dbdee1;line-height:1.6;">Stay in the loop — grab notifications</div>
+            <button style="height:30px;padding:0 12px;border-radius:3px;background:#5865f2;color:#fff;font-size:11px;font-weight:600;border:none;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;"><svg width="11" height="11"><use href="#ic-bell"/></svg> Notify Me</button>
+          </div>
+          <img class="divider" src="/images/hero-crisp.jpg" alt="" />
+          <div style="padding:14px 20px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="font-size:12.5px;color:#dbdee1;line-height:1.6;">Updates land in <b style="color:#f9f8ff;">#announcements</b></div>
+            <button style="height:30px;padding:0 12px;border-radius:3px;background:#2b2d31;color:#dbdee1;font-size:11px;font-weight:600;border:1px solid #3f4147;flex:0 0 auto;display:flex;align-items:center;gap:5px;"><svg width="11" height="11"><use href="#ic-megaphone"/></svg> Go to announcements <span style="font-size:10px;">↗</span></button>
+          </div>
+          <div style="margin:6px 20px;height:1px;background:rgba(255,255,255,0.08);"></div>
+          <div style="padding:10px 20px 4px;font-size:12.5px;color:#c3c8e6;line-height:1.7;">Tag <span style="background:rgba(88,101,242,0.3);color:#c9cdfb;border-radius:2px;padding:0 4px;">@Members</span> anytime — Premium unlocks full @mentions in every block.</div>
+          <div style="padding:12px 20px 18px;display:flex;gap:8px;">
+            <button style="height:32px;padding:0 14px;border-radius:3px;background:#5865f2;color:#fff;font-size:11.5px;font-weight:600;border:none;display:inline-flex;align-items:center;gap:6px;"><svg width="12" height="12"><use href="#ic-bell"/></svg> Get Notified</button>
+            <button style="height:32px;padding:0 14px;border-radius:3px;background:#2b2d31;color:#dbdee1;font-size:11.5px;font-weight:600;border:1px solid #3f4147;display:inline-flex;align-items:center;gap:6px;"><svg width="12" height="12"><use href="#ic-heart"/></svg> Join the Fun</button>
+          </div>
+        </div>
+        <div class="powered-by">Powered by Milo Bot Premium</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-image"/></svg> Banner Image</span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-pencil"/></svg> Text Block (markdown)</span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-divider"/></svg> Native Divider</span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-image"/></svg> Image Divider</span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-tag"/></svg> Section + Role Button</span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-megaphone"/></svg> Section + Channel Button</span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-button"/></svg> Button Row</span>
+    </div>
+    <div class="legend-note">Every block above is real — mix and match them yourself in the Layout Builder.</div>
+  </div>
+
+  <!-- ═══ 🆕 Pricing + Footer จริง (ไม่มีในไฟล์ดีไซน์ที่ส่งมา — ดูคอมเมนต์บนสุด) ═══ -->
+  <div class="below-fold">
+    <div class="wrap">
+      <section id="pricing">
+        <div class="section-head">
+          <h2>Pricing</h2>
+          <p>Start free, upgrade to Premium whenever you're ready.</p>
+        </div>
+        <div class="pricing-grid">
+          <div class="price-card">
+            <h3>Free</h3>
+            <div class="price">฿0</div>
+            <p class="price-note">Free to use, forever.</p>
+            <ul>
+              <li>Static PNG welcome/goodbye cards</li>
+              <li>Your own server fonts</li>
+              <li>Automatic roles</li>
+              <li>Message builder</li>
+            </ul>
+            <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+               class="btn-block ghost" target="_blank" rel="noopener">Start free</a>
+          </div>
+          <div class="price-card premium">
+            <h3>Premium</h3>
+            <div class="price">฿89 <small>/ month</small></div>
+            <p class="price-note">Billed monthly in THB via Stripe. Cancel anytime with /premium.</p>
+            <ul>
+              <li>Everything in Free</li>
+              <li>Animated GIF welcome/goodbye cards</li>
+            </ul>
+            <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+               class="btn-block solid" target="_blank" rel="noopener">Add bot &amp; subscribe</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div class="wrap">
+        <div class="copyright">© <span id="year"></span> Milo Bot · Cavin Milo</div>
+        <div class="foot-links">
+          <a class="foot-link" href="/terms">Terms of Service</a>
+          <a class="foot-link" href="/privacy">Privacy Policy</a>
+          <a class="foot-link" href="mailto:cavinmilo@gmail.com">Contact</a>
+          <a class="social-icon" href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+             target="_blank" rel="noopener" aria-label="Add Milo Bot on Discord" title="Add Milo Bot on Discord">
+            <svg viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+          </a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    var ROLE_TYPE_STYLE = {
+      reaction: { bg: 'rgba(75,143,135,0.15)', border: '#4b8f87', badge: 'Free · up to 2', caption: 'Free forever — up to 2 reaction roles per panel.' },
+      menu:     { bg: 'rgba(244,184,96,0.15)', border: '#f4b860', badge: 'Premium', caption: 'Premium unlocks the dropdown style — tidy for long role lists.' },
+      button:   { bg: 'rgba(244,184,96,0.15)', border: '#f4b860', badge: 'Premium', caption: 'Premium unlocks button-style roles — the most tap-friendly layout.' }
+    };
+    function selectRoleType(type) {
+      ['reaction', 'menu', 'button'].forEach(function (t) {
+        var tab = document.getElementById('tab-' + t);
+        var mock = document.getElementById('dmock-' + t);
+        var active = (t === type);
+        var s = ROLE_TYPE_STYLE[t];
+        if (tab) { tab.style.background = active ? s.bg : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? s.border : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
+        if (mock) mock.hidden = !active;
+      });
+      var badge = document.getElementById('typeBadge'); var s2 = ROLE_TYPE_STYLE[type];
+      if (badge) { badge.textContent = s2.badge; badge.style.color = s2.border; badge.style.borderColor = s2.border; }
+      var cap = document.getElementById('typeCaption'); if (cap) cap.textContent = s2.caption;
+    }
+
+    var BUILDER_TIER_STYLE = {
+      free:    { bg: 'rgba(75,143,135,0.15)', border: '#4b8f87', badge: 'Free · 1 builder', caption: 'Free gives you 1 builder with a text + image block — enough for a simple announcement.' },
+      premium: { bg: 'rgba(244,184,96,0.15)', border: '#f4b860', badge: 'Premium', caption: 'Premium unlocks unlimited builders, multiple blocks, buttons, and @mentions for the full layout.' }
+    };
+    function selectBuilderTier(tier) {
+      ['free', 'premium'].forEach(function (t) {
+        var tab = document.getElementById('tab-builder-' + t);
+        var mock = document.getElementById('dmock-builder-' + t);
+        var active = (t === tier);
+        var s = BUILDER_TIER_STYLE[t];
+        if (tab) { tab.style.background = active ? s.bg : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? s.border : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
+        if (mock) mock.hidden = !active;
+      });
+      var badge = document.getElementById('typeBadge4'); var s2 = BUILDER_TIER_STYLE[tier];
+      if (badge) { badge.textContent = s2.badge; badge.style.color = s2.border; badge.style.borderColor = s2.border; }
+      var cap = document.getElementById('typeCaption4'); if (cap) cap.textContent = s2.caption;
+    }
+
+    var GIF_TIER_STYLE = {
+      free:    { color: '#4b8f87', tabBg: 'rgba(75,143,135,0.15)', badge: 'PNG', footer: 'milo bot · static background', caption: 'Free backgrounds support PNG, JPG, and WebP — sharp, lightweight, and always free.', overlay: false },
+      premium: { color: '#f4b860', tabBg: 'rgba(244,184,96,0.15)', badge: 'GIF', footer: 'milo bot · gif · premium', caption: 'Premium unlocks animated GIF backgrounds — same layout, now in motion.', overlay: true }
+    };
+    function selectGifTier(tier) {
+      ['free', 'premium'].forEach(function (t) {
+        var tab = document.getElementById('tab-gif-' + t);
+        var active = (t === tier);
+        var s = GIF_TIER_STYLE[t];
+        if (tab) { tab.style.background = active ? s.tabBg : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? s.color : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
+      });
+      var s2 = GIF_TIER_STYLE[tier];
+      var badge = document.getElementById('gifBadge'); if (badge) { badge.textContent = s2.badge; badge.style.background = s2.color; }
+      var wrap = document.getElementById('gifAvatarWrap'); if (wrap) { wrap.style.borderColor = s2.color; wrap.style.boxShadow = '0 0 24px ' + s2.color + '80'; }
+      var overlay = document.getElementById('gifPlayOverlay'); if (overlay) overlay.style.display = s2.overlay ? 'flex' : 'none';
+      var footer = document.getElementById('gifFooterLabel'); if (footer) { footer.textContent = s2.footer; footer.style.color = tier === 'premium' ? '#f4b860' : 'rgba(255,255,255,0.4)'; }
+      var cap = document.getElementById('gifCaption'); if (cap) cap.textContent = s2.caption;
+    }
+
+    var LANG_STYLE = {
+      th: { cmd: '/language lang: Thai', reply: '✅ เปลี่ยนภาษาบอทเป็น ไทย แล้ว', caption: 'Admins run `/language` to switch — every reply updates instantly, no re-setup needed.' },
+      en: { cmd: '/language lang: English', reply: '✅ Bot language changed to English.', caption: 'Same command, other direction — switch back to English just as fast.' }
+    };
+    function selectLangTier(lang) {
+      ['th', 'en'].forEach(function (l) {
+        var tab = document.getElementById('tab-lang-' + l);
+        var active = (l === lang);
+        if (tab) { tab.style.background = active ? 'rgba(74,90,168,0.15)' : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? '#4a5aa8' : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
+      });
+      var s = LANG_STYLE[lang];
+      var cmd = document.getElementById('langCmdPill'); if (cmd) cmd.textContent = s.cmd;
+      var reply = document.getElementById('langReplyText'); if (reply) reply.textContent = s.reply;
+      var cap = document.getElementById('langCaption'); if (cap) cap.textContent = s.caption;
+    }
+
+    function selectFeature(n) {
+      for (var i = 1; i <= 6; i++) {
+        var row = document.getElementById('row-' + i);
+        var desc = document.getElementById('desc-' + i);
+        var panel = document.getElementById('panel-' + i);
+        var active = (i === n);
+        if (row) row.classList.toggle('active', active);
+        if (desc) desc.hidden = !active;
+        if (panel) panel.hidden = !active;
+      }
+    }
+
+    (function () {
+      var input = document.getElementById('tryName');
+      var preview = document.getElementById('previewName');
+      if (!input || !preview) return;
+      input.addEventListener('input', function () {
+        var v = input.value.trim();
+        preview.textContent = v || 'Aiko';
+      });
+      input.addEventListener('click', function (e) { e.stopPropagation(); });
+    })();
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
