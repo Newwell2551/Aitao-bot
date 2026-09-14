@@ -26,10 +26,12 @@
       5. ปุ่มชวนเชิญบอทอีกรอบ
       6. Premium Showcase — ตัวอย่างข้อความพรีเมียมที่ประกอบจาก block จริงใน
          Builder ทั้งหมด (นิ่งๆ ไม่ต้องคลิก) + legend รายชื่อ block
-      7. 🆕 ส่วน Pricing + Footer จริง — ไม่มีในไฟล์ดีไซน์ที่ส่งมา (ไฟล์นั้นมีแค่
-         ส่วนฟีเจอร์) เอามาต่อท้ายเพราะเมนู "Pricing" ในหน้านี้ต้องมีที่ไปจริง
-         และเป็นข้อมูลจำเป็นตาม milo-bot-ai-build-prompt.md — ถ้ามีไฟล์ดีไซน์
-         Pricing แยกเฉพาะส่งมาทีหลัง จะเอามาแทนส่วนนี้ให้ตรงเป๊ะอีกที
+
+      [แก้ไขแล้ว] เดิมเคยต่อ Pricing + Footer เองไว้ท้ายหน้านี้ เพราะตอนนั้นยัง
+      ไม่มีไฟล์ดีไซน์ราคาจริง — ตอนนี้น้องหนาวส่ง Pricing-html.zip
+      (Pricing.dc.html) มาแล้ว เลยย้ายไปทำเป็นหน้าแยกต่างหาก public/pricing.html
+      แทน ตัดส่วน Pricing/Footer ที่เคยใส่ไว้ตรงนี้ออกทั้งหมด เมนู "Pricing"
+      เลยลิงก์ไป /pricing ตรงๆ แล้ว
 
     เดิมไฟล์ดีไซน์เป็น canvas ขนาดตายตัว 1440×1850px ของเครื่องมือออกแบบ แปลง
     เป็น responsive (สองคอลัมน์ฝั่งซ้าย/ขวา → เรียงซ้อนกันบนจอแคบ, แผงพรีวิว
@@ -123,7 +125,7 @@
     .cta-band .add-bot-btn-lg { margin-top: 18px; height: 50px; padding: 0 26px; border-radius: 4px; border: none; background: #4a5aa8; color: #f3f1fb; font-size: 14.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 9px; }
 
     /* ── Premium showcase ── */
-    .showcase { position: relative; z-index: 2; text-align: center; padding: 30px 0 10px; }
+    .showcase { position: relative; z-index: 2; text-align: center; padding: 30px 0 90px; }
     .showcase .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #f4b860; text-transform: uppercase; }
     .showcase h2 { font-size: clamp(21px, 2.6vw, 26px); font-weight: 800; color: #f9f8ff; margin: 12px 0 0; letter-spacing: -0.01em; }
     .showcase p { font-size: 13.5px; color: #9aa2c4; margin: 10px auto 0; line-height: 1.6; max-width: 520px; }
@@ -146,35 +148,6 @@
     .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 860px; margin: 44px auto 0; }
     .legend-chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 6px 13px; font-size: 11px; color: #c3c8e6; display: inline-flex; align-items: center; gap: 6px; }
     .legend-note { text-align: center; font-size: 12px; color: #6d7079; font-style: italic; margin: 18px 0 0; }
-
-    /* ── Pricing + Footer (ของจริง ไม่ได้อยู่ในไฟล์ดีไซน์) ── */
-    .below-fold { position: relative; z-index: 2; margin-top: 80px; border-top: 1px solid rgba(154,162,196,0.14); background: #090c18; }
-    .section-head { text-align: center; padding: 64px 0 40px; }
-    .section-head h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; margin: 0 0 10px; color: #f9f8ff; }
-    .section-head p { color: #9aa2c4; font-size: 15px; max-width: 460px; margin: 0 auto; }
-    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 22px; max-width: 700px; margin: 0 auto; padding-bottom: 72px; }
-    .price-card { background: rgba(19,26,46,0.6); border: 1px solid rgba(154,162,196,0.16); border-radius: 16px; padding: 30px 26px; }
-    .price-card.premium { border-color: #f4b860; position: relative; }
-    .price-card.premium::before { content: "Recommended"; position: absolute; top: -12px; right: 24px; background: #f4b860; color: #251803; font-size: 11.5px; font-weight: 800; padding: 4px 12px; border-radius: 999px; }
-    .price-card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #9aa2c4; margin: 0 0 8px; }
-    .price-card .price { font-size: 36px; font-weight: 800; margin: 0 0 4px; color: #f9f8ff; }
-    .price-card .price small { font-size: 14px; font-weight: 600; color: #9aa2c4; }
-    .price-card .price-note { font-size: 12px; color: #9aa2c4; margin: 0 0 22px; }
-    .price-card ul { list-style: none; padding: 0; margin: 0 0 26px; }
-    .price-card li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: #c3c8e6; margin-bottom: 11px; }
-    .price-card li::before { content: "✓"; color: #7783be; font-weight: 800; flex-shrink: 0; }
-    .price-card.premium li::before { color: #f4b860; }
-    .price-card .btn-block { width: 100%; height: 46px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: none; }
-    .price-card .btn-block.ghost { background: rgba(255,255,255,0.04); border: 1px solid rgba(154,162,196,0.3); color: #f3f1fb; }
-    .price-card .btn-block.solid { background: #4a5aa8; color: #f3f1fb; }
-    footer { border-top: 1px solid rgba(154,162,196,0.14); padding: 36px 0; }
-    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
-    footer .foot-links { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-    footer a.foot-link { color: #9aa2c4; font-size: 13px; }
-    footer a.foot-link:hover { color: #f3f1fb; }
-    footer .copyright { font-size: 13px; color: #9aa2c4; }
-    footer .social-icon { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(19,26,46,0.6); border: 1px solid rgba(154,162,196,0.2); }
-    footer .social-icon svg { width: 16px; height: 16px; fill: #9aa2c4; }
 
     @media (max-width: 900px) {
       .preview-col { position: static; max-width: 100%; }
@@ -218,7 +191,7 @@
       <div class="center-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/features" class="nav-link active">Features</a>
-        <a href="/features#pricing" class="nav-link">Pricing</a>
+        <a href="/pricing" class="nav-link">Pricing</a>
         <a href="/auth/login" class="nav-link">Dashboard</a>
       </div>
       <div class="right-actions">
@@ -518,59 +491,6 @@
     <div class="legend-note">Every block above is real — mix and match them yourself in the Layout Builder.</div>
   </div>
 
-  <!-- ═══ 🆕 Pricing + Footer จริง (ไม่มีในไฟล์ดีไซน์ที่ส่งมา — ดูคอมเมนต์บนสุด) ═══ -->
-  <div class="below-fold">
-    <div class="wrap">
-      <section id="pricing">
-        <div class="section-head">
-          <h2>Pricing</h2>
-          <p>Start free, upgrade to Premium whenever you're ready.</p>
-        </div>
-        <div class="pricing-grid">
-          <div class="price-card">
-            <h3>Free</h3>
-            <div class="price">฿0</div>
-            <p class="price-note">Free to use, forever.</p>
-            <ul>
-              <li>Static PNG welcome/goodbye cards</li>
-              <li>Your own server fonts</li>
-              <li>Automatic roles</li>
-              <li>Message builder</li>
-            </ul>
-            <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-               class="btn-block ghost" target="_blank" rel="noopener">Start free</a>
-          </div>
-          <div class="price-card premium">
-            <h3>Premium</h3>
-            <div class="price">฿89 <small>/ month</small></div>
-            <p class="price-note">Billed monthly in THB via Stripe. Cancel anytime with /premium.</p>
-            <ul>
-              <li>Everything in Free</li>
-              <li>Animated GIF welcome/goodbye cards</li>
-            </ul>
-            <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-               class="btn-block solid" target="_blank" rel="noopener">Add bot &amp; subscribe</a>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <footer>
-      <div class="wrap">
-        <div class="copyright">© <span id="year"></span> Milo Bot · Cavin Milo</div>
-        <div class="foot-links">
-          <a class="foot-link" href="/terms">Terms of Service</a>
-          <a class="foot-link" href="/privacy">Privacy Policy</a>
-          <a class="foot-link" href="mailto:cavinmilo@gmail.com">Contact</a>
-          <a class="social-icon" href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-             target="_blank" rel="noopener" aria-label="Add Milo Bot on Discord" title="Add Milo Bot on Discord">
-            <svg viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-          </a>
-        </div>
-      </div>
-    </footer>
-  </div>
-
   <script>
     var ROLE_TYPE_STYLE = {
       reaction: { bg: 'rgba(75,143,135,0.15)', border: '#4b8f87', badge: 'Free · up to 2', caption: 'Free forever — up to 2 reaction roles per panel.' },
@@ -666,8 +586,6 @@
       });
       input.addEventListener('click', function (e) { e.stopPropagation(); });
     })();
-
-    document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 </body>
 </html>

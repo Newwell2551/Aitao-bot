@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milo Bot — Pricing</title>
+  <meta name="description" content="Milo Bot pricing: free forever, or upgrade to Premium for animated GIF cards, unlimited builders, unlimited role setups, and @mentions in messages." />
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    หน้า Pricing (public/pricing.html) — หน้าใหม่ที่แยกออกมาต่างหาก ตามที่
+    น้องหนาวสั่ง: "ที่เลื่อนลงไปข้างล่างสุด แล้วเจอพวกราคา (ใน features.html)
+    เอาออกไปเลยดีกว่า เพราะเรามีหน้า pricing ที่ออกแบบไว้แล้ว" สร้างตามไฟล์
+    ดีไซน์อ้างอิงจริง Pricing.dc.html (จาก Pricing-html.zip ที่ส่งมา) แทบทั้งหมด
+
+    โครงสร้างหน้า:
+      1. แถบพื้นหลังภาพเบลอด้านบน เหมือนหน้า Features แต่จุดเรืองแสง (radial
+         glow) เป็นสีทองอยู่มุมขวาบนแทน (ไฟล์ดีไซน์ใช้สีทองเพราะเพจนี้เน้น
+         Premium)
+      2. Nav แคปซูลกระจกฝ้าเหมือน 2 หน้าก่อน เมนู "Pricing" ขีดเส้นใต้บอกว่าอยู่
+         หน้านี้ ลิงก์ไปหน้าอื่นครบ (Home/Features/Dashboard)
+      3. หัวข้อ + ปุ่มสลับสกุลเงิน EN(USD)/TH(THB) — จุดนี้ไม่ใช่แค่ของตกแต่ง
+         แต่ตรงกับพฤติกรรมจริงของบอท: ปุ่ม /premium ในดิสคอร์ดจะโชว์ราคาคนละ
+         แบบตามภาษาเซิร์ฟ (ดู en.json/th.json → "Subscribe to Premium ($2.99)"
+         กับ "สมัครพรีเมียม (89฿)") เลยเอาตัวเลขจริงจากโค้ดมาใส่ตรงๆ ไม่ได้
+         เดาเอง
+      4. การ์ดราคา 2 ใบ (Free / Premium) — รายการสิทธิ์แต่ละอันก็อปมาจาก
+         ข้อความจริงใน en.json (benefits.free_body / premium_body) เพื่อให้
+         ตรงกับสิ่งที่บอทโชว์จริงในคำสั่ง /premium ไม่ใช่ข้อความที่เดาขึ้นเอง
+      5. ข้อความปิดท้าย "Cancel anytime from /premium → Manage Subscription"
+
+    ⚠️ จุดที่ตัดสินใจเอง อยากให้น้องหนาวช่วยยืนยัน:
+      1. ปุ่ม "Subscribe to Premium" บนเว็บ — ในไฟล์ดีไซน์เป็นปุ่มกดสมัครจริงๆ
+         แต่ในระบบจริง การสมัครพรีเมียมต้อง "เพิ่มบอทเข้าเซิร์ฟก่อน แล้วพิมพ์
+         /premium ในดิสคอร์ด" เท่านั้น (ลิงก์ Stripe checkout ผูกกับ guild id
+         เฉพาะเจาะจง สร้างจากเว็บสาธารณะแบบนี้ไม่ได้) เลยให้ปุ่มนี้ลิงก์ไปหน้า
+         เชิญบอทเหมือนปุ่ม Free ไปก่อน (ข้อความปุ่มยังคงเป็น "Subscribe to
+         Premium" ตามดีไซน์ แต่การกดจริงคือไปเพิ่มบอท ไม่ใช่เปิดหน้าจ่ายเงิน
+         ทันที) ถ้าต้องการเปลี่ยนข้อความปุ่มให้ตรงกับพฤติกรรมจริงมากขึ้น (เช่น
+         "Add Bot to Subscribe") บอกได้เลยครับ
+      2. เอาเมนู "Marketplace"/"Feed" ออกจาก nav เหมือน 2 หน้าก่อน (ยังไม่มี
+         จริง)
+      3. ไม่มี Footer ในหน้านี้ — ไฟล์ดีไซน์ทั้ง 3 ไฟล์ที่ได้มา (Landing,
+         Features, Pricing) ไม่มี Footer อยู่เลยสักไฟล์ เลยไม่ได้ใส่ ถ้าต้องการ
+         ให้มี Footer (ลิงก์ Terms/Privacy/Contact) ไว้ที่หน้าไหนสักหน้า บอกได้
+         เลยครับ เดี๋ยวจัดให้
+
+    เดิมไฟล์ดีไซน์เป็น canvas ขนาดตายตัว 1440×900px แปลงเป็น responsive (การ์ด
+    ราคา 2 ใบ เรียงข้างกันบนจอกว้าง → เรียงซ้อนกันบนจอแคบ)
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <style>
+    * { box-sizing: border-box; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 300; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cy_gIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W__XJnvUD7dzB2KYNoY.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Ck_kIaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2Cv_4IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'MiloEN'; font-style: normal; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/prompt/v12/-W_8XJnvUD7dzB2C2_8IaWMr.ttf) format('truetype'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: #05070f; color: #f3f1fb; font-family: 'MiloEN', 'Athiti', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif; line-height: 1.6; min-height: 100vh; }
+    a { color: #7783be; text-decoration: none; }
+    a.plain { color: inherit; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+    .pill-btn { transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; cursor: pointer; }
+    .pill-btn:hover { transform: translateY(-1px); }
+    .pill-btn.primary:hover { box-shadow: 0 8px 24px rgba(74,90,168,0.4); }
+    .nav-link { transition: color .15s ease; color: #c3c8e6; }
+    .nav-link:hover { color: #f3f1fb; }
+
+    /* ── แถบภาพเบลอด้านหลัง (เหมือนหน้า Features แต่จุดเรืองแสงเป็นสีทอง
+       มุมขวาบน ตามไฟล์ดีไซน์ Pricing.dc.html) ── */
+    .top-glow { position: absolute; top: 0; left: 0; right: 0; height: 760px; overflow: hidden; z-index: 0; pointer-events: none; }
+    .top-glow img { position: absolute; top: -40px; left: 50%; transform: translateX(-50%) scale(1.06); width: 110%; min-width: 1200px; height: 800px; object-fit: cover; object-position: 72% 22%; filter: blur(30px) saturate(85%); }
+    .top-glow .wash { position: absolute; inset: 0; background: rgba(5,7,15,0.8); }
+    .top-glow .radial { position: absolute; inset: 0; background: radial-gradient(ellipse 900px 500px at 78% 0%, rgba(244,184,96,0.1), transparent 65%); }
+
+    /* ── NAV — เหมือน 2 หน้าก่อนเป๊ะๆ ── */
+    .site-nav-wrap { position: sticky; top: 16px; z-index: 20; padding: 0 24px; margin-bottom: 8px; }
+    .site-nav {
+      max-width: 1080px; margin: 16px auto 0;
+      background: rgba(19,26,46,0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
+      backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 8px 10px 8px 20px; flex-wrap: wrap;
+    }
+    .site-nav .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+    .site-nav .brand img { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; border: 1.5px solid rgba(74,90,168,0.5); }
+    .site-nav .brand span { font-size: 16px; font-weight: 700; color: #f3f1fb; }
+    .site-nav .center-links { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+    .site-nav .center-links .nav-link { font-size: 13.5px; }
+    .site-nav .center-links .nav-link.active { color: #f3f1fb; border-bottom: 1.5px solid #4a5aa8; padding-bottom: 2px; }
+    .site-nav .right-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+    .lang-btn { height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(154,162,196,0.3); background: rgba(255,255,255,0.04); color: #f3f1fb; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .add-bot-btn { height: 42px; padding: 0 20px; border-radius: 999px; border: none; background: #4a5aa8; color: #f3f1fb; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+    /* ── หัวข้อหน้า ── */
+    .page-head { position: relative; z-index: 2; text-align: center; padding: 56px 0 0; }
+    .page-head .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #f4b860; text-transform: uppercase; }
+    .page-head h1 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; color: #f9f8ff; margin: 14px 0 0; letter-spacing: -0.01em; }
+    .page-head p { font-size: 14.5px; color: #9aa2c4; margin-top: 10px; line-height: 1.6; max-width: 480px; margin-left: auto; margin-right: auto; }
+
+    /* ── ปุ่มสลับสกุลเงิน EN(USD)/TH(THB) — ตรงกับ /language ของเซิร์ฟจริง ── */
+    .curr-toggle-row { position: relative; z-index: 2; text-align: center; margin-top: 26px; }
+    .curr-toggle { display: inline-flex; gap: 6px; background: rgba(19,26,46,0.5); border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 4px; backdrop-filter: blur(16px); }
+    .curr-tab { cursor: pointer; padding: 7px 16px; border-radius: 999px; background: transparent; border: 1px solid transparent; font-size: 12px; color: #9aa2c4; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+    .curr-tab .curr-code { font-size: 9px; font-weight: 800; letter-spacing: 0.04em; opacity: 0.7; }
+    .curr-hint { font-size: 11px; color: #6d7079; margin-top: 8px; font-style: italic; }
+
+    /* ── การ์ดราคา 2 ใบ ── */
+    .pricing-layout { position: relative; z-index: 2; display: flex; justify-content: center; gap: 24px; padding: 44px 24px 20px; flex-wrap: wrap; }
+    .price-card {
+      flex: 1 1 380px; max-width: 420px; position: relative;
+      background: rgba(19,26,46,0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px;
+      padding: 28px; backdrop-filter: blur(24px) saturate(140%); box-shadow: 0 24px 50px rgba(0,0,0,0.35);
+      transition: transform .15s ease;
+    }
+    .price-card.premium { border-color: rgba(244,184,96,0.4); box-shadow: 0 30px 60px rgba(0,0,0,0.4), 0 0 50px rgba(244,184,96,0.1); }
+    .price-card .ribbon {
+      position: absolute; top: -14px; right: 26px;
+      background: linear-gradient(90deg,#f4b860,#e2a04e); color: #0a0e1a;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 999px; box-shadow: 0 6px 16px rgba(244,184,96,0.4);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .price-card .tier-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #66a099; }
+    .price-card.premium .tier-label { color: #f4b860; }
+    .price-card .amount-row { display: flex; align-items: baseline; gap: 6px; margin-top: 12px; }
+    .price-card .amount { font-size: 40px; font-weight: 800; color: #f9f8ff; }
+    .price-card .suffix { font-size: 13px; color: #9aa2c4; }
+    .price-card .desc { font-size: 12.5px; color: #9aa2c4; margin-top: 8px; line-height: 1.6; }
+    .price-card .cta-btn {
+      margin-top: 20px; width: 100%; height: 44px; border-radius: 4px; border: none;
+      font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    }
+    .price-card .cta-btn.ghost { border: 1px solid rgba(154,162,196,0.35); background: rgba(255,255,255,0.04); color: #f3f1fb; }
+    .price-card .cta-btn.gold { background: linear-gradient(90deg,#f4b860,#e2a04e); color: #0a0e1a; }
+    .price-card .divider { margin-top: 22px; height: 1px; background: rgba(255,255,255,0.1); }
+    .price-card .plus-label { margin-top: 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: #9aa2c4; text-transform: uppercase; }
+    .price-card .feat-list { margin-top: 14px; display: flex; flex-direction: column; gap: 13px; }
+    .price-card .feat-list.free-list { margin-top: 18px; }
+    .price-card .feat-row { display: flex; gap: 10px; align-items: flex-start; }
+    .price-card .feat-row .ic { color: #66a099; flex: 0 0 auto; margin-top: 1px; }
+    .price-card.premium .feat-row .ic { color: #f4b860; }
+    .price-card .feat-row span { font-size: 12.5px; color: #dbdee1; line-height: 1.55; }
+    .price-card .feat-row .sub { color: #9aa2c4; }
+
+    .price-footnote { position: relative; z-index: 2; text-align: center; font-size: 11.5px; color: #6d7079; padding: 26px 24px 90px; }
+    .price-footnote span { color: #9aa2c4; }
+
+    @media (max-width: 900px) {
+      .site-nav .center-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <svg width="0" height="0" style="position:absolute;">
+    <defs>
+      <symbol id="ic-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 2.5l2.6 6.2 6.7.5-5.1 4.4 1.6 6.6L12 16.8l-5.8 3.4 1.6-6.6-5.1-4.4 6.7-.5L12 2.5z" fill="currentColor"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="top-glow">
+    <img src="/images/hero-crisp.jpg" alt="" />
+    <div class="wash"></div>
+    <div class="radial"></div>
+  </div>
+
+  <div class="site-nav-wrap">
+    <nav class="site-nav">
+      <a href="/" class="brand plain">
+        <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+        <span>Milo Bot</span>
+      </a>
+      <div class="center-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/features" class="nav-link">Features</a>
+        <a href="/pricing" class="nav-link active">Pricing</a>
+        <a href="/auth/login" class="nav-link">Dashboard</a>
+      </div>
+      <div class="right-actions">
+        <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+          EN
+        </button>
+        <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+           class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
+          Add Bot
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="page-head">
+    <div class="eyebrow">Pricing</div>
+    <h1>Simple pricing, real limits</h1>
+    <p>Every number below is pulled straight from the bot's code — no rounding, no fine print.</p>
+  </div>
+
+  <div class="curr-toggle-row">
+    <div class="curr-toggle">
+      <div id="tab-curr-en" class="curr-tab" onclick="selectCurrency('en')" style="background:rgba(74,90,168,0.18);border-color:#4a5aa8;color:#f3f1fb;">
+        <span class="curr-code">EN</span> English server · USD
+      </div>
+      <div id="tab-curr-th" class="curr-tab" onclick="selectCurrency('th')">
+        <span class="curr-code">TH</span> Thai server · THB
+      </div>
+    </div>
+    <div class="curr-hint">Matches your server's real /language setting.</div>
+  </div>
+
+  <div class="pricing-layout">
+    <!-- Free -->
+    <div class="price-card">
+      <div class="tier-label">Free</div>
+      <div class="amount-row">
+        <span class="amount">$0</span>
+        <span class="suffix">forever</span>
+      </div>
+      <div class="desc">Everything you need to get a server started — no card required.</div>
+
+      <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+         class="cta-btn ghost pill-btn plain" target="_blank" rel="noopener">Add Milo Bot to Server</a>
+
+      <div class="divider"></div>
+
+      <div class="feat-list free-list">
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>Welcome &amp; Goodbye cards <span class="sub">— PNG/JPG/WebP backgrounds</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>1 Role Setup <span class="sub">— Reaction type, up to 2 roles</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>1 Message Builder <span class="sub">— text + image block</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>Up to 20 custom fonts <span class="sub">per server</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>Thai / English language switch</span></div>
+      </div>
+    </div>
+
+    <!-- Premium -->
+    <div class="price-card premium">
+      <div class="ribbon"><svg width="10" height="10"><use href="#ic-star"/></svg> Most Popular</div>
+
+      <div class="tier-label">Premium</div>
+      <div class="amount-row">
+        <span id="priceAmount" class="amount">$2.99</span>
+        <span id="priceSuffix" class="suffix">/ month</span>
+      </div>
+      <div class="desc">Everything in Free, plus the full Layout Builder and unlimited setups.</div>
+
+      <!-- ปุ่มนี้ลิงก์ไปหน้าเชิญบอท ไม่ใช่หน้าจ่ายเงินตรงๆ เพราะการสมัครพรีเมียม
+           จริงต้องทำผ่านคำสั่ง /premium ในดิสคอร์ดหลังเพิ่มบอทแล้วเท่านั้น
+           (ดูคอมเมนต์จุดที่ 1 ด้านบนสุดของไฟล์) -->
+      <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+         class="cta-btn gold pill-btn primary plain" target="_blank" rel="noopener">
+        <span id="subscribeLabel">Subscribe to Premium ($2.99) ☕</span>
+      </a>
+
+      <div class="divider"></div>
+
+      <div class="plus-label">Everything in Free, plus:</div>
+      <div class="feat-list">
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Animated GIF backgrounds</span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Unlimited Builders <span class="sub">+ full Layout Builder access</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Unlimited Role Setups <span class="sub">+ unlock Menu/Button types</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Tag users/roles/channels <span class="sub">(@mentions) in messages</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="price-footnote">Cancel anytime from <span>/premium → Manage Subscription</span> — no lock-in.</div>
+
+  <script>
+    // สลับตัวเลขราคาให้ตรงกับ /language ของเซิร์ฟจริง (ดูคอมเมนต์บนสุดของไฟล์)
+    // ตัวเลข/ข้อความก็อปมาจาก en.json กับ th.json ตรงๆ ไม่ได้พิมพ์เดาเอง
+    var CURRENCY_STYLE = {
+      en: { amount: '$2.99', suffix: '/ month', subscribe: 'Subscribe to Premium ($2.99) ☕' },
+      th: { amount: '฿89', suffix: '/ เดือน', subscribe: 'สมัครพรีเมียม (89฿) ☕' }
+    };
+
+    function selectCurrency(lang) {
+      ['en', 'th'].forEach(function (l) {
+        var tab = document.getElementById('tab-curr-' + l);
+        var active = (l === lang);
+        if (tab) {
+          tab.style.background = active ? 'rgba(74,90,168,0.18)' : 'transparent';
+          tab.style.borderColor = active ? '#4a5aa8' : 'transparent';
+          tab.style.color = active ? '#f3f1fb' : '#9aa2c4';
+        }
+      });
+      var s = CURRENCY_STYLE[lang];
+      var amt = document.getElementById('priceAmount');
+      if (amt) amt.textContent = s.amount;
+      var suf = document.getElementById('priceSuffix');
+      if (suf) suf.textContent = s.suffix;
+      var sub = document.getElementById('subscribeLabel');
+      if (sub) sub.textContent = s.subscribe;
+    }
+  </script>
+</body>
+</html>
