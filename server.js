@@ -31,9 +31,9 @@ const crypto = require('crypto');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
-const { TextDisplayBuilder, MessageFlags } = require('discord.js');
+const { TextDisplayBuilder, MessageFlags, ChannelType } = require('discord.js');
 const stripe = require('./utils/stripeClient');
-const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo } = require('./utils/tierManager');
+const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo, isPremiumGuild } = require('./utils/tierManager');
 const { getGuildLanguage } = require('./utils/languageStorage');
 const { createTranslator } = require('./utils/i18n');
 // 🆕 หน้า Overview ของแดชบอร์ด (task #15) — เช็กลิสต์เริ่มต้นใช้งาน 6 ข้อ + พรีวิวการ์ด
@@ -42,12 +42,18 @@ const { createTranslator } = require('./utils/i18n');
 // utils/renderOverview.js
 const { renderOverviewPage } = require('./utils/renderOverview');
 const { renderComingSoonPage } = require('./utils/dashboardShell');
-const { loadWelcomeConfig } = require('./utils/welcomeStorage');
+const { loadWelcomeConfig, saveWelcomeConfig } = require('./utils/welcomeStorage');
 const { loadGoodbyeConfig } = require('./utils/goodbyeStorage');
 const { getGuildFonts } = require('./utils/fontStorage');
 const { listSetups } = require('./utils/roleSetupStorage');
 const { listDrafts } = require('./utils/builderStorage');
 const { generateMemberCardImage } = require('./utils/generateMemberCardImage');
+// 🆕 หน้า Welcome Card จริง (task #16) — ตัวแก้ไขการ์ดต้อนรับบนเว็บ คู่ขนานกับคำสั่ง
+// /welcome-setup ใน Discord ดูเหตุผล/สคีมาละเอียดทุก field ในคอมเมนต์หัวไฟล์นั้น
+const { renderWelcomeCardPage } = require('./utils/renderWelcomeCard');
+// resolveCustomEmojis แปลง :ชื่ออิโมจิ: ที่พิมพ์ในกล่องข้อความ เป็น <:ชื่อ:id> จริง ก่อน
+// บันทึก — เรียกตอน save เท่านั้น (ตัวเดียวกับที่ /welcome-setup เรียกตอนกด "บันทึก")
+const { resolveCustomEmojis } = require('./utils/resolveCustomEmojis');
 // การ์ดพรีเมียมตัวเดียวกับที่ /premium ใช้ (ดูคอมเมนต์ในไฟล์นั้นสำหรับเหตุผล
 // ที่แยกออกมาเป็น util กลาง) เอามาใช้ตรงนี้เพื่อให้ DM แจ้งเตือนตอนสมัคร
 // สำเร็จ หน้าตาตรงกับการ์ดใน /premium เป๊ะๆ ไม่ต้องคอยแก้พร้อมกัน 2 ที่
@@ -459,12 +465,188 @@ function createWebhookServer(client) {
     renderCardPreview(req, res, { loadConfig: loadGoodbyeConfig, kind: 'goodbye' });
   });
 
-  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 7 หน้าที่ยังไม่ได้สร้างจริง (task #16-22 ทั้งหมด รวม
-  // Premium ด้วย — ยังไม่มี route จริงของหน้านั้นเลยตอนนี้) กันไม่ให้เมนู sidebar/เช็กลิสต์ของ
-  // หน้า Overview กดแล้วเจอ 404 เฉยๆ ระหว่างที่ยังทยอยสร้างทีละหน้าตามแผน — แต่ละเส้นทางในนี้
-  // จะถูกแทนที่ด้วย route จริงทีละหน้าเรื่อยๆ ต่อจากนี้ (ลบออกจากลิสต์นี้ทันทีที่หน้านั้นมีของจริง)
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 หน้า Welcome Card (task #16) — 3 route: เปิดหน้าแก้ไข / พรีวิวสด (ระหว่างแก้ ยัง
+  // ไม่ได้บันทึก) / บันทึกจริง ดูสคีมา field ทั้งหมด + ที่มาของค่า validate แต่ละอันในคอมเมนต์
+  // หัวไฟล์ utils/renderWelcomeCard.js (ยืนยันจากโค้ดจริงของ commands/welcome-setup.js +
+  // utils/canvasDrawHelpers.js ก่อนเขียน ไม่ได้เดาช่วงค่าเอง)
+  // ─────────────────────────────────────────────────────────────────────
+
+  // ค่าเริ่มต้นเดียวกับ DEFAULT_CONFIG ใน commands/welcome-setup.js เป๊ะๆ (คัดลอกมา เพราะ
+  // ไฟล์นั้นไม่ได้ export ค่านี้ออกมาให้ใช้ร่วม) ใช้ตอนเซิร์ฟนี้ยังไม่เคยตั้งค่าการ์ดต้อนรับเลย
+  const WELCOME_DEFAULT_CONFIG = {
+    enabled: false,
+    channelId: null,
+    backgroundUrl: null,
+    overlayOpacity: 50,
+    avatarEnabled: true,
+    avatarX: 50,
+    avatarY: 33,
+    avatarRadius: 19,
+    textBlocks: [{ id: 'tb_default', content: 'Welcome {username}!', x: 50, y: 72, size: 12, bold: false, fontStyle: 'default' }],
+    greetingText: '{user}',
+  };
+  // ⚠️ ห้ามใช้ WELCOME_DEFAULT_CONFIG ตรงๆ หรือ { ...WELCOME_DEFAULT_CONFIG } เฉยๆ — ก็อปปี้
+  // ตื้นแบบนั้น textBlocks (array ข้างใน) จะยังชี้วัตถุก้อนเดิมอยู่ดี แก้เซิร์ฟหนึ่งจะไปเปื้อน
+  // เซิร์ฟอื่นที่ยังไม่เคยตั้งค่าเหมือนกัน (บัคจริงที่เคยเกิดกับต้นฉบับ commands/welcome-setup.js
+  // มาก่อนแล้ว — ดูคอมเมนต์ cloneDefaultConfig() ในไฟล์นั้น) ฟังก์ชันนี้เลย deep-copy เฉพาะจุดเสี่ยง
+  function cloneWelcomeDefaultConfig() {
+    return { ...WELCOME_DEFAULT_CONFIG, textBlocks: WELCOME_DEFAULT_CONFIG.textBlocks.map((b) => ({ ...b })) };
+  }
+
+  // แปลง config ที่โหลดจากไฟล์จริงให้ "ครบทุก field" เสมอ (เผื่อไฟล์เก่าที่บันทึกไว้ตั้งแต่ก่อน
+  // มี field ใหม่บางอัน เช่น greetingText) + normalize fontStyle เก่าแบบ 'custom' ให้เป็น
+  // 'customFont:<id>' ก่อนส่งให้หน้าเว็บ (ใช้ normalizeFontStyleForPreview ตัวเดียวกับที่ประกาศ
+  // ไว้แล้วด้านบนสำหรับพรีวิวของหน้า Overview — logic เดียวกันเป๊ะ ไม่ต้องเขียนซ้ำ)
+  function normalizeLoadedWelcomeConfig(saved, guildId) {
+    const base = cloneWelcomeDefaultConfig();
+    const textBlocks = (Array.isArray(saved.textBlocks) && saved.textBlocks.length > 0 ? saved.textBlocks : base.textBlocks)
+      .map((b) => ({ ...b, fontStyle: normalizeFontStyleForPreview(b.fontStyle, guildId) }));
+    return { ...base, ...saved, textBlocks };
+  }
+
+  app.get('/dashboard/:guildId/welcome', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const saved = loadWelcomeConfig(guildId);
+    const config = saved ? normalizeLoadedWelcomeConfig(saved, guildId) : cloneWelcomeDefaultConfig();
+
+    // ช่องข้อความจริงของเซิร์ฟนี้ (แค่ประเภท "ข้อความ" — GuildText — ตรงกับที่ ChannelSelectMenu
+    // ของ /welcome-setup จำกัดไว้เป๊ะๆ addChannelTypes(ChannelType.GuildText))
+    const channels = guild.channels.cache
+      .filter((c) => c.type === ChannelType.GuildText)
+      .map((c) => ({ id: c.id, name: c.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+
+    const customFonts = getGuildFonts(guildId).map((f) => ({ id: f.id, label: f.originalName || f.family }));
+
+    res.send(renderWelcomeCardPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      config,
+      channels,
+      customFonts,
+      isPremium: isPremiumGuild(guildId),
+    }));
+  });
+
+  // ตรวจ/แปลง draft ที่ส่งมาจากฟอร์มให้ "ปลอดภัยเสมอ" — ใช้กับทั้งพรีวิว (ยอมมากหน่อย ไม่ error
+  // ใส่ค่าพังแค่ clamp กลับเข้าช่วงที่ใช้ได้) และก่อนบันทึกจริง (ใช้ร่วมกับ validateWelcomeConfig
+  // ด้านล่างอีกที) กัน request ที่แต่งเองส่ง body ประหลาดๆ มาไม่ให้ทำให้ generateMemberCardImage()
+  // throw หรือ NaN พังกลางทาง
+  function sanitizeWelcomeDraft(body, fallback) {
+    const b = body && typeof body === 'object' ? body : {};
+    const clampInt = (raw, min, max, def) => {
+      const n = parseInt(raw, 10);
+      if (Number.isNaN(n)) return def;
+      return Math.max(min, Math.min(max, n));
+    };
+    const rawBlocks = Array.isArray(b.textBlocks) && b.textBlocks.length > 0 ? b.textBlocks : fallback.textBlocks;
+    const textBlocks = rawBlocks.slice(0, 12).map((blk, i) => ({
+      id: typeof blk?.id === 'string' && blk.id ? blk.id.slice(0, 80) : `tb_${i}`,
+      content: typeof blk?.content === 'string' ? blk.content.slice(0, 500) : '',
+      x: clampInt(blk?.x, 0, 100, 50),
+      y: clampInt(blk?.y, 0, 100, 50),
+      size: clampInt(blk?.size, 4, 25, 10),
+      bold: Boolean(blk?.bold),
+      fontStyle: typeof blk?.fontStyle === 'string' && blk.fontStyle ? blk.fontStyle.slice(0, 80) : 'default',
+    }));
+    return {
+      enabled: Boolean(b.enabled),
+      channelId: typeof b.channelId === 'string' && b.channelId ? b.channelId : null,
+      backgroundUrl: typeof b.backgroundUrl === 'string' && b.backgroundUrl.trim() ? b.backgroundUrl.trim().slice(0, 2000) : null,
+      overlayOpacity: clampInt(b.overlayOpacity, 0, 100, fallback.overlayOpacity),
+      avatarEnabled: b.avatarEnabled !== undefined ? Boolean(b.avatarEnabled) : fallback.avatarEnabled,
+      avatarX: clampInt(b.avatarX, 0, 100, fallback.avatarX),
+      avatarY: clampInt(b.avatarY, 0, 100, fallback.avatarY),
+      avatarRadius: clampInt(b.avatarRadius, 5, 45, fallback.avatarRadius),
+      textBlocks,
+      greetingText: typeof b.greetingText === 'string' ? b.greetingText.slice(0, 2000) : fallback.greetingText,
+    };
+  }
+
+  // 🆕 พรีวิวสดระหว่างแก้ไข (ยังไม่ได้กด "บันทึก") — รับ draft ปัจจุบันจากฟอร์ม เรนเดอร์ด้วย
+  // ฟังก์ชันจริงตัวเดียวกับที่ใช้พรีวิวใน Discord แล้วส่งรูป PNG จริงกลับไปโชว์ทันที ไม่มีการ
+  // บันทึกอะไรลงไฟล์ตรงนี้เลย (บันทึกจริงต้องกด "บันทึก" ยิงไป route POST ด้านล่างแยกต่างหาก)
+  app.post('/dashboard/:guildId/welcome/preview', requireAuth, requireGuildAccess, express.json({ limit: '512kb' }), async (req, res) => {
+    const { guildId } = req.params;
+    const draft = sanitizeWelcomeDraft(req.body, cloneWelcomeDefaultConfig());
+    try {
+      const previewUser = await client.users.fetch(req.session.user.id);
+      const guildFonts = getGuildFonts(guildId);
+      const customFonts = guildFonts.map((f) => ({ id: f.id, family: f.family, path: f.path }));
+      const previewConfig = {
+        ...draft,
+        textBlocks: draft.textBlocks.map((block) => ({
+          ...block,
+          content: (block.content || '').replace('{username}', previewUser.username),
+        })),
+        customFonts,
+      };
+      const result = await generateMemberCardImage(previewUser, previewConfig);
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-store');
+      res.send(result.buffer);
+    } catch (err) {
+      console.error(`[dashboard] พรีวิวการ์ดต้อนรับ (ระหว่างแก้ไข ยังไม่บันทึก) ของเซิร์ฟ ${guildId} ไม่สำเร็จ:`, err);
+      res.status(500).send('Failed to render preview.');
+    }
+  });
+
+  // ตรวจสอบ "เข้มงวด" ก่อนบันทึกจริง — ใช้ช่วงค่าเดียวกับที่โมดัลจริงใน commands/welcome-setup.js
+  // validate ทุกจุด (x/y 0-100, avatarRadius 5-45, size 4-25, overlayOpacity 0-100) + กัน GIF
+  // สำหรับเซิร์ฟที่ไม่ใช่ Premium (ของจริงบล็อกไม่ให้บันทึกเลย ไม่ใช่แค่เงียบๆ ดาวน์เกรดให้ —
+  // ดูคอมเมนต์อ้างอิง commands/welcome-setup.js บรรทัด 1354-1362 ที่ยืนยันพฤติกรรมนี้)
+  function validateWelcomeConfig(body, { guildId }) {
+    const draft = sanitizeWelcomeDraft(body, cloneWelcomeDefaultConfig());
+    const errors = [];
+
+    if (draft.channelId) {
+      const channel = client.guilds.cache.get(guildId)?.channels.cache.get(draft.channelId);
+      if (!channel || channel.type !== ChannelType.GuildText) {
+        errors.push('The selected channel is not valid — please pick a text channel from the list.');
+      }
+    }
+
+    if (draft.backgroundUrl) {
+      let validUrl = false;
+      try { new URL(draft.backgroundUrl); validUrl = true; } catch { /* invalid URL */ }
+      if (!validUrl || !/\.(png|jpe?g|webp|gif)(?:[?#]|$)/i.test(draft.backgroundUrl)) {
+        errors.push('Background URL must be a direct link ending in .png, .jpg, .webp or .gif.');
+      } else if (/\.gif(?:[?#]|$)/i.test(draft.backgroundUrl) && !isPremiumGuild(guildId)) {
+        errors.push('Animated .gif backgrounds require Premium — upgrade from the Premium page, or use a .png/.jpg/.webp instead.');
+      }
+    }
+
+    if (errors.length > 0) return { ok: false, errors };
+    return { ok: true, config: draft };
+  }
+
+  // 🆕 บันทึกจริง — validate ผ่านแล้วค่อยแปลง :ชื่ออิโมจิ: → <:ชื่อ:id> จริง (resolveCustomEmojis
+  // ตัวเดียวกับที่ /welcome-setup เรียกตอนกด "บันทึก" ในข้อความทักทาย + เนื้อหาบล็อก) แล้วค่อย
+  // saveWelcomeConfig() ลงไฟล์จริง — ไม่มีอะไรถูกบันทึกก่อนหน้านี้เลยจนกว่าจะถึงจุดนี้
+  app.post('/dashboard/:guildId/welcome', requireAuth, requireGuildAccess, express.json({ limit: '512kb' }), (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const result = validateWelcomeConfig(req.body, { guildId });
+    if (!result.ok) {
+      return res.status(400).json({ errors: result.errors });
+    }
+    const config = result.config;
+    config.greetingText = resolveCustomEmojis(config.greetingText, guild);
+    config.textBlocks = config.textBlocks.map((block) => ({ ...block, content: resolveCustomEmojis(block.content, guild) }));
+    saveWelcomeConfig(guildId, config);
+    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) บันทึกการ์ดต้อนรับของเซิร์ฟ ${guildId} แล้ว`);
+    res.json({ ok: true });
+  });
+
+  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 6 หน้าที่ยังไม่ได้สร้างจริง (task #17-22 — Welcome Card
+  // มี route จริงแล้วด้านบน จึงตัดออกจากลิสต์นี้) กันไม่ให้เมนู sidebar/เช็กลิสต์ของหน้า Overview
+  // กดแล้วเจอ 404 เฉยๆ ระหว่างที่ยังทยอยสร้างทีละหน้าตามแผน — แต่ละเส้นทางในนี้จะถูกแทนที่ด้วย
+  // route จริงทีละหน้าเรื่อยๆ ต่อจากนี้ (ลบออกจากลิสต์นี้ทันทีที่หน้านั้นมีของจริง)
   const COMING_SOON_PAGES = [
-    { path: 'welcome', key: 'welcome', label: 'Welcome Card' },
     { path: 'goodbye', key: 'goodbye', label: 'Goodbye Card' },
     { path: 'fonts', key: 'fonts', label: 'Fonts' },
     { path: 'roles', key: 'roles', label: 'Role Setup' },

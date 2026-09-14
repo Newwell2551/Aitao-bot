@@ -147,7 +147,10 @@ function renderUserChip(user) {
  */
 function renderSidebar({ guild, user, activeKey, botAvatarUrl, botName }) {
   const navHtml = NAV_ITEMS.map((item) => renderNavItem(item, { guildId: guild.id, activeKey })).join('');
-  return `<div style="width:240px;flex:0 0 auto;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 16px;">
+  // 🆕 position:sticky + height:100vh + overflow-y:auto — หน้ายาวๆ อย่างตัวแก้ไขการ์ดต้อนรับ
+  // (ฟอร์มยาวเลื่อนได้) แถบข้างจะได้ไม่เลื่อนหายไปด้วย ยังกดเมนู/ออกจากระบบได้ตลอดเวลา
+  // (ก่อนหน้านี้หน้า Overview สั้นพอไม่เคยเจอปัญหานี้ เลยเพิ่งมาแก้ตอนสร้างหน้ายาวหน้าแรก)
+  return `<div style="width:240px;flex:0 0 auto;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;">
     ${renderBrandRow(botAvatarUrl, botName)}
     ${renderGuildSwitcher(guild)}
     <div style="margin-top:20px;display:flex;flex-direction:column;gap:2px;">
