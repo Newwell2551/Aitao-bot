@@ -1,6 +1,9 @@
 // server.js
 // ─────────────────────────────────────────────────────────────────────────
-// Express server เล็กๆ ที่มีหน้าที่เดียว: รับ "webhook" จาก Stripe
+// Express server เล็กๆ ที่ตอนนี้มีหน้าที่ 3 อย่าง:
+//   1) รับ "webhook" จาก Stripe (ของเดิม)
+//   2) เสิร์ฟหน้าเว็บ Landing Page ของ Aitao Bot (ของเดิม)
+//   3) 🆕 ระบบ "เข้าสู่ระบบด้วย Discord" (OAuth2) — ฐานรากของ Dashboard ที่กำลังจะสร้างต่อ
 //
 // webhook คืออะไร? — ปกติตอนลูกค้าจ่ายเงินสำเร็จ Discord bot ของเราไม่มีทางรู้เองเลย
 // เพราะเงินมันวิ่งไปที่ Stripe ไม่ได้วิ่งผ่านบอทเรา ดังนั้น Stripe จะ "ยิง HTTP request"
@@ -10,9 +13,24 @@
 // ⚠️ ต้องรันคู่กับบอท (ไม่ใช่คนละโปรเจกต์แยกกัน) เพราะพอ webhook มาถึง เราต้อง
 // เข้าถึง client (Discord bot instance ตัวเดียวกับที่ล็อกอินอยู่) เพื่อส่ง DM แจ้งเตือน
 // ผู้ใช้ทันทีตอนสมัครพรีเมียมสำเร็จ (ดู case checkout.session.completed ด้านล่าง)
+//
+// เว็บไซต์: ใช้ Express server ตัวเดียวกันนี้แหละเสิร์ฟหน้าเว็บ Landing Page ด้วยเลย
+// ไม่ต้องไปเปิดเซิร์ฟเวอร์ใหม่แยกต่างหาก เพราะ Railway รันแค่โปรเจกต์เดียวอยู่แล้ว
+// (ประหยัดค่าใช้จ่าย ไม่ต้องจ่ายเพิ่ม) — ไฟล์ HTML/CSS/JS ของเว็บอยู่ในโฟลเดอร์
+// public/ ทั้งหมด ดูคอมเมนต์ตรง app.use(express.static(...)) ด้านล่างสำหรับรายละเอียด
+//
+// 🆕 Dashboard (เพิ่มใหม่วันนี้ — ขั้นที่ 1 จาก 10 ขั้นของแผนสร้าง Dashboard):
+// เพิ่มระบบ "เข้าสู่ระบบด้วย Discord" (OAuth2) เข้ามา เพราะทุกหน้าของ Dashboard (Server
+// Picker, การ์ดต้อนรับ, ฟอนต์ ฯลฯ) ต้อง "รู้ก่อนว่าใคร login อยู่ และมีสิทธิ์แก้เซิร์ฟไหนได้
+// บ้าง" ถึงจะสร้างหน้าอื่นต่อได้ เลยต้องทำส่วนนี้เป็นอันดับแรกสุด — โค้ดที่คุยกับ Discord
+// OAuth2 API ตรงๆ (แลก token, ดึงข้อมูลผู้ใช้/รายชื่อเซิร์ฟ) แยกไว้ในไฟล์
+// utils/discordAuth.js แล้ว ไฟล์นี้มีหน้าที่แค่ "ผูก route" เข้ากับฟังก์ชันพวกนั้น
 // ─────────────────────────────────────────────────────────────────────────
 
+const crypto = require('crypto');
+const path = require('path');
 const express = require('express');
+const session = require('express-session');
 const { TextDisplayBuilder, MessageFlags } = require('discord.js');
 const stripe = require('./utils/stripeClient');
 const { setGuildTier, setSubscriptionInfo, getSubscriptionInfo } = require('./utils/tierManager');
@@ -22,14 +40,217 @@ const { createTranslator } = require('./utils/i18n');
 // ที่แยกออกมาเป็น util กลาง) เอามาใช้ตรงนี้เพื่อให้ DM แจ้งเตือนตอนสมัคร
 // สำเร็จ หน้าตาตรงกับการ์ดใน /premium เป๊ะๆ ไม่ต้องคอยแก้พร้อมกัน 2 ที่
 const { buildPremiumCard } = require('./utils/buildPremiumCard');
+// 🆕 ฟังก์ชันคุยกับ Discord OAuth2 API — ดูคำอธิบายละเอียดทุกฟังก์ชันในไฟล์นั้นเลย
+const {
+  buildAuthorizeUrl,
+  exchangeCodeForToken,
+  fetchCurrentUser,
+  fetchUserGuilds,
+} = require('./utils/discordAuth');
+
+// 🆕 โดเมนจริงของเว็บเรา — ใช้สร้าง "redirect_uri" ตอนคุยกับ Discord OAuth2 (Discord
+// บังคับว่าต้องส่งค่าเดียวกันเป๊ะทั้งตอนขอ authorize และตอนแลก token ดูคอมเมนต์ใน
+// discordAuth.js) อ่านจาก environment variable PUBLIC_BASE_URL ก่อน เผื่ออยากทดสอบบนเครื่อง
+// ตัวเอง (local) ที่ไม่ใช่โดเมน Railway จริง — ถ้าไม่ได้ตั้งไว้ fallback เป็นโดเมน production
+// จริงตามที่บันทึกไว้ใน claude/production-deployment-notes.md (แบบเดียวกับที่ premium.js
+// hardcode success_url/cancel_url ไว้ตรงๆ อยู่แล้ว — ที่นี่แค่เผื่อไว้ให้ปรับตอน dev ได้ด้วย)
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://aitao-bot-production.up.railway.app';
+const OAUTH_REDIRECT_URI = `${PUBLIC_BASE_URL}/auth/callback`;
 
 /**
- * สร้าง Express app พร้อม route /webhook ไว้รับ Stripe
+ * สร้าง Express app พร้อม route /webhook ไว้รับ Stripe + เสิร์ฟหน้าเว็บ Landing Page
+ * + ระบบเข้าสู่ระบบด้วย Discord
  * @param {import('discord.js').Client} client Discord bot client ตัวเดียวกับที่ล็อกอินอยู่
  * @returns {import('express').Express}
  */
 function createWebhookServer(client) {
   const app = express();
+
+  // 🆕 บอก Express ว่า "เรารันอยู่หลัง reverse proxy" (Railway เอง) — จำเป็นมากสำหรับ
+  // cookie แบบ secure (ดู session middleware ด้านล่าง) เพราะ Railway จะเป็นคนคุยกับ
+  // ผู้ใช้ด้วย HTTPS จริง แล้วค่อย forward request มาหา process ของเราด้วย HTTP ธรรมดา
+  // ข้างใน — ถ้าไม่ตั้งค่านี้ Express จะคิดว่า request ทุกอันเป็น HTTP (ไม่ปลอดภัย)
+  // แล้วปฏิเสธไม่ยอมส่ง cookie แบบ secure ออกไปเลย ผู้ใช้จะ login ไม่ติดสักที
+  app.set('trust proxy', 1);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // เสิร์ฟหน้าเว็บ Landing Page (static file) — ทำก่อนอย่างอื่นเลย
+  //
+  // express.static() คือฟังก์ชันสำเร็จรูปของ Express ที่บอกว่า "โฟลเดอร์นี้มีไฟล์
+  // HTML/CSS/JS/รูปภาพอยู่ ถ้ามีคนเข้า URL ที่ตรงกับชื่อไฟล์ในนี้ ให้ส่งไฟล์นั้นกลับไปเลย"
+  // ไม่ต้องมานั่งเขียน app.get('/xxx', ...) ทีละหน้าเองแบบ /success กับ /cancel ด้านล่าง
+  //
+  // path.join(__dirname, 'public') = โฟลเดอร์ public/ ที่อยู่ "ข้างๆ" ไฟล์นี้เลย
+  // (server.js เองอยู่ที่ root ของโปรเจกต์ เหมือนกับ index.js — เห็นได้จากที่ index.js
+  // เรียก require('./server') ตรงๆ ไม่มี subfolder — ก็เลยแค่ path.join(__dirname, 'public')
+  // พอ ไม่ต้องถอยระดับด้วย '..' เหมือนตอนที่เข้าใจผิดว่า server.js อยู่ใน utils/)
+  //
+  // options ที่ใส่ไว้ 2 ตัว:
+  //   - index: 'index.html'  → ถ้าเข้า "/" เฉยๆ (ไม่ระบุไฟล์) ให้เสิร์ฟ index.html
+  //   - extensions: ['html'] → ถ้าเข้า "/terms" (ไม่มี .html ต่อท้าย) ให้ลองหา
+  //                             terms.html ให้อัตโนมัติ (URL จะได้สั้นๆ สวยๆ ไม่ต้อง
+  //                             พิมพ์ .html ต่อท้ายทุกครั้ง)
+  //
+  // ผลลัพธ์ที่ได้:
+  //   GET /         → public/index.html   (หน้าแรกของเว็บ)
+  //   GET /terms    → public/terms.html   (ข้อกำหนดการใช้งาน)
+  //   GET /privacy  → public/privacy.html (นโยบายความเป็นส่วนตัว)
+  app.use(express.static(path.join(__dirname, 'public'), {
+    index: 'index.html',
+    extensions: ['html'],
+  }));
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 Session middleware — ต้องมาก่อน route /auth/* ทุกอัน (และก่อนหน้า dashboard
+  // อื่นๆ ในอนาคตด้วย) เพราะ route พวกนั้นต้องอ่าน/เขียน req.session ได้
+  //
+  // session คืออะไร (อธิบายสั้นๆ)? HTTP ปกติ "จำอะไรไม่ได้เลย" แต่ละ request ที่เข้ามา
+  // ถือเป็นคนละเรื่องกันหมด — express-session แก้ปัญหานี้โดย: พอมีคน login สำเร็จ
+  // เราเก็บข้อมูล (เช่น "คนนี้คือใคร") ไว้ในหน่วยความจำฝั่ง server แล้วส่ง "รหัสอ้างอิง"
+  // สั้นๆ กลับไปเก็บไว้ในคุกกี้ (cookie) ของเบราว์เซอร์ผู้ใช้ ทุก request ถัดไปเบราว์เซอร์
+  // จะแนบคุกกี้นั้นมาด้วยอัตโนมัติ เราก็เอารหัสอ้างอิงไปเปิดดูข้อมูลที่เก็บไว้ได้ — ผู้ใช้
+  // เลย "ยังคง login อยู่" ต่อเนื่องข้ามหลาย request โดยไม่ต้อง login ใหม่ทุกครั้ง
+  //
+  // ⚠️ ข้อจำกัดที่ตั้งใจ "ยังไม่แก้ตอนนี้" (บอกไว้ตรงๆ ไม่ปิดบัง): ตอนนี้ session เก็บไว้ใน
+  // หน่วยความจำ (MemoryStore ค่า default ของ express-session) แปลว่าทุกครั้งที่ Railway
+  // restart/redeploy บอท ผู้ใช้ทุกคนจะหลุด login หมด ต้อง login ใหม่ — ยอมรับได้ในช่วงเริ่มต้น
+  // นี้ ถ้าจะแก้ทีหลังให้ session อยู่ทนกว่านี้ ต้องเปลี่ยนไปใช้ store แบบอื่น (เช่นไฟล์ หรือ
+  // Redis) แต่ยังไม่จำเป็นตอนนี้ ไว้ค่อยว่ากันถ้าผู้ใช้บ่นเรื่อง login หลุดบ่อยจริงๆ
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    // ไม่ throw error หยุดทั้งบอท เพราะ webhook/บอทยังทำงานได้ปกติแม้ dashboard จะมีปัญหา
+    // แค่เตือนไว้ให้เห็นชัดๆ ใน log — ถ้าไม่ตั้ง SESSION_SECRET ไว้ใน Railway เราจะสุ่ม
+    // ความลับใหม่ทุกครั้งที่บอทเริ่มทำงาน (ปลอดภัยกว่าใช้ค่า default ที่เดาได้ แต่แปลว่า
+    // ผู้ใช้จะหลุด login ทุกครั้งที่ redeploy เหมือนกัน — แนะนำให้ไปตั้ง SESSION_SECRET
+    // เป็นข้อความสุ่มยาวๆ ไว้ใน Railway Variables จริงจัง)
+    console.warn('[dashboard] ยังไม่ได้ตั้ง SESSION_SECRET ไว้ใน environment — สุ่มความลับชั่วคราวไปก่อน (ผู้ใช้จะหลุด login ทุกครั้งที่ redeploy)');
+  }
+  app.use(session({
+    secret: sessionSecret || crypto.randomBytes(32).toString('hex'),
+    resave: false, // ไม่ต้องเขียน session ซ้ำถ้าไม่มีอะไรเปลี่ยน (ลดภาระ server)
+    saveUninitialized: false, // ไม่สร้าง session เปล่าๆ ให้คนที่ยังไม่ login (กันคุกกี้รก + กัน spam session ว่างๆ)
+    cookie: {
+      httpOnly: true, // กัน JavaScript ฝั่งเบราว์เซอร์อ่านคุกกี้นี้ได้ (กัน XSS ขโมย session)
+      // secure: true = คุกกี้จะถูกส่งเฉพาะผ่าน HTTPS เท่านั้น — Railway production เป็น
+      // HTTPS อยู่แล้วเสมอ แต่ถ้า dev บนเครื่องตัวเอง (http://localhost) มักไม่มี HTTPS
+      // เลยต้องปิดไว้ตอน dev ไม่งั้นคุกกี้จะไม่ถูกส่งเลยจน login ไม่ติดสักที
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax', // ค่ามาตรฐานที่ปลอดภัยและใช้ได้กับ flow OAuth redirect แบบนี้พอดี
+      maxAge: 7 * 24 * 60 * 60 * 1000, // คุกกี้อยู่ได้ 7 วัน (ตรงกับอายุ access token ของ Discord ที่ประมาณ 7 วันเช่นกัน)
+    },
+  }));
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 ระบบเข้าสู่ระบบด้วย Discord (OAuth2) — 3 route: login / callback / logout
+  // ─────────────────────────────────────────────────────────────────────
+
+  // GET /auth/login — จุดเริ่มต้น: ผู้ใช้กดปุ่ม "เข้าสู่ระบบด้วย Discord" แล้วมาที่นี่
+  app.get('/auth/login', (req, res) => {
+    // state คือรหัสสุ่มกันปลอมแปลง (ป้องกันการโจมตีแบบ CSRF) — เก็บไว้ใน session ของเรา
+    // ก่อนพาผู้ใช้ไปหน้า Discord แล้วพอ Discord ส่งผู้ใช้กลับมาที่ /auth/callback เราจะ
+    // เช็คว่า state ที่ส่งกลับมาตรงกับอันที่เราเก็บไว้ไหม ถ้าไม่ตรง = ปฏิเสธทันที เพราะแปลว่า
+    // request นี้อาจไม่ได้มาจาก flow ที่เราเป็นคนเริ่มเองจริงๆ (เช่นมีคนปลอมลิงก์ callback
+    // ส่งให้เหยื่อกดโดยไม่ผ่านหน้า login ของเราก่อน)
+    const state = crypto.randomBytes(16).toString('hex');
+    req.session.oauthState = state;
+    res.redirect(buildAuthorizeUrl(OAUTH_REDIRECT_URI, state));
+  });
+
+  // GET /auth/callback — Discord ส่งผู้ใช้กลับมาที่นี่หลังเขากด "อนุญาต" ในหน้า Discord
+  app.get('/auth/callback', async (req, res) => {
+    const { code, state, error } = req.query;
+
+    // ผู้ใช้กด "ยกเลิก/ไม่อนุญาต" ในหน้า Discord — Discord จะส่งกลับมาพร้อม ?error=access_denied
+    // แทนที่จะมี code เลย ต้องเช็คก่อนอย่างอื่น
+    if (error) {
+      return res.redirect('/?login=cancelled');
+    }
+
+    // เช็ค state ก่อนทำอะไรทั้งนั้น (ดูคำอธิบายเต็มๆ ที่ /auth/login ด้านบน)
+    if (!state || state !== req.session.oauthState) {
+      console.warn('[auth] state ไม่ตรงกัน (อาจเป็นการโจมตีแบบ CSRF หรือ session หมดอายุ)');
+      return res.status(400).send('เข้าสู่ระบบไม่สำเร็จ (state ไม่ถูกต้อง) กรุณาลองใหม่อีกครั้ง');
+    }
+    // ใช้ครั้งเดียวแล้วลบทิ้ง กัน state เดิมถูกเอาไปใช้ซ้ำ
+    delete req.session.oauthState;
+
+    if (!code) {
+      return res.status(400).send('เข้าสู่ระบบไม่สำเร็จ (ไม่พบ code จาก Discord)');
+    }
+
+    try {
+      // ขั้นที่ 4 (ตามคอมเมนต์ใหญ่ใน discordAuth.js): เอา code ไปแลก access token จริง
+      const tokenData = await exchangeCodeForToken(code, OAUTH_REDIRECT_URI);
+
+      // เอา access token ไปถามข้อมูลผู้ใช้ + รายชื่อเซิร์ฟ (ยิงคู่ขนานกันด้วย Promise.all
+      // เร็วกว่ายิงทีละอันตามลำดับ เพราะสองคำขอนี้ไม่ได้ขึ้นกับกันและกันเลย)
+      const [discordUser, guilds] = await Promise.all([
+        fetchCurrentUser(tokenData.access_token),
+        fetchUserGuilds(tokenData.access_token),
+      ]);
+
+      // เก็บเฉพาะข้อมูลที่ต้องใช้จริงลง session — ไม่เก็บ access_token ไว้ใน session
+      // เพราะ session ของเราตอนนี้เก็บในหน่วยความจำ (ดูคอมเมนต์ตอนตั้ง session middleware)
+      // และหน้าที่ต้องใช้ตอนนี้ (Server Picker) ใช้แค่รายชื่อเซิร์ฟ+สิทธิ์เท่านั้น ยังไม่ต้อง
+      // เรียก Discord API ซ้ำด้วย access token อีก — ถ้าอนาคตมีหน้าที่ต้องเรียกซ้ำ (เช่น
+      // รีเฟรชรายชื่อเซิร์ฟสดๆ) ค่อยกลับมาคิดเรื่องเก็บ/รีเฟรช token ตอนนั้น
+      req.session.user = {
+        id: discordUser.id,
+        username: discordUser.global_name || discordUser.username, // global_name = ชื่อที่โชว์ (display name) ใหม่ของ Discord, username = fallback เผื่อไม่มี
+        avatar: discordUser.avatar
+          ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+          : null, // ผู้ใช้ที่ไม่เคยตั้งรูปโปรไฟล์จะได้ avatar เป็น null — หน้า Server Picker ต้องมีรูป default สำรองไว้เอง
+      };
+      // เก็บเฉพาะ field ที่จำเป็น ไม่เก็บทั้งก้อนที่ Discord ส่งมา (ลดขนาด session +
+      // ไม่เก็บข้อมูลที่ไม่ได้ใช้โดยไม่จำเป็น)
+      req.session.guilds = guilds.map((g) => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        owner: g.owner,
+        permissions: g.permissions,
+      }));
+
+      console.log(`[auth] ${req.session.user.username} (${req.session.user.id}) เข้าสู่ระบบสำเร็จ — มีเซิร์ฟทั้งหมด ${guilds.length} แห่ง`);
+
+      // 🚧 ยังไม่มีหน้า Server Picker จริง (ขั้นตอนถัดไป) — พาไปหน้าทดสอบชั่วคราวก่อน
+      // เพื่อให้เช็คได้ว่า OAuth2 flow ทั้งเส้นทำงานถูกต้องจริงๆ ก่อนไปสร้างหน้าสวยๆ ต่อ
+      res.redirect('/dashboard');
+    } catch (err) {
+      console.error('[auth] เข้าสู่ระบบล้มเหลว:', err);
+      res.status(500).send('เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ (ดู log ฝั่ง server สำหรับรายละเอียด)');
+    }
+  });
+
+  // GET /auth/logout — ออกจากระบบ: ทำลาย session ทิ้งทั้งก้อน แล้วพากลับหน้าแรก
+  app.get('/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) console.error('[auth] logout error:', err);
+      res.redirect('/');
+    });
+  });
+
+  // 🚧 หน้าทดสอบชั่วคราว — จะถูกแทนที่ด้วยหน้า Server Picker จริงในขั้นตอนถัดไป (ตามแผน
+  // ที่วางไว้) ตอนนี้มีไว้แค่ยืนยันว่า login ผ่านจริง เห็นชื่อ+รายชื่อเซิร์ฟถูกต้อง ก่อนจะไป
+  // สร้างหน้าตาสวยๆ ต่อ — requireAuth ด้านล่างกันไม่ให้คนที่ยังไม่ login เข้ามาดูหน้านี้ได้
+  app.get('/dashboard', requireAuth, (req, res) => {
+    const guildListHtml = req.session.guilds
+      .map((g) => `<li>${g.name} (${g.id}) — owner: ${g.owner}, permissions: ${g.permissions}</li>`)
+      .join('');
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="th">
+        <head><meta charset="UTF-8" /><title>Dashboard (ทดสอบ)</title></head>
+        <body style="font-family: sans-serif; padding: 24px;">
+          <h1>เข้าสู่ระบบสำเร็จ! สวัสดีคุณ ${req.session.user.username}</h1>
+          <p>User ID: ${req.session.user.id}</p>
+          <p>เซิร์ฟที่พบทั้งหมด (${req.session.guilds.length} แห่ง):</p>
+          <ul>${guildListHtml}</ul>
+          <a href="/auth/logout">ออกจากระบบ</a>
+        </body>
+      </html>
+    `);
+  });
 
   // ⚠️ จุดสำคัญที่สุดของทั้งไฟล์: express.raw({ type: 'application/json' })
   //
@@ -118,7 +339,7 @@ function createWebhookServer(client) {
         </head>
         <body>
           <div>
-            <h1>✅ Subscription successful!</h1>
+            <h1>🎉 Subscription successful!</h1>
             <p>Head back to Discord and type /premium to see your status.</p>
           </div>
         </body>
@@ -162,6 +383,30 @@ function createWebhookServer(client) {
   });
 
   return app;
+}
+
+/**
+ * 🆕 Middleware กันหน้า — ใช้ห่อหน้า Dashboard ทุกหน้าที่ "ต้อง login ก่อนถึงจะเข้าได้"
+ * ถ้ายังไม่ login (ไม่มี req.session.user) จะเด้งไปหน้า /auth/login ให้อัตโนมัติ
+ *
+ * วิธีใช้ (ตัวอย่างจากหน้า /dashboard ทดสอบด้านบน): ใส่เป็น argument ตัวที่ 2 ของ app.get()
+ *   app.get('/dashboard', requireAuth, (req, res) => { ... })
+ * Express จะรัน requireAuth ก่อนเสมอ ถ้าผ่าน (เรียก next()) ถึงจะรัน handler จริงต่อ
+ *
+ * 🚧 หน้าถัดๆ ไปที่จะสร้าง (Server Picker, การ์ดต้อนรับ, ฟอนต์ ฯลฯ) ต้องใช้ตัวนี้ห่อทุกหน้า
+ * เหมือนกันหมด — และหน้าที่ผูกกับ "เซิร์ฟใดเซิร์ฟหนึ่งเจาะจง" (เช่น /dashboard/:guildId/welcome)
+ * ต้องมี middleware เพิ่มอีกชั้นที่เช็ค hasManageGuild() ของเซิร์ฟนั้นด้วย (ยังไม่เขียนตอนนี้
+ * เพราะยังไม่มีหน้าแบบนั้นจริง จะเพิ่มตอนสร้างหน้า Server Picker ในขั้นตอนถัดไป)
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+function requireAuth(req, res, next) {
+  if (!req.session?.user) {
+    return res.redirect('/auth/login');
+  }
+  next();
 }
 
 /**
@@ -350,4 +595,4 @@ async function handleStripeEvent(event, client) {
   }
 }
 
-module.exports = { createWebhookServer };
+module.exports = { createWebhookServer, requireAuth };
