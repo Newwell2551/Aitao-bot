@@ -146,16 +146,18 @@ function serverIconHtml(server, size) {
  * @returns {string}
  */
 function featuredCardHtml(server) {
-  const memberCountText = server.memberCount != null ? server.memberCount.toLocaleString('th-TH') : '-';
+  // toLocaleString('en-US') แทน 'th-TH' เพราะข้อความหน้าแดชบอร์ดทั้งหมดเปลี่ยนเป็น
+  // ภาษาอังกฤษแล้วตามที่น้องหนาวขอ (ตัวเลขคั่นหลักพันด้วย comma แบบอังกฤษให้เข้าชุดกัน)
+  const memberCountText = server.memberCount != null ? server.memberCount.toLocaleString('en-US') : '-';
   return `
     <div style="margin-top:16px;width:100%;border-radius:3px;background:var(--bg-card);border:1px solid var(--border);padding:15px 20px;display:flex;align-items:center;gap:16px;box-sizing:border-box;">
       ${serverIconHtml(server, 44)}
       <div style="min-width:0;">
-        <div style="font-size:9.5px;font-weight:700;letter-spacing:0.1em;color:var(--gold);text-transform:uppercase;">★ เซิร์ฟ PREMIUM ของคุณ</div>
+        <div style="font-size:9.5px;font-weight:700;letter-spacing:0.1em;color:var(--gold);text-transform:uppercase;">★ Your Premium Server</div>
         <div style="font-size:16.5px;font-weight:700;color:var(--text);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(server.name)}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">${memberCountText} สมาชิก</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">${memberCountText} members</div>
       </div>
-      <a href="/dashboard/${server.id}" style="margin-left:auto;flex:0 0 auto;height:38px;padding:0 20px;border-radius:3px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;text-decoration:none;box-sizing:border-box;">จัดการเซิร์ฟนี้ →</a>
+      <a href="/dashboard/${server.id}" style="margin-left:auto;flex:0 0 auto;height:38px;padding:0 20px;border-radius:3px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;text-decoration:none;box-sizing:border-box;">Manage this server →</a>
     </div>`;
 }
 
@@ -171,7 +173,7 @@ function serverRowHtml(server, inviteUrl) {
   if (server.hasBot) {
     // มีบอทอยู่แล้ว แต่ไม่ใช่ premium (เซิร์ฟ premium ถูกแยกไปโชว์เป็นการ์ดเด่นแล้ว
     // ตั้งแต่ renderServerPickerPage() — เลยการันตีได้ว่ามาถึงตรงนี้คือ free เสมอ)
-    const memberCountText = server.memberCount != null ? server.memberCount.toLocaleString('th-TH') : '-';
+    const memberCountText = server.memberCount != null ? server.memberCount.toLocaleString('en-US') : '-';
     return `
       <div class="sp-row" style="flex:0 0 auto;width:100%;max-width:460px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:11px 4px;border-bottom:1px solid var(--border);box-sizing:border-box;">
         ${serverIconHtml(server, 36)}
@@ -180,13 +182,13 @@ function serverRowHtml(server, inviteUrl) {
             <span style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nameHtml}</span>
             <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(154,162,196,0.1);color:var(--text-muted);flex-shrink:0;">Free</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted-2);margin-top:2px;">${memberCountText} สมาชิก</div>
+          <div style="font-size:11px;color:var(--text-muted-2);margin-top:2px;">${memberCountText} members</div>
         </div>
-        <div style="margin-left:auto;flex:0 0 auto;"><a href="/dashboard/${server.id}" class="sp-row-link" style="font-size:11.5px;font-weight:700;color:var(--accent);">จัดการ →</a></div>
+        <div style="margin-left:auto;flex:0 0 auto;"><a href="/dashboard/${server.id}" class="sp-row-link" style="font-size:11.5px;font-weight:700;color:var(--accent);">Manage →</a></div>
       </div>`;
   }
 
-  // ยังไม่มีบอท — ปุ่ม "+ เชิญบอท" ทรงแคปซูล (pill) เล็กๆ ทางขวา พร้อม guild_id +
+  // ยังไม่มีบอท — ปุ่ม "+ Invite bot" ทรงแคปซูล (pill) เล็กๆ ทางขวา พร้อม guild_id +
   // disable_guild_select=true ให้ Discord ล็อกไว้ที่เซิร์ฟนี้เซิร์ฟเดียวตอนเชิญ (ดูคำอธิบาย
   // เต็มๆ ในคอมเมนต์ท้ายไฟล์)
   const inviteUrlForThisGuild = `${inviteUrl}&guild_id=${server.id}&disable_guild_select=true`;
@@ -195,10 +197,10 @@ function serverRowHtml(server, inviteUrl) {
       ${serverIconHtml(server, 36)}
       <div style="min-width:0;">
         <div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nameHtml}</div>
-        <div style="font-size:11px;color:var(--text-muted-2);margin-top:2px;">ยังไม่ได้ติดตั้งบอท</div>
+        <div style="font-size:11px;color:var(--text-muted-2);margin-top:2px;">Bot not installed</div>
       </div>
       <div style="margin-left:auto;flex:0 0 auto;">
-        <a href="${escapeHtml(inviteUrlForThisGuild)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;height:30px;line-height:30px;padding:0 14px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;text-decoration:none;">+ เชิญบอท</a>
+        <a href="${escapeHtml(inviteUrlForThisGuild)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;height:30px;line-height:30px;padding:0 14px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;text-decoration:none;">+ Invite bot</a>
       </div>
     </div>`;
 }
@@ -232,22 +234,22 @@ function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
   const featuredHtml = featuredServers.map(featuredCardHtml).join('');
 
   const restLabel = featuredServers.length > 0
-    ? `เซิร์ฟเวอร์อื่นๆ ของคุณ (${restServers.length})`
-    : `เซิร์ฟเวอร์ของคุณ (${restServers.length})`;
+    ? `Other Servers (${restServers.length})`
+    : `Your Servers (${restServers.length})`;
 
   const restListHtml = restServers.length > 0
     ? `<div style="width:100%;max-width:460px;border-top:1px solid var(--border);margin:0 auto;flex:0 0 auto;"></div>`
       + restServers.map((s) => serverRowHtml(s, inviteUrl)).join('')
     : `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">
-         ${featuredServers.length > 0 ? 'ไม่มีเซิร์ฟอื่นแล้วครับ' : 'ไม่พบเซิร์ฟเวอร์ที่บัญชีนี้มีสิทธิ์ "Manage Server" เลยครับ'}
+         ${featuredServers.length > 0 ? 'No other servers.' : 'This account has no servers with "Manage Server" permission.'}
        </div>`;
 
   return `<!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>เลือกเซิร์ฟเวอร์ — Aitao Bot Dashboard</title>
+<title>Select a Server — Aitao Bot Dashboard</title>
 <style>
   /* ── ตัวแปรสี ── ก๊อปมาจาก public/index.html เป๊ะๆ (เว็บจริงที่ deploy อยู่ตอนนี้)
      เพื่อให้ธีมสีทั้งเว็บสอดคล้องกัน ไม่ใช่มโนสีขึ้นมาใหม่เอง */
@@ -322,7 +324,7 @@ function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
     </div>
     <div class="topbar-right">
       <span>${escapeHtml(user.username)}</span>
-      <a href="/auth/logout">ออกจากระบบ</a>
+      <a href="/auth/logout">Log out</a>
     </div>
   </div>
 
@@ -331,8 +333,8 @@ function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
       <img src="${escapeHtml(botAvatarUrl)}" alt="" style="width:46px;height:46px;border-radius:999px;object-fit:cover;border:2px solid var(--border);" />
       <div style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:999px;background:var(--teal);border:2.5px solid var(--bg);"></div>
     </div>
-    <h1>เลือกเซิร์ฟเวอร์ที่ต้องการจัดการ</h1>
-    <p class="subtitle">แสดงเฉพาะเซิร์ฟเวอร์ที่คุณมีสิทธิ์ Manage Server</p>
+    <h1>Select a server to manage</h1>
+    <p class="subtitle">Only servers where you have Manage Server permission are shown</p>
 
     ${featuredHtml}
 

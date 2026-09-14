@@ -178,13 +178,13 @@ function createWebhookServer(client) {
     // เช็ค state ก่อนทำอะไรทั้งนั้น (ดูคำอธิบายเต็มๆ ที่ /auth/login ด้านบน)
     if (!state || state !== req.session.oauthState) {
       console.warn('[auth] state ไม่ตรงกัน (อาจเป็นการโจมตีแบบ CSRF หรือ session หมดอายุ)');
-      return res.status(400).send('เข้าสู่ระบบไม่สำเร็จ (state ไม่ถูกต้อง) กรุณาลองใหม่อีกครั้ง');
+      return res.status(400).send('Login failed (invalid state). Please try again.');
     }
     // ใช้ครั้งเดียวแล้วลบทิ้ง กัน state เดิมถูกเอาไปใช้ซ้ำ
     delete req.session.oauthState;
 
     if (!code) {
-      return res.status(400).send('เข้าสู่ระบบไม่สำเร็จ (ไม่พบ code จาก Discord)');
+      return res.status(400).send('Login failed (no code received from Discord).');
     }
 
     try {
@@ -227,7 +227,7 @@ function createWebhookServer(client) {
       res.redirect('/dashboard');
     } catch (err) {
       console.error('[auth] เข้าสู่ระบบล้มเหลว:', err);
-      res.status(500).send('เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ (ดู log ฝั่ง server สำหรับรายละเอียด)');
+      res.status(500).send('Login failed. Please try again. (Check the server logs for details.)');
     }
   });
 
@@ -322,10 +322,13 @@ function createWebhookServer(client) {
 
     if (!guildInSession || !hasManageGuild(guildInSession.permissions)) {
       console.warn(`[dashboard] ${req.session.user?.id} พยายามเข้าเซิร์ฟ ${guildId} โดยไม่มีสิทธิ์ Manage Server`);
-      return res.status(403).send('คุณไม่มีสิทธิ์จัดการเซิร์ฟเวอร์นี้ครับ');
+      // 🆕 ข้อความที่ผู้ใช้เห็นบนหน้าเว็บ (ไม่ใช่ log) เปลี่ยนเป็นภาษาอังกฤษล้วนๆ แล้ว
+      // ตามที่น้องหนาวขอ ให้ทุกหน้าของแดชบอร์ดเป็นอังกฤษเป็น default (log ฝั่ง server
+      // ที่มีแต่เราเห็นยังคงเป็นภาษาไทยเหมือนเดิม อ่านง่ายกว่าตอน debug)
+      return res.status(403).send("You don't have permission to manage this server.");
     }
     if (!client.guilds.cache.has(guildId)) {
-      return res.status(404).send('บอทยังไม่ได้อยู่ในเซิร์ฟเวอร์นี้ครับ ลองกดเชิญบอทจากหน้า Server Picker ก่อนนะครับ');
+      return res.status(404).send('The bot is not in this server yet. Please invite it from the Server Picker page first.');
     }
     next();
   }
@@ -338,12 +341,12 @@ function createWebhookServer(client) {
     const guild = client.guilds.cache.get(req.params.guildId);
     res.send(`
       <!DOCTYPE html>
-      <html lang="th">
+      <html lang="en">
         <head><meta charset="UTF-8" /><title>${guild.name} — Aitao Bot</title></head>
         <body style="font-family: sans-serif; padding: 24px; background:#0a0e1a; color:#fff;">
-          <p><a href="/dashboard" style="color:#7c83fd;">← กลับไปเลือกเซิร์ฟอื่น</a></p>
+          <p><a href="/dashboard" style="color:#7c83fd;">← Back to server picker</a></p>
           <h1>${guild.name}</h1>
-          <p>หน้า "ภาพรวม (Overview)" กำลังจะมาเร็วๆ นี้ครับ 🚧</p>
+          <p>The Overview page is coming soon 🚧</p>
         </body>
       </html>
     `);
