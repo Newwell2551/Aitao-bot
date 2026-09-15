@@ -111,6 +111,13 @@ module.exports = {
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         line_items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID, quantity: 1 }],
+        // 🆕 [เพิ่ม 15 ก.ย. 2569 — แคมเปญโค้ดส่วนลดผู้ขาย/พาร์ทเนอร์] เปิดให้หน้า
+        // Stripe Checkout มีช่อง "Add promotion code" ให้ลูกค้ากรอกเองได้ — ปกติ
+        // ปิดอยู่โดย default (ไม่ใส่ก็ไม่มีช่องให้กรอกเลย) โค้ดส่วนลดแต่ละอันสร้าง
+        // จากหน้า Stripe Dashboard เอง (Product catalog → Coupons →
+        // Promotion codes) ไม่ต้องเขียนโค้ดเพิ่มอีกเลยสักบรรทัด — ดูขั้นตอนสร้าง
+        // โค้ดแบบละเอียดในข้อความที่คุยกับน้องหนาวไว้ (หรือถามพี่ได้อีกรอบ)
+        allow_promotion_codes: true,
         // ชี้ไปที่โดเมนจริงของบอทบน Railway แล้ว — สองหน้านี้ถูกเพิ่มเป็น route
         // /success กับ /cancel ใน server.js (ดูคอมเมนต์ในไฟล์นั้นสำหรับรายละเอียด)
         success_url: 'https://aitao-bot-production.up.railway.app/success',

@@ -21,8 +21,9 @@
          หน้านี้ ลิงก์ไปหน้าอื่นครบ (Home/Features/Dashboard)
       3. หัวข้อ + ปุ่มสลับสกุลเงิน EN(USD)/TH(THB) — จุดนี้ไม่ใช่แค่ของตกแต่ง
          แต่ตรงกับพฤติกรรมจริงของบอท: ปุ่ม /premium ในดิสคอร์ดจะโชว์ราคาคนละ
-         แบบตามภาษาเซิร์ฟ (ดู en.json/th.json → "Subscribe to Premium ($2.99)"
-         กับ "สมัครพรีเมียม (89฿)") เลยเอาตัวเลขจริงจากโค้ดมาใส่ตรงๆ ไม่ได้
+         แบบตามภาษาเซิร์ฟ (ดู en.json/th.json → "Subscribe to Premium ($3.29)"
+         กับ "สมัครพรีเมียม (99฿)" — ขึ้นราคาจาก 89 บาทรอบ 11 แล้ว) เลยเอา
+         ตัวเลขจริงจากโค้ดมาใส่ตรงๆ ไม่ได้
          เดาเอง
       4. การ์ดราคา 2 ใบ (Free / Premium) — รายการสิทธิ์แต่ละอันก็อปมาจาก
          ข้อความจริงใน en.json (benefits.free_body / premium_body) เพื่อให้
@@ -303,7 +304,7 @@
 
       <div class="tier-label">Premium</div>
       <div class="amount-row">
-        <span id="priceAmount" class="amount">$2.99</span>
+        <span id="priceAmount" class="amount">$3.29</span>
         <span id="priceSuffix" class="suffix">/ month</span>
       </div>
       <div class="desc">Everything in Free, plus the full Layout Builder and unlimited setups.</div>
@@ -315,7 +316,7 @@
            ใต้ปุ่ม กันคนงงว่ากดแล้วทำไมไม่เจอหน้าจ่ายเงิน -->
       <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
          class="cta-btn gold pill-btn primary plain" target="_blank" rel="noopener">
-        <span id="subscribeLabel">Add Bot to Subscribe ($2.99) ☕</span>
+        <span id="subscribeLabel">Add Bot to Subscribe ($3.29) ☕</span>
       </a>
       <div class="cta-note" id="ctaNote">After adding, run <code>/premium</code> in your server to finish subscribing.</div>
 
@@ -336,12 +337,13 @@
   <script>
     // สลับตัวเลขราคาให้ตรงกับ /language ของเซิร์ฟจริง (ดูคอมเมนต์บนสุดของไฟล์)
     // ตัวเลข/ข้อความก็อปมาจาก en.json กับ th.json ตรงๆ ไม่ได้พิมพ์เดาเอง
-    // [แก้ 15 ก.ย. 2569] เพิ่ม note ต่อภาษา คู่กับ subscribe — ข้อความปุ่ม
-    // เปลี่ยนเป็น "Add Bot to Subscribe" ให้ตรงพฤติกรรมจริง (ดูคอมเมนต์บนสุด
-    // ของไฟล์ข้อ 1) และ note คือคำใบ้ขั้นตอนถัดไปที่โชว์ใต้ปุ่ม
+    // [แก้ 15 ก.ย. 2569 รอบ 11] ขึ้นราคาจาก 89 → 99 บาท/เดือน (ตัดสินใจโดย
+    // น้องหนาว) — ตัวเลข $ ฝั่งอังกฤษปรับตามสัดส่วนเดิมเป็น $3.29 (จำได้ว่า
+    // ไม่ใช่ราคา Stripe จริงแยกต่างหาก แค่ป้ายข้อความคู่ขนาน ดูคอมเมนต์จุดที่ 1
+    // ด้านบนสุดของไฟล์)
     var CURRENCY_STYLE = {
-      en: { amount: '$2.99', suffix: '/ month', subscribe: 'Add Bot to Subscribe ($2.99) ☕', note: 'After adding, run /premium in your server to finish subscribing.' },
-      th: { amount: '฿89', suffix: '/ เดือน', subscribe: 'เพิ่มบอทเพื่อสมัคร (89฿) ☕', note: 'เพิ่มบอทแล้ว พิมพ์ /premium ในเซิร์ฟเวอร์เพื่อสมัครต่อได้เลยครับ' }
+      en: { amount: '$3.29', suffix: '/ month', subscribe: 'Add Bot to Subscribe ($3.29) ☕', note: 'After adding, run /premium in your server to finish subscribing.' },
+      th: { amount: '฿99', suffix: '/ เดือน', subscribe: 'เพิ่มบอทเพื่อสมัคร (99฿) ☕', note: 'เพิ่มบอทแล้ว พิมพ์ /premium ในเซิร์ฟเวอร์เพื่อสมัครต่อได้เลยครับ' }
     };
 
     function selectCurrency(lang) {
