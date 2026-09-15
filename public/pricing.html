@@ -99,7 +99,12 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    body { margin: 0; background: #05070f; color: #f3f1fb; font-family: 'MiloEN', 'Athiti', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif; line-height: 1.6; min-height: 100vh; }
+    /* [เพิ่ม 15 ก.ย. 2569] display:flow-root กันปัญหา margin ของลูกข้างใน
+       หลุดทะลุออกนอก body (margin collapse) — นี่คือสาเหตุของขอบดำที่ด้านบน
+       ของหน้านี้: .site-nav มี margin-top ที่หลุดทะลุออกไปจนเห็นพื้นที่โปร่งใส
+       ของ <html> ด้านบนสุด ก่อนที่ body จะเริ่มทาสี ใส่ flow-root ตัดปัญหานี้
+       ทั้งหมด (ไม่กระทบเลย์เอาต์อื่น ไม่ใช่ overflow:hidden ไม่ตัดเนื้อหาทิ้ง) */
+    body { margin: 0; background: #05070f; color: #f3f1fb; font-family: 'MiloEN', 'Athiti', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif; line-height: 1.6; min-height: 100vh; display: flow-root; }
     a { color: #7783be; text-decoration: none; }
     a.plain { color: inherit; }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
@@ -118,9 +123,13 @@
     .top-glow .radial { position: absolute; inset: 0; background: radial-gradient(ellipse 900px 500px at 78% 0%, rgba(244,184,96,0.1), transparent 65%); }
 
     /* ── NAV — เหมือน 2 หน้าก่อนเป๊ะๆ ── */
-    .site-nav-wrap { position: sticky; top: 16px; z-index: 20; padding: 0 24px; margin-bottom: 8px; }
+    /* [แก้บั๊กขอบดำด้านบน 15 ก.ย. 2569 — เหมือน features.html] ย้ายระยะห่าง
+       16px จาก margin-top บนตัวการ์ด (.site-nav) มาเป็น padding-top บนตัวห่อ
+       (.site-nav-wrap) แทน กัน margin หลุดทะลุออกนอก body (ดูคอมเมนต์เดียวกัน
+       ใน features.html) + เพิ่ม min-height: 60px ให้เท่ากับ .hero-nav หน้าแรก */
+    .site-nav-wrap { position: sticky; top: 16px; z-index: 20; padding: 16px 24px 0; margin-bottom: 8px; }
     .site-nav {
-      max-width: 1080px; margin: 16px auto 0;
+      max-width: 1080px; margin: 0 auto; min-height: 60px;
       background: rgba(19,26,46,0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
       backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
       display: flex; align-items: center; justify-content: space-between; gap: 12px;

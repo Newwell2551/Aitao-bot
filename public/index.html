@@ -115,6 +115,12 @@
       color: #f3f1fb;
       font-family: 'MiloEN', 'Athiti', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif;
       line-height: 1.6;
+      /* [เพิ่ม 15 ก.ย. 2569] display:flow-root กันปัญหา "margin ของลูกข้างใน
+         หลุดทะลุออกไปนอก body" (margin collapse) ซึ่งเป็นสาเหตุของขอบดำที่เจอใน
+         features.html/pricing.html — ใส่ไว้ที่นี่ด้วยเผื่อป้องกันล่วงหน้า แม้
+         หน้านี้จะไม่เจอปัญหานี้อยู่แล้วก็ตาม (ไม่กระทบเลย์เอาต์อื่นเลย เป็นแค่
+         การป้องกัน ไม่ใช่การไปซ่อน/ตัดเนื้อหาแบบ overflow:hidden) */
+      display: flow-root;
     }
     a { color: inherit; text-decoration: none; }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
@@ -136,7 +142,15 @@
        เดิมไว้ให้ใกล้เคียงที่สุด ── */
     .hero {
       position: relative;
-      min-height: min(92vh, 900px);
+      /* [แก้บั๊กขอบดำด้านล่าง 15 ก.ย. 2569] เดิมใช้ min-height: min(92vh, 900px)
+         ซึ่งตั้งใจให้สูงแค่ 92% ของจอ (หรือเพดาน 900px) — แต่หน้านี้ไม่มีเนื้อหา
+         อะไรต่อท้าย hero เลย (ออกแบบให้เป็น hero อย่างเดียว ไม่มีสกอร์ล) พอ hero
+         ไม่เต็มจอ ก็เหลือพื้นที่ว่างด้านล่างที่ body ไม่ได้ทาสีให้ (body สูงเท่า
+         เนื้อหาข้างในเท่านั้น ไม่ได้ยึดเต็มความสูงจอ) เลยเห็นเป็นแถบดำโล่งๆ
+         ด้านล่างจอ (สีจาก <html> ที่โปร่งใส ไม่ใช่จาก body) — แก้โดยให้ hero สูง
+         เต็ม 100vh เสมอ ไม่มีเพดานตัด รับประกันไม่มีพื้นที่ว่างเหลือด้านล่างอีก
+         ไม่ว่าจอจะสูงแค่ไหน */
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
