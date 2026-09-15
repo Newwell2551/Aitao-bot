@@ -29,15 +29,17 @@
          ตรงกับสิ่งที่บอทโชว์จริงในคำสั่ง /premium ไม่ใช่ข้อความที่เดาขึ้นเอง
       5. ข้อความปิดท้าย "Cancel anytime from /premium → Manage Subscription"
 
-    ⚠️ จุดที่ตัดสินใจเอง อยากให้น้องหนาวช่วยยืนยัน:
-      1. ปุ่ม "Subscribe to Premium" บนเว็บ — ในไฟล์ดีไซน์เป็นปุ่มกดสมัครจริงๆ
-         แต่ในระบบจริง การสมัครพรีเมียมต้อง "เพิ่มบอทเข้าเซิร์ฟก่อน แล้วพิมพ์
-         /premium ในดิสคอร์ด" เท่านั้น (ลิงก์ Stripe checkout ผูกกับ guild id
-         เฉพาะเจาะจง สร้างจากเว็บสาธารณะแบบนี้ไม่ได้) เลยให้ปุ่มนี้ลิงก์ไปหน้า
-         เชิญบอทเหมือนปุ่ม Free ไปก่อน (ข้อความปุ่มยังคงเป็น "Subscribe to
-         Premium" ตามดีไซน์ แต่การกดจริงคือไปเพิ่มบอท ไม่ใช่เปิดหน้าจ่ายเงิน
-         ทันที) ถ้าต้องการเปลี่ยนข้อความปุ่มให้ตรงกับพฤติกรรมจริงมากขึ้น (เช่น
-         "Add Bot to Subscribe") บอกได้เลยครับ
+    ✅ [แก้ 15 ก.ย. 2569] จุดที่เคยค้างคาใจ ตอนนี้ยืนยันกับน้องหนาวแล้ว:
+      1. ปุ่ม "Subscribe to Premium" — น้องหนาวถามว่าทำไมกดแล้วไม่ไปหน้าจ่ายเงิน
+         พี่อธิบายไปว่า: ลิงก์ Stripe checkout ต้องผูกกับ guild id เฉพาะเจาะจง
+         เสมอ สร้างจากหน้าเว็บสาธารณะที่ยังไม่รู้ว่าใครดูแลเซิร์ฟไหนไม่ได้ (ต้อง
+         มีระบบล็อกอิน+เลือกเซิร์ฟก่อน ซึ่งเป็นงานแดชบอร์ดชุดใหญ่ที่ยังไม่ทำ —
+         ดู claude/dashboard-oauth-status.md) น้องหนาวเลือกทางแก้เร็ว: แก้แค่
+         ข้อความ/พฤติกรรมปุ่มให้ตรงความจริงไปก่อน (ปล่อยบอทให้ทันที) ส่วนระบบ
+         ล็อกอิน+เลือกเซิร์ฟ+จ่ายเงินผ่านเว็บเต็มรูปแบบ ค่อยทำเป็นเฟสถัดไปทีหลัง
+         → เปลี่ยนข้อความปุ่มเป็น "Add Bot to Subscribe" ตามที่เคยเสนอไว้ พร้อม
+         เพิ่มข้อความเล็กๆ ใต้ปุ่มบอกขั้นตอนถัดไป (พิมพ์ /premium ในดิสคอร์ด)
+         กันคนสับสนว่ากดแล้วทำไมไม่เจอหน้าจ่ายเงิน
       2. เอาเมนู "Marketplace"/"Feed" ออกจาก nav เหมือน 2 หน้าก่อน (ยังไม่มี
          จริง)
       3. ไม่มี Footer ในหน้านี้ — ไฟล์ดีไซน์ทั้ง 3 ไฟล์ที่ได้มา (Landing,
@@ -199,6 +201,13 @@
     .price-footnote { position: relative; z-index: 2; text-align: center; font-size: 11.5px; color: #6d7079; padding: 26px 24px 90px; }
     .price-footnote span { color: #9aa2c4; }
 
+    /* [เพิ่ม 15 ก.ย. 2569] ข้อความเล็กๆ ใต้ปุ่ม Premium บอกขั้นตอนถัดไปหลังกด
+       เพราะปุ่มนี้พาไปหน้าเชิญบอทก่อน ไม่ใช่หน้าจ่ายเงินทันที (ดูคอมเมนต์
+       ด้านบนสุดของไฟล์ ข้อ 1) ถ้าไม่มีคำอธิบายตรงนี้ คนกดแล้วอาจงงว่าทำไม
+       ไม่เจอหน้า checkout เลยใส่คำใบ้บอกว่าต้องไปพิมพ์คำสั่งต่อในดิสคอร์ด */
+    .cta-note { margin-top: 9px; font-size: 11px; color: #6d7079; text-align: center; line-height: 1.5; }
+    .cta-note code { color: #c3c8e6; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; font-size: 10.5px; }
+
     @media (max-width: 900px) {
       .site-nav .center-links { display: none; }
     }
@@ -301,11 +310,14 @@
 
       <!-- ปุ่มนี้ลิงก์ไปหน้าเชิญบอท ไม่ใช่หน้าจ่ายเงินตรงๆ เพราะการสมัครพรีเมียม
            จริงต้องทำผ่านคำสั่ง /premium ในดิสคอร์ดหลังเพิ่มบอทแล้วเท่านั้น
-           (ดูคอมเมนต์จุดที่ 1 ด้านบนสุดของไฟล์) -->
+           (ดูคอมเมนต์จุดที่ 1 ด้านบนสุดของไฟล์) — ข้อความปุ่มเปลี่ยนเป็น
+           "Add Bot to Subscribe" ให้ตรงกับพฤติกรรมจริง + มีคำใบ้ขั้นตอนถัดไป
+           ใต้ปุ่ม กันคนงงว่ากดแล้วทำไมไม่เจอหน้าจ่ายเงิน -->
       <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
          class="cta-btn gold pill-btn primary plain" target="_blank" rel="noopener">
-        <span id="subscribeLabel">Subscribe to Premium ($2.99) ☕</span>
+        <span id="subscribeLabel">Add Bot to Subscribe ($2.99) ☕</span>
       </a>
+      <div class="cta-note" id="ctaNote">After adding, run <code>/premium</code> in your server to finish subscribing.</div>
 
       <div class="divider"></div>
 
@@ -324,9 +336,12 @@
   <script>
     // สลับตัวเลขราคาให้ตรงกับ /language ของเซิร์ฟจริง (ดูคอมเมนต์บนสุดของไฟล์)
     // ตัวเลข/ข้อความก็อปมาจาก en.json กับ th.json ตรงๆ ไม่ได้พิมพ์เดาเอง
+    // [แก้ 15 ก.ย. 2569] เพิ่ม note ต่อภาษา คู่กับ subscribe — ข้อความปุ่ม
+    // เปลี่ยนเป็น "Add Bot to Subscribe" ให้ตรงพฤติกรรมจริง (ดูคอมเมนต์บนสุด
+    // ของไฟล์ข้อ 1) และ note คือคำใบ้ขั้นตอนถัดไปที่โชว์ใต้ปุ่ม
     var CURRENCY_STYLE = {
-      en: { amount: '$2.99', suffix: '/ month', subscribe: 'Subscribe to Premium ($2.99) ☕' },
-      th: { amount: '฿89', suffix: '/ เดือน', subscribe: 'สมัครพรีเมียม (89฿) ☕' }
+      en: { amount: '$2.99', suffix: '/ month', subscribe: 'Add Bot to Subscribe ($2.99) ☕', note: 'After adding, run /premium in your server to finish subscribing.' },
+      th: { amount: '฿89', suffix: '/ เดือน', subscribe: 'เพิ่มบอทเพื่อสมัคร (89฿) ☕', note: 'เพิ่มบอทแล้ว พิมพ์ /premium ในเซิร์ฟเวอร์เพื่อสมัครต่อได้เลยครับ' }
     };
 
     function selectCurrency(lang) {
@@ -346,6 +361,8 @@
       if (suf) suf.textContent = s.suffix;
       var sub = document.getElementById('subscribeLabel');
       if (sub) sub.textContent = s.subscribe;
+      var note = document.getElementById('ctaNote');
+      if (note) note.textContent = s.note;
     }
   </script>
 </body>
