@@ -704,9 +704,17 @@ function buildTextBlockEditorPayload(userId, guildId, blockId, preview = null) {
  *
  * @param {import('discord.js').Interaction} interaction
  * @param {object} config - config ปัจจุบัน
+ * @param {{ fullGif?: boolean }} [opts] - 🆕 [อัปเดต 17 ก.ย. 2569]
+ *   fullGif: true = ถ้า background เป็น .gif จริง (และเซิร์ฟเป็นพรีเมียมจริง ณ ตอนนี้)
+ *   ให้เข้ารหัสภาพเคลื่อนไหวจริงส่งกลับมา (ใช้ worker thread ตัวเดียวกับตอนมีสมาชิก
+ *   ใหม่เข้าเซิร์ฟจริง — ดู handleMemberAdd() ท้ายไฟล์) ช้ากว่า PNG พอสมควร (เข้ารหัส
+ *   หลายเฟรม) เพราะงั้น**ใช้เฉพาะตอนกดปุ่ม "👀 ดูตัวอย่าง" ที่ตั้งใจเปิดดูผลลัพธ์จริงๆ
+ *   เท่านั้น** ส่วนจุดอื่นๆ ในไฟล์นี้ที่เรียก genPreview() แค่เพื่ออัปเดตรูปเล็กมุมจอ
+ *   ระหว่างแก้ค่าอื่น (ขยับตำแหน่ง avatar, แก้ข้อความ ฯลฯ) ยังคงปล่อยค่า default (false)
+ *   ไว้เหมือนเดิม — จะได้ยังเร็วอยู่ ไม่หน่วงทุกครั้งที่กดปุ่มอะไรก็ตามในตัวแก้ไข
  * @returns {Promise<{ buffer: Buffer, ext: string }>}
  */
-async function genPreview(interaction, config) {
+async function genPreview(interaction, config, { fullGif = false } = {}) {
   // ── เช็คว่าเซิร์ฟนี้อัปโหลดฟอนต์ของตัวเองไว้บ้างไหม (ผ่าน /fonts upload)
   // ถ้ามี แนบทุกไฟล์เข้าไปใน config ที่ส่งไปวาดรูป — canvasDrawHelpers.js
   // จะไปเจอค่านี้เองใน drawAllTextBlocks() แล้ว register + ใช้ให้อัตโนมัติ
@@ -715,21 +723,55 @@ async function genPreview(interaction, config) {
   const guildFonts = getGuildFonts(interaction.guildId);
   const customFonts = guildFonts.map(f => ({ id: f.id, family: f.family, path: f.path }));
 
-  const previewConfig = {
-    ...config,
-    // แทน {username} ในทุก block (ไม่ใช่แค่ field เดียวเหมือนตอนเป็นก้อนเดียว)
-    // พร้อมแปลง fontStyle เก่า (ถ้ามี) ให้เป็นรูปแบบใหม่ด้วย normalizeFontStyle()
-    textBlocks: (config.textBlocks ?? []).map(block => ({
-      ...block,
-      content:   (block.content || '').replace('{username}', interaction.user.username),
-      fontStyle: normalizeFontStyle(block.fontStyle, interaction.guildId),
-    })),
-    customFonts,
-  };
-  // previewMode: true → คืน PNG เสมอ แม้ background เป็น GIF
-  // เพราะ Discord render animated GIF ใน ephemeral MediaGallery ไม่ได้
-  // GIF จริงจะสร้างตอน handleMemberAdd() เท่านั้น
-  const result = await generateMemberCardImage(interaction.user, previewConfig, { previewMode: true });
+  // แทน {username} ในทุก block (ไม่ใช่แค่ field เดียวเหมือนตอนเป็นก้อนเดียว)
+  // พร้อมแปลง fontStyle เก่า (ถ้ามี) ให้เป็นรูปแบบใหม่ด้วย normalizeFontStyle()
+  const previewTextBlocks = (config.textBlocks ?? []).map(block => ({
+    ...block,
+    content:   (block.content || '').replace('{username}', interaction.user.username),
+    fontStyle: normalizeFontStyle(block.fontStyle, interaction.guildId),
+  }));
+
+  // 🆕 [อัปเดต 17 ก.ย. 2569] เช็คว่าควรสร้าง GIF เคลื่อนไหวจริงไหม — ต้องผ่านครบ
+  // 3 เงื่อนไข: (1) ผู้เรียกขอ fullGif มาจริงๆ (2) background ตั้งเป็น .gif จริง
+  // (3) เซิร์ฟเป็นพรีเมียมจริง ณ ตอนนี้ — resolveBackgroundType() เช็ค isPremiumGuild()
+  // ซ้ำอีกรอบเหมือนใน handleMemberAdd() กันเซิร์ฟที่หมดพรีเมียมไปแล้วยังเห็น preview
+  // เคลื่อนไหวฟรี (fallback เป็น 'static' เงียบๆ เอง ไม่ error)
+  const requestedType = /\.gif(\?|$)/i.test(config.backgroundUrl ?? '') ? 'animated' : 'static';
+  const isGif = fullGif && resolveBackgroundType(interaction.guildId, requestedType) === 'animated';
+
+  let result;
+  if (isGif) {
+    // ── เส้นทาง GIF จริง: ใช้ worker pool ตัวเดียวกับตอนมีสมาชิกใหม่เข้าเซิร์ฟจริง
+    // (jobConfig หน้าตาเดียวกับใน handleMemberAdd() ด้านล่างไฟล์นี้เป๊ะ — ต้องส่ง
+    // avatarUrl เป็น string เพราะ loaded Image object ส่งข้าม thread ไม่ได้)
+    let avatarUrl = null;
+    if (config.avatarEnabled) {
+      try {
+        avatarUrl = interaction.user.displayAvatarURL({ extension: 'png', size: 256, forceStatic: true });
+      } catch { /* เอา avatarUrl ไม่ได้ → ส่ง null ไป worker จะข้ามการวาด avatar เอง */ }
+    }
+
+    const jobConfig = {
+      backgroundUrl:  config.backgroundUrl,
+      overlayOpacity: config.overlayOpacity,
+      avatarEnabled:  config.avatarEnabled,
+      avatarUrl,
+      avatarX:        config.avatarX,
+      avatarY:        config.avatarY,
+      avatarRadius:   config.avatarRadius,
+      textBlocks:     previewTextBlocks,
+      customFonts,
+    };
+
+    result = { buffer: await runWelcomeGifJob(jobConfig), ext: 'gif' };
+  } else {
+    // ── เส้นทาง PNG (ค่าเริ่มต้น เร็ว): background ธรรมดา, เซิร์ฟไม่พรีเมียม, หรือ
+    // แค่อัปเดตรูปเล็กระหว่างแก้ค่าอื่น (ไม่ได้ขอ fullGif มา) — ถ้า background เป็น
+    // GIF จริงแต่ไม่เข้าเงื่อนไข isGif ด้านบน จะตัดเฟรมแรกมาใช้เป็นภาพนิ่งแทนอัตโนมัติ
+    const previewConfig = { ...config, textBlocks: previewTextBlocks, customFonts };
+    result = await generateMemberCardImage(interaction.user, previewConfig);
+  }
+
   // เก็บไว้ใน session เพื่อให้ buildMainPanelPayload() ดึงไปแสดงได้ทุกครั้ง
   // config เป็น reference ของ session object → อัปเดตที่นี่ = อัปเดตทั่วทั้ง session
   config.lastPreview = result;
@@ -888,10 +930,14 @@ module.exports = {
 
     // ── 👀 ดูตัวอย่าง → ส่งรูป + ข้อความทักทาย เป็น ephemeral message เดียวกัน
     // (ไม่แก้ panel) — mirror ของจริงตอน handleMemberAdd() ที่ส่งคู่กันเสมอ
+    // 🆕 [อัปเดต 17 ก.ย. 2569] ส่ง { fullGif: true } เฉพาะจุดนี้จุดเดียวในไฟล์นี้ —
+    // ปุ่มนี้คือจุดที่ตั้งใจ "เปิดดูผลลัพธ์จริง" เลยยอมรอช้ากว่าปกตินิดนึงแลกกับเห็น
+    // ภาพเคลื่อนไหวจริง (ถ้า background เป็น GIF และเซิร์ฟเป็นพรีเมียม — ไม่งั้น
+    // genPreview() จะ fallback เป็น PNG ให้เองอัตโนมัติ ไม่ error อะไรทั้งนั้น)
     if (id === WS.PREVIEW) {
       await interaction.deferUpdate();
       try {
-        const preview    = await genPreview(interaction, config);
+        const preview    = await genPreview(interaction, config, { fullGif: true });
         const fname      = `ws_preview.${preview.ext}`;
         const attachment = new AttachmentBuilder(preview.buffer, { name: fname });
 

@@ -870,7 +870,17 @@
     },
     "button": {
       "subscribe": "🍵 Subscribe to Premium ($2.99) ☕",
-      "manage": "⚙️ Manage Subscription"
+      "manage": "⚙️ Manage Subscription",
+      "enter_code": "🎟️ Have a discount code?"
+    },
+    "modal": {
+      "redeem_code_title": "Enter your discount code",
+      "redeem_code_label": "Discount code",
+      "redeem_code_placeholder": "e.g. KITTY10"
+    },
+    "redeem": {
+      "invalid_code": "❌ That code is invalid or no longer active. Double-check the spelling, or ask your seller for a new one.",
+      "already_used": "❌ This server has already used this code — codes can only be used once per server. Ask your seller for a new one."
     },
     "benefits": {
       "free_header": "**🎁 What you get after upgrading:**",

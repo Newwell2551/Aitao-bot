@@ -36,6 +36,10 @@ const stripe = require('./utils/stripeClient');
 const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo, isPremiumGuild } = require('./utils/tierManager');
 const { getGuildLanguage } = require('./utils/languageStorage');
 const { createTranslator } = require('./utils/i18n');
+// 🆕 [แคมเปญโค้ดส่วนลดพ่อค้าแม่ค้า] completeRedemption() = จุดที่ "ยืนยันว่าใช้โค้ด
+// สำเร็จจริง" (มีคนจ่ายเงินสำเร็จจริง ไม่ใช่แค่กรอกโค้ดในมือถือ) เรียกจาก webhook
+// checkout.session.completed ด้านล่างเท่านั้น — ดู utils/referralStorage.js
+const { completeRedemption } = require('./utils/referralStorage');
 // 🆕 หน้า Overview ของแดชบอร์ด (task #15) — เช็กลิสต์เริ่มต้นใช้งาน 6 ข้อ + พรีวิวการ์ด
 // ต้อนรับ/บอกลาแบบเรนเดอร์สดจริง ใช้ storage module พวกนี้เช็คว่าแต่ละข้อ "เสร็จหรือยัง"
 // จากข้อมูลจริงของเซิร์ฟ (ไม่มีตรงไหน hardcode) ดูรายละเอียดเหตุผลแต่ละจุดในคอมเมนต์หัวไฟล์
@@ -860,6 +864,35 @@ async function handleStripeEvent(event, client) {
         currentPeriodEnd: null,
       });
       console.log(`[webhook] guild ${guildId} สมัครพรีเมียมสำเร็จ (checkout.session.completed)`);
+
+      // ── 🆕 [แคมเปญโค้ดส่วนลดพ่อค้าแม่ค้า] เช็คว่า session นี้ใช้โค้ดส่วนลดไหม ──────
+      // completeRedemption() คืน null เงียบๆ ถ้า session นี้ "ไม่ใช่" การใช้โค้ด
+      // (สมัครราคาเต็มปกติผ่านปุ่มสมัครธรรมดา) — ไม่ต้องเช็ค session.id เองก่อนเรียก
+      // เพราะฟังก์ชันนี้เช็คให้แล้วข้างใน (ดู utils/referralStorage.js)
+      // ถ้าเจอ (ไม่ null) แปลว่า: ใช้โค้ดสำเร็จจริง → บันทึกกันใช้ซ้ำ + เพิ่มค่าคอมแล้ว
+      const redemption = completeRedemption(session.id);
+      if (redemption) {
+        console.log(
+          `[webhook] guild ${guildId} ใช้โค้ด "${redemption.code}" สำเร็จ ` +
+          `(ผู้ขาย: ${redemption.sellerLabel}, ค่าคอม +${redemption.commissionThb} บาท)`
+        );
+
+        // แจ้งผู้ขายทันทีถ้ามีผูกบัญชีดิสคอร์ดไว้ (sellerDiscordId มาจากตอน /referral add
+        // — ถ้าไม่ได้ใส่ตอนสร้างโค้ด จะเป็น null แล้วข้ามส่วนนี้ไปเงียบๆ ไม่ error)
+        if (redemption.sellerDiscordId) {
+          try {
+            const sellerUser = await client.users.fetch(redemption.sellerDiscordId);
+            await sellerUser.send(
+              `🎉 มีคนใช้โค้ด **${redemption.code}** ของคุณสมัครพรีเมียมสำเร็จครับ! ` +
+              `ได้ค่าคอม **${redemption.commissionThb} บาท** (เช็คยอดรวมได้ทุกเมื่อ ถามแอดมินได้เลยครับ)`
+            );
+          } catch (dmError) {
+            // เหมือนกับ DM แจ้งลูกค้าด้านล่าง — ส่งไม่ได้ก็แค่ข้าม ไม่ทำให้ webhook พัง
+            // (ผู้ขายเช็คยอดค่าคอมได้เองอยู่ดีผ่าน /referral summary)
+            console.warn('[webhook] ส่ง DM แจ้งค่าคอมผู้ขายไม่สำเร็จ:', dmError.message);
+          }
+        }
+      }
 
       // ── ส่ง DM แจ้งเตือนทันที ให้ความรู้สึกว่าจ่ายเสร็จแล้วรู้ผลทันที ─────────────
       // ไม่ต้องกลับไปพิมพ์ /premium เช็คเองอีกรอบ — discordUserId มาจาก metadata

@@ -27,11 +27,14 @@ const {
  * @param {import('discord.js').Guild|null|undefined} params.guild - Guild object ของ discord.js
  *   (เป็น null/undefined ได้ — ถ้าไม่มีจะข้าม thumbnail รูปปกไปเฉยๆ ไม่ error)
  * @param {(key: string, vars?: object) => string} params.t - translator function เหมือนที่ใช้อยู่ทุกที่
- * @param {import('discord.js').ButtonBuilder|null} [params.actionButton] - ปุ่มต่อท้ายการ์ด
+ * @param {import('discord.js').ButtonBuilder|null} [params.actionButton] - ปุ่มต่อท้ายการ์ด (ปุ่มเดียว)
  *   ถ้าเป็น null (ค่าเริ่มต้น) จะไม่มีแถวปุ่มต่อท้าย (ใช้กับ DM ที่ไม่ต้องมีปุ่ม)
+ * @param {import('discord.js').ButtonBuilder[]|null} [params.actionButtons] - ปุ่มต่อท้ายการ์ด
+ *   (หลายปุ่มในแถวเดียวกัน) — เพิ่มเข้ามาทีหลังตอนทำปุ่ม "มีโค้ดส่วนลด?" คู่กับปุ่มสมัคร
+ *   ถ้าใส่ทั้ง actionButton และ actionButtons มาพร้อมกัน จะใช้ actionButtons ก่อน
  * @returns {import('discord.js').ContainerBuilder} container พร้อมส่ง (ยังไม่ครอบ flags/components array — ตัวเรียกใช้ต้องครอบเอง)
  */
-function buildPremiumCard({ isPremium, subscriptionInfo, guild, t, actionButton = null }) {
+function buildPremiumCard({ isPremium, subscriptionInfo, guild, t, actionButton = null, actionButtons = null }) {
   // ── สร้างข้อความสถานะ ──────────────────────────────────────────────────
   const statusText = isPremium
     ? t('premium.status.active', {
@@ -93,10 +96,12 @@ function buildPremiumCard({ isPremium, subscriptionInfo, guild, t, actionButton 
 
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(benefitsBody));
 
-  // actionButton เป็น null ได้ (เช่นตอนส่ง DM แจ้งเตือน ไม่ต้องมีปุ่มอะไรต่อท้าย)
-  // ถ้าเป็น null ก็ข้ามส่วนปุ่มไปเลย การ์ดจบแค่ลิสต์สิทธิประโยชน์
-  if (actionButton) {
-    container.addActionRowComponents(new ActionRowBuilder().addComponents(actionButton));
+  // รวม actionButton (ปุ่มเดียว, ของเดิม) กับ actionButtons (หลายปุ่ม, ของใหม่) ให้เป็น
+  // อาเรย์เดียวกันเสมอ — ทั้งคู่เป็น null ได้ (เช่นตอนส่ง DM แจ้งเตือน ไม่ต้องมีปุ่มอะไรต่อท้าย)
+  // ถ้าไม่มีปุ่มเลยก็ข้ามส่วนนี้ไป การ์ดจบแค่ลิสต์สิทธิประโยชน์
+  const buttons = actionButtons ?? (actionButton ? [actionButton] : []);
+  if (buttons.length > 0) {
+    container.addActionRowComponents(new ActionRowBuilder().addComponents(...buttons));
   }
 
   return container;

@@ -262,6 +262,22 @@ client.on('interactionCreate', async interaction => {
         }
       }
     }
+
+    // premium_modal_ = modal "กรอกโค้ดส่วนลด" ของ /premium (แคมเปญพ่อค้าแม่ค้า)
+    // เปิดมาจากปุ่ม 🎟️ premium_enter_code ใน commands/premium.js → handleButton()
+    if (interaction.customId.startsWith('premium_modal_')) {
+      const premiumCommand = client.commands.get('premium');
+      try {
+        await premiumCommand.handleModalSubmit(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนบันทึกข้อมูล', flags: MessageFlags.Ephemeral });
+        } else if (interaction.deferred && !interaction.replied) {
+          await interaction.editReply({ content: '❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้งนะครับ' });
+        }
+      }
+    }
     return;
   }
 
