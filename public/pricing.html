@@ -19,12 +19,13 @@
          Premium)
       2. Nav แคปซูลกระจกฝ้าเหมือน 2 หน้าก่อน เมนู "Pricing" ขีดเส้นใต้บอกว่าอยู่
          หน้านี้ ลิงก์ไปหน้าอื่นครบ (Home/Features/Dashboard)
-      3. หัวข้อ + ปุ่มสลับสกุลเงิน EN(USD)/TH(THB) — จุดนี้ไม่ใช่แค่ของตกแต่ง
-         แต่ตรงกับพฤติกรรมจริงของบอท: ปุ่ม /premium ในดิสคอร์ดจะโชว์ราคาคนละ
-         แบบตามภาษาเซิร์ฟ (ดู en.json/th.json → "Subscribe to Premium ($3.29)"
-         กับ "สมัครพรีเมียม (99฿)" — ขึ้นราคาจาก 89 บาทรอบ 11 แล้ว) เลยเอา
-         ตัวเลขจริงจากโค้ดมาใส่ตรงๆ ไม่ได้
-         เดาเอง
+      3. หัวข้อ + ราคา — [แก้ 15 ก.ย. 2569 รอบ 12] เดิมมีปุ่มสลับสกุลเงิน
+         EN(USD)/TH(THB) ให้ตรงกับพฤติกรรมจริงของบอท (ปุ่ม /premium ในดิสคอร์ด
+         โชว์ราคาคนละแบบตามภาษาเซิร์ฟ) แต่น้องหนาวขอให้ตัดออก โชว์แค่ราคาไทย
+         (฿99) ตัวเดียวพอ เพราะกลุ่มเป้าหมายหลักเป็นคนไทย + ราคา $ ฝั่งอังกฤษ
+         ก็ไม่ใช่ราคา Stripe จริงแยกต่างหากอยู่แล้ว (มีราคาเดียวคือ 99 บาท ตัว
+         เลข $ เป็นแค่ป้ายแปลคร่าวๆ) — ตัดแถบสลับสกุลเงินกับ JS ที่เกี่ยวข้อง
+         ออกหมดแล้ว การ์ด Premium โชว์ "฿99 / month" ตายตัว ไม่มีการสลับอีก
       4. การ์ดราคา 2 ใบ (Free / Premium) — รายการสิทธิ์แต่ละอันก็อปมาจาก
          ข้อความจริงใน en.json (benefits.free_body / premium_body) เพื่อให้
          ตรงกับสิ่งที่บอทโชว์จริงในคำสั่ง /premium ไม่ใช่ข้อความที่เดาขึ้นเอง
@@ -154,12 +155,9 @@
     .page-head h1 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; color: #f9f8ff; margin: 14px 0 0; letter-spacing: -0.01em; }
     .page-head p { font-size: 14.5px; color: #9aa2c4; margin-top: 10px; line-height: 1.6; max-width: 480px; margin-left: auto; margin-right: auto; }
 
-    /* ── ปุ่มสลับสกุลเงิน EN(USD)/TH(THB) — ตรงกับ /language ของเซิร์ฟจริง ── */
-    .curr-toggle-row { position: relative; z-index: 2; text-align: center; margin-top: 26px; }
-    .curr-toggle { display: inline-flex; gap: 6px; background: rgba(19,26,46,0.5); border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 4px; backdrop-filter: blur(16px); }
-    .curr-tab { cursor: pointer; padding: 7px 16px; border-radius: 999px; background: transparent; border: 1px solid transparent; font-size: 12px; color: #9aa2c4; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; transition: background .15s ease, border-color .15s ease, color .15s ease; }
-    .curr-tab .curr-code { font-size: 9px; font-weight: 800; letter-spacing: 0.04em; opacity: 0.7; }
-    .curr-hint { font-size: 11px; color: #6d7079; margin-top: 8px; font-style: italic; }
+    /* [ลบ 15 ก.ย. 2569 รอบ 12] เคยมี .curr-toggle-row/.curr-toggle/.curr-tab/
+       .curr-hint สำหรับปุ่มสลับสกุลเงิน EN(USD)/TH(THB) ตรงนี้ — ตัดออกแล้ว
+       ตามที่น้องหนาวขอ (โชว์แค่ราคาไทยตัวเดียว ดูคอมเมนต์บนสุดของไฟล์ข้อ 3) */
 
     /* ── การ์ดราคา 2 ใบ ── */
     .pricing-layout { position: relative; z-index: 2; display: flex; justify-content: center; gap: 24px; padding: 44px 24px 20px; flex-wrap: wrap; }
@@ -262,24 +260,12 @@
     <p>Every number below is pulled straight from the bot's code — no rounding, no fine print.</p>
   </div>
 
-  <div class="curr-toggle-row">
-    <div class="curr-toggle">
-      <div id="tab-curr-en" class="curr-tab" onclick="selectCurrency('en')" style="background:rgba(74,90,168,0.18);border-color:#4a5aa8;color:#f3f1fb;">
-        <span class="curr-code">EN</span> English server · USD
-      </div>
-      <div id="tab-curr-th" class="curr-tab" onclick="selectCurrency('th')">
-        <span class="curr-code">TH</span> Thai server · THB
-      </div>
-    </div>
-    <div class="curr-hint">Matches your server's real /language setting.</div>
-  </div>
-
   <div class="pricing-layout">
     <!-- Free -->
     <div class="price-card">
       <div class="tier-label">Free</div>
       <div class="amount-row">
-        <span class="amount">$0</span>
+        <span class="amount">฿0</span>
         <span class="suffix">forever</span>
       </div>
       <div class="desc">Everything you need to get a server started — no card required.</div>
@@ -304,8 +290,8 @@
 
       <div class="tier-label">Premium</div>
       <div class="amount-row">
-        <span id="priceAmount" class="amount">$3.29</span>
-        <span id="priceSuffix" class="suffix">/ month</span>
+        <span class="amount">฿99</span>
+        <span class="suffix">/ month</span>
       </div>
       <div class="desc">Everything in Free, plus the full Layout Builder and unlimited setups.</div>
 
@@ -313,12 +299,13 @@
            จริงต้องทำผ่านคำสั่ง /premium ในดิสคอร์ดหลังเพิ่มบอทแล้วเท่านั้น
            (ดูคอมเมนต์จุดที่ 1 ด้านบนสุดของไฟล์) — ข้อความปุ่มเปลี่ยนเป็น
            "Add Bot to Subscribe" ให้ตรงกับพฤติกรรมจริง + มีคำใบ้ขั้นตอนถัดไป
-           ใต้ปุ่ม กันคนงงว่ากดแล้วทำไมไม่เจอหน้าจ่ายเงิน -->
+           ใต้ปุ่ม กันคนงงว่ากดแล้วทำไมไม่เจอหน้าจ่ายเงิน — [แก้รอบ 12] ราคา
+           ในปุ่มตอนนี้เป็น ฿99 ตายตัว (ตัดการสลับสกุลเงินออกแล้ว) -->
       <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
          class="cta-btn gold pill-btn primary plain" target="_blank" rel="noopener">
-        <span id="subscribeLabel">Add Bot to Subscribe ($3.29) ☕</span>
+        Add Bot to Subscribe (฿99) ☕
       </a>
-      <div class="cta-note" id="ctaNote">After adding, run <code>/premium</code> in your server to finish subscribing.</div>
+      <div class="cta-note">After adding, run <code>/premium</code> in your server to finish subscribing.</div>
 
       <div class="divider"></div>
 
@@ -333,39 +320,5 @@
   </div>
 
   <div class="price-footnote">Cancel anytime from <span>/premium → Manage Subscription</span> — no lock-in.</div>
-
-  <script>
-    // สลับตัวเลขราคาให้ตรงกับ /language ของเซิร์ฟจริง (ดูคอมเมนต์บนสุดของไฟล์)
-    // ตัวเลข/ข้อความก็อปมาจาก en.json กับ th.json ตรงๆ ไม่ได้พิมพ์เดาเอง
-    // [แก้ 15 ก.ย. 2569 รอบ 11] ขึ้นราคาจาก 89 → 99 บาท/เดือน (ตัดสินใจโดย
-    // น้องหนาว) — ตัวเลข $ ฝั่งอังกฤษปรับตามสัดส่วนเดิมเป็น $3.29 (จำได้ว่า
-    // ไม่ใช่ราคา Stripe จริงแยกต่างหาก แค่ป้ายข้อความคู่ขนาน ดูคอมเมนต์จุดที่ 1
-    // ด้านบนสุดของไฟล์)
-    var CURRENCY_STYLE = {
-      en: { amount: '$3.29', suffix: '/ month', subscribe: 'Add Bot to Subscribe ($3.29) ☕', note: 'After adding, run /premium in your server to finish subscribing.' },
-      th: { amount: '฿99', suffix: '/ เดือน', subscribe: 'เพิ่มบอทเพื่อสมัคร (99฿) ☕', note: 'เพิ่มบอทแล้ว พิมพ์ /premium ในเซิร์ฟเวอร์เพื่อสมัครต่อได้เลยครับ' }
-    };
-
-    function selectCurrency(lang) {
-      ['en', 'th'].forEach(function (l) {
-        var tab = document.getElementById('tab-curr-' + l);
-        var active = (l === lang);
-        if (tab) {
-          tab.style.background = active ? 'rgba(74,90,168,0.18)' : 'transparent';
-          tab.style.borderColor = active ? '#4a5aa8' : 'transparent';
-          tab.style.color = active ? '#f3f1fb' : '#9aa2c4';
-        }
-      });
-      var s = CURRENCY_STYLE[lang];
-      var amt = document.getElementById('priceAmount');
-      if (amt) amt.textContent = s.amount;
-      var suf = document.getElementById('priceSuffix');
-      if (suf) suf.textContent = s.suffix;
-      var sub = document.getElementById('subscribeLabel');
-      if (sub) sub.textContent = s.subscribe;
-      var note = document.getElementById('ctaNote');
-      if (note) note.textContent = s.note;
-    }
-  </script>
 </body>
 </html>
