@@ -215,6 +215,11 @@ function completeRedemption(checkoutSessionId) {
   }
 
   // 2) เพิ่มรายการค่าคอม
+  // 🆕 paidAt: null = "ยังไม่ได้โอนเงินจริงให้ผู้ขาย" — แยกจาก "ยอดรวมตลอดกาล" ที่
+  // getCommissionSummary() คืนให้ (นับทุกแถวเสมอ ไม่สนว่าจ่ายแล้วหรือยัง ใช้โชว์เป็น
+  // สถิติสะสมในห้องรายงานยอด) ส่วน getUnpaidCommissionSummary() ด้านล่างจะกรองเอาเฉพาะ
+  // แถวที่ paidAt ยังเป็น null อยู่ — ใช้ตอนน้องหนาวจะโอนเงินจริงให้ผู้ขายแต่ละคนแล้วมา
+  // เคลียร์ยอดด้วย /referral markpaid (ดู markCommissionsPaid ด้านล่าง)
   const commissionThb = COMMISSION_PER_REDEMPTION_THB;
   data.commissionLog.push({
     code,
@@ -224,6 +229,7 @@ function completeRedemption(checkoutSessionId) {
     checkoutSessionId,
     commissionThb,
     completedAt: new Date().toISOString(),
+    paidAt: null,
   });
 
   // 3) ลบออกจาก pending (จบงานแล้ว)
@@ -260,11 +266,81 @@ function getCommissionSummary() {
 
 /**
  * ดึงรายการโค้ดทั้งหมด (ใช้กับ /referral list)
- * @returns {Array<{ code: string, sellerLabel: string, active: boolean, createdAt: string }>}
+ * @returns {Array<{ code: string, sellerLabel: string, active: boolean, createdAt: string, reportMessageId?: string }>}
  */
 function listAllCodes() {
   const data = readAll();
   return Object.entries(data.codes).map(([code, info]) => ({ code, ...info }));
+}
+
+/**
+ * 🆕 สรุปยอดค่าคอม "ที่ยังไม่ได้จ่ายจริง" เท่านั้น (กรองแถวที่ paidAt เป็น null) ของ
+ * แต่ละโค้ด — นี่คือตัวเลขที่ใช้ "ตัดสินใจว่าต้องโอนเงินให้ผู้ขายคนไหนเท่าไหร่" จริงๆ
+ * ต่างจาก getCommissionSummary() ที่คืนยอดรวมตลอดกาล (ไม่หักลบส่วนที่จ่ายไปแล้ว)
+ * @returns {Array<{ sellerLabel: string, code: string, totalUses: number, totalCommissionThb: number }>}
+ */
+function getUnpaidCommissionSummary() {
+  const data = readAll();
+  const bySeller = {};
+
+  for (const entry of data.commissionLog) {
+    if (entry.paidAt) continue; // จ่ายไปแล้ว ไม่ต้องนับซ้ำ
+    if (!bySeller[entry.code]) {
+      bySeller[entry.code] = {
+        sellerLabel: entry.sellerLabel,
+        code: entry.code,
+        totalUses: 0,
+        totalCommissionThb: 0,
+      };
+    }
+    bySeller[entry.code].totalUses += 1;
+    bySeller[entry.code].totalCommissionThb += entry.commissionThb;
+  }
+
+  return Object.values(bySeller).sort((a, b) => b.totalCommissionThb - a.totalCommissionThb);
+}
+
+/**
+ * 🆕 ทำเครื่องหมายว่า "โอนเงินจริงให้ผู้ขายของโค้ดนี้แล้ว" — เรียกหลังน้องหนาวโอนเงินจริง
+ * ผ่าน PromptPay/ธนาคารเสร็จแล้วเท่านั้น (ฟังก์ชันนี้ไม่ได้โอนเงินให้เองนะครับ แค่บันทึก
+ * ว่าจ่ายแล้ว เพื่อไม่ให้ /referral summary โชว์ยอดเดิมซ้ำอีกรอบ) — ตั้ง paidAt ให้ทุกแถว
+ * ของโค้ดนี้ที่ยังไม่เคยจ่าย (paidAt เป็น null) เท่านั้น แถวที่จ่ายไปแล้วก่อนหน้าจะไม่ถูก
+ * แตะต้องอีก (กันเผลอกดซ้ำแล้วข้อมูลเพี้ยน)
+ * @param {string} code
+ * @returns {{ count: number, totalThb: number }} จำนวนแถว/ยอดรวมที่เพิ่งถูกทำเครื่องหมายว่าจ่ายแล้วรอบนี้
+ */
+function markCommissionsPaid(code) {
+  const data = readAll();
+  const key = normalizeCode(code);
+  const now = new Date().toISOString();
+  let count = 0;
+  let totalThb = 0;
+
+  for (const entry of data.commissionLog) {
+    if (entry.code === key && !entry.paidAt) {
+      entry.paidAt = now;
+      count += 1;
+      totalThb += entry.commissionThb;
+    }
+  }
+
+  if (count > 0) writeAll(data);
+  return { count, totalThb };
+}
+
+/**
+ * 🆕 บันทึก "พิกัดข้อความ" ของห้องรายงานยอดแบบเรียลไทม์ (channel คงที่เสมอ หาได้จาก
+ * getOrCreateReportChannel() ทุกครั้งอยู่แล้ว เลยเก็บแค่ messageId พอ) ไว้กับโค้ดนั้นๆ
+ * เรียกจาก utils/referralReportChannel.js ตอนส่งข้อความรายงานครั้งแรกของโค้ดนั้น
+ * @param {string} code
+ * @param {string} messageId
+ */
+function saveReportMessageId(code, messageId) {
+  const data = readAll();
+  const key = normalizeCode(code);
+  if (!data.codes[key]) return; // โค้ดถูกลบไปแล้ว (ไม่ควรเกิด) — ข้ามเงียบๆ
+  data.codes[key].reportMessageId = messageId;
+  writeAll(data);
 }
 
 module.exports = {
@@ -276,5 +352,8 @@ module.exports = {
   recordPendingRedemption,
   completeRedemption,
   getCommissionSummary,
+  getUnpaidCommissionSummary,
+  markCommissionsPaid,
   listAllCodes,
+  saveReportMessageId,
 };

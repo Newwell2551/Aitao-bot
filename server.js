@@ -40,6 +40,9 @@ const { createTranslator } = require('./utils/i18n');
 // สำเร็จจริง" (มีคนจ่ายเงินสำเร็จจริง ไม่ใช่แค่กรอกโค้ดในมือถือ) เรียกจาก webhook
 // checkout.session.completed ด้านล่างเท่านั้น — ดู utils/referralStorage.js
 const { completeRedemption } = require('./utils/referralStorage');
+// 🆕 ห้องรายงานยอดค่าคอมแบบเรียลไทม์ — อัปเดตการ์ดของโค้ดนั้นทันทีหลังยืนยันว่าใช้โค้ด
+// สำเร็จจริง (ดูคำอธิบายเต็มในไฟล์ utils/referralReportChannel.js)
+const { syncCodeReportMessage } = require('./utils/referralReportChannel');
 // 🆕 หน้า Overview ของแดชบอร์ด (task #15) — เช็กลิสต์เริ่มต้นใช้งาน 6 ข้อ + พรีวิวการ์ด
 // ต้อนรับ/บอกลาแบบเรนเดอร์สดจริง ใช้ storage module พวกนี้เช็คว่าแต่ละข้อ "เสร็จหรือยัง"
 // จากข้อมูลจริงของเซิร์ฟ (ไม่มีตรงไหน hardcode) ดูรายละเอียดเหตุผลแต่ละจุดในคอมเมนต์หัวไฟล์
@@ -876,6 +879,11 @@ async function handleStripeEvent(event, client) {
           `[webhook] guild ${guildId} ใช้โค้ด "${redemption.code}" สำเร็จ ` +
           `(ผู้ขาย: ${redemption.sellerLabel}, ค่าคอม +${redemption.commissionThb} บาท)`
         );
+
+        // 🆕 อัปเดตการ์ดในห้อง #referral-earnings ให้เป็นตัวเลขล่าสุดทันที (เรียลไทม์
+        // ตามที่น้องหนาวขอ) — ฟังก์ชันนี้ดักทุก error ไว้ในตัวเองแล้ว ไม่มีทาง throw
+        // ออกมาทำให้ webhook หลัก (ปลดล็อกพรีเมียม) พังตามแน่นอน
+        await syncCodeReportMessage(client, redemption.code);
 
         // แจ้งผู้ขายทันทีถ้ามีผูกบัญชีดิสคอร์ดไว้ (sellerDiscordId มาจากตอน /referral add
         // — ถ้าไม่ได้ใส่ตอนสร้างโค้ด จะเป็น null แล้วข้ามส่วนนี้ไปเงียบๆ ไม่ error)
