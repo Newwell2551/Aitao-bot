@@ -7,10 +7,35 @@
 // utils/syncDiscordBotList.js (ส่งรายการคำสั่งไปโชว์ที่ discordbotlist.com) เรียกใช้
 // "โค้ดชุดเดียวกัน" ได้ — ไม่ต้องเขียนรายการคำสั่งซ้ำสองที่ ถ้าวันหลังเพิ่ม/ลบคำสั่ง
 // ก็จะเห็นผลอัตโนมัติทั้งสองจุดพร้อมกันเสมอ (ไม่มีทางลืมอัปเดตจุดใดจุดหนึ่ง)
+//
+// 🔒 อัปเดตล่าสุด: เพิ่มการรองรับคำสั่งที่ตั้ง `ownerOnly: true` ไว้ (เช่น /dev, /referral)
+// เพราะคำสั่งพวกนี้เป็นคำสั่งลับเฉพาะเจ้าของบอท ไม่ควรถูกส่งไปโชว์ในเว็บสาธารณะ
+// อย่าง discordbotlist.com และไม่ควรถูกลงทะเบียนแบบ Global (ดูรายละเอียดเพิ่มใน
+// deploy-commands.js กับ utils/syncDiscordBotList.js)
 // ─────────────────────────────────────────────────────────────────────────
 
 const fs = require('fs');
 const path = require('path');
+
+/**
+ * โหลดทุกไฟล์ .js ในโฟลเดอร์ commands/ แบบ "ดิบๆ" — คืนทั้งชื่อไฟล์และตัว module
+ * ที่ require() มาได้เลย (ไม่ได้แปลงเป็น JSON ให้ทันที) ไว้ให้ฟังก์ชัน/ไฟล์อื่นที่ต้อง
+ * เข้าถึง property อื่นๆ ของคำสั่งนอกเหนือจาก .data (เช่น ownerOnly ที่เพิ่งเพิ่มมา)
+ * เอาไปใช้ต่อได้ตามต้องการ โดยไม่ต้องเขียนโค้ด "อ่านโฟลเดอร์ commands/" ซ้ำอีกที่
+ * @returns {{file: string, command: object}[]} array ของคู่ {ชื่อไฟล์, module ที่ require มา}
+ */
+function loadCommandModules() {
+  const commandsPath = path.join(__dirname, '..', 'commands');
+  const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
+
+  return commandFiles.map((file) => {
+    // require() ของไฟล์เดียวกันซ้ำๆ ไม่ได้ทำให้โค้ดรันซ้ำ — Node.js มี "require cache"
+    // เก็บผลลัพธ์การโหลดไฟล์ไว้ ถ้าไฟล์นี้เคยถูก require ไปแล้วที่อื่น (เช่นใน index.js
+    // ตอนโหลด client.commands) จะได้ค่าเดิมจาก cache ทันที ไม่เสียเวลาอ่านไฟล์ซ้ำ
+    const command = require(path.join(commandsPath, file));
+    return { file, command };
+  });
+}
 
 /**
  * อ่านทุกไฟล์ .js ในโฟลเดอร์ commands/ แล้วแปลงแต่ละคำสั่งเป็น JSON ตามรูปแบบที่
@@ -20,22 +45,19 @@ const path = require('path');
  * รูปแบบนี้ตรงกับที่ discordbotlist.com ต้องการเป๊ะๆ พอดี (เขาบอกไว้ในเอกสารว่า
  * "JSON array แบบเดียวกับที่ Discord API ใช้") เลยเอามาใช้ซ้ำได้ตรงๆ โดยไม่ต้องแปลง
  * รูปแบบเพิ่มเติมเลย
- * @returns {object[]} array ของคำสั่งทั้งหมด ในรูปแบบ Discord command JSON
+ *
+ * @param {object} [options]
+ * @param {boolean} [options.excludeOwnerOnly] - ถ้าเป็น true จะไม่เอาคำสั่งที่ตั้ง
+ *   `ownerOnly: true` ไว้ (เช่น /dev, /referral) เข้ามาในผลลัพธ์เลย — ใช้ตอนจะส่งรายการ
+ *   คำสั่งไปที่ discordbotlist.com เพื่อไม่ให้คำสั่งลับหลุดไปโชว์บนเว็บสาธารณะ
+ * @returns {object[]} array ของคำสั่ง ในรูปแบบ Discord command JSON
  */
-function getCommandsJSON() {
-  const commands = [];
-  const commandsPath = path.join(__dirname, '..', 'commands');
-  const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
+function getCommandsJSON(options = {}) {
+  const { excludeOwnerOnly = false } = options;
 
-  for (const file of commandFiles) {
-    // require() ของไฟล์เดียวกันซ้ำๆ ไม่ได้ทำให้โค้ดรันซ้ำ — Node.js มี "require cache"
-    // เก็บผลลัพธ์การโหลดไฟล์ไว้ ถ้าไฟล์นี้เคยถูก require ไปแล้วที่อื่น (เช่นใน index.js
-    // ตอนโหลด client.commands) จะได้ค่าเดิมจาก cache ทันที ไม่เสียเวลาอ่านไฟล์ซ้ำ
-    const command = require(path.join(commandsPath, file));
-    commands.push(command.data.toJSON());
-  }
-
-  return commands;
+  return loadCommandModules()
+    .filter(({ command }) => !excludeOwnerOnly || !command.ownerOnly)
+    .map(({ command }) => command.data.toJSON());
 }
 
-module.exports = { getCommandsJSON };
+module.exports = { getCommandsJSON, loadCommandModules };
