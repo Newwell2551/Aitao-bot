@@ -116,7 +116,7 @@ module.exports = {
         .addStringOption((opt) =>
           opt.setName('promptpay_id')
             .setDescription('Seller\'s PromptPay ID (10-digit phone or 13-digit citizen ID), for payout QR later')
-            .setDescriptionLocalizations({ th: 'เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ 10 หลัก หรือเลขบัตร ปชช. 13 หลัก) ไว้สร้าง QR โอนเงินทีหลัง — ไม่ใส่ตอนนี้ก็ได้ ตั้งทีหลังได้ด้วย /referral setpromptpay' })
+            .setDescriptionLocalizations({ th: 'เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ 10 หลัก/บัตร ปชช. 13 หลัก) ไว้สร้าง QR — ไม่ใส่ตอนนี้ก็ได้' })
             .setRequired(false)
         )
     )
