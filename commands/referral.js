@@ -36,6 +36,9 @@ const {
 const CODE_PATTERN = /^[A-Z0-9]{3,20}$/;
 
 module.exports = {
+  // 🔒 ownerOnly: true — เหมือนใน dev.js เป๊ะๆ (ดูคอมเมนต์อธิบายละเอียดในไฟล์นั้น)
+  ownerOnly: true,
+
   data: new SlashCommandBuilder()
     .setName('referral')
     .setDescription('For development use only.')
