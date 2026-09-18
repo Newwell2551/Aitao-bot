@@ -871,7 +871,7 @@
     "button": {
       "subscribe": "🍵 Subscribe to Premium ($2.99) ☕",
       "manage": "⚙️ Manage Subscription",
-      "enter_code": "🎟️ Have a discount code?"
+      "enter_code": "Have a discount code?"
     },
     "modal": {
       "redeem_code_title": "Enter your discount code",
