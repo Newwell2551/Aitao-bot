@@ -16,6 +16,12 @@
 // ตัวเดียวกับที่ deploy-commands.js ใช้ลงทะเบียนคำสั่งกับ Discord จริงๆ อยู่แล้ว เพราะ
 // รูปแบบ JSON ที่ discordbotlist.com ต้องการตรงกับรูปแบบที่ Discord API ใช้พอดี
 // (ผลลัพธ์จาก SlashCommandBuilder.toJSON() มี name/description/type/options ครบอยู่แล้ว)
+//
+// 🔒 อัปเดตความปลอดภัย: เรียก getCommandsJSON({ excludeOwnerOnly: true }) แทนการเรียก
+// เฉยๆ แบบเดิม — เพื่อ "ไม่เอา" คำสั่งลับของเจ้าของบอท (เช่น /dev, /referral ที่ตั้ง
+// ownerOnly: true ไว้ในไฟล์คำสั่งของมันเอง) ไปรวมในรายการที่ส่งไปโชว์ที่เว็บสาธารณะ
+// discordbotlist.com เด็ดขาด — ก่อนหน้านี้ไม่ได้กรอง ทำให้ชื่อ/คำอธิบาย/พารามิเตอร์ของ
+// คำสั่งลับพวกนี้หลุดไปอยู่บนหน้าเว็บสาธารณะที่ใครก็เข้าดูได้โดยไม่รู้ตัว
 // ─────────────────────────────────────────────────────────────────────────
 
 const { getCommandsJSON } = require('./getCommandsJSON');
@@ -49,7 +55,8 @@ async function syncDiscordBotListCommands() {
   try {
     // ดึงรายการคำสั่งจากฟังก์ชันกลางตัวเดียวกับที่ deploy-commands.js ใช้ — ไม่มี
     // การเขียนรายการคำสั่งขึ้นมาใหม่ในไฟล์นี้เลยแม้แต่บรรทัดเดียว
-    const commands = getCommandsJSON();
+    // excludeOwnerOnly: true = กรองคำสั่งลับของเจ้าของบอทออกก่อนส่งไปเว็บสาธารณะเสมอ
+    const commands = getCommandsJSON({ excludeOwnerOnly: true });
 
     // fetch() เป็นฟังก์ชันมาตรฐานของ Node.js (มีให้ใช้ในตัวตั้งแต่ Node 18 ขึ้นไป
     // ไม่ต้องติดตั้ง package เพิ่ม เช่น axios/node-fetch) ใช้ยิง HTTP request ได้เลย
