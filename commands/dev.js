@@ -26,6 +26,12 @@ const { setGuildTier, VALID_TIERS } = require('../utils/tierManager');
 const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 module.exports = {
+  // 🔒 ownerOnly: true — flag พิเศษที่ deploy-commands.js กับ utils/syncDiscordBotList.js
+  // จะมาเช็คดู เพื่อ "กันคำสั่งนี้ไม่ให้เผยแพร่แบบ Global และไม่ให้ส่งไปโชว์ที่
+  // discordbotlist.com" — ไม่เกี่ยวกับ Discord API เลย เป็น flag ที่เราตั้งขึ้นมาเองล้วนๆ
+  // เพื่อให้ไฟล์อื่นแยกออกว่า "คำสั่งไหนเป็นคำสั่งลับของเจ้าของบอท ไม่ใช่คำสั่งสาธารณะ"
+  ownerOnly: true,
+
   data: new SlashCommandBuilder()
     .setName('dev')
     // description เดิม "[DEV ONLY] Set a server's tier (for testing before real
