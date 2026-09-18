@@ -12,7 +12,9 @@
 //       "stripeCouponId": "coupon_xxx",       ← อ้างอิงไว้เฉยๆ เผื่อต้องไปดูใน Stripe Dashboard
 //       "stripePromotionCodeId": "promo_xxx", ← ตัวจริงที่ใช้แนบเข้า Checkout Session
 //       "active": true,                       ← false = โค้ดถูกปิดใช้งานแล้ว (แต่ประวัติยังอยู่)
-//       "createdAt": "2026-09-17T12:00:00.000Z"
+//       "createdAt": "2026-09-17T12:00:00.000Z",
+//       "reportMessageId": "1234567890",      ← พิกัดข้อความการ์ดในห้อง #referral-earnings (ดู referralReportChannel.js)
+//       "promptpayId": "0812345678"           ← เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ/บัตร ปชช.) ไว้สร้าง QR โอนเงิน, null ถ้ายังไม่ตั้ง
 //     }
 //   },
 //   "pendingRedemptions": {
@@ -27,7 +29,8 @@
 //     {
 //       "code": "KITTY10", "sellerLabel": "@kittyarts", "sellerDiscordId": "...",
 //       "guildId": "...", "checkoutSessionId": "cs_...",
-//       "commissionThb": 5, "completedAt": "2026-09-17T12:05:00.000Z"
+//       "commissionThb": 5, "completedAt": "2026-09-17T12:05:00.000Z",
+//       "paidAt": null  ← null = ยังไม่ได้โอนเงินจริงให้ผู้ขาย, ตั้งเวลาไว้ตอนกด /referral markpaid
 //     }
 //   ]
 // }
@@ -113,9 +116,9 @@ function normalizeCode(code) {
  * ถ้าโค้ดนี้มีอยู่แล้ว จะ "เขียนทับ" ข้อมูลเดิม (เผื่อแก้ sellerLabel ทีหลัง)
  *
  * @param {string} code
- * @param {{ sellerLabel: string, sellerDiscordId: string|null, stripeCouponId: string, stripePromotionCodeId: string }} info
+ * @param {{ sellerLabel: string, sellerDiscordId: string|null, stripeCouponId: string, stripePromotionCodeId: string, promptpayId?: string|null }} info
  */
-function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePromotionCodeId }) {
+function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePromotionCodeId, promptpayId }) {
   const data = readAll();
   const key = normalizeCode(code);
   data.codes[key] = {
@@ -123,6 +126,7 @@ function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePr
     sellerDiscordId: sellerDiscordId || null,
     stripeCouponId,
     stripePromotionCodeId,
+    promptpayId: promptpayId || null,
     active: true,
     createdAt: new Date().toISOString(),
   };
@@ -343,6 +347,23 @@ function saveReportMessageId(code, messageId) {
   writeAll(data);
 }
 
+/**
+ * 🆕 ตั้ง/แก้ไขเลขพร้อมเพย์ของผู้ขายโค้ดนี้ (เรียกจาก /referral add ตอนใส่มาตั้งแต่แรก
+ * หรือ /referral setpromptpay ตอนตั้งทีหลัง) — ใช้ตอนสร้าง QR โอนเงินด้วย
+ * utils/promptpayQr.js (ดู /referral payout ใน commands/referral.js)
+ * @param {string} code
+ * @param {string} promptpayId เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก
+ * @returns {boolean} true ถ้าเจอโค้ดและบันทึกสำเร็จ, false ถ้าไม่เจอโค้ดนี้เลย
+ */
+function savePromptPayId(code, promptpayId) {
+  const data = readAll();
+  const key = normalizeCode(code);
+  if (!data.codes[key]) return false;
+  data.codes[key].promptpayId = promptpayId;
+  writeAll(data);
+  return true;
+}
+
 module.exports = {
   COMMISSION_PER_REDEMPTION_THB,
   saveCode,
@@ -356,4 +377,5 @@ module.exports = {
   markCommissionsPaid,
   listAllCodes,
   saveReportMessageId,
+  savePromptPayId,
 };

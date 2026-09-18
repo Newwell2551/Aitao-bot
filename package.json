@@ -11,6 +11,8 @@
     "express": "^5.2.1",
     "express-session": "^1.18.1",
     "gif-encoder-2": "^1.0.5",
+    "promptpay-qr": "^0.5.0",
+    "qrcode": "^1.5.4",
     "sharp": "^0.35.3",
     "stripe": "^22.4.0",
     "twemoji": "^14.0.2"

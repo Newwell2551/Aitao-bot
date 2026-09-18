@@ -23,7 +23,7 @@
  * ตั้งค่าไม่ตรงกัน (เช่น ลืมตั้ง duration=once) ให้บอททำให้ครบในคำสั่งเดียวจบเลยดีกว่า
  */
 
-const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags, AttachmentBuilder } = require('discord.js');
 const stripe = require('../utils/stripeClient');
 const {
   saveCode,
@@ -33,16 +33,25 @@ const {
   getUnpaidCommissionSummary,
   markCommissionsPaid,
   listAllCodes,
+  savePromptPayId,
   COMMISSION_PER_REDEMPTION_THB,
 } = require('../utils/referralStorage');
 // 🆕 ห้องรายงานยอดค่าคอมแบบเรียลไทม์ (ดูคำอธิบายเต็มในไฟล์นั้น) — เรียกทุกครั้งที่มีการ
 // เปลี่ยนแปลงที่กระทบยอดของโค้ดใดโค้ดหนึ่ง (สร้างโค้ดใหม่ / ปิดใช้งาน / มีคนใช้โค้ดสำเร็จ)
 const { syncCodeReportMessage } = require('../utils/referralReportChannel');
+// 🆕 ตัวช่วยสร้าง QR PromptPay ให้ /referral payout (ดูคำอธิบายเต็มในไฟล์นั้น — ย้ำอีกที
+// ว่าแค่สร้างรูป QR ให้สแกนจ่ายเร็วขึ้น ไม่ได้โอนเงินให้อัตโนมัติ)
+const { generatePromptPayQrBuffer } = require('../utils/promptpayQr');
 
 // โค้ดที่พ่อค้าแม่ค้าจะเอาไปแจกต้อง "จำง่าย พิมพ์ง่าย" — จำกัดรูปแบบไว้กันเผลอสร้าง
 // โค้ดที่มีอักขระแปลกๆ (เช่น อีโมจิ, ช่องว่าง) ที่พิมพ์ยากตอนลูกค้ากรอกจริง
 // อนุญาต: ตัวอักษรอังกฤษ A-Z, ตัวเลข 0-9, ยาว 3-20 ตัวอักษร
 const CODE_PATTERN = /^[A-Z0-9]{3,20}$/;
+
+// 📱 รูปแบบเลขพร้อมเพย์ที่รองรับ (ใช้สร้าง QR โอนเงินใน /referral payout): เบอร์มือถือ
+// 10 หลัก (เช่น 0812345678) หรือเลขบัตรประชาชน 13 หลัก — ตัวเลขล้วนเท่านั้น ห้ามมีขีด/
+// เว้นวรรค/เครื่องหมายอื่นปนมา (พิมพ์แบบนั้นมา promptpay-qr จะสร้าง QR ผิดพลาดทันที)
+const PROMPTPAY_ID_PATTERN = /^\d{10}$|^\d{13}$/;
 
 // 🎲 ชุดตัวอักษรไว้ "สุ่มโค้ด" ให้อัตโนมัติ — ใช้ตอนไม่ใส่ค่า code เอง (เช่น มีผู้ขาย
 // เข้ามาพร้อมกันเยอะๆ ไม่มีเวลานั่งคิดชื่อโค้ดทีละคน) ตัด O, I, 0, 1 ออกจากชุดตัวอักษร
@@ -104,6 +113,12 @@ module.exports = {
             .setMinValue(1)
             .setMaxValue(50)
         )
+        .addStringOption((opt) =>
+          opt.setName('promptpay_id')
+            .setDescription('Seller\'s PromptPay ID (10-digit phone or 13-digit citizen ID), for payout QR later')
+            .setDescriptionLocalizations({ th: 'เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ 10 หลัก หรือเลขบัตร ปชช. 13 หลัก) ไว้สร้าง QR โอนเงินทีหลัง — ไม่ใส่ตอนนี้ก็ได้ ตั้งทีหลังได้ด้วย /referral setpromptpay' })
+            .setRequired(false)
+        )
     )
     .addSubcommand((sub) =>
       sub.setName('list')
@@ -136,6 +151,34 @@ module.exports = {
             .setDescriptionLocalizations({ th: 'โค้ดที่เพิ่งโอนเงินให้ผู้ขายไปครับ' })
             .setRequired(true)
         )
+    )
+    .addSubcommand((sub) =>
+      sub.setName('setpromptpay')
+        .setDescription('Set or update a seller\'s PromptPay ID for payout QR codes')
+        .setDescriptionLocalizations({ th: 'ตั้ง/แก้ไขเลขพร้อมเพย์ของผู้ขายโค้ดนี้ ไว้สร้าง QR โอนเงินครับ' })
+        .addStringOption((opt) =>
+          opt.setName('code')
+            .setDescription('The code to set the PromptPay ID for')
+            .setDescriptionLocalizations({ th: 'โค้ดที่จะตั้งเลขพร้อมเพย์ให้ครับ' })
+            .setRequired(true)
+        )
+        .addStringOption((opt) =>
+          opt.setName('promptpay_id')
+            .setDescription('10-digit phone number or 13-digit citizen ID')
+            .setDescriptionLocalizations({ th: 'เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลักครับ' })
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub.setName('payout')
+        .setDescription('Generate PromptPay QR codes for outstanding commissions')
+        .setDescriptionLocalizations({ th: 'สร้าง QR PromptPay สำหรับยอดค้างจ่าย (ไม่ใส่โค้ด = สร้างให้ทุกคนที่ค้างจ่าย)' })
+        .addStringOption((opt) =>
+          opt.setName('code')
+            .setDescription('Only generate for this code (leave empty for everyone with an unpaid balance)')
+            .setDescriptionLocalizations({ th: 'ระบุโค้ดถ้าอยากได้แค่คนเดียว ไม่ใส่ = สร้างให้ทุกคนที่ค้างจ่ายครับ' })
+            .setRequired(false)
+        )
     ),
 
   async execute(interaction) {
@@ -164,6 +207,12 @@ module.exports = {
     if (sub === 'markpaid') {
       return handleMarkPaid(interaction);
     }
+    if (sub === 'setpromptpay') {
+      return handleSetPromptPay(interaction);
+    }
+    if (sub === 'payout') {
+      return handlePayout(interaction);
+    }
   },
 };
 
@@ -184,6 +233,19 @@ async function handleAdd(interaction) {
   const sellerLabel = interaction.options.getString('seller').trim();
   const sellerUser = interaction.options.getUser('seller_discord_user');
   const discountThb = interaction.options.getInteger('discount_thb') ?? 10;
+  const rawPromptPayId = interaction.options.getString('promptpay_id');
+
+  // เช็ครูปแบบเลขพร้อมเพย์ก่อนเลย (ถ้าใส่มา) — เช็คตั้งแต่ต้นก่อนไปยิง Stripe API เลย
+  // กันเสียเวลาสร้าง Coupon/Promotion Code ไปแล้วแต่ดันพิมพ์เลขพร้อมเพย์ผิดรูปแบบทีหลัง
+  let promptpayId = null;
+  if (rawPromptPayId) {
+    promptpayId = rawPromptPayId.trim();
+    if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
+      return interaction.editReply({
+        content: `❌ เลขพร้อมเพย์ "${rawPromptPayId}" รูปแบบไม่ถูกต้องครับ — ใส่ได้แค่เบอร์มือถือ 10 หลัก (เช่น 0812345678) หรือเลขบัตรประชาชน 13 หลักเท่านั้น (ตัวเลขล้วน ไม่มีขีด/เว้นวรรค) ไม่ใส่ตอนนี้ก็ได้ ตั้งทีหลังได้ด้วย /referral setpromptpay`,
+      });
+    }
+  }
 
   let code;
   let autoGenerated = false;
@@ -253,6 +315,7 @@ async function handleAdd(interaction) {
       sellerDiscordId: sellerUser?.id ?? null,
       stripeCouponId: coupon.id,
       stripePromotionCodeId: promotionCode.id,
+      promptpayId,
     });
 
     // 4) 🆕 โพสต์การ์ดรายงานยอดของโค้ดนี้ในห้อง referral-earnings ทันที (เริ่มที่ 0
@@ -269,7 +332,10 @@ async function handleAdd(interaction) {
         `• เดือนถัดไปกลับราคาปกติอัตโนมัติ (ไม่ต้องกรอกโค้ดซ้ำ)\n` +
         `• เซิร์ฟไหนใช้โค้ดนี้ไปแล้ว จะใช้ซ้ำอีกไม่ได้ (ต้องรอโค้ดใหม่)\n` +
         `• ทุกครั้งที่มีคนใช้โค้ดนี้สำเร็จ ${sellerLabel} จะได้ค่าคอม ${COMMISSION_PER_REDEMPTION_THB} บาท` +
-        (sellerUser ? ` (บอทจะ DM แจ้ง ${sellerUser} ให้อัตโนมัติ)` : ' (ยังไม่ได้ผูกบัญชีดิสคอร์ด เลยจะไม่มี DM แจ้ง เช็คยอดได้ผ่าน /referral summary)'),
+        (sellerUser ? ` (บอทจะ DM แจ้ง ${sellerUser} ให้อัตโนมัติ)` : ' (ยังไม่ได้ผูกบัญชีดิสคอร์ด เลยจะไม่มี DM แจ้ง เช็คยอดได้ผ่าน /referral summary)') +
+        (promptpayId
+          ? `\n• ตั้งเลขพร้อมเพย์ไว้แล้ว — ใช้ /referral payout สร้าง QR โอนเงินให้คนนี้ได้เลยครับ`
+          : `\n• ยังไม่ได้ตั้งเลขพร้อมเพย์ — ตั้งทีหลังได้ด้วย /referral setpromptpay code:${code}`),
     });
   } catch (error) {
     console.error('[referral add] สร้าง Coupon/Promotion Code ที่ Stripe ไม่สำเร็จ:', error);
@@ -394,4 +460,117 @@ async function handleMarkPaid(interaction) {
     content: `✅ ทำเครื่องหมายว่าจ่ายแล้วให้โค้ด **${code}** จำนวน ${count} ครั้ง รวม **${totalThb} บาท** ครับ — ยอดค้างจ่ายของโค้ดนี้เคลียร์เรียบร้อย`,
     flags: MessageFlags.Ephemeral,
   });
+}
+
+/**
+ * 🆕 /referral setpromptpay — ตั้ง/แก้เลขพร้อมเพย์ของผู้ขายคนนึง (โค้ดนึง) ทีหลังได้
+ * เผื่อตอนสร้างโค้ดด้วย /referral add ยังไม่รู้เลขพร้อมเพย์ หรือผู้ขายเปลี่ยนเลขทีหลัง
+ * ต้องตั้งเลขนี้ไว้ก่อนถึงจะใช้ /referral payout สร้าง QR ให้คนนี้ได้นะครับ
+ */
+async function handleSetPromptPay(interaction) {
+  const code = interaction.options.getString('code').trim().toUpperCase();
+  const promptpayId = interaction.options.getString('promptpay_id').trim();
+
+  if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
+    return interaction.reply({
+      content: `❌ เลขพร้อมเพย์ "${promptpayId}" รูปแบบไม่ถูกต้องครับ — ใส่ได้แค่เบอร์มือถือ 10 หลัก (เช่น 0812345678) หรือเลขบัตรประชาชน 13 หลักเท่านั้น (ตัวเลขล้วน ไม่มีขีด/เว้นวรรค)`,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  const codeEntry = listAllCodes().find((c) => c.code === code);
+  if (!codeEntry) {
+    return interaction.reply({
+      content: `❌ ไม่เจอโค้ด "${code}" ในระบบเลยครับ`,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  savePromptPayId(code, promptpayId);
+
+  return interaction.reply({
+    content: `✅ ตั้งเลขพร้อมเพย์ของโค้ด **${code}** (${codeEntry.sellerLabel}) เรียบร้อยครับ — ใช้ \`/referral payout\` สร้าง QR โอนเงินให้คนนี้ได้แล้ว`,
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
+/**
+ * 🆕 /referral payout — สร้างรูป QR PromptPay ให้ทุกโค้ดที่ยังมียอดค้างจ่ายอยู่ (หรือ
+ * เฉพาะโค้ดเดียวถ้าใส่ตัวเลือก code มา) เพื่อให้น้องหนาวสแกนโอนเงินได้เร็วขึ้น — ตัวช่วยนี้
+ * "ไม่ได้โอนเงินอัตโนมัติ" นะครับ (ดูคำอธิบายเต็มๆ ที่ utils/promptpayQr.js) แค่สร้าง QR
+ * ที่มียอดเงินฝังไว้ในตัวให้แสกนจ่ายเองเร็วขึ้น
+ *
+ * ข้อจำกัดของดิสคอร์ด: 1 ข้อความแนบไฟล์ได้สูงสุด 10 ไฟล์ — ถ้ามีคนค้างจ่ายเกิน 10 คน
+ * จะสร้าง QR ให้ก่อน 10 คนแรก แล้วบอกให้รันคำสั่งซ้ำอีกรอบสำหรับคนที่เหลือ
+ */
+async function handlePayout(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const filterCode = interaction.options.getString('code');
+  const unpaidSummary = getUnpaidCommissionSummary();
+
+  if (unpaidSummary.length === 0) {
+    return interaction.editReply({ content: 'ไม่มียอดค้างจ่ายเลยครับ ทุกคนได้รับเงินครบแล้ว 🎉' });
+  }
+
+  const codeInfoMap = new Map(listAllCodes().map((c) => [c.code, c]));
+
+  let targets = unpaidSummary;
+  if (filterCode) {
+    const normalized = filterCode.trim().toUpperCase();
+    targets = targets.filter((s) => s.code === normalized);
+    if (targets.length === 0) {
+      return interaction.editReply({
+        content: `❌ โค้ด "${normalized}" ไม่มียอดค้างจ่ายเลยครับ (เช็คด้วย /referral summary ได้)`,
+      });
+    }
+  }
+
+  // แยกกลุ่ม: คนที่มีเลขพร้อมเพย์แล้ว (สร้าง QR ได้) กับคนที่ยังไม่มี (ต้องแจ้งให้ไปตั้งก่อน)
+  const withPromptPay = [];
+  const missingPromptPay = [];
+  for (const s of targets) {
+    const info = codeInfoMap.get(s.code);
+    if (info?.promptpayId) {
+      withPromptPay.push(s);
+    } else {
+      missingPromptPay.push(s);
+    }
+  }
+
+  const MAX_ATTACHMENTS = 10; // ข้อจำกัดของดิสคอร์ด — 1 ข้อความแนบไฟล์ได้สูงสุด 10 ไฟล์
+  const toGenerate = withPromptPay.slice(0, MAX_ATTACHMENTS);
+  const overflowCount = withPromptPay.length - toGenerate.length;
+
+  const files = [];
+  const lines = [];
+
+  for (const s of toGenerate) {
+    const info = codeInfoMap.get(s.code);
+    try {
+      const qrBuffer = await generatePromptPayQrBuffer(info.promptpayId, s.totalCommissionThb);
+      files.push(new AttachmentBuilder(qrBuffer, { name: `promptpay-${s.code}.png` }));
+      lines.push(`🟢 **${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} บาท`);
+    } catch (error) {
+      console.error(`[referral payout] สร้าง QR ให้โค้ด ${s.code} ไม่สำเร็จ:`, error);
+      lines.push(`⚠️ **${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} บาท (สร้าง QR ไม่สำเร็จ)`);
+    }
+  }
+
+  let content =
+    `**QR PromptPay สำหรับโอนเงินค่าคอม** (${toGenerate.length} คน)\n${lines.join('\n')}\n\n` +
+    `สแกนจ่ายแล้วอย่าลืมกด \`/referral markpaid code:XXX\` ทีละโค้ดที่โอนเสร็จด้วยนะครับ`;
+
+  if (overflowCount > 0) {
+    content += `\n\n⚠️ มีอีก ${overflowCount} คนที่ยังไม่ได้สร้าง QR ให้ (ดิสคอร์ดจำกัดไฟล์แนบสูงสุด 10 ไฟล์/ข้อความ) รัน \`/referral payout\` อีกรอบสำหรับคนที่เหลือ`;
+  }
+
+  if (missingPromptPay.length > 0) {
+    const missingLines = missingPromptPay.map(
+      (s) => `**${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} บาท`
+    );
+    content += `\n\n❌ ยังไม่มีเลขพร้อมเพย์ให้ ${missingPromptPay.length} คนนี้ (ตั้งก่อนด้วย \`/referral setpromptpay\`):\n${missingLines.join('\n')}`;
+  }
+
+  return interaction.editReply({ content, files });
 }
