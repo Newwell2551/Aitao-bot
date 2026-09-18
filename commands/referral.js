@@ -303,8 +303,15 @@ async function handleAdd(interaction) {
     // 2) สร้าง Promotion Code ผูกกับ Coupon ด้านบน — นี่คือ "ตัวโค้ดจริง" ที่จะเอาไปแนบ
     //    เข้า Checkout Session ตอนลูกค้ากรอกโค้ดผ่านบอท (ดู commands/premium.js)
     //    active: true = เปิดใช้งานทันที
+    //
+    //    🆕 18 ก.ย. 2569: Stripe อัปเดต API เวอร์ชันใหม่ (stripe-version: 2026-07-29
+    //    เป็นต้นไป) เปลี่ยนวิธีผูก Promotion Code เข้ากับ Coupon — เดิมส่ง `coupon: id`
+    //    เป็นพารามิเตอร์ตรงๆ ได้เลย แต่เวอร์ชันใหม่ต้องห่อเป็น object `promotion` ก่อน
+    //    (ระบุ `type: 'coupon'` แล้วค่อยใส่ `coupon: id` ข้างใน) ไม่งั้น Stripe จะโยน
+    //    error "Received unknown parameter: coupon" ทันที เพราะพารามิเตอร์ระดับบนสุด
+    //    ชื่อ `coupon` เลิกใช้แล้ว — ดูเอกสารล่าสุด: https://docs.stripe.com/api/promotion_codes/create
     const promotionCode = await stripe.promotionCodes.create({
-      coupon: coupon.id,
+      promotion: { type: 'coupon', coupon: coupon.id },
       code,
       active: true,
     });
