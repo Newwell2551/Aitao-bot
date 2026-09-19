@@ -26,30 +26,36 @@
 //      เงื่อนไขการจ่ายค่าคอมให้ผู้ขาย (ใช้ TextDisplay ใน Modal — ฟีเจอร์ใหม่ของ Discord
 //      ที่ให้ใส่ข้อความอ่านอย่างเดียวใน modal ได้โดยไม่ต้องมีช่องกรอกเลย)
 //
-// 🆕 อัปเดต (รอบดึกยิ่งกว่าเดิม — เคยลองแล้วผิดทาง!) — ตอนแรกเข้าใจผิดว่าภาพเรฟ "MAMOMI
-// STORE" ต้องวาดเป็นรูปภาพจริงด้วย canvas ถึงจะได้กรอบกล่องแบบนั้น (ลองทำไปแล้วรอบนึง
-// เป็นไฟล์ utils/drawReferralReportCard.js) — น้องหนาวแก้ให้โดยก็อปข้อความดิบจากบอทเรฟ
-// มาให้ดูตรงๆ แล้วถึงรู้ว่า **ไม่ใช่รูปภาพเลย เป็นข้อความ Discord ธรรมดาๆ นี่แหละ** แค่ใช้
-// เทคนิคจัดฟอร์แมต 2 อย่างร่วมกัน:
-//   1) ตัวอักษร "・" (คัตะคานะ middle dot) นำหน้าแต่ละป้ายกำกับ
-//   2) ค่าตัวเลขแต่ละอันห่อด้วย code block (```ข้อความ```) — Discord render code block
-//      เป็นกล่องพื้นหลังเข้ม ตัวอักษร monospace ให้เองอัตโนมัติ นี่คือกล่องที่ดูเหมือน
-//      "ถูกวาดเป็นกรอบ" ในภาพเรฟ ไม่ใช่รูปภาพหรือ programmatic drawing อะไรเลย!
-// วิธีนี้เบากว่า เร็วกว่า ไม่ต้องพึ่ง @napi-rs/canvas/โหลดฟอนต์/โหลดรูปอิโมจิจาก CDN เลย
-// แถมยังคง Embed เดิมไว้ได้ (footer เวลาอัปเดตแบบสัมพัทธ์ที่ Discord จัดการให้อัตโนมัติ)
-// — ดู buildReportEmbed() ด้านล่าง
+// 🆕 อัปเดตล่าสุด — สลับหน้าตาการ์ดไปมา 3 รอบกว่าจะลงตัว สรุปสั้นๆ ว่าเคยลองอะไรมาบ้าง:
+//   รอบ 1: Embed ธรรมดา (addFields 3 ช่องเล็ก + 1 ช่องใหญ่)
+//   รอบ 2 (เข้าใจผิด — เลิกใช้แล้ว): ลองวาดเป็นรูปภาพจริงด้วย canvas เพราะเข้าใจผิดว่าภาพเรฟ
+//     "MAMOMI STORE" ต้องวาดถึงจะได้กรอบกล่อง (ไฟล์ utils/drawReferralReportCard.js ที่ค้าง
+//     อยู่บนเครื่องตอนนี้ไม่ได้ใช้แล้ว ลบทิ้งได้เลย)
+//   รอบ 3: กลับมาเป็น Embed แต่เปลี่ยน description เป็น "・ป้ายกำกับ" + code block
+//     (```ค่า```) — เพราะน้องหนาวก็อปข้อความดิบจากบอทเรฟมาให้ดูตรงๆ แล้วรู้ว่าไม่ใช่รูปภาพเลย
+//     Discord render code block เป็นกล่องพื้นหลังเข้ม/ตัว monospace ให้เองอัตโนมัติ
+//   รอบ 4: จัดเป็นกริด 2x2 ด้วย embed fields (inline:true คั่นด้วย field ล่องหน)
+//   รอบ 5 (ปัจจุบัน — ของจริง): น้องหนาวยืนยันว่า "ไม่เอาแถบสีข้างซ้าย embed เลย" (ไม่ใช่แค่
+//     ไม่ตั้งสี — Embed ทุกอันของ Discord มีแถบให้เห็นเสมอไม่ว่าจะตั้งสีหรือไม่ ต่างจากที่คิด
+//     ไว้ตอนแรก) วิธีเดียวที่การันตีว่าไม่มีแถบสี/กรอบการ์ดใดๆ เลยคือ**เลิกใช้ Embed ไปเลย**
+//     เปลี่ยนเป็น "plain message content" ธรรมดา (เหมือนที่น้องหนาวก็อปเรฟมาให้ดูตั้งแต่ต้น
+//     นั่นแหละ — ไม่ใช่ embed มาตั้งแต่แรกด้วยซ้ำ) ข้อเสียคือ plain text ไม่มี "คอลัมน์" ในตัว
+//     แบบที่ embed field ทำได้ (inline:true) เลยต้องจำลองกริด 2 คอลัมน์เองด้วยการเว้นช่องว่าง
+//     ในตัว code block (monospace font จัดคอลัมน์ให้ตรงกันได้ ถ้าความยาวข้อความแต่ละช่องคุม
+//     ให้ใกล้เคียงกัน) ดู buildReportContent() ด้านล่าง — เวลาสัมพัทธ์ที่เคยได้จาก
+//     .setTimestamp() ของ embed ก็เปลี่ยนมาใช้ Discord timestamp markup <t:วินาที:R> แทน
+//     ซึ่งใช้ได้ในข้อความธรรมดาเหมือนกัน ไม่ต้องพึ่ง embed เลย
 //
-// 🆕 อัปเดตต่อ (รอบถัดมา) — ตามที่ขอ 2 อย่าง: (1) เอาแถบสีข้างซ้าย embed ออก (ไม่เรียก
-// .setColor() แล้ว) (2) จัดสถิติทั้ง 4 เป็นกริด "2 คอลัมน์ x 2 แถว" แทนการเรียงต่อกัน
-// ยาวๆ ในบรรทัดเดียว — ใช้ embed fields แบบ inline:true ทีละคู่ คั่นกลางด้วย field
-// ล่องหน (FIELD_ROW_BREAK) เพื่อบังคับให้ขึ้นแถวใหม่ตรงกลางพอดี (Discord ไม่ยึดตามที่เรา
-// จัดกลุ่มไว้ในโค้ดเฉยๆ ถ้าไม่มีตัวคั่น จะพยายามเรียง inline field ต่อกันตามพื้นที่ว่างเอง)
+//   เอาระบบอิโมจิ custom ของเซิร์ฟ Milo Support (ตามชื่อ) ที่เคยทำไว้ตอนแรกออกไปแล้วด้วย
+//   (ไม่มีใครใช้ตั้งแต่รอบ 3 เป็นต้นมา) — รอบนี้น้องหนาวส่ง "ID อิโมจิ" มาให้ตรงๆ 5 ตัว แทน
+//   ชื่อ ใช้ resolveEmojiById() ค้นหาจาก client.emojis.cache ด้วย ID (แม่นยำกว่าค้นด้วยชื่อ
+//   เพราะ ID ไม่มีทางซ้ำ/สะกดผิด) — ถ้าหา ID ไม่เจอ (เช่นบอทยังไม่ได้เข้าเซิร์ฟที่มีอิโมจินี้)
+//   จะ fallback เป็นอิโมจิ Unicode สำรองให้อัตโนมัติเหมือนเดิม ไม่ error
 // ─────────────────────────────────────────────────────────────────────────
 
 const {
   ChannelType,
   PermissionFlagsBits,
-  EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
@@ -78,6 +84,37 @@ const RANGE_LABELS = Object.fromEntries(RANGE_OPTIONS.map((o) => [o.value, o.lab
 const RANGE_SELECT_PREFIX = 'referral_range_select_';
 const TERMS_BUTTON_ID = 'referral_terms_button';
 const TERMS_MODAL_ID = 'referral_terms_modal';
+
+// 🆕 ID อิโมจิ custom จากเซิร์ฟ Milo Support ที่น้องหนาวส่งมา (5 ตัว) — สมมติฐานลำดับการจับคู่
+// (เรียงตามตารางช่องอิโมจิเดิมที่เคยตกลงกันไว้ ตัด "หัวข้อการ์ด"/"ปุ่มข้อกำหนด" ออกเพราะ 2
+// ช่องนั้นไม่ได้ใช้ในดีไซน์ปัจจุบันแล้ว เหลือพอดี 5 ช่องตรงกับจำนวน ID ที่ส่งมา):
+//   1) เปิดใช้งาน (เขียว) 2) ปิดใช้งาน (แดง) 3) ใช้ไปแล้ว 4) ค่าคอมต่อครั้ง 5) รวมรายได้
+// ⚠️ ถ้าจับคู่ผิดช่อง (เช่นไอคอนเขียวๆ ไปโผล่ตรงค่าคอมต่อครั้งแทน) บอกมาได้เลยครับ สลับแค่
+// ตำแหน่งในอ็อบเจกต์นี้จบ ไม่ต้องแก้ตรรกะที่ไหนอีก
+const CUSTOM_EMOJI_IDS = {
+  statusActive: '1548426060180492368',
+  statusInactive: '1546199668793282560',
+  uses: '1548426051452145765',
+  perUse: '1546199675491852398',
+  total: '1546199649902133358',
+};
+
+/**
+ * หาอิโมจิ custom จาก ID ตรงๆ (ไม่ใช่ค้นด้วยชื่อแบบเดิม) — client.emojis.cache รวมอิโมจิจาก
+ * "ทุกเซิร์ฟที่บอทอยู่" ไว้ในก้อนเดียว บอทใช้อิโมจิของเซิร์ฟไหนก็ได้ตราบใดที่ตัวเองอยู่ในเซิร์ฟ
+ * นั้น ไม่จำเป็นต้องเป็นเซิร์ฟเดียวกับที่ส่งข้อความ (คนละเรื่องกับที่ "คน" พิมพ์อิโมจิเซิร์ฟอื่น
+ * ไม่ได้ถ้าไม่ได้ Nitro — แต่ "บอท" ใช้ได้ปกติ เพราะส่งผ่าน API ตรงๆ ไม่ผ่านข้อจำกัดไคลเอนต์)
+ * หาไม่เจอ (ID ผิด/บอทยังไม่เข้าเซิร์ฟนั้น) → คืนค่า fallback Unicode แทนเงียบๆ ไม่ error
+ * @param {import('discord.js').Client} client
+ * @param {string} id
+ * @param {string} fallback อิโมจิ Unicode สำรอง
+ * @returns {string}
+ */
+function resolveEmojiById(client, id, fallback) {
+  const emoji = client?.emojis?.cache?.get(id);
+  if (!emoji) return fallback;
+  return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+}
 
 /**
  * หาห้องรายงานยอดที่มีอยู่แล้ว หรือสร้างใหม่ถ้ายังไม่มี (pattern เดียวกับ
@@ -122,52 +159,68 @@ async function getOrCreateReportChannel(guild) {
   });
 }
 
-// field "ตัวเว้นบรรทัด" ล่องหน — ชื่อ/ค่าเป็น zero-width space (​ ไม่ใช่ช่องว่างธรรมดา
-// เพราะ Discord ไม่ยอมให้ field name/value เป็นสตริงว่างเปล่าจริงๆ) ใส่แบบ inline:false
-// คั่นระหว่างแถวที่ 1 กับแถวที่ 2 ของกริด — เทคนิคมาตรฐานที่หลายบอทใช้บังคับให้ field แบบ
-// inline ขึ้นบรรทัดใหม่ตรงจุดที่ต้องการเป๊ะๆ (ไม่งั้น Discord จะพยายามจัด field inline ทั้งหมด
-// เรียงต่อกันเป็นแถวเดียวตามพื้นที่ว่าง ไม่ยึดตามที่เราแบ่งไว้ในโค้ด)
-const FIELD_ROW_BREAK = { name: '​', value: '​', inline: false };
+// ความกว้างคอลัมน์ (นับเป็นตัวอักษร) ที่ใช้ตอนจำลองกริด 2 คอลัมน์ในข้อความธรรมดา — เว้นช่อง
+// ว่างท้ายข้อความสั้นให้ครบตามนี้ เพื่อให้คอลัมน์ที่ 2 เริ่มตำแหน่งเดียวกันทุกแถว (ใช้ได้ดีกับ
+// ฟอนต์ monospace ของ code block โดยเฉพาะ — ส่วนบรรทัดป้ายกำกับที่อยู่นอก code block อาจไม่
+// เป๊ะเป๊ะ 100% เพราะมีอิโมจิ/สระ-วรรณยุกต์ไทยปนอยู่ซึ่งกว้างไม่เท่ากันเป๊ะในทุกฟอนต์ ถ้าเห็น
+// จริงแล้วเยื้องนิดหน่อยบอกได้เลย ปรับเลขในนี้เพิ่ม/ลดได้ง่ายๆ)
+const LABEL_COL_WIDTH = 30;
+const VALUE_COL_WIDTH = 22;
+
+/** เติมช่องว่างท้ายข้อความให้ครบความกว้างคอลัมน์ที่กำหนด (อย่างน้อยเว้น 2 ช่องเสมอ แม้ข้อความจะยาวเกินคอลัมน์ไปแล้ว) */
+function padCol(text, width) {
+  return text.length >= width ? `${text}  ` : text.padEnd(width, ' ');
+}
 
 /**
- * แปลงตัวเลขสถิติของโค้ด 1 อัน (ที่กรองตามช่วงเวลาที่เลือกมาแล้ว) เป็น "การ์ด" (Embed)
+ * แปลงตัวเลขสถิติของโค้ด 1 อัน (ที่กรองตามช่วงเวลาที่เลือกมาแล้ว) เป็นข้อความการ์ด — ข้อความ
+ * ธรรมดาล้วนๆ (ไม่ใช่ Embed) ตามที่น้องหนาวก็อปเรฟ "MAMOMI STORE" มาให้ดูตรงๆ: "・ป้ายกำกับ"
+ * ตามด้วย code block (```ค่า```) — Discord render code block เป็นกล่องพื้นหลังเข้ม/ตัว
+ * monospace ให้เองอัตโนมัติ ไม่ต้องมี Embed หรือรูปภาพเลยสักนิด (การันตีไม่มีแถบสี/กรอบการ์ด
+ * ใดๆ ติดมาด้วย เพราะ Embed ของ Discord มีแถบสีข้างซ้ายเสมอไม่ว่าจะตั้งสีหรือไม่)
  *
- * จัดสถิติทั้ง 4 เป็นกริด 2x2 ด้วย embed fields (inline:true ทีละคู่ คั่นกลางด้วย
- * FIELD_ROW_BREAK เพื่อบังคับขึ้นแถวใหม่ตรงกลางพอดี — ไม่ใช้ description ยาวๆ แบบเดิม)
- * แต่ละ field: ชื่อ field เป็น "・ป้ายกำกับ" (ตามภาพเรฟ "MAMOMI STORE" ที่น้องหนาวก็อปมาให้
- * ดูตรงๆ) ค่าเป็น code block (```ค่า```) — Discord render code block เป็นกล่องพื้นหลังเข้ม
- * ตัว monospace ให้เองอัตโนมัติ ได้หน้าตากล่องๆ เหมือนเรฟโดยไม่ต้องวาดรูปเลย
+ * จัดเป็นกริด 2 คอลัมน์ x 2 แถวด้วยการเว้นช่องว่าง (padCol) ให้คอลัมน์ที่ 2 เริ่มตำแหน่ง
+ * เดียวกันทุกบรรทัด — แถวบน: สถานะ | ใช้ไปแล้ว, แถวล่าง: ค่าคอมต่อครั้ง | รวมรายได้
  *
- * ไม่ใช้ .setColor() แล้ว (เอาแถบสีข้างซ้ายของ embed ออกตามที่ขอ) — เหลือแค่กรอบเทาปกติ
- * ของ Discord เอง
- *
- * ใช้อิโมจิ Unicode ธรรมดาตรงๆ ในข้อความได้เลย (🟢🔴🔁💸💰) — Discord render อิโมจิพวกนี้
- * ให้เองตามปกติ ไม่ต้องมีระบบอิโมจิ custom ของเซิร์ฟใดๆ เข้ามาเกี่ยวข้องเลย
+ * เวลาที่เคยได้จาก Embed .setTimestamp() (แสดงเวลาสัมพัทธ์ เช่น "2 นาทีที่แล้ว" อัตโนมัติ)
+ * เปลี่ยนมาใช้ Discord timestamp markup <t:วินาที:R> แทน — ใช้ได้ในข้อความธรรมดาเหมือนกัน
+ * Discord render เป็นเวลาสัมพัทธ์ที่อัปเดตสดๆ ให้เองไม่ต่างจาก embed เลย
  * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number }} stats
  * @param {'today'|'month'|'all'} range
- * @returns {import('discord.js').EmbedBuilder}
+ * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
+ * @returns {string}
  */
-function buildReportEmbed(stats, range) {
+function buildReportContent(stats, range, client) {
   const rangeLabel = RANGE_LABELS[range] ?? RANGE_LABELS.all;
-  const statusEmoji = stats.active ? '🟢' : '🔴';
-  const statusText = stats.active ? 'เปิดใช้งานอยู่' : 'ปิดใช้งานแล้ว';
 
-  return new EmbedBuilder()
-    .setTitle(`📊 ${stats.code}`)
-    .setDescription(`ผู้ขาย: **${stats.sellerLabel}**`)
-    .addFields(
-      // แถวที่ 1: สถานะ | ใช้ไปแล้ว
-      { name: `・${statusEmoji} สถานะ`, value: `\`\`\`\n${statusText}\n\`\`\``, inline: true },
-      { name: `・🔁 ใช้ไปแล้ว (${rangeLabel})`, value: `\`\`\`\n${stats.totalUses} ครั้ง\n\`\`\``, inline: true },
-      FIELD_ROW_BREAK,
-      // แถวที่ 2: ค่าคอมต่อครั้ง | รวมรายได้
-      { name: '・💸 ค่าคอมต่อครั้ง', value: `\`\`\`\n${COMMISSION_PER_REDEMPTION_THB} บาท\n\`\`\``, inline: true },
-      { name: `・💰 รวมรายได้ (${rangeLabel})`, value: `\`\`\`\n${stats.totalCommissionThb} บาท\n\`\`\``, inline: true },
-      // บรรทัดตกแต่งปิดท้าย (เต็มความกว้าง — inline:false เลยขึ้นแถวใหม่เองอยู่แล้ว ไม่ต้องมี break คั่นก่อนหน้า)
-      { name: '​', value: '╰ ꒰ Aitao Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯', inline: false },
-    )
-    .setFooter({ text: 'อัปเดตล่าสุด' })
-    .setTimestamp(); // Discord โชว์เป็นเวลาสัมพัทธ์ให้เอง (เช่น "2 นาทีที่แล้ว") ในเขตเวลาของแต่ละคนเอง
+  const statusEmoji = stats.active
+    ? resolveEmojiById(client, CUSTOM_EMOJI_IDS.statusActive, '🟢')
+    : resolveEmojiById(client, CUSTOM_EMOJI_IDS.statusInactive, '🔴');
+  const statusText = stats.active ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+  const usesEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.uses, '🔁');
+  const perUseEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.perUse, '💸');
+  const totalEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.total, '💰');
+
+  const nowUnix = Math.floor(Date.now() / 1000);
+
+  return [
+    `📊 **${stats.code}**`,
+    `ผู้ขาย: **${stats.sellerLabel}**`,
+    '',
+    // แถวที่ 1: สถานะ | ใช้ไปแล้ว
+    padCol(`・${statusEmoji} สถานะ`, LABEL_COL_WIDTH) + `・${usesEmoji} ใช้ไปแล้ว (${rangeLabel})`,
+    '```',
+    padCol(statusText, VALUE_COL_WIDTH) + `${stats.totalUses} ครั้ง`,
+    '```',
+    // แถวที่ 2: ค่าคอมต่อครั้ง | รวมรายได้
+    padCol(`・${perUseEmoji} ค่าคอมต่อครั้ง`, LABEL_COL_WIDTH) + `・${totalEmoji} รวมรายได้ (${rangeLabel})`,
+    '```',
+    padCol(`${COMMISSION_PER_REDEMPTION_THB} บาท`, VALUE_COL_WIDTH) + `${stats.totalCommissionThb} บาท`,
+    '```',
+    '',
+    `อัปเดตล่าสุด: <t:${nowUnix}:R>`,
+    '╰ ꒰ Aitao Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯',
+  ].join('\n');
 }
 
 /**
@@ -204,15 +257,16 @@ function buildReportComponents(code, range) {
 }
 
 /**
- * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้าง embed+components" ไว้จุดเดียว
+ * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้างข้อความ+components" ไว้จุดเดียว
  * ใช้ร่วมกันทั้ง syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ
  * handleReportRangeSelect() (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
+ * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
  * @param {string} code
  * @param {'today'|'month'|'all'} range
- * @returns {{ embeds: import('discord.js').EmbedBuilder[], components: import('discord.js').ActionRowBuilder[] } | null}
+ * @returns {{ content: string, components: import('discord.js').ActionRowBuilder[] } | null}
  *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว)
  */
-function buildReportPayload(code, range) {
+function buildReportPayload(client, code, range) {
   const normalizedCode = String(code || '').trim().toUpperCase();
   const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
   if (!codeEntry) return null;
@@ -227,7 +281,7 @@ function buildReportPayload(code, range) {
   };
 
   return {
-    embeds: [buildReportEmbed(stats, range)],
+    content: buildReportContent(stats, range, client),
     components: buildReportComponents(normalizedCode, range),
   };
 }
@@ -262,7 +316,7 @@ async function syncCodeReportMessage(client, code, range = 'all') {
   const normalizedCode = String(code || '').trim().toUpperCase();
 
   try {
-    const payload = buildReportPayload(normalizedCode, range);
+    const payload = buildReportPayload(client, normalizedCode, range);
     if (!payload) return; // โค้ดนี้ไม่มีอยู่จริง (ไม่ควรเกิด แต่กันไว้)
 
     const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
@@ -272,16 +326,14 @@ async function syncCodeReportMessage(client, code, range = 'all') {
     if (codeEntry.reportMessageId) {
       try {
         const existingMessage = await channel.messages.fetch(codeEntry.reportMessageId);
-        // ต้องเคลียร์ content: '' + attachments: [] ด้วยเสมอตอนแก้ไขข้อความเก่า —
-        // เพราะข้อความรุ่นแรกสุด (ก่อนเปลี่ยนมาใช้ embed) เป็น plain text ล้วนๆ และช่วง
-        // สั้นๆ ก่อนหน้านี้เคยลองส่งเป็นรูปภาพแนบ (attachment) ไปด้วย — ถ้าข้อความเดิมของ
-        // ใครยังเป็นเวอร์ชันรูปภาพค้างอยู่ ต้องสั่ง attachments: [] มาด้วยเสมอ ไม่งั้นรูป
-        // เก่าจะค้างซ้อนอยู่เหนือ embed ใหม่ (Discord แก้เฉพาะ field ที่ส่งมาเท่านั้น
-        // ไม่ได้ล้างของเดิมให้อัตโนมัติ)
+        // เคลียร์ embeds: [] + attachments: [] ด้วยเสมอตอนแก้ไขข้อความเก่า — เผื่อข้อความ
+        // เดิมของโค้ดนี้เคยผ่านเวอร์ชัน Embed หรือเวอร์ชันรูปภาพแนบมาก่อน (มีมาแล้วหลายรอบ
+        // ระหว่างที่ปรับดีไซน์ ดูคอมเมนต์หัวไฟล์) ถ้าไม่เคลียร์ ของเก่าจะค้างซ้อนอยู่เหนือ
+        // ข้อความใหม่ (Discord แก้เฉพาะ field ที่ส่งมาเท่านั้น ไม่ได้ล้างของเดิมให้อัตโนมัติ)
         await existingMessage.edit({
-          content: '',
+          content: payload.content,
+          embeds: [],
           attachments: [],
-          embeds: payload.embeds,
           components: payload.components,
         });
         return;
@@ -293,7 +345,7 @@ async function syncCodeReportMessage(client, code, range = 'all') {
       }
     }
 
-    const sentMessage = await channel.send({ embeds: payload.embeds, components: payload.components });
+    const sentMessage = await channel.send({ content: payload.content, components: payload.components });
     saveReportMessageId(normalizedCode, sentMessage.id);
   } catch (error) {
     console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอดของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
@@ -316,14 +368,14 @@ async function handleReportRangeSelect(interaction) {
   const code = interaction.customId.slice(RANGE_SELECT_PREFIX.length);
   const range = interaction.values[0];
 
-  const payload = buildReportPayload(code, range);
+  const payload = buildReportPayload(interaction.client, code, range);
   if (!payload) {
     await interaction.reply({ content: 'ไม่พบโค้ดนี้แล้วครับ (อาจถูกลบไปแล้ว)', ephemeral: true });
     return;
   }
 
-  // เคลียร์ attachments: [] ไว้ด้วยเสมอ — เผื่อการ์ดนี้เคยเป็นเวอร์ชันรูปภาพค้างมาก่อน
-  await interaction.update({ content: '', attachments: [], embeds: payload.embeds, components: payload.components });
+  // เคลียร์ embeds: []/attachments: [] ไว้ด้วยเสมอ — เผื่อการ์ดนี้เคยเป็นเวอร์ชันเก่าค้างมาก่อน
+  await interaction.update({ content: payload.content, embeds: [], attachments: [], components: payload.components });
 }
 
 /** เช็คว่า customId นี้เป็นปุ่ม "ข้อกำหนด" ของห้องรายงานยอดหรือไม่ (เรียกจาก index.js) */
