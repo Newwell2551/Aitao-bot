@@ -39,7 +39,12 @@ const { createTranslator } = require('./utils/i18n');
 // 🆕 [แคมเปญโค้ดส่วนลดพ่อค้าแม่ค้า] completeRedemption() = จุดที่ "ยืนยันว่าใช้โค้ด
 // สำเร็จจริง" (มีคนจ่ายเงินสำเร็จจริง ไม่ใช่แค่กรอกโค้ดในมือถือ) เรียกจาก webhook
 // checkout.session.completed ด้านล่างเท่านั้น — ดู utils/referralStorage.js
-const { completeRedemption } = require('./utils/referralStorage');
+//
+// 🆕 completeRedemptionFromDiscount() = ตาข่ายรองรับ (fallback) ตอน completeRedemption()
+// หาไม่เจอ — เผื่อลูกค้าไม่ได้กดปุ่ม "มีโค้ดส่วนลด?" ในบอทก่อน แต่ไปพิมพ์โค้ดเองตรงช่อง
+// "Add promotion code" ที่หน้า Stripe Checkout เลย (หรืออนาคตมีช่องทางซื้อพรีเมียมจากที่
+// อื่นที่ไม่ผ่านบอทเลย) — เช็คย้อนหลังจากข้อมูลส่วนลดจริงที่ Stripe บันทึกไว้ในตัว session แทน
+const { completeRedemption, completeRedemptionFromDiscount } = require('./utils/referralStorage');
 // 🆕 ห้องรายงานยอดค่าคอมแบบเรียลไทม์ — อัปเดตการ์ดของโค้ดนั้นทันทีหลังยืนยันว่าใช้โค้ด
 // สำเร็จจริง (ดูคำอธิบายเต็มในไฟล์ utils/referralReportChannel.js)
 const { syncCodeReportMessage } = require('./utils/referralReportChannel');
@@ -81,6 +86,10 @@ const { renderServerPickerPage } = require('./utils/renderServerPicker');
 // ที่นี่ เพราะถ้าวันหน้ามีคนไปแก้สิทธิ์ที่บอทขอตอนเชิญ (invitePermissions ใน help.js)
 // จะได้แก้จุดเดียวแล้วสองที่นี้อัปเดตตามกันอัตโนมัติ ไม่ต้องมาคอยจำว่าต้องแก้ 2 จุด
 const { buildInviteUrl } = require('./commands/help');
+// 🆕 หน้า Premium & Billing จริง (เพิ่ม 19 ก.ย. 2569) — ให้เลือกจ่ายได้ 2 ทางจากหน้าเว็บ
+// (บัตรเครดิต / PromptPay QR) ดูคอมเมนต์เต็มๆ ตรง route GET/POST /dashboard/:guildId/premium
+// ด้านล่างสำหรับเหตุผลที่กลไกข้างในของ 2 ทางนี้ต่างกัน
+const { renderPremiumBillingPage } = require('./utils/renderPremiumBilling');
 
 // 🆕 โดเมนจริงของเว็บเรา — ใช้สร้าง "redirect_uri" ตอนคุยกับ Discord OAuth2 (Discord
 // บังคับว่าต้องส่งค่าเดียวกันเป๊ะทั้งตอนขอ authorize และตอนแลก token ดูคอมเมนต์ใน
@@ -649,16 +658,17 @@ function createWebhookServer(client) {
     res.json({ ok: true });
   });
 
-  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 6 หน้าที่ยังไม่ได้สร้างจริง (task #17-22 — Welcome Card
-  // มี route จริงแล้วด้านบน จึงตัดออกจากลิสต์นี้) กันไม่ให้เมนู sidebar/เช็กลิสต์ของหน้า Overview
-  // กดแล้วเจอ 404 เฉยๆ ระหว่างที่ยังทยอยสร้างทีละหน้าตามแผน — แต่ละเส้นทางในนี้จะถูกแทนที่ด้วย
-  // route จริงทีละหน้าเรื่อยๆ ต่อจากนี้ (ลบออกจากลิสต์นี้ทันทีที่หน้านั้นมีของจริง)
+  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 5 หน้าที่ยังไม่ได้สร้างจริง (task #17-22 — Welcome Card
+  // มี route จริงแล้วด้านบน, Premium ก็มี route จริงแล้วเช่นกันตั้งแต่ 19 ก.ย. 2569
+  // (ดู GET /dashboard/:guildId/premium ด้านล่าง) จึงตัดออกจากลิสต์นี้ทั้งคู่) กันไม่ให้เมนู
+  // sidebar/เช็กลิสต์ของหน้า Overview กดแล้วเจอ 404 เฉยๆ ระหว่างที่ยังทยอยสร้างทีละหน้าตามแผน
+  // — แต่ละเส้นทางในนี้จะถูกแทนที่ด้วย route จริงทีละหน้าเรื่อยๆ ต่อจากนี้ (ลบออกจากลิสต์นี้
+  // ทันทีที่หน้านั้นมีของจริง)
   const COMING_SOON_PAGES = [
     { path: 'goodbye', key: 'goodbye', label: 'Goodbye Card' },
     { path: 'fonts', key: 'fonts', label: 'Fonts' },
     { path: 'roles', key: 'roles', label: 'Role Setup' },
     { path: 'builder', key: 'builder', label: 'Message Builder' },
-    { path: 'premium', key: 'premium', label: 'Premium' },
     { path: 'language', key: 'language', label: 'Language' },
   ];
   for (const page of COMING_SOON_PAGES) {
@@ -674,6 +684,157 @@ function createWebhookServer(client) {
       }));
     });
   }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 หน้า Premium & Billing จริง (เพิ่ม 19 ก.ย. 2569) — น้องหนาวขอให้เลือกจ่ายได้ 2 ทาง
+  // จากหน้าเว็บ: บัตรเครดิต กับ PromptPay QR ทั้งคู่ไปจบที่ Stripe เหมือนกัน แต่ "กลไกข้างใน"
+  // ต่างกันโดยเนื้อแท้ เพราะ Stripe ไม่รองรับ PromptPay กับ subscription แบบหักเงินอัตโนมัติ
+  // (charge_automatically ที่ Checkout Session โหมด subscription ใช้อยู่) — รองรับแค่แบบ
+  // "ออกใบแจ้งหนี้ให้จ่ายเอง" (collection_method: 'send_invoice') เท่านั้น (เช็คจากเอกสาร
+  // Stripe https://docs.stripe.com/payments/promptpay แล้ว มีคอลัมน์ Subscriptions ระบุไว้
+  // ชัดเจน พร้อมเชิงอรรถว่าต้องใช้ send_invoice)
+  //
+  //   • บัตรเครดิต → ใช้ Stripe Checkout Session mode:'subscription' เหมือนปุ่ม "สมัคร
+  //     พรีเมียม" ใน commands/premium.js เป๊ะๆ (แค่เปลี่ยนที่มาของ guildId/discordUserId
+  //     จาก interaction เป็น session ที่ login ค้างไว้แทน) → หักเงินอัตโนมัติทุกเดือน
+  //     เงียบๆ เหมือนเดิมทุกอย่าง
+  //   • PromptPay → สร้าง Stripe Subscription ตรงๆ ผ่าน API (ไม่ผ่าน Checkout Session
+  //     เพราะ Checkout โหมด subscription ไม่รองรับ PromptPay) ด้วย collection_method:
+  //     'send_invoice' → ได้ invoice ใบแรกมาทันที เอา hosted_invoice_url (หน้า Stripe ที่มี
+  //     QR ให้สแกน) ไป redirect ลูกค้าไปจ่ายต่อเลย ทุกเดือนถัดไป Stripe จะออก invoice ใหม่ +
+  //     อีเมลลิงก์ไปให้เองอัตโนมัติ (ลูกค้าต้องกลับมาสแกนจ่ายใหม่ทุกเดือนเอง ไม่ใช่หัก
+  //     อัตโนมัติแบบบัตร) — webhook invoice.payment_succeeded ที่มีอยู่แล้วด้านล่างครอบคลุม
+  //     การปลดล็อก premium ให้ทั้ง 2 ทางนี้อยู่แล้วในตัว (เช็ค subscription.metadata.guildId
+  //     เหมือนกันหมด ไม่สนว่า subscription ถูกสร้างผ่าน Checkout หรือผ่าน API ตรงๆ) — เลย
+  //     ไม่ต้องเพิ่ม case ใหม่ในนั้น แค่เพิ่มส่วนส่ง DM แจ้งเตือนสำหรับทาง PromptPay
+  //     โดยเฉพาะ (ดูคอมเมนต์ตรงนั้น)
+  //
+  // ⚠️ จุดที่ยังไม่ได้ทำ (บอกน้องหนาวไว้ในแชทแล้ว): ถ้าลูกค้าฝั่ง PromptPay เพิกเฉยไม่จ่าย
+  // invoice รอบต่ออายุเลย ตอนนี้ยังไม่มีระบบดีดกลับเป็น free อัตโนมัติ — Stripe ไม่ได้ยิง
+  // webhook บอกเราตรงๆ ว่า "invoice เลยกำหนดจ่ายแล้ว" ต้องทำ scheduled job แยกต่างหากไปไล่
+  // เช็ค invoice ที่ค้างจ่ายเกินกำหนดเองอีกที (งานถัดไป ยังไม่ได้เขียน)
+  const PROMPTPAY_INVOICE_DAYS_UNTIL_DUE = 3;
+
+  app.get('/dashboard/:guildId/premium', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const tier = getGuildTier(guildId);
+    const subscriptionInfo = getSubscriptionInfo(guildId);
+    // ข้อความ error (ถ้ามี) ส่งกลับมาทาง query string ตอน redirect กลับจาก route POST
+    // ด้านล่าง เช่น ?error=Something%20went%20wrong — เก็บเป็น query แทน session เพราะ
+    // เป็นข้อความชั่วคราวโชว์ครั้งเดียวพอ ไม่ต้องอยู่ถาวรใน session
+    const errorMessage = typeof req.query.error === 'string' ? req.query.error.slice(0, 200) : null;
+
+    res.send(renderPremiumBillingPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      tier,
+      subscriptionInfo,
+      errorMessage,
+    }));
+  });
+
+  app.post('/dashboard/:guildId/premium/checkout', requireAuth, requireGuildAccess, express.urlencoded({ extended: false }), async (req, res) => {
+    const { guildId } = req.params;
+    const method = req.body?.method;
+
+    // 🔒 กันเคสเดียวกับ commands/premium.js บรรทัด ~156 — เช็คสถานะ "ล่าสุด" ก่อนเสมอ
+    // กันไปสร้าง subscription ที่ 2 ซ้อนทับเซิร์ฟที่เพิ่งสมัครสำเร็จไปแล้วระหว่างที่หน้าเว็บ
+    // เปิดค้างไว้ (เช่นเปิด 2 แท็บ หรือกดปุ่มซ้ำ)
+    if (isPremiumGuild(guildId)) {
+      return res.redirect(`/dashboard/${guildId}/premium`);
+    }
+
+    if (method !== 'card' && method !== 'promptpay') {
+      return res.redirect(`/dashboard/${guildId}/premium?error=${encodeURIComponent('Please pick a payment method.')}`);
+    }
+
+    const discordUserId = req.session.user.id;
+
+    try {
+      if (method === 'card') {
+        // ── ทางบัตรเครดิต: Checkout Session แบบ subscription เหมือนใน commands/premium.js
+        // เป๊ะๆ ต่างกันแค่ success_url/cancel_url ชี้กลับมาที่หน้าแดชบอร์ดนี้แทนหน้า
+        // /success, /cancel แบบข้อความเปล่าๆ ที่ใช้กับฝั่งดิสคอร์ด (ฝั่งเว็บมีหน้าให้กลับไป
+        // อยู่แล้วในตัว ไม่ต้องมีหน้ากลางแยกอีกที)
+        const session = await stripe.checkout.sessions.create({
+          mode: 'subscription',
+          line_items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID, quantity: 1 }],
+          allow_promotion_codes: true,
+          success_url: `${PUBLIC_BASE_URL}/dashboard/${guildId}/premium`,
+          cancel_url: `${PUBLIC_BASE_URL}/dashboard/${guildId}/premium`,
+          metadata: { guildId, discordUserId },
+          subscription_data: { metadata: { guildId, discordUserId } },
+        });
+        return res.redirect(303, session.url);
+      }
+
+      // ── ทาง PromptPay: สร้าง Subscription ตรงๆ ผ่าน API (ไม่ผ่าน Checkout Session) ──
+
+      // หา/สร้าง Stripe Customer — ถ้าเซิร์ฟนี้เคยมีลูกค้า Stripe อยู่แล้ว (เช่นเคยสมัคร
+      // แล้วยกเลิกไปก่อน) ใช้ตัวเดิมต่อ ไม่สร้างซ้ำให้ประวัติลูกค้ากระจัดกระจาย
+      const existingInfo = getSubscriptionInfo(guildId);
+      const customerId = existingInfo?.stripeCustomerId
+        ?? (await stripe.customers.create({ metadata: { guildId, discordUserId } })).id;
+
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID }],
+        collection_method: 'send_invoice',
+        // จำนวนวันที่ลูกค้ามีให้สแกนจ่าย ก่อนใบแจ้งหนี้จะเลยกำหนด (Stripe คำนวณ due date
+        // ให้เองจากค่านี้ + วันที่สร้าง invoice แต่ละใบ)
+        days_until_due: PROMPTPAY_INVOICE_DAYS_UNTIL_DUE,
+        payment_settings: { payment_method_types: ['promptpay'] },
+        metadata: { guildId, discordUserId },
+        expand: ['latest_invoice'],
+      });
+
+      let invoice = subscription.latest_invoice;
+      // ปกติ Stripe finalize invoice แรกให้อัตโนมัติตอนสร้าง subscription แบบ send_invoice
+      // อยู่แล้ว แต่ดักไว้เผื่อยังเป็น draft อยู่ (เช่น Stripe เปลี่ยนพฤติกรรมในอนาคต) —
+      // ต้อง finalize ก่อนถึงจะมี hosted_invoice_url ให้ redirect ไปได้
+      if (invoice.status === 'draft') {
+        invoice = await stripe.invoices.finalizeInvoice(invoice.id);
+      }
+
+      if (!invoice.hosted_invoice_url) {
+        throw new Error('Stripe ไม่ได้คืน hosted_invoice_url มาให้ (ไม่ควรเกิดขึ้น)');
+      }
+
+      return res.redirect(303, invoice.hosted_invoice_url);
+    } catch (err) {
+      console.error(`[dashboard] สร้าง checkout พรีเมียม (${method}) ของเซิร์ฟ ${guildId} ไม่สำเร็จ:`, err);
+      // ข้อความ error ที่โชว์ผู้ใช้เป็นอังกฤษล้วน (ตามข้อตกลงเรื่องภาษาของหน้าแดชบอร์ด) —
+      // ไม่โชว์ err.message ดิบๆ เพราะอาจมีรายละเอียดทางเทคนิคที่ไม่เหมาะให้ผู้ใช้ทั่วไปเห็น
+      const friendlyMessage = method === 'promptpay'
+        ? 'PromptPay is not available for this account right now. Please try the credit card option instead.'
+        : 'Something went wrong starting checkout. Please try again.';
+      return res.redirect(`/dashboard/${guildId}/premium?error=${encodeURIComponent(friendlyMessage)}`);
+    }
+  });
+
+  // 🆕 ปุ่ม "Manage subscription" บนหน้าเว็บ — ทำหน้าที่เหมือน handleButton() case
+  // 'premium_manage' ใน commands/premium.js เป๊ะๆ แค่ redirect ตรงๆ แทนที่จะตอบกลับเป็น
+  // ข้อความในดิสคอร์ด
+  app.post('/dashboard/:guildId/billing-portal', requireAuth, requireGuildAccess, async (req, res) => {
+    const { guildId } = req.params;
+    const info = getSubscriptionInfo(guildId);
+    if (!info) {
+      return res.redirect(`/dashboard/${guildId}/premium?error=${encodeURIComponent('No billing account found for this server yet.')}`);
+    }
+    try {
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: info.stripeCustomerId,
+        return_url: `${PUBLIC_BASE_URL}/dashboard/${guildId}/premium`,
+      });
+      return res.redirect(303, portalSession.url);
+    } catch (err) {
+      console.error(`[dashboard] เปิด billing portal ของเซิร์ฟ ${guildId} ไม่สำเร็จ:`, err);
+      return res.redirect(`/dashboard/${guildId}/premium?error=${encodeURIComponent('Could not open the billing portal. Please try again.')}`);
+    }
+  });
 
   // ⚠️ จุดสำคัญที่สุดของทั้งไฟล์: express.raw({ type: 'application/json' })
   //
@@ -873,11 +1034,35 @@ async function handleStripeEvent(event, client) {
       // (สมัครราคาเต็มปกติผ่านปุ่มสมัครธรรมดา) — ไม่ต้องเช็ค session.id เองก่อนเรียก
       // เพราะฟังก์ชันนี้เช็คให้แล้วข้างใน (ดู utils/referralStorage.js)
       // ถ้าเจอ (ไม่ null) แปลว่า: ใช้โค้ดสำเร็จจริง → บันทึกกันใช้ซ้ำ + เพิ่มค่าคอมแล้ว
-      const redemption = completeRedemption(session.id);
+      let redemption = completeRedemption(session.id);
+
+      // 🆕 [แก้ช่องโหว่ "ข้ามปุ่มมีโค้ดส่วนลด"] ถ้าทางแรกหาไม่เจอ (ไม่ได้กดปุ่ม "มีโค้ด
+      // ส่วนลด?" ในบอทก่อน) เช็คซ้ำอีกทางจากข้อมูลส่วนลดจริงที่ Stripe บันทึกไว้ในตัว
+      // session (session.discounts) — ครอบคลุมเคสลูกค้าพิมพ์โค้ดเองตรงหน้า Stripe Checkout
+      // (ปุ่ม "สมัครพรีเมียม" ธรรมดาเปิดช่องนี้ไว้ผ่าน allow_promotion_codes: true) หรือ
+      // อนาคตมีช่องทางซื้อพรีเมียมจากที่อื่นที่ไม่ผ่านบอทเลย (เช่นหน้าเว็บ) — ทำให้ผู้ขาย
+      // ได้ค่าคอมครบไม่ว่าลูกค้าจะกรอกโค้ดผ่านทางไหนก็ตาม
+      //
+      // session.discounts เป็นอาเรย์ของส่วนลดที่ติดอยู่กับ session นี้ (ปกติจะมีสูงสุด
+      // แค่ 1 รายการสำหรับเคสของเรา เพราะจำกัดให้ใช้โค้ดได้ทีละโค้ดต่อการสมัครอยู่แล้ว)
+      // แต่ละรายการมี .promotion_code เป็น string ID (เช่น "promo_xxx") ให้มาแบบนี้เลย
+      // โดยไม่ต้องขอ expand เพิ่ม — อ้างอิง: https://docs.stripe.com/api/checkout/sessions/object
+      // 🆕 detectedFromDiscount: true = เจอผ่านทางสำรอง (ไม่ได้กดปุ่ม "มีโค้ดส่วนลด?" ใน
+      // บอทก่อน) — ใช้แค่แต่งข้อความ log ด้านล่างให้ชัดเจนขึ้นเฉยๆ ไม่มีผลอะไรกับ logic
+      let detectedFromDiscount = false;
+      if (!redemption) {
+        const promotionCodeId = session.discounts?.[0]?.promotion_code ?? null;
+        redemption = completeRedemptionFromDiscount(session.id, { guildId, promotionCodeId });
+        detectedFromDiscount = Boolean(redemption);
+      }
+
       if (redemption) {
         console.log(
           `[webhook] guild ${guildId} ใช้โค้ด "${redemption.code}" สำเร็จ ` +
-          `(ผู้ขาย: ${redemption.sellerLabel}, ค่าคอม +${redemption.commissionThb} บาท)`
+          `(ผู้ขาย: ${redemption.sellerLabel}, ค่าคอม +${redemption.commissionThb} บาท)` +
+          (detectedFromDiscount
+            ? ' [ตรวจพบจากส่วนลดใน Checkout Session โดยตรง — ไม่ได้กดปุ่ม "มีโค้ดส่วนลด?" ในบอทก่อน]'
+            : '')
         );
 
         // 🆕 อัปเดตการ์ดในห้อง #referral-earnings ให้เป็นตัวเลขล่าสุดทันที (เรียลไทม์
@@ -997,6 +1182,45 @@ async function handleStripeEvent(event, client) {
         currentPeriodEnd,
       });
       console.log(`[webhook] guild ${guildId} ต่ออายุพรีเมียมสำเร็จ (ครบรอบถัดไป: ${currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString() : '-'})`);
+
+      // 🆕 [หน้าเว็บ Premium & Billing — ทาง PromptPay] ส่ง DM แจ้งเตือน "สมัครสำเร็จ" ให้
+      // เฉพาะตอนเป็นการจ่ายครั้งแรกของ subscription แบบ send_invoice (คือ subscription ที่
+      // สร้างจากปุ่ม PromptPay บนหน้าเว็บเท่านั้น — ดู POST /dashboard/:guildId/premium/checkout
+      // ใน route ด้านบน) เพราะทางนี้ "ไม่ได้" ผ่าน Checkout Session เลย จึงไม่มี event
+      // checkout.session.completed ยิงมาให้ (event นั้นยิงเฉพาะ subscription ที่สร้างผ่าน
+      // Checkout เท่านั้น — ทางบัตรเครดิตทั้งจาก /premium ในดิสคอร์ดและจากหน้าเว็บผ่าน
+      // Checkout Session อยู่แล้ว เลยได้ DM จาก case ด้านบนไปแล้ว ไม่ต้องส่งซ้ำตรงนี้)
+      //
+      // เช็ค 2 อย่างพร้อมกันเพื่อกันส่งซ้ำ/ส่งผิดจังหวะ:
+      //   (1) subscription.collection_method === 'send_invoice' → เป็น subscription ทาง
+      //       PromptPay แน่ๆ (ทางบัตรทุกเส้นทางใช้ charge_automatically ซึ่งเป็นค่าเริ่มต้น)
+      //   (2) invoice.billing_reason === 'subscription_create' → เป็น invoice "ใบแรก" ของ
+      //       subscription นี้เท่านั้น (ไม่ใช่ invoice ต่ออายุรอบถัดๆ ไป ซึ่งไม่ต้องแจ้งซ้ำ)
+      if (subscription.collection_method === 'send_invoice' && invoice.billing_reason === 'subscription_create') {
+        const discordUserId = subscription.metadata?.discordUserId;
+        if (discordUserId) {
+          try {
+            const t = createTranslator(getGuildLanguage(guildId));
+            const guild = client.guilds.cache.get(guildId);
+            const guildName = guild?.name ?? guildId;
+            const user = await client.users.fetch(discordUserId);
+            const congratsText = t('premium.dm.activated', { guildName });
+            const card = buildPremiumCard({
+              isPremium: true,
+              subscriptionInfo: { currentPeriodEnd },
+              guild,
+              t,
+              actionButton: null,
+            });
+            await user.send({
+              components: [new TextDisplayBuilder().setContent(congratsText), card],
+              flags: MessageFlags.IsComponentsV2,
+            });
+          } catch (dmError) {
+            console.warn('[webhook] ส่ง DM แจ้งเตือนพรีเมียม (ทาง PromptPay) ไม่สำเร็จ:', dmError.message);
+          }
+        }
+      }
       break;
     }
 

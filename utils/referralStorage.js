@@ -211,7 +211,76 @@ function completeRedemption(checkoutSessionId) {
   if (!pending) return null; // สมัครแบบราคาเต็มปกติ ไม่ได้ใช้โค้ด — ไม่ต้องทำอะไร
 
   const { guildId, code, sellerLabel, sellerDiscordId } = pending;
+  const result = creditRedemption(data, { guildId, code, sellerLabel, sellerDiscordId, checkoutSessionId });
 
+  // ลบออกจาก pending (จบงานแล้ว) — เฉพาะ path นี้เท่านั้นที่มี pending ให้ลบ
+  delete data.pendingRedemptions[checkoutSessionId];
+
+  writeAll(data);
+  return result;
+}
+
+/**
+ * 🆕 [แก้ช่องโหว่ "ข้ามปุ่มมีโค้ดส่วนลด"] ให้เครดิตค่าคอมผู้ขาย "ย้อนหลัง" จากข้อมูลที่
+ * Stripe แนบมาให้ใน Checkout Session ตอนจ่ายเงินสำเร็จ — ใช้เป็น "ตาข่ายรองรับ" (fallback)
+ * ตอนที่ completeRedemption() ข้างบน (ทางที่ต้องกดปุ่ม "มีโค้ดส่วนลด?" ในบอทก่อน) หาไม่เจอ
+ *
+ * ทำไมต้องมีทางนี้ด้วย: ลูกค้าบางคนอาจไม่ได้กดปุ่ม "มีโค้ดส่วนลด?" ในบอทก่อน แต่ไปพิมพ์โค้ด
+ * เอาเองตรงช่อง "Add promotion code" ที่หน้า Stripe Checkout เลย (ปุ่ม "สมัครพรีเมียม" ธรรมดา
+ * เปิดช่องนี้ไว้อยู่แล้วผ่าน allow_promotion_codes: true) หรืออนาคตมีช่องทางซื้อพรีเมียมจากที่
+ * อื่นอีก (เช่นหน้าเว็บ) ที่ไม่ได้ผ่าน handleModalSubmit() เลย — ทุกกรณีนี้จะไม่มี
+ * pendingRedemptions ให้ completeRedemption() เจอ ทางนี้เลยมาช่วยตรวจสอบซ้ำอีกชั้นจากข้อมูล
+ * ส่วนลดจริงที่ Stripe บันทึกไว้ในตัว session แทน กันผู้ขายเสียค่าคอมฟรีๆ โดยไม่รู้ตัว
+ *
+ * @param {string} checkoutSessionId
+ * @param {{ guildId: string, promotionCodeId: string }} info
+ *   promotionCodeId คือ Stripe promotion code ID (เช่น "promo_xxx") ที่ดึงมาจาก
+ *   session.discounts[].promotion_code — ดูจุดเรียกใช้ใน server.js สำหรับรายละเอียด
+ * @returns {{ guildId: string, code: string, sellerLabel: string, sellerDiscordId: string|null, commissionThb: number }|null}
+ */
+function completeRedemptionFromDiscount(checkoutSessionId, { guildId, promotionCodeId }) {
+  if (!promotionCodeId) return null; // session นี้ไม่มีส่วนลดติดมาเลย — สมัครราคาเต็มปกติ
+
+  const data = readAll();
+  const match = Object.entries(data.codes).find(
+    ([, entry]) => entry.stripePromotionCodeId === promotionCodeId
+  );
+  if (!match) return null; // ส่วนลดที่ใช้ไม่ใช่โค้ดของระบบ referral เรา (เผื่ออนาคตมี Coupon อื่น)
+
+  const [code, codeEntry] = match;
+
+  // กันเครดิตซ้ำ: ถ้าเซิร์ฟนี้เคยถูกนับว่าใช้โค้ดนี้ไปแล้ว (เช่นถูกนับไปแล้วจาก
+  // completeRedemption() ทางปกติ หรือเคยตรวจพบทางนี้มาก่อนแล้วในการจ่ายเงินรอบก่อน)
+  // ไม่ต้องเพิ่มค่าคอมซ้ำอีก
+  const usedList = data.usedCodesByGuild[guildId] || [];
+  if (usedList.includes(code)) return null;
+
+  const result = creditRedemption(data, {
+    guildId,
+    code,
+    sellerLabel: codeEntry.sellerLabel,
+    sellerDiscordId: codeEntry.sellerDiscordId,
+    checkoutSessionId,
+  });
+
+  writeAll(data);
+  return result;
+}
+
+/**
+ * ตรรกะ "ให้เครดิตค่าคอม" ที่ใช้ร่วมกันทั้ง 2 ทาง (completeRedemption ปกติ กับ
+ * completeRedemptionFromDiscount ทางสำรอง) แยกออกมาเป็นฟังก์ชันเดียว กันโค้ดซ้ำซ้อนและ
+ * กันลืมแก้ไม่ครบทั้ง 2 จุดตอนมีการปรับ logic ทีหลัง (เช่นเปลี่ยนสูตรคำนวณค่าคอม)
+ *
+ * ⚠️ ฟังก์ชันนี้ "แก้ไข data ที่ส่งเข้ามาโดยตรง" (mutate) แต่ "ไม่เรียก writeAll() เอง"
+ * ให้ฟังก์ชันที่เรียกใช้เป็นคนตัดสินใจว่าจะ writeAll() ตอนไหน (เผื่อต้องทำงานอื่นต่อ เช่น
+ * ลบ pending ออกด้วยในกรณีของ completeRedemption())
+ *
+ * @param {object} data ข้อมูลทั้งไฟล์ (จาก readAll()) — ฟังก์ชันนี้จะแก้ไข object นี้ตรงๆ
+ * @param {{ guildId: string, code: string, sellerLabel: string, sellerDiscordId: string|null, checkoutSessionId: string }} params
+ * @returns {{ guildId: string, code: string, sellerLabel: string, sellerDiscordId: string|null, commissionThb: number }}
+ */
+function creditRedemption(data, { guildId, code, sellerLabel, sellerDiscordId, checkoutSessionId }) {
   // 1) บันทึกว่าเซิร์ฟนี้ใช้โค้ดนี้ไปแล้ว
   if (!data.usedCodesByGuild[guildId]) data.usedCodesByGuild[guildId] = [];
   if (!data.usedCodesByGuild[guildId].includes(code)) {
@@ -236,10 +305,6 @@ function completeRedemption(checkoutSessionId) {
     paidAt: null,
   });
 
-  // 3) ลบออกจาก pending (จบงานแล้ว)
-  delete data.pendingRedemptions[checkoutSessionId];
-
-  writeAll(data);
   return { guildId, code, sellerLabel, sellerDiscordId, commissionThb };
 }
 
@@ -372,6 +437,7 @@ module.exports = {
   hasGuildUsedCode,
   recordPendingRedemption,
   completeRedemption,
+  completeRedemptionFromDiscount,
   getCommissionSummary,
   getUnpaidCommissionSummary,
   markCommissionsPaid,
