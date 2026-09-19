@@ -26,20 +26,24 @@
 //      เงื่อนไขการจ่ายค่าคอมให้ผู้ขาย (ใช้ TextDisplay ใน Modal — ฟีเจอร์ใหม่ของ Discord
 //      ที่ให้ใส่ข้อความอ่านอย่างเดียวใน modal ได้โดยไม่ต้องมีช่องกรอกเลย)
 //
-// 🆕 อัปเดตล่าสุด (รอบดึกยิ่งกว่าเดิม) — เปลี่ยนการ์ดจาก Discord Embed เป็น "รูปภาพจริง"
-// (วาดด้วย @napi-rs/canvas ผ่าน utils/drawReferralReportCard.js) ตามภาพเรฟ "MAMOMI
-// STORE" ที่น้องหนาวส่งมา — กล่องสถิติแต่ละช่องมีกรอบ/พื้นหลังแยกชิ้นจริงๆ จัดตาราง
-// เป๊ะๆ ด้วยพิกเซลตรงๆ (Embed ทำแบบนั้นไม่ได้จริง อย่างมากก็แค่ field แบบ inline)
-// ส่วน dropdown/ปุ่ม/modal ที่โต้ตอบได้ยังทำงานเหมือนเดิมทุกอย่าง — แค่เปลี่ยนจาก
-// `embeds: [...]` เป็น `files: [แนบรูป]` ตอนส่ง/แก้ข้อความ (ดู buildReportPayload
-// ด้านล่าง) ระบบ custom emoji ของเซิร์ฟ Milo Support (EMOJI_SLOTS เดิม) เอาออกไปแล้ว
-// เพราะไม่จำเป็นอีกต่อไป — ดูเหตุผลเต็มๆ ใน comment หัวไฟล์ drawReferralReportCard.js
+// 🆕 อัปเดต (รอบดึกยิ่งกว่าเดิม — เคยลองแล้วผิดทาง!) — ตอนแรกเข้าใจผิดว่าภาพเรฟ "MAMOMI
+// STORE" ต้องวาดเป็นรูปภาพจริงด้วย canvas ถึงจะได้กรอบกล่องแบบนั้น (ลองทำไปแล้วรอบนึง
+// เป็นไฟล์ utils/drawReferralReportCard.js) — น้องหนาวแก้ให้โดยก็อปข้อความดิบจากบอทเรฟ
+// มาให้ดูตรงๆ แล้วถึงรู้ว่า **ไม่ใช่รูปภาพเลย เป็นข้อความ Discord ธรรมดาๆ นี่แหละ** แค่ใช้
+// เทคนิคจัดฟอร์แมต 2 อย่างร่วมกัน:
+//   1) ตัวอักษร "・" (คัตะคานะ middle dot) นำหน้าแต่ละป้ายกำกับ
+//   2) ค่าตัวเลขแต่ละอันห่อด้วย code block (```ข้อความ```) — Discord render code block
+//      เป็นกล่องพื้นหลังเข้ม ตัวอักษร monospace ให้เองอัตโนมัติ นี่คือกล่องที่ดูเหมือน
+//      "ถูกวาดเป็นกรอบ" ในภาพเรฟ ไม่ใช่รูปภาพหรือ programmatic drawing อะไรเลย!
+// วิธีนี้เบากว่า เร็วกว่า ไม่ต้องพึ่ง @napi-rs/canvas/โหลดฟอนต์/โหลดรูปอิโมจิจาก CDN เลย
+// แถมยังคง Embed เดิมไว้ได้ (แถบสีข้างซ้ายบอกสถานะเปิด/ปิด + footer เวลาอัปเดตแบบ
+// สัมพัทธ์ที่ Discord จัดการให้อัตโนมัติ) — ดู buildReportEmbed() ด้านล่าง
 // ─────────────────────────────────────────────────────────────────────────
 
 const {
   ChannelType,
   PermissionFlagsBits,
-  AttachmentBuilder,
+  EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
@@ -54,7 +58,6 @@ const {
   saveReportMessageId,
   COMMISSION_PER_REDEMPTION_THB,
 } = require('./referralStorage');
-const { drawReferralReportCard } = require('./drawReferralReportCard');
 
 const REPORT_CHANNEL_NAME = 'referral-earnings';
 
@@ -114,26 +117,53 @@ async function getOrCreateReportChannel(guild) {
 }
 
 /**
- * แปลงตัวเลขสถิติของโค้ด 1 อัน (ที่กรองตามช่วงเวลาที่เลือกมาแล้ว) เป็น "การ์ดรูปภาพ"
- * (PNG แนบไฟล์ — วาดจริงด้วย utils/drawReferralReportCard.js) — ชื่อไฟล์ตั้งตามโค้ด
- * ให้พอเดาได้ว่าเป็นรูปของโค้ดไหน เผื่อโหลดเก็บไว้ดูย้อนหลัง
+ * แปลงตัวเลขสถิติของโค้ด 1 อัน (ที่กรองตามช่วงเวลาที่เลือกมาแล้ว) เป็น "การ์ด" (Embed)
+ *
+ * โครงสร้างข้อความ (ในตัว description) เลียนแบบภาพเรฟ "MAMOMI STORE" ที่น้องหนาวก็อปมา
+ * ให้ดูตรงๆ: แต่ละสถิติเป็น "・ป้ายกำกับ" ตามด้วย code block (```ค่า```) ในบรรทัดถัดไป —
+ * Discord จะ render code block เป็นกล่องพื้นหลังเข้ม ตัว monospace ให้เองอัตโนมัติ ได้
+ * หน้าตากล่องๆ เหมือนเรฟเป๊ะๆ โดยไม่ต้องวาดรูปเลย (ดูคอมเมนต์หัวไฟล์ประกอบ)
+ *
+ * ใช้อิโมจิ Unicode ธรรมดาตรงๆ ในข้อความได้เลย (🟢🔴🔁💸💰) — Discord render อิโมจิพวกนี้
+ * ให้เองตามปกติ ไม่ต้องมีระบบอิโมจิ custom ของเซิร์ฟใดๆ เข้ามาเกี่ยวข้องเลย
  * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number }} stats
  * @param {'today'|'month'|'all'} range
- * @returns {Promise<import('discord.js').AttachmentBuilder | null>} null ถ้าวาดรูปไม่สำเร็จ
+ * @returns {import('discord.js').EmbedBuilder}
  */
-async function buildReportAttachment(stats, range) {
+function buildReportEmbed(stats, range) {
   const rangeLabel = RANGE_LABELS[range] ?? RANGE_LABELS.all;
-  const buffer = await drawReferralReportCard({
-    code: stats.code,
-    sellerLabel: stats.sellerLabel,
-    active: stats.active,
-    totalUses: stats.totalUses,
-    totalCommissionThb: stats.totalCommissionThb,
-    commissionPerUseThb: COMMISSION_PER_REDEMPTION_THB,
-    rangeLabel,
-  });
-  if (!buffer) return null; // วาดไม่สำเร็จ (ดู catch ใน drawReferralReportCard.js) — ผู้เรียกจัดการต่อเอง
-  return new AttachmentBuilder(buffer, { name: `referral-${stats.code}.png` });
+  const statusEmoji = stats.active ? '🟢' : '🔴';
+  const statusText = stats.active ? 'เปิดใช้งานอยู่' : 'ปิดใช้งานแล้ว';
+
+  const description = [
+    `ผู้ขาย: **${stats.sellerLabel}**`,
+    '',
+    `・${statusEmoji} สถานะ`,
+    '```',
+    statusText,
+    '```',
+    `・🔁 ใช้ไปแล้ว (${rangeLabel})`,
+    '```',
+    `${stats.totalUses} ครั้ง`,
+    '```',
+    '・💸 ค่าคอมต่อครั้ง',
+    '```',
+    `${COMMISSION_PER_REDEMPTION_THB} บาท`,
+    '```',
+    `・💰 รวมรายได้ (${rangeLabel})`,
+    '```',
+    `${stats.totalCommissionThb} บาท`,
+    '```',
+    '',
+    '╰ ꒰ Aitao Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯',
+  ].join('\n');
+
+  return new EmbedBuilder()
+    .setColor(stats.active ? 0x57f287 : 0x99aab5) // เขียว/เทา — ชุดสีเดียวกับการ์ดพรีเมียม
+    .setTitle(`📊 ${stats.code}`)
+    .setDescription(description)
+    .setFooter({ text: 'อัปเดตล่าสุด' })
+    .setTimestamp(); // Discord โชว์เป็นเวลาสัมพัทธ์ให้เอง (เช่น "2 นาทีที่แล้ว") ในเขตเวลาของแต่ละคนเอง
 }
 
 /**
@@ -170,18 +200,15 @@ function buildReportComponents(code, range) {
 }
 
 /**
- * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → วาดรูป+สร้าง components" ไว้จุดเดียว
+ * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้าง embed+components" ไว้จุดเดียว
  * ใช้ร่วมกันทั้ง syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ
  * handleReportRangeSelect() (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
- *
- * เป็น async แล้ว (เดิมเป็น sync) เพราะวาดรูปด้วย canvas ต้องรอโหลดฟอนต์/อิโมจิ/
- * มาสคอตก่อน — ผู้เรียกทั้ง 2 จุดต้องเติม await หน้าฟังก์ชันนี้ด้วย
  * @param {string} code
  * @param {'today'|'month'|'all'} range
- * @returns {Promise<{ attachment: import('discord.js').AttachmentBuilder, components: import('discord.js').ActionRowBuilder[] } | null>}
- *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว) หรือวาดรูปไม่สำเร็จ
+ * @returns {{ embeds: import('discord.js').EmbedBuilder[], components: import('discord.js').ActionRowBuilder[] } | null}
+ *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว)
  */
-async function buildReportPayload(code, range) {
+function buildReportPayload(code, range) {
   const normalizedCode = String(code || '').trim().toUpperCase();
   const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
   if (!codeEntry) return null;
@@ -195,11 +222,8 @@ async function buildReportPayload(code, range) {
     totalCommissionThb,
   };
 
-  const attachment = await buildReportAttachment(stats, range);
-  if (!attachment) return null;
-
   return {
-    attachment,
+    embeds: [buildReportEmbed(stats, range)],
     components: buildReportComponents(normalizedCode, range),
   };
 }
@@ -234,8 +258,8 @@ async function syncCodeReportMessage(client, code, range = 'all') {
   const normalizedCode = String(code || '').trim().toUpperCase();
 
   try {
-    const payload = await buildReportPayload(normalizedCode, range);
-    if (!payload) return; // โค้ดนี้ไม่มีอยู่จริง หรือวาดรูปไม่สำเร็จ (ไม่ควรเกิด แต่กันไว้)
+    const payload = buildReportPayload(normalizedCode, range);
+    if (!payload) return; // โค้ดนี้ไม่มีอยู่จริง (ไม่ควรเกิด แต่กันไว้)
 
     const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
     const guild = await client.guilds.fetch(guildId);
@@ -245,14 +269,15 @@ async function syncCodeReportMessage(client, code, range = 'all') {
       try {
         const existingMessage = await channel.messages.fetch(codeEntry.reportMessageId);
         // ต้องเคลียร์ content: '' + attachments: [] ด้วยเสมอตอนแก้ไขข้อความเก่า —
-        // เพราะข้อความรุ่นแรกสุด (ก่อนเปลี่ยนมาใช้ embed) เป็น plain text ล้วนๆ และ
-        // Discord "ไม่ล้าง" attachment เก่าให้อัตโนมัติตอนแก้ข้อความ ถ้าไม่สั่ง
-        // attachments: [] มาด้วย รูปเก่าจะค้างซ้อนอยู่กับรูปใหม่ที่ส่งไปใน files
+        // เพราะข้อความรุ่นแรกสุด (ก่อนเปลี่ยนมาใช้ embed) เป็น plain text ล้วนๆ และช่วง
+        // สั้นๆ ก่อนหน้านี้เคยลองส่งเป็นรูปภาพแนบ (attachment) ไปด้วย — ถ้าข้อความเดิมของ
+        // ใครยังเป็นเวอร์ชันรูปภาพค้างอยู่ ต้องสั่ง attachments: [] มาด้วยเสมอ ไม่งั้นรูป
+        // เก่าจะค้างซ้อนอยู่เหนือ embed ใหม่ (Discord แก้เฉพาะ field ที่ส่งมาเท่านั้น
+        // ไม่ได้ล้างของเดิมให้อัตโนมัติ)
         await existingMessage.edit({
           content: '',
-          embeds: [],
           attachments: [],
-          files: [payload.attachment],
+          embeds: payload.embeds,
           components: payload.components,
         });
         return;
@@ -264,7 +289,7 @@ async function syncCodeReportMessage(client, code, range = 'all') {
       }
     }
 
-    const sentMessage = await channel.send({ files: [payload.attachment], components: payload.components });
+    const sentMessage = await channel.send({ embeds: payload.embeds, components: payload.components });
     saveReportMessageId(normalizedCode, sentMessage.id);
   } catch (error) {
     console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอดของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
@@ -287,24 +312,14 @@ async function handleReportRangeSelect(interaction) {
   const code = interaction.customId.slice(RANGE_SELECT_PREFIX.length);
   const range = interaction.values[0];
 
-  // ต้อง deferUpdate ก่อน เพราะวาดรูป canvas ใหม่ใช้เวลานานกว่าจะแก้ embed ธรรมดา —
-  // ถ้าไม่ defer แล้วใช้เวลาเกิน 3 วินาที Discord จะตีความว่า interaction หมดอายุ
-  // (เท่ากับปุ่ม/dropdown "ค้าง" ไม่ตอบสนอง ทั้งที่จริงๆ กำลังวาดรูปอยู่เบื้องหลัง)
-  await interaction.deferUpdate();
-
-  const payload = await buildReportPayload(code, range);
+  const payload = buildReportPayload(code, range);
   if (!payload) {
-    await interaction.followUp({ content: 'ไม่พบโค้ดนี้แล้วครับ (อาจถูกลบไปแล้ว)', ephemeral: true });
+    await interaction.reply({ content: 'ไม่พบโค้ดนี้แล้วครับ (อาจถูกลบไปแล้ว)', ephemeral: true });
     return;
   }
 
-  await interaction.editReply({
-    content: '',
-    embeds: [],
-    attachments: [],
-    files: [payload.attachment],
-    components: payload.components,
-  });
+  // เคลียร์ attachments: [] ไว้ด้วยเสมอ — เผื่อการ์ดนี้เคยเป็นเวอร์ชันรูปภาพค้างมาก่อน
+  await interaction.update({ content: '', attachments: [], embeds: payload.embeds, components: payload.components });
 }
 
 /** เช็คว่า customId นี้เป็นปุ่ม "ข้อกำหนด" ของห้องรายงานยอดหรือไม่ (เรียกจาก index.js) */

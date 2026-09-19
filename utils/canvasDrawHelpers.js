@@ -296,25 +296,6 @@ async function preloadEmojisForBlocks(blocks) {
   );
 }
 
-/**
- * 🆕 คืนรูปอิโมจิที่โหลดไว้แล้วใน EMOJI_CACHE ให้ "ตัวเดียวตรงๆ" — ต่างจาก
- * wrapTextMixed ที่ใช้วาดอิโมจิแทรกกลางข้อความยาวๆ ฟังก์ชันนี้เหมาะกับตอนรู้
- * อยู่แล้วว่าอยากได้ไอคอนตัวไหนตัวเดียว (เช่น ไอคอนหัวข้อ/ไอคอนในกล่องสถิติ
- * ของการ์ดรายงานยอด utils/drawReferralReportCard.js) แล้วอยาก drawImage() เอง
- * โดยคุมตำแหน่ง/ขนาดเอง ไม่ต้องพึ่ง wrapText
- *
- * ❗ ต้องเรียก preloadEmojisForBlocks() (export ด้านล่าง) ให้เสร็จก่อนเสมอ
- * ไม่งั้นแคชจะยังว่างอยู่ (ฟังก์ชันนี้ไม่โหลดรูปเอง เป็น sync ทำไม่ได้อยู่แล้ว)
- *
- * @param {string} rawEmoji อิโมจิ Unicode ดิบ 1 ตัว (เช่น '📊') หรือ custom emoji tag ('<:name:id>')
- * @returns {import('@napi-rs/canvas').Image | null} null ถ้ายังไม่ได้ preload หรือโหลดไม่สำเร็จ
- */
-function getCachedEmojiImage(rawEmoji) {
-  const matches = findEmojiMatches(rawEmoji);
-  if (matches.length === 0) return null;
-  return EMOJI_CACHE.get(matches[0].key) || null;
-}
-
 // ─── wrapText (ของเดิม — ไม่แก้อะไรเลยแม้แต่บรรทัดเดียว) ───────────────────────
 // ใช้กับข้อความที่ "ไม่มีอิโมจิ" เท่านั้น (ดูจุดเลือกเส้นทางใน drawTextBlock ด้านล่าง)
 // คงไว้แบบเดิมทั้งหมดเพื่อไม่ให้การ์ดของ user ที่ไม่ได้ใช้อิโมจิเปลี่ยนหน้าตาแม้แต่พิกเซลเดียว
@@ -588,8 +569,4 @@ module.exports = {
   drawAvatar,
   drawTextBlock,
   drawAllTextBlocks,
-  // 🆕 export เพิ่มสำหรับการ์ดที่ต้องวาด "ไอคอนอิโมจิเดี่ยวๆ" เอง (ไม่ใช่แทรกในข้อความยาว)
-  // ใช้ใน utils/drawReferralReportCard.js — ดู comment เหนือ getCachedEmojiImage ด้านบน
-  preloadEmojisForBlocks,
-  getCachedEmojiImage,
 };
