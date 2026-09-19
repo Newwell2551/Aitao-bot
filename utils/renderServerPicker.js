@@ -345,11 +345,198 @@ function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
 </html>`;
 }
 
+/**
+ * 🆕 [19 ก.ย. 2569 ดึกมาก] แถวเซิร์ฟ 1 แถวของหน้า "เลือกเซิร์ฟที่จะซื้อพรีเมียม" —
+ * คล้าย serverRowHtml() ด้านบนมาก (ก๊อปโครงมาแล้วปรับ 2 จุด) ต่างกันแค่:
+ *   1) ลิงก์ปลายทางเป็น /premium/:guildId (หน้าเลือกวิธีจ่ายเงิน) แทน /dashboard/:guildId
+ *   2) ป้ายสถานะแสดง "Already Premium" (กดแล้วไปจัดการการสมัครแทนที่จะซื้อซ้ำ) แทนที่จะ
+ *      เป็น "Free" เฉยๆ เพราะหน้านี้ไม่มีการ์ดเด่นแยกเซิร์ฟพรีเมียมออกมาต่างหากเหมือน
+ *      renderServerPickerPage() (ไม่จำเป็น หน้านี้มีจุดประสงค์เดียวคือ "เลือกเซิร์ฟ" ไม่ใช่
+ *      "ดูภาพรวมทุกเซิร์ฟ")
+ * @param {object} server
+ * @param {string} inviteUrl
+ * @returns {string}
+ */
+function premiumServerRowHtml(server, inviteUrl) {
+  const nameHtml = escapeHtml(server.name);
+
+  if (!server.hasBot) {
+    const inviteUrlForThisGuild = `${inviteUrl}&guild_id=${server.id}&disable_guild_select=true`;
+    return `
+      <div class="sp-row" style="flex:0 0 auto;width:100%;max-width:460px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:11px 4px;border-bottom:1px solid var(--border);box-sizing:border-box;">
+        ${serverIconHtml(server, 36)}
+        <div style="min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nameHtml}</div>
+          <div style="font-size:11px;color:var(--text-muted-2);margin-top:2px;">Bot not installed</div>
+        </div>
+        <div style="margin-left:auto;flex:0 0 auto;">
+          <a href="${escapeHtml(inviteUrlForThisGuild)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;height:30px;line-height:30px;padding:0 14px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;text-decoration:none;">+ Invite bot</a>
+        </div>
+      </div>`;
+  }
+
+  const isPremium = server.tier === 'premium';
+  const memberCountText = server.memberCount != null ? server.memberCount.toLocaleString('en-US') : '-';
+  const badgeHtml = isPremium
+    ? `<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(244,184,96,0.16);color:var(--gold);flex-shrink:0;">Premium</span>`
+    : `<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(154,162,196,0.1);color:var(--text-muted);flex-shrink:0;">Free</span>`;
+  return `
+    <div class="sp-row" style="flex:0 0 auto;width:100%;max-width:460px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:11px 4px;border-bottom:1px solid var(--border);box-sizing:border-box;">
+      ${serverIconHtml(server, 36)}
+      <div style="min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nameHtml}</span>
+          ${badgeHtml}
+        </div>
+        <div style="font-size:11px;color:var(--text-muted-2);margin-top:2px;">${memberCountText} members</div>
+      </div>
+      <div style="margin-left:auto;flex:0 0 auto;"><a href="/premium/${server.id}" class="sp-row-link" style="font-size:11.5px;font-weight:700;color:var(--accent);">${isPremium ? 'Manage billing' : 'Continue'} →</a></div>
+    </div>`;
+}
+
+/**
+ * 🆕 [19 ก.ย. 2569 ดึกมาก] หน้า "เลือกเซิร์ฟที่จะซื้อพรีเมียม" — จุดเข้าใหม่จากปุ่ม
+ * "Subscribe to Premium" ที่หน้า public/pricing.html (ผ่าน GET /premium/start ใน server.js)
+ * ก่อนหน้านี้ปุ่มนั้นพาไปหน้าเชิญบอทตรงๆ เลย (ยังไม่มีระบบล็อกอิน+เลือกเซิร์ฟ) ตอนนี้
+ * ระบบล็อกอินมีแล้ว เลยเพิ่มขั้นตอน "เลือกว่าซื้อให้เซิร์ฟไหน" ก่อนไปหน้าเลือกวิธีจ่ายเงิน
+ * (renderPremiumBilling.js) — โครงหน้าเหมือน renderServerPickerPage() มาก (ก๊อปหัว/ธีมสี
+ * มาเลย ให้ผู้ใช้รู้สึกว่าเป็นเว็บเดียวกัน) แต่เรียบง่ายกว่า: ไม่มีการ์ดเด่นแยกพรีเมียม
+ * เพราะ server.js กรอง servers ที่ส่งมาให้แล้วว่าต้องมีบอทอยู่ + ผู้ใช้มีสิทธิ์ Manage Server
+ * เท่านั้น (ตัดเซิร์ฟที่ไม่มีบอทออกไปตั้งแต่ต้น ต่างจาก renderServerPickerPage ที่โชว์ทุกเซิร์ฟ
+ * รวมเซิร์ฟที่ยังไม่มีบอทด้วย — ดูพารามิเตอร์ servers ด้านล่าง)
+ *
+ * @param {object} params
+ * @param {{id: string, username: string, avatar: string|null}} params.user
+ * @param {Array<{id:string, name:string, iconUrl:string|null, hasBot?: boolean, memberCount:number, tier:'free'|'premium'}>} params.servers
+ *   เซิร์ฟที่ผู้ใช้มีสิทธิ์ Manage Server ทั้งหมด (ทั้งที่มีบอทและยังไม่มีบอท — server.js
+ *   ส่งมาให้ครบทุกเซิร์ฟที่มีสิทธิ์ ไม่ได้กรองเอาแต่ hasBot ออกมาอย่างเดียว เพื่อให้หน้านี้
+ *   ยังโชว์ปุ่ม "+ Invite bot" ของเซิร์ฟที่ยังไม่มีบอทได้ด้วย เผื่อผู้ใช้ยังไม่เคยเชิญบอทเลย)
+ *   hasBot ไม่บังคับส่งมา — ถ้าไม่ส่ง จะถือว่า true เสมอ (server.js ปัจจุบันกรองมาเฉพาะ
+ *   hasBot อยู่แล้วก่อนส่งมา แต่เผื่ออนาคตอยากส่งเซิร์ฟที่ไม่มีบอทมาด้วยก็รองรับได้เลย)
+ * @param {string} params.inviteUrl
+ * @param {string} params.botAvatarUrl
+ * @returns {string} HTML เต็มหน้า พร้อม res.send() ได้เลย
+ */
+function renderPremiumServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
+  const normalized = servers.map((s) => ({ ...s, hasBot: s.hasBot !== false }));
+  normalized.sort((a, b) => {
+    if (a.hasBot !== b.hasBot) return a.hasBot ? -1 : 1;
+    return a.name.localeCompare(b.name, 'th');
+  });
+
+  const listHtml = normalized.length > 0
+    ? normalized.map((s) => premiumServerRowHtml(s, inviteUrl)).join('')
+    : '';
+
+  // 🆕 Empty state: ไม่มีเซิร์ฟไหนที่มีสิทธิ์ Manage Server + มีบอทอยู่เลยสักเซิร์ฟ —
+  // ให้เชิญบอทก่อนถึงจะซื้อพรีเมียมได้ (ลิงก์เชิญแบบ "ยังไม่ระบุเซิร์ฟ" ให้เลือกเองหน้า Discord)
+  const emptyStateHtml = normalized.length === 0
+    ? `<div style="text-align:center;max-width:420px;margin:12px auto 0;">
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+          You'll need to add Aitao Bot to a server you manage before you can subscribe to Premium.
+        </p>
+        <a href="${escapeHtml(inviteUrl)}" target="_blank" rel="noopener noreferrer"
+           style="display:inline-flex;margin-top:12px;height:38px;padding:0 22px;border-radius:999px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;align-items:center;text-decoration:none;">
+          + Add Aitao Bot to a server
+        </a>
+      </div>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Choose a Server — Aitao Bot Premium</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg-card: #131a2e;
+    --border: #262f4d;
+    --text: #f3f1fb;
+    --text-muted: #9aa2c4;
+    --text-muted-2: #8890b0;
+    --accent: #7c83fd;
+    --accent-hover: #5f65e0;
+    --gold: #f4b860;
+    --teal: #52c7c0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  a { text-decoration: none; }
+  .sp-row-link:hover { text-decoration: underline; }
+  .sp-row:hover { border-color: var(--accent); }
+
+  .topbar {
+    height: 72px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+  }
+  @media (min-width: 640px) { .topbar { padding: 0 48px; } }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
+  .topbar-brand img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+  .topbar-right { display: flex; align-items: center; gap: 24px; }
+  .topbar-right span { font-size: 13px; color: var(--text-muted); }
+  .topbar-right a { font-size: 13px; color: var(--text-muted); }
+  .topbar-right a:hover { color: var(--text); text-decoration: underline; }
+
+  main {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 24px 16px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { font-size: 21px; font-weight: 700; color: var(--text); margin: 10px 0 0; text-align: center; }
+  .subtitle { font-size: 12px; color: var(--text-muted-2); margin: 4px 0 0; text-align: center; }
+  .back-link { font-size: 12.5px; color: var(--text-muted); margin-top: 14px; }
+  .back-link:hover { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/pricing" class="topbar-brand">
+      <img src="${escapeHtml(botAvatarUrl)}" alt="" />
+      <span>Aitao Bot</span>
+    </a>
+    <div class="topbar-right">
+      <span>${escapeHtml(user.username)}</span>
+      <a href="/auth/logout">Log out</a>
+    </div>
+  </div>
+
+  <main>
+    <div style="position:relative;">
+      <img src="${escapeHtml(botAvatarUrl)}" alt="" style="width:46px;height:46px;border-radius:999px;object-fit:cover;border:2px solid var(--border);" />
+      <div style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:999px;background:var(--gold);border:2.5px solid var(--bg);"></div>
+    </div>
+    <h1>Which server is this for?</h1>
+    <p class="subtitle">Pick the server you'd like to upgrade to Premium</p>
+
+    ${listHtml}
+    ${emptyStateHtml}
+
+    <a href="/pricing" class="back-link">&larr; Back to Pricing</a>
+  </main>
+</body>
+</html>`;
+}
+
 // 🆕 เพิ่ม export monogramColorForGuild + serverIconHtml ตอนสร้างหน้า Overview (utils/dashboardShell.js)
 // เพราะแถบ "สลับเซิร์ฟ" (guild switcher) บนแถบข้างของทุกหน้าแดชบอร์ดต้องโชว์ไอคอนเซิร์ฟแบบ
 // เดียวกันเป๊ะกับหน้า Server Picker (สีโมโนแกรมเดิม ไม่ใช่สุ่มใหม่) — ใช้ของเดิมตรงๆ ไม่เขียนซ้ำ
 module.exports = {
   renderServerPickerPage,
+  renderPremiumServerPickerPage,
   escapeHtml,
   defaultAvatarUrl,
   guildMonogram,

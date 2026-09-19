@@ -890,6 +890,7 @@
     },
     "open_checkout_button": "💳 Open Checkout",
     "subscribe_link": "[Tap here to subscribe to Premium]({url})",
+    "website_checkout_link": "Choose how you'd like to pay on our website (credit card or PromptPay QR): {url}\n\n(If you haven't logged into the website yet, you'll be asked to log in with Discord first.)",
     "manage_link": "[Manage your subscription]({url})",
     "manage_no_customer": "⚠️ No Stripe subscription found on file for this server yet. If your admin was set to premium manually, there's nothing to manage here.",
     "already_premium": "✅ This server is already Premium — no need to subscribe again",

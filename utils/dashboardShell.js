@@ -69,15 +69,12 @@ const NAV_ITEMS = [
     hrefSuffix: '/builder',
     renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="${c}" stroke-width="1.7"/><rect x="4" y="14" width="6" height="6" rx="1.5" stroke="${c}" stroke-width="1.7"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="${c}" stroke-width="1.7"/></svg>`,
   },
-  {
-    // 🆕 พรีเมียมเป็นสีทองเสมอไม่ว่าจะ active อยู่หรือไม่ (ตรงตาม mockup เป๊ะ) — ธงสีทอง
-    // ช่วยให้แยกจากเมนูอื่นได้ง่ายตั้งแต่แรกเห็น เพราะเป็นเมนูขายอัปเกรด
-    key: 'premium',
-    label: 'Premium',
-    hrefSuffix: '/premium',
-    alwaysGold: true,
-    renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8l3 3 5-7 5 7 3-3-2 10H6L4 8z" fill="${c}"/></svg>`,
-  },
+  // 🆕 [19 ก.ย. 2569 ดึกมาก] เอาเมนู "Premium" ออกจาก sidebar แล้ว — น้องหนาวไม่อยากให้
+  // หน้าจ่ายเงินอยู่ในแดชบอร์ด (รู้สึกซ้ำกับหน้า Pricing สาธารณะ) จุดเริ่มซื้อพรีเมียมย้ายไป
+  // อยู่ที่ปุ่ม "Subscribe to Premium" ในหน้า public/pricing.html แทน (ดู GET /premium/start
+  // ใน server.js) หน้าเลือกวิธีจ่ายเงินจริง (/premium/:guildId) เลยไม่ผูกกับ sidebar/
+  // renderDashboardLayout() อีกต่อไป — ดู utils/renderPremiumBilling.js (เขียนหน้าเป็น
+  // standalone ธีมเดียวกับเว็บสาธารณะแทน)
   {
     key: 'language',
     label: 'Language',

@@ -23,6 +23,10 @@ const {
 } = require('discord.js');
 
 const stripe = require('../utils/stripeClient');
+// 🆕 [19 ก.ย. 2569 ดึกมาก] โดเมนจริงของเว็บเรา — ใช้ต่อลิงก์หน้า Premium & Billing
+// (ดูเหตุผล/fallback เดียวกับตัวแปรชื่อเดียวกันใน server.js — ประกาศแยกไว้ที่นี่อีกที
+// เพราะไฟล์นี้ไม่ได้ require server.js เข้ามา กันเกิด circular require)
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://aitao-bot-production.up.railway.app';
 const { isPremiumGuild, getSubscriptionInfo } = require('../utils/tierManager');
 const { getGuildLanguage } = require('../utils/languageStorage');
 const { createTranslator } = require('../utils/i18n');
@@ -152,44 +156,27 @@ module.exports = {
       // 🔒 กันเคสปุ่มเก่าค้าง — เช่น user เปิดข้อความ /premium ทิ้งไว้ตอนเซิร์ฟยังฟรี
       // แล้วมีคนสมัครพรีเมียมสำเร็จไปแล้วระหว่างนั้น (ผ่านข้อความ /premium อันอื่น หรือ
       // ผ่าน /dev) พอกลับมากดปุ่มเก่าอีกที ต้องเช็คสถานะ "ล่าสุด" ก่อนเสมอ
-      // ไม่งั้นจะไปสร้าง checkout session ใหม่ซ้อนกัน เสี่ยงจ่ายเงินซ้ำ 2 รอบโดยไม่ตั้งใจ
       if (isPremiumGuild(guildId)) {
         await interaction.editReply({ content: t('premium.already_premium') });
         return;
       }
 
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        line_items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID, quantity: 1 }],
-        // 🆕 [แคมเปญโค้ดส่วนลดผู้ขาย/พาร์ทเนอร์ — อัปเดต 17 ก.ย. 2569]
-        // เส้นทางนี้ (ปุ่ม "สมัครพรีเมียม" ธรรมดา) คือทาง "ทั่วไป" — เปิดให้หน้า
-        // Stripe Checkout มีช่อง "Add promotion code" ให้ลูกค้าพิมพ์โค้ดเอง แบบนี้
-        // เราไม่รู้ล่วงหน้าว่าลูกค้าจะกรอกโค้ดอะไร (หรือไม่กรอกเลยก็ได้) เลยไม่มีทาง
-        // เช็ค "เซิร์ฟนี้ใช้โค้ดนี้ไปแล้วหรือยัง" ได้จากทางนี้
-        //
-        // ทางที่เช็คได้จริง (กันเกรียนใช้โค้ดซ้ำ) คือปุ่ม "มีโค้ดส่วนลด?" แยกต่างหาก
-        // ที่ลูกค้ากรอกโค้ดผ่าน modal ในดิสคอร์ดก่อน แล้วบอทค่อยไปสร้าง Checkout Session
-        // เอง — ดู handleModalSubmit() ท้ายไฟล์นี้ ('premium_modal_redeem_code')
-        allow_promotion_codes: true,
-        // ชี้ไปที่โดเมนจริงของบอทบน Railway แล้ว — สองหน้านี้ถูกเพิ่มเป็น route
-        // /success กับ /cancel ใน server.js (ดูคอมเมนต์ในไฟล์นั้นสำหรับรายละเอียด)
-        success_url: 'https://aitao-bot-production.up.railway.app/success',
-        cancel_url: 'https://aitao-bot-production.up.railway.app/cancel',
-        // discordUserId เพิ่มเข้ามาใหม่ — server.js เอาไปใช้หา user ตอนส่ง DM แจ้งเตือน
-        // (ดู PART F) มาจาก interaction.user.id ของ Discord โดยตรง ไม่ใช่ user กรอกเอง
-        // ปลอมแปลงไม่ได้เหมือนกับ guildId
-        metadata: { guildId, discordUserId: interaction.user.id },
-        subscription_data: { metadata: { guildId } },
-      });
-
-      // 🐛 บั๊กที่เจอจากการทดสอบจริง: เดิมใช้ ButtonStyle.Link ใส่ session.url ตรงๆ
-      // แต่ลิงก์ Stripe checkout ยาวเกิน 512 ตัวอักษร (ขีดจำกัด URL ของ Link Button
-      // ใน Discord) ทำให้ editReply() ทั้งก้อนโดน reject ด้วย DiscordAPIError 50035
-      // (BASE_TYPE_MAX_LENGTH) แก้โดยเปลี่ยนมาส่งเป็นข้อความที่มีลิงก์อยู่ในเนื้อหา
-      // แทน (TextDisplay ไม่มีข้อจำกัดความยาว URL แบบปุ่ม)
+      // 🆕 [19 ก.ย. 2569 ดึกมาก] เปลี่ยนพฤติกรรมปุ่มนี้ — เดิมสร้าง Stripe Checkout Session
+      // ตรงๆ ในดิสคอร์ดเลย (จ่ายได้แค่ทางบัตรเครดิตทางเดียว เพราะ Checkout โหมด subscription
+      // ไม่รองรับ PromptPay) น้องหนาวถามว่า "ในเมื่อมันไม่สามารถเข้า PromptPay จากในดิสคอร์ด
+      // ได้ งั้นตอนกด /premium เปลี่ยนเป็นวาร์ปไปที่หน้าเว็บเลยค่ะ" — เปลี่ยนแล้ว: แทนที่จะ
+      // สร้าง session เอง แค่ส่งลิงก์ไปหน้าเว็บ /premium/:guildId ที่มีให้เลือกทั้งบัตร/
+      // PromptPay (ต้อง login เว็บด้วยดิสคอร์ดก่อน ถ้ายังไม่เคย login ระบบจะพาไปหน้า login
+      // ให้เองอัตโนมัติแล้ววกกลับมาหน้านี้ต่อ — ดู requireAuth ใน server.js)
+      //
+      // ปุ่ม "มีโค้ดส่วนลด?" (premium_enter_code ด้านล่าง) ไม่ได้เปลี่ยนพฤติกรรม — ยังคง
+      // สร้าง Checkout Session ทางบัตรตรงๆ ในดิสคอร์ดเหมือนเดิม เผื่อใครอยากกรอกโค้ด+จ่าย
+      // บัตรแบบไม่ต้องออกจากดิสคอร์ดเลย (หน้าเว็บก็มีช่องกรอกโค้ดส่วนลดให้เหมือนกันแล้ว
+      // ถ้าอยากจ่ายผ่าน PromptPay พร้อมใช้โค้ดด้วย)
+      const websiteUrl = `${PUBLIC_BASE_URL}/premium/${guildId}`;
       await interaction.editReply({
         components: [
-          new TextDisplayBuilder().setContent(t('premium.subscribe_link', { url: session.url })),
+          new TextDisplayBuilder().setContent(t('premium.website_checkout_link', { url: websiteUrl })),
         ],
         flags: MessageFlags.IsComponentsV2,
       });

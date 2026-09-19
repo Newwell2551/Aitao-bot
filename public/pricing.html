@@ -42,6 +42,13 @@
          → เปลี่ยนข้อความปุ่มเป็น "Add Bot to Subscribe" ตามที่เคยเสนอไว้ พร้อม
          เพิ่มข้อความเล็กๆ ใต้ปุ่มบอกขั้นตอนถัดไป (พิมพ์ /premium ในดิสคอร์ด)
          กันคนสับสนว่ากดแล้วทำไมไม่เจอหน้าจ่ายเงิน
+
+         🔄 [อัปเดต 19 ก.ย. 2569 ดึกมาก — "เฟสถัดไป" ที่พูดถึงข้างบนสร้างเสร็จแล้ว]
+         ระบบล็อกอิน+เลือกเซิร์ฟ+จ่ายเงินผ่านเว็บทำเสร็จแล้วจริงๆ (utils/discordAuth.js,
+         renderServerPicker.js, renderPremiumBilling.js) ปุ่มนี้เลยเปลี่ยนกลับไปเป็น
+         ลิงก์ไปหน้าจ่ายเงินตรงๆ อีกครั้ง แค่เปลี่ยนปลายทางเป็น /premium/start (หน้าเลือก
+         เซิร์ฟ) แทนที่จะเป็น Stripe checkout ตรงๆ เหมือนที่เคยคิดไว้ตอนแรกสุด — ดู
+         คอมเมนต์ตรงปุ่มจริงด้านล่าง (ในส่วน Premium card) สำหรับรายละเอียด flow เต็มๆ
       2. เอาเมนู "Marketplace"/"Feed" ออกจาก nav เหมือน 2 หน้าก่อน (ยังไม่มี
          จริง)
       3. ไม่มี Footer ในหน้านี้ — ไฟล์ดีไซน์ทั้ง 3 ไฟล์ที่ได้มา (Landing,
@@ -295,17 +302,19 @@
       </div>
       <div class="desc">Everything in Free, plus the full Layout Builder and unlimited setups.</div>
 
-      <!-- ปุ่มนี้ลิงก์ไปหน้าเชิญบอท ไม่ใช่หน้าจ่ายเงินตรงๆ เพราะการสมัครพรีเมียม
-           จริงต้องทำผ่านคำสั่ง /premium ในดิสคอร์ดหลังเพิ่มบอทแล้วเท่านั้น
-           (ดูคอมเมนต์จุดที่ 1 ด้านบนสุดของไฟล์) — ข้อความปุ่มเปลี่ยนเป็น
-           "Add Bot to Subscribe" ให้ตรงกับพฤติกรรมจริง + มีคำใบ้ขั้นตอนถัดไป
-           ใต้ปุ่ม กันคนงงว่ากดแล้วทำไมไม่เจอหน้าจ่ายเงิน — [แก้รอบ 12] ราคา
-           ในปุ่มตอนนี้เป็น ฿99 ตายตัว (ตัดการสลับสกุลเงินออกแล้ว) -->
-      <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-         class="cta-btn gold pill-btn primary plain" target="_blank" rel="noopener">
-        Add Bot to Subscribe (฿99) ☕
+      <!-- 🔄 [แก้ 19 ก.ย. 2569 ดึกมาก] เดิมปุ่มนี้ลิงก์ไปหน้าเชิญบอทเฉยๆ เพราะตอนนั้นยังไม่มี
+           ระบบล็อกอิน+เลือกเซิร์ฟ+จ่ายเงินผ่านเว็บ (ดูคอมเมนต์จุดที่ 1 ด้านบนสุดของไฟล์ —
+           ตอนนั้นบอกไว้ว่า "ค่อยทำเป็นเฟสถัดไปทีหลัง") ตอนนี้ระบบนั้นสร้างเสร็จแล้ว
+           (utils/renderPremiumBilling.js + GET /premium/start ใน server.js) เลยเปลี่ยนปุ่ม
+           นี้ให้ลิงก์ไป /premium/start ตรงๆ แทน — ถ้ายังไม่ login จะถูกพาไป login ด้วย
+           ดิสคอร์ดก่อนอัตโนมัติ (มี returnTo พากลับมาที่นี่ต่อเอง) แล้วค่อยให้เลือกว่าซื้อ
+           ให้เซิร์ฟไหน (หรือข้ามขั้นนี้ไปเลยถ้ามีเซิร์ฟที่ติดตั้งบอทแล้วแค่เซิร์ฟเดียว) จบที่
+           หน้าเลือกวิธีจ่ายเงิน (บัตร/PromptPay) ของเซิร์ฟนั้น — ไม่ใช่ target="_blank" อีก
+           ต่อไปเพราะเป็นหน้าในเว็บเราเอง ไม่ใช่ลิงก์ไปเว็บนอกแบบก่อนหน้านี้ -->
+      <a href="/premium/start" class="cta-btn gold pill-btn primary plain">
+        Subscribe to Premium (฿99) ☕
       </a>
-      <div class="cta-note">After adding, run <code>/premium</code> in your server to finish subscribing.</div>
+      <div class="cta-note">Already added the bot? You'll pick which server this is for on the next page.</div>
 
       <div class="divider"></div>
 

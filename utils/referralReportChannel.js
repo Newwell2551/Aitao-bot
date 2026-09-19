@@ -17,20 +17,29 @@
 // ไม่ควรเปิดเผยสาธารณะ — น้องหนาว (เจ้าของบอท) เข้าไปดูเองในเซิร์ฟควบคุมได้ตลอด แต่ผู้ขาย
 // จะยังไม่เห็นยอดตัวเองในห้องนี้นะครับ
 //
-// 🆕 อัปเดต 19 ก.ย. 2569 — ทำให้เป็น "ระบบ" ที่โต้ตอบได้จริง ตามภาพเรฟที่น้องหนาวส่งมา
-// (สไตล์การ์ดร้านขายบูสต์เซิร์ฟที่มี dropdown + ปุ่มด้านล่าง) ไม่ใช่แค่ข้อความ/embed
-// นิ่งๆ อีกต่อไป — เพิ่ม 2 อย่าง:
+// 🆕 อัปเดต 19 ก.ย. 2569 (ดึกมาก) — ทำให้เป็น "ระบบ" ที่โต้ตอบได้จริง ตามภาพเรฟที่
+// น้องหนาวส่งมา (สไตล์การ์ดร้านขายบูสต์เซิร์ฟที่มี dropdown + ปุ่มด้านล่าง) ไม่ใช่แค่
+// ข้อความ/embed นิ่งๆ อีกต่อไป — เพิ่ม 2 อย่าง:
 //   1) Select menu เลือกช่วงเวลา "วันนี้ / เดือนนี้ / ทั้งหมด" — เลือกแล้วการ์ดอัปเดต
 //      ตัวเลขให้ตรงช่วงที่เลือกทันที (ไม่ต้องรอ event ใหม่)
 //   2) ปุ่ม "ข้อกำหนด" — กดแล้วเปิด modal (แบบฟอร์ม) ที่ล็อกไว้อ่านอย่างเดียว อธิบาย
 //      เงื่อนไขการจ่ายค่าคอมให้ผู้ขาย (ใช้ TextDisplay ใน Modal — ฟีเจอร์ใหม่ของ Discord
 //      ที่ให้ใส่ข้อความอ่านอย่างเดียวใน modal ได้โดยไม่ต้องมีช่องกรอกเลย)
+//
+// 🆕 อัปเดตล่าสุด (รอบดึกยิ่งกว่าเดิม) — เปลี่ยนการ์ดจาก Discord Embed เป็น "รูปภาพจริง"
+// (วาดด้วย @napi-rs/canvas ผ่าน utils/drawReferralReportCard.js) ตามภาพเรฟ "MAMOMI
+// STORE" ที่น้องหนาวส่งมา — กล่องสถิติแต่ละช่องมีกรอบ/พื้นหลังแยกชิ้นจริงๆ จัดตาราง
+// เป๊ะๆ ด้วยพิกเซลตรงๆ (Embed ทำแบบนั้นไม่ได้จริง อย่างมากก็แค่ field แบบ inline)
+// ส่วน dropdown/ปุ่ม/modal ที่โต้ตอบได้ยังทำงานเหมือนเดิมทุกอย่าง — แค่เปลี่ยนจาก
+// `embeds: [...]` เป็น `files: [แนบรูป]` ตอนส่ง/แก้ข้อความ (ดู buildReportPayload
+// ด้านล่าง) ระบบ custom emoji ของเซิร์ฟ Milo Support (EMOJI_SLOTS เดิม) เอาออกไปแล้ว
+// เพราะไม่จำเป็นอีกต่อไป — ดูเหตุผลเต็มๆ ใน comment หัวไฟล์ drawReferralReportCard.js
 // ─────────────────────────────────────────────────────────────────────────
 
 const {
   ChannelType,
   PermissionFlagsBits,
-  EmbedBuilder,
+  AttachmentBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
@@ -45,22 +54,9 @@ const {
   saveReportMessageId,
   COMMISSION_PER_REDEMPTION_THB,
 } = require('./referralStorage');
+const { drawReferralReportCard } = require('./drawReferralReportCard');
 
 const REPORT_CHANNEL_NAME = 'referral-earnings';
-
-// 🆕 [emoji เซิร์ฟ Milo Support] — ชื่อที่ใส่ไว้ตอนนี้เป็นแค่ "ชื่อจำลอง" (placeholder)
-// น้องหนาวต้องส่งชื่ออิโมจิจริงจากเซิร์ฟ Milo Support มาแทนที่ทีหลัง (ดูคำอธิบายเต็มๆ
-// ในแชท) — ระหว่างนี้ระบบยังทำงานได้ปกติ เพราะ resolveEmojiByName() ด้านล่าง หาไม่เจอ
-// ก็จะ fallback ไปใช้อิโมจิ Unicode ธรรมดาแทนเงียบๆ ไม่ error
-const EMOJI_SLOTS = {
-  title: { name: 'milo_chart', fallback: '📊' },
-  statusActive: { name: 'milo_online', fallback: '🟢' },
-  statusInactive: { name: 'milo_offline', fallback: '🔴' },
-  uses: { name: 'milo_repeat', fallback: '🔁' },
-  perUse: { name: 'milo_coin', fallback: '💸' },
-  total: { name: 'milo_moneybag', fallback: '💰' },
-  terms: { name: 'milo_scroll', fallback: '📜' },
-};
 
 // ป้ายกำกับ + ตัวเลือกของ dropdown เลือกช่วงเวลา — เรียงตามลำดับที่จะโชว์ในเมนู
 const RANGE_OPTIONS = [
@@ -73,23 +69,6 @@ const RANGE_LABELS = Object.fromEntries(RANGE_OPTIONS.map((o) => [o.value, o.lab
 const RANGE_SELECT_PREFIX = 'referral_range_select_';
 const TERMS_BUTTON_ID = 'referral_terms_button';
 const TERMS_MODAL_ID = 'referral_terms_modal';
-
-/**
- * หา custom emoji ตามชื่อจาก "ทุกเซิร์ฟที่บอทอยู่" (ไม่ใช่แค่เซิร์ฟควบคุมเซิร์ฟเดียว) —
- * client.emojis.cache รวมอิโมจิจากทุกเซิร์ฟที่บอทเป็นสมาชิกอยู่แล้วในก้อนเดียว บอทใช้
- * อิโมจิของเซิร์ฟไหนก็ได้ตราบใดที่ตัวเองอยู่ในเซิร์ฟนั้น ไม่จำเป็นต้องเป็นเซิร์ฟเดียวกับ
- * ที่ส่งข้อความ (คนละเรื่องกับที่ "คน" พิมพ์อิโมจิเซิร์ฟอื่นไม่ได้ถ้าไม่ได้ Nitro — แต่
- * "บอท" ใช้ได้ปกติ เพราะบอทส่งผ่าน API ตรงๆ ไม่ผ่านข้อจำกัดของไคลเอนต์)
- * หาไม่เจอ (เช่นชื่อ placeholder ที่ยังไม่ได้แก้ หรือพิมพ์ผิด) → คืนค่า fallback แทนเงียบๆ
- * @param {import('discord.js').Client} client
- * @param {{name: string, fallback: string}} slot
- * @returns {string}
- */
-function resolveEmoji(client, slot) {
-  const emoji = client.emojis.cache.find((e) => e.name === slot.name);
-  if (!emoji) return slot.fallback;
-  return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
-}
 
 /**
  * หาห้องรายงานยอดที่มีอยู่แล้ว หรือสร้างใหม่ถ้ายังไม่มี (pattern เดียวกับ
@@ -135,33 +114,26 @@ async function getOrCreateReportChannel(guild) {
 }
 
 /**
- * แปลงตัวเลขสถิติของโค้ด 1 อัน (ที่กรองตามช่วงเวลาที่เลือกมาแล้ว) เป็น "การ์ด" (Embed)
- * โครงสร้าง: แถวบน 3 ช่องเล็ก (สถานะ / จำนวนครั้งที่ใช้ / ค่าคอมต่อครั้ง) แถวล่างช่องใหญ่
- * เต็มความกว้าง 1 ช่อง (รวมรายได้ของช่วงเวลาที่เลือก) — ชื่อ field ของ "ใช้ไปแล้ว" กับ
- * "รวมรายได้" จะเปลี่ยนคำต่อท้ายตามช่วงเวลาที่เลือกด้วย (วันนี้/เดือนนี้/ตลอดกาล) กันสับสน
- * ว่ากำลังดูยอดของช่วงไหนอยู่
+ * แปลงตัวเลขสถิติของโค้ด 1 อัน (ที่กรองตามช่วงเวลาที่เลือกมาแล้ว) เป็น "การ์ดรูปภาพ"
+ * (PNG แนบไฟล์ — วาดจริงด้วย utils/drawReferralReportCard.js) — ชื่อไฟล์ตั้งตามโค้ด
+ * ให้พอเดาได้ว่าเป็นรูปของโค้ดไหน เผื่อโหลดเก็บไว้ดูย้อนหลัง
  * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number }} stats
  * @param {'today'|'month'|'all'} range
- * @param {import('discord.js').Client} client ใช้หา custom emoji ของเซิร์ฟ Milo Support
- * @returns {import('discord.js').EmbedBuilder}
+ * @returns {Promise<import('discord.js').AttachmentBuilder | null>} null ถ้าวาดรูปไม่สำเร็จ
  */
-function buildReportEmbed(stats, range, client) {
-  const statusValue = stats.active ? 'เปิดใช้งานอยู่' : 'ปิดใช้งานแล้ว';
-  const statusEmoji = resolveEmoji(client, stats.active ? EMOJI_SLOTS.statusActive : EMOJI_SLOTS.statusInactive);
+async function buildReportAttachment(stats, range) {
   const rangeLabel = RANGE_LABELS[range] ?? RANGE_LABELS.all;
-
-  return new EmbedBuilder()
-    .setColor(stats.active ? 0x57f287 : 0x99aab5) // เขียว/เทา — ชุดสีเดียวกับการ์ดพรีเมียม
-    .setTitle(`${resolveEmoji(client, EMOJI_SLOTS.title)} ${stats.code}`)
-    .setDescription(`ผู้ขาย: **${stats.sellerLabel}**`)
-    .addFields(
-      { name: `${statusEmoji} สถานะ`, value: `\`${statusValue}\``, inline: true },
-      { name: `${resolveEmoji(client, EMOJI_SLOTS.uses)} ใช้ไปแล้ว (${rangeLabel})`, value: `\`${stats.totalUses} ครั้ง\``, inline: true },
-      { name: `${resolveEmoji(client, EMOJI_SLOTS.perUse)} ค่าคอมต่อครั้ง`, value: `\`${COMMISSION_PER_REDEMPTION_THB} บาท\``, inline: true },
-      { name: `${resolveEmoji(client, EMOJI_SLOTS.total)} รวมรายได้ (${rangeLabel})`, value: `\`${stats.totalCommissionThb} บาท\``, inline: false },
-    )
-    .setFooter({ text: 'อัปเดตล่าสุด' })
-    .setTimestamp(); // Discord โชว์เป็นเวลาสัมพัทธ์ให้เอง (เช่น "2 นาทีที่แล้ว") ในเขตเวลาของแต่ละคนเอง
+  const buffer = await drawReferralReportCard({
+    code: stats.code,
+    sellerLabel: stats.sellerLabel,
+    active: stats.active,
+    totalUses: stats.totalUses,
+    totalCommissionThb: stats.totalCommissionThb,
+    commissionPerUseThb: COMMISSION_PER_REDEMPTION_THB,
+    rangeLabel,
+  });
+  if (!buffer) return null; // วาดไม่สำเร็จ (ดู catch ใน drawReferralReportCard.js) — ผู้เรียกจัดการต่อเอง
+  return new AttachmentBuilder(buffer, { name: `referral-${stats.code}.png` });
 }
 
 /**
@@ -198,16 +170,18 @@ function buildReportComponents(code, range) {
 }
 
 /**
- * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้าง embed+components" ไว้จุดเดียว
+ * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → วาดรูป+สร้าง components" ไว้จุดเดียว
  * ใช้ร่วมกันทั้ง syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ
  * handleReportRangeSelect() (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
- * @param {import('discord.js').Client} client
+ *
+ * เป็น async แล้ว (เดิมเป็น sync) เพราะวาดรูปด้วย canvas ต้องรอโหลดฟอนต์/อิโมจิ/
+ * มาสคอตก่อน — ผู้เรียกทั้ง 2 จุดต้องเติม await หน้าฟังก์ชันนี้ด้วย
  * @param {string} code
  * @param {'today'|'month'|'all'} range
- * @returns {{ embeds: import('discord.js').EmbedBuilder[], components: import('discord.js').ActionRowBuilder[] } | null}
- *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว)
+ * @returns {Promise<{ attachment: import('discord.js').AttachmentBuilder, components: import('discord.js').ActionRowBuilder[] } | null>}
+ *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว) หรือวาดรูปไม่สำเร็จ
  */
-function buildReportPayload(client, code, range) {
+async function buildReportPayload(code, range) {
   const normalizedCode = String(code || '').trim().toUpperCase();
   const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
   if (!codeEntry) return null;
@@ -221,8 +195,11 @@ function buildReportPayload(client, code, range) {
     totalCommissionThb,
   };
 
+  const attachment = await buildReportAttachment(stats, range);
+  if (!attachment) return null;
+
   return {
-    embeds: [buildReportEmbed(stats, range, client)],
+    attachment,
     components: buildReportComponents(normalizedCode, range),
   };
 }
@@ -257,8 +234,8 @@ async function syncCodeReportMessage(client, code, range = 'all') {
   const normalizedCode = String(code || '').trim().toUpperCase();
 
   try {
-    const payload = buildReportPayload(client, normalizedCode, range);
-    if (!payload) return; // โค้ดนี้ไม่มีอยู่จริง (ไม่ควรเกิด แต่กันไว้)
+    const payload = await buildReportPayload(normalizedCode, range);
+    if (!payload) return; // โค้ดนี้ไม่มีอยู่จริง หรือวาดรูปไม่สำเร็จ (ไม่ควรเกิด แต่กันไว้)
 
     const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
     const guild = await client.guilds.fetch(guildId);
@@ -267,11 +244,17 @@ async function syncCodeReportMessage(client, code, range = 'all') {
     if (codeEntry.reportMessageId) {
       try {
         const existingMessage = await channel.messages.fetch(codeEntry.reportMessageId);
-        // ต้องเคลียร์ content: '' ด้วยเสมอตอนแก้ไขข้อความเก่า — เพราะข้อความรุ่นแรกสุด
-        // (ก่อนเปลี่ยนมาใช้ embed) เป็น plain text ล้วนๆ ถ้าส่งแค่ embeds/components ไป
-        // เฉยๆ โดยไม่แตะ content เลย ตัว content เก่าจะค้างอยู่ข้างบน embed ใหม่ (Discord
-        // แก้เฉพาะ field ที่ส่งมาเท่านั้น ไม่ได้ล้างของเดิมให้อัตโนมัติ)
-        await existingMessage.edit({ content: '', embeds: payload.embeds, components: payload.components });
+        // ต้องเคลียร์ content: '' + attachments: [] ด้วยเสมอตอนแก้ไขข้อความเก่า —
+        // เพราะข้อความรุ่นแรกสุด (ก่อนเปลี่ยนมาใช้ embed) เป็น plain text ล้วนๆ และ
+        // Discord "ไม่ล้าง" attachment เก่าให้อัตโนมัติตอนแก้ข้อความ ถ้าไม่สั่ง
+        // attachments: [] มาด้วย รูปเก่าจะค้างซ้อนอยู่กับรูปใหม่ที่ส่งไปใน files
+        await existingMessage.edit({
+          content: '',
+          embeds: [],
+          attachments: [],
+          files: [payload.attachment],
+          components: payload.components,
+        });
         return;
       } catch (fetchError) {
         // ข้อความเดิมหาไม่เจอ (เช่นมีคนลบข้อความ/ห้องไปเอง) — ส่งใหม่แทนด้านล่าง
@@ -281,7 +264,7 @@ async function syncCodeReportMessage(client, code, range = 'all') {
       }
     }
 
-    const sentMessage = await channel.send({ embeds: payload.embeds, components: payload.components });
+    const sentMessage = await channel.send({ files: [payload.attachment], components: payload.components });
     saveReportMessageId(normalizedCode, sentMessage.id);
   } catch (error) {
     console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอดของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
@@ -304,13 +287,24 @@ async function handleReportRangeSelect(interaction) {
   const code = interaction.customId.slice(RANGE_SELECT_PREFIX.length);
   const range = interaction.values[0];
 
-  const payload = buildReportPayload(interaction.client, code, range);
+  // ต้อง deferUpdate ก่อน เพราะวาดรูป canvas ใหม่ใช้เวลานานกว่าจะแก้ embed ธรรมดา —
+  // ถ้าไม่ defer แล้วใช้เวลาเกิน 3 วินาที Discord จะตีความว่า interaction หมดอายุ
+  // (เท่ากับปุ่ม/dropdown "ค้าง" ไม่ตอบสนอง ทั้งที่จริงๆ กำลังวาดรูปอยู่เบื้องหลัง)
+  await interaction.deferUpdate();
+
+  const payload = await buildReportPayload(code, range);
   if (!payload) {
-    await interaction.reply({ content: 'ไม่พบโค้ดนี้แล้วครับ (อาจถูกลบไปแล้ว)', ephemeral: true });
+    await interaction.followUp({ content: 'ไม่พบโค้ดนี้แล้วครับ (อาจถูกลบไปแล้ว)', ephemeral: true });
     return;
   }
 
-  await interaction.update({ embeds: payload.embeds, components: payload.components });
+  await interaction.editReply({
+    content: '',
+    embeds: [],
+    attachments: [],
+    files: [payload.attachment],
+    components: payload.components,
+  });
 }
 
 /** เช็คว่า customId นี้เป็นปุ่ม "ข้อกำหนด" ของห้องรายงานยอดหรือไม่ (เรียกจาก index.js) */
