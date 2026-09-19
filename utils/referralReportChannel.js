@@ -19,8 +19,13 @@
 // ฟีเจอร์ใหม่ทีหลัง เช่น DM สรุปยอดเป็นระยะ หรือเปิดสิทธิ์เฉพาะคน)
 // ─────────────────────────────────────────────────────────────────────────
 
-const { ChannelType, PermissionFlagsBits } = require('discord.js');
-const { listAllCodes, getCommissionSummary, saveReportMessageId } = require('./referralStorage');
+const { ChannelType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const {
+  listAllCodes,
+  getCommissionSummary,
+  saveReportMessageId,
+  COMMISSION_PER_REDEMPTION_THB,
+} = require('./referralStorage');
 
 const REPORT_CHANNEL_NAME = 'referral-earnings';
 
@@ -68,20 +73,41 @@ async function getOrCreateReportChannel(guild) {
 }
 
 /**
- * แปลงตัวเลขสถิติของโค้ด 1 อัน เป็นข้อความที่จะโพสต์/แก้ไขในห้องรายงาน
- * (plain text ธรรมดา ไม่ใช้ embed เพราะเป็นแค่ข้อความรายงานภายในสั้นๆ อ่านง่ายอยู่แล้ว)
+ * 🆕 แปลงตัวเลขสถิติของโค้ด 1 อัน เป็น "การ์ด" แบบตาราง (Discord Embed) แทนข้อความ
+ * plain text ธรรมดาแบบเดิม — ใช้ embed เพราะเป็นวิธีเดียวที่ Discord รองรับ "ช่องตัวเลข
+ * เรียงเป็นแถว 3 ช่อง" อัตโนมัติ (fields ที่ตั้ง inline: true ทุกอัน Discord จะเรียงให้เอง
+ * สูงสุด 3 ช่องต่อแถวถ้าพื้นที่พอ ตามแบบที่น้องหนาวส่งภาพอ้างอิงมา)
+ *
+ * โครงสร้าง: แถวบนเป็น 3 ช่องเล็ก (สถานะ / จำนวนครั้งที่ใช้ / ค่าคอมต่อครั้ง — ตัวเลข
+ * "คงที่" อ่านเร็วๆ ได้) แถวล่างเป็นช่องใหญ่เต็มความกว้าง 1 ช่อง (รวมรายได้ตลอดกาล —
+ * ตัวเลขที่สำคัญที่สุด เลยให้เด่นสุดแยกออกมาต่างหาก ไม่ใช่ inline)
+ *
+ * ค่าตัวเลขแต่ละช่องห่อด้วย backtick (`) ตั้งใจ — Discord จะเรนเดอร์เป็นตัวหนังสือ
+ * monospace พร้อมกล่องพื้นหลังสีเทาให้อัตโนมัติ เป็นเทคนิคง่ายๆ ที่ทำให้ตัวเลขดูเป็น
+ * "กล่อง/ป้าย" เด่นขึ้นมาจากข้อความรอบข้าง (ไม่ต้องพึ่งรูปภาพหรือ HTML ใดๆ เลย)
+ *
+ * สีแถบซ้ายของการ์ด (setColor) ใช้ชุดสีเดียวกับ buildPremiumCard.js เป๊ะๆ (เขียว =
+ * กำลังใช้งานอยู่, เทา = ปิดใช้งานแล้ว) เพื่อให้ทั้งบอทมีธีมสีเดียวกันทุกจุด ไม่ต้องคิดสีใหม่
+ *
  * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number }} stats
+ * @returns {import('discord.js').EmbedBuilder}
  */
-function formatReportMessage(stats) {
-  const statusLabel = stats.active ? '🟢 เปิดใช้งานอยู่' : '🔴 ปิดใช้งานแล้ว';
-  return (
-    `📊 **${stats.code}** — ${stats.sellerLabel}\n` +
-    `${statusLabel}\n` +
-    `• คนใช้โค้ดนี้ไปแล้ว: **${stats.totalUses}** ครั้ง\n` +
-    `• ค่าคอมต่อครั้ง: 5 บาท\n` +
-    `• รวมรายได้ทั้งหมด (ตลอดกาล): **${stats.totalCommissionThb} บาท**\n` +
-    `-# อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`
-  );
+function buildReportEmbed(stats) {
+  const statusValue = stats.active ? 'เปิดใช้งานอยู่' : 'ปิดใช้งานแล้ว';
+  const statusEmoji = stats.active ? '🟢' : '🔴';
+
+  return new EmbedBuilder()
+    .setColor(stats.active ? 0x57f287 : 0x99aab5) // เขียว/เทา — ชุดสีเดียวกับการ์ดพรีเมียม
+    .setTitle(`📊 ${stats.code}`)
+    .setDescription(`ผู้ขาย: **${stats.sellerLabel}**`)
+    .addFields(
+      { name: `${statusEmoji} สถานะ`, value: `\`${statusValue}\``, inline: true },
+      { name: '🔁 ใช้ไปแล้ว', value: `\`${stats.totalUses} ครั้ง\``, inline: true },
+      { name: '💸 ค่าคอมต่อครั้ง', value: `\`${COMMISSION_PER_REDEMPTION_THB} บาท\``, inline: true },
+      { name: '💰 รวมรายได้ทั้งหมด (ตลอดกาล)', value: `\`${stats.totalCommissionThb} บาท\``, inline: false },
+    )
+    .setFooter({ text: 'อัปเดตล่าสุด' })
+    .setTimestamp(); // Discord โชว์เป็นเวลาสัมพัทธ์ให้เอง (เช่น "2 นาทีที่แล้ว") ในเขตเวลาของแต่ละคนเอง
 }
 
 /**
@@ -126,12 +152,16 @@ async function syncCodeReportMessage(client, code) {
 
     const guild = await client.guilds.fetch(guildId);
     const channel = await getOrCreateReportChannel(guild);
-    const content = formatReportMessage(stats);
+    const embed = buildReportEmbed(stats);
 
     if (codeEntry.reportMessageId) {
       try {
         const existingMessage = await channel.messages.fetch(codeEntry.reportMessageId);
-        await existingMessage.edit({ content });
+        // 🆕 ต้องเคลียร์ content: '' ด้วยเสมอตอนแก้ไขข้อความเก่า — เพราะข้อความเดิม
+        // (ก่อนเปลี่ยนมาใช้ embed) เป็น plain text ล้วนๆ ถ้าส่งแค่ embeds ไปเฉยๆ โดยไม่แตะ
+        // content เลย ตัว content เก่าจะค้างอยู่ข้างบน embed ใหม่ (Discord แก้เฉพาะ field
+        // ที่ส่งมาเท่านั้น ไม่ได้ล้างของเดิมให้อัตโนมัติ)
+        await existingMessage.edit({ content: '', embeds: [embed] });
         return;
       } catch (fetchError) {
         // ข้อความเดิมหาไม่เจอ (เช่นมีคนลบข้อความ/ห้องไปเอง) — ส่งใหม่แทนด้านล่าง
@@ -141,7 +171,7 @@ async function syncCodeReportMessage(client, code) {
       }
     }
 
-    const sentMessage = await channel.send({ content });
+    const sentMessage = await channel.send({ embeds: [embed] });
     saveReportMessageId(normalizedCode, sentMessage.id);
   } catch (error) {
     console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอดของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
