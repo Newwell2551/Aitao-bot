@@ -334,6 +334,47 @@ function getCommissionSummary() {
 }
 
 /**
+ * 🆕 [ห้องรายงานยอดแบบเลือกช่วงเวลาได้ — 19 ก.ย. 2569] สรุปยอดของโค้ด "1 อันเท่านั้น"
+ * กรองตามช่วงเวลาที่ระบุ — ใช้กับ dropdown "วันนี้/เดือนนี้/ทั้งหมด" ในห้อง
+ * #referral-earnings (utils/referralReportChannel.js) ต่างจาก getCommissionSummary()
+ * ที่สรุปยอดตลอดกาลของ "ทุกโค้ด" พร้อมกัน
+ *
+ * ⚠️ ขอบเขตเวลาที่ใช้เทียบ "วันนี้"/"เดือนนี้" อิงตามเวลาของเครื่องที่รันบอท (เซิร์ฟเวอร์
+ * Railway ปกติตั้งเป็น UTC) ไม่ใช่เวลาไทย — ถ้าทดสอบใกล้เที่ยงคืนอาจเห็นตัวเลขคลาดเคลื่อน
+ * ไปได้ 7 ชั่วโมง เป็นข้อจำกัดที่ยอมรับได้ตอนนี้ (ยังไม่ได้ปรับ timezone ให้ตรงไทยเป๊ะๆ)
+ *
+ * @param {string} code
+ * @param {'today'|'month'|'all'} range
+ * @returns {{ totalUses: number, totalCommissionThb: number }}
+ */
+function getCodeCommissionStats(code, range) {
+  const data = readAll();
+  const key = normalizeCode(code);
+  const now = new Date();
+
+  const isInRange = (isoString) => {
+    if (range === 'all') return true;
+    const entryDate = new Date(isoString);
+    const sameYear = entryDate.getFullYear() === now.getFullYear();
+    const sameMonth = sameYear && entryDate.getMonth() === now.getMonth();
+    if (range === 'month') return sameMonth;
+    if (range === 'today') return sameMonth && entryDate.getDate() === now.getDate();
+    return true; // range แปลกๆ ที่ไม่รู้จัก — กันพังไว้ก่อน ถือว่านับหมด
+  };
+
+  let totalUses = 0;
+  let totalCommissionThb = 0;
+  for (const entry of data.commissionLog) {
+    if (entry.code !== key) continue;
+    if (!isInRange(entry.completedAt)) continue;
+    totalUses += 1;
+    totalCommissionThb += entry.commissionThb;
+  }
+
+  return { totalUses, totalCommissionThb };
+}
+
+/**
  * ดึงรายการโค้ดทั้งหมด (ใช้กับ /referral list)
  * @returns {Array<{ code: string, sellerLabel: string, active: boolean, createdAt: string, reportMessageId?: string }>}
  */
@@ -439,6 +480,7 @@ module.exports = {
   completeRedemption,
   completeRedemptionFromDiscount,
   getCommissionSummary,
+  getCodeCommissionStats,
   getUnpaidCommissionSummary,
   markCommissionsPaid,
   listAllCodes,

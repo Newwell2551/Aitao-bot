@@ -7,6 +7,12 @@ const { initImageWorkerPool }            = require('./utils/imageWorkerPool');
 const { sendGuildJoinGreeting }          = require('./utils/guildJoinGreeting');
 const { syncDiscordBotListCommands }     = require('./utils/syncDiscordBotList');
 const { createWebhookServer }            = require('./server');
+// ระบบห้องรายงานค่าคอมมิชชั่น #referral-earnings แบบโต้ตอบได้ (dropdown เลือกช่วงเวลา + ปุ่มข้อกำหนด)
+const {
+  isReportRangeSelect, handleReportRangeSelect,
+  isReportTermsButton, handleReportTermsButton,
+  isTermsModalSubmit, handleTermsModalSubmit,
+} = require('./utils/referralReportChannel');
 
 // 1. สร้างบอท พร้อมระบุ "intents" และ "partials" ที่ต้องการ
 //
@@ -208,6 +214,19 @@ client.on('interactionCreate', async interaction => {
         }
       }
     }
+
+    // referral_terms_button = ปุ่ม "ข้อกำหนด" ที่การ์ดรายงานใน #referral-earnings
+    // กดแล้วเปิด modal แบบล็อก (อ่านอย่างเดียว ไม่มีช่องให้กรอก) อธิบายเงื่อนไขจ่ายค่าคอม
+    if (isReportTermsButton(interaction.customId)) {
+      try {
+        await handleReportTermsButton(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเปิดข้อกำหนด', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
     return;
   }
 
@@ -275,6 +294,19 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนบันทึกข้อมูล', flags: MessageFlags.Ephemeral });
         } else if (interaction.deferred && !interaction.replied) {
           await interaction.editReply({ content: '❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้งนะครับ' });
+        }
+      }
+    }
+
+    // referral_terms_modal = modal ล็อกที่เปิดจากปุ่ม "ข้อกำหนด" — ไม่มีช่องให้กรอกอะไรเลย
+    // แค่กดส่ง (submit) เพื่อปิด modal เฉยๆ handler ข้างในแค่ reply รับทราบ ไม่มีข้อมูลต้องบันทึก
+    if (isTermsModalSubmit(interaction.customId)) {
+      try {
+        await handleTermsModalSubmit(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาด', flags: MessageFlags.Ephemeral });
         }
       }
     }
@@ -354,6 +386,19 @@ client.on('interactionCreate', async interaction => {
       const builderCommand = client.commands.get('builder');
       try {
         await builderCommand.handleSelectMenu(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
+
+    // referral_range_select_ = dropdown เลือกช่วงเวลา (วันนี้/เดือนนี้/ทั้งหมด) บนการ์ดรายงาน
+    // ใน #referral-earnings — customId ต่อท้ายด้วยโค้ดรีเฟอรัล เช่น referral_range_select_ABC123
+    if (isReportRangeSelect(interaction.customId)) {
+      try {
+        await handleReportRangeSelect(interaction);
       } catch (error) {
         console.error(error);
         if (!interaction.replied && !interaction.deferred) {
