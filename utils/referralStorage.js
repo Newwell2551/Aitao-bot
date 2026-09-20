@@ -13,8 +13,12 @@
 //       "stripePromotionCodeId": "promo_xxx", ← ตัวจริงที่ใช้แนบเข้า Checkout Session
 //       "active": true,                       ← false = โค้ดถูกปิดใช้งานแล้ว (แต่ประวัติยังอยู่)
 //       "createdAt": "2026-09-17T12:00:00.000Z",
-//       "reportMessageId": "1234567890",      ← พิกัดข้อความการ์ดในห้อง #referral-earnings (ดู referralReportChannel.js)
-//       "promptpayId": "0812345678"           ← เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ/บัตร ปชช.) ไว้สร้าง QR โอนเงิน, null ถ้ายังไม่ตั้ง
+//       "reportMessageId": "1234567890",      ← พิกัดข้อความการ์ดในห้อง #referral-earnings ของเซิร์ฟควบคุม (ดู referralReportChannel.js)
+//       "promptpayId": "0812345678",          ← เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ/บัตร ปชช.) ไว้สร้าง QR โอนเงิน, null ถ้ายังไม่ตั้ง
+//       "sellerGuildId": "9876543210",        ← 🆕 [20 ก.ย. 2569] ID เซิร์ฟของผู้ขายเอง (ไม่ใช่เซิร์ฟควบคุม) ไว้ให้
+//                                                บอทไปสร้างห้อง #partner-earnings ในเซิร์ฟนั้นให้เอง — null ถ้ายังไม่ตั้ง
+//       "sellerReportMessageId": "111222333"  ← 🆕 พิกัดข้อความการ์ดในห้อง #partner-earnings ของเซิร์ฟผู้ขาย (คนละอันกับ
+//                                                reportMessageId ด้านบนที่เป็นของเซิร์ฟควบคุม — โค้ดเดียวมีการ์ดได้ 2 ที่พร้อมกัน)
 //     }
 //   },
 //   "pendingRedemptions": {
@@ -115,10 +119,13 @@ function normalizeCode(code) {
  * บันทึกโค้ดใหม่ 1 อัน (เรียกจาก /referral add ตอนแอดมิน/เจ้าของบอทสร้างโค้ดให้ผู้ขาย)
  * ถ้าโค้ดนี้มีอยู่แล้ว จะ "เขียนทับ" ข้อมูลเดิม (เผื่อแก้ sellerLabel ทีหลัง)
  *
+ * 🆕 [20 ก.ย. 2569] เพิ่ม sellerGuildId (ไม่บังคับ) — ID เซิร์ฟของผู้ขายเอง ไว้ให้บอทไป
+ * สร้างห้อง #partner-earnings ในเซิร์ฟนั้นให้อัตโนมัติ (ดู utils/referralReportChannel.js)
+ *
  * @param {string} code
- * @param {{ sellerLabel: string, sellerDiscordId: string|null, stripeCouponId: string, stripePromotionCodeId: string, promptpayId?: string|null }} info
+ * @param {{ sellerLabel: string, sellerDiscordId: string|null, stripeCouponId: string, stripePromotionCodeId: string, promptpayId?: string|null, sellerGuildId?: string|null }} info
  */
-function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePromotionCodeId, promptpayId }) {
+function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePromotionCodeId, promptpayId, sellerGuildId }) {
   const data = readAll();
   const key = normalizeCode(code);
   data.codes[key] = {
@@ -127,6 +134,8 @@ function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePr
     stripeCouponId,
     stripePromotionCodeId,
     promptpayId: promptpayId || null,
+    sellerGuildId: sellerGuildId || null,
+    sellerReportMessageId: null,
     active: true,
     createdAt: new Date().toISOString(),
   };
@@ -470,6 +479,43 @@ function savePromptPayId(code, promptpayId) {
   return true;
 }
 
+/**
+ * 🆕 [20 ก.ย. 2569] ตั้ง/แก้ไข "ID เซิร์ฟของผู้ขายเอง" — เรียกจาก /referral add (ตอนใส่มา
+ * ตั้งแต่แรก) หรือ /referral setguild (ตอนตั้งทีหลัง) ใช้ให้บอทไปสร้าง/อัปเดตห้อง
+ * #partner-earnings ในเซิร์ฟของผู้ขายเอง (ดู getOrCreateSellerReportChannel() ใน
+ * utils/referralReportChannel.js) — คนละเซิร์ฟกับเซิร์ฟควบคุมที่ /dev กับ /referral ใช้
+ * @param {string} code
+ * @param {string} guildId ID เซิร์ฟของผู้ขาย (ตัวเลขล้วน snowflake ของดิสคอร์ด)
+ * @returns {boolean} true ถ้าเจอโค้ดและบันทึกสำเร็จ, false ถ้าไม่เจอโค้ดนี้เลย
+ */
+function saveSellerGuildId(code, guildId) {
+  const data = readAll();
+  const key = normalizeCode(code);
+  if (!data.codes[key]) return false;
+  data.codes[key].sellerGuildId = guildId;
+  // 🆕 เปลี่ยนเซิร์ฟ = การ์ดเดิม (ถ้ามี) อยู่คนละเซิร์ฟกับที่ตั้งใหม่แล้ว แก้ทับไม่ได้อีกต่อไป
+  // (message ID ผูกกับ channel/guild เดิม) เคลียร์ทิ้งไว้ก่อน ให้ sync รอบถัดไปส่งข้อความ
+  // ใหม่ในเซิร์ฟที่ตั้งค่าล่าสุดแทนอัตโนมัติ กันไปพยายาม .edit() ข้อความในเซิร์ฟเก่าที่ผิดที่
+  data.codes[key].sellerReportMessageId = null;
+  writeAll(data);
+  return true;
+}
+
+/**
+ * 🆕 [20 ก.ย. 2569] บันทึก "พิกัดข้อความ" ของการ์ดรายงานยอดในห้อง #partner-earnings
+ * ของเซิร์ฟผู้ขายเอง — คนละอันกับ saveReportMessageId() ด้านบนที่เป็นของเซิร์ฟควบคุม
+ * เรียกจาก utils/referralReportChannel.js เท่านั้น
+ * @param {string} code
+ * @param {string|null} messageId ใส่ null ได้ถ้าอยากเคลียร์ (เช่นตอนสร้างข้อความใหม่ไม่สำเร็จ)
+ */
+function saveSellerReportMessageId(code, messageId) {
+  const data = readAll();
+  const key = normalizeCode(code);
+  if (!data.codes[key]) return; // โค้ดถูกลบไปแล้ว (ไม่ควรเกิด) — ข้ามเงียบๆ
+  data.codes[key].sellerReportMessageId = messageId;
+  writeAll(data);
+}
+
 module.exports = {
   COMMISSION_PER_REDEMPTION_THB,
   saveCode,
@@ -486,4 +532,6 @@ module.exports = {
   listAllCodes,
   saveReportMessageId,
   savePromptPayId,
+  saveSellerGuildId,
+  saveSellerReportMessageId,
 };

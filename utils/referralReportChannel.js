@@ -10,21 +10,41 @@
 // แก้ไข (edit) แทนที่จะส่งข้อความใหม่ทุกครั้ง กันไม่ให้ห้องรกด้วยข้อความซ้ำๆ เป็นร้อยเป็น
 // พันข้อความ
 //
-// ⚠️ ห้องนี้สร้างขึ้นใน "เซิร์ฟควบคุม" เดียวกับที่ /dev กับ /referral ใช้อยู่แล้ว (ตาม
-// GUILD_ID ใน .env) เพราะระบบ referral เป็นของกลางของบอท ไม่ได้ผูกกับเซิร์ฟลูกค้าเซิร์ฟ
-// ใดเซิร์ฟหนึ่งโดยเฉพาะ (โค้ดเดียวใช้ได้หลายเซิร์ฟ) — ห้องนี้ตั้งสิทธิ์ให้เห็นได้แค่บอท
-// เท่านั้น (ซ่อนจากสมาชิกทุกคนรวมถึงแอดมิน เหมือน asset-storage) เพราะเป็นข้อมูลรายได้ที่
-// ไม่ควรเปิดเผยสาธารณะ — น้องหนาว (เจ้าของบอท) เข้าไปดูเองในเซิร์ฟควบคุมได้ตลอด แต่ผู้ขาย
-// จะยังไม่เห็นยอดตัวเองในห้องนี้นะครับ
+// ⚠️ ห้อง #referral-earnings สร้างขึ้นใน "เซิร์ฟควบคุม" เดียวกับที่ /dev กับ /referral ใช้
+// อยู่แล้ว (ตาม GUILD_ID ใน .env) ตั้งสิทธิ์ให้เห็นได้แค่บอทเท่านั้น (ซ่อนจากสมาชิกทุกคน
+// รวมถึงแอดมิน เหมือน asset-storage) เพราะเป็นข้อมูลรายได้ "รวมทุกโค้ด" ของทั้งระบบ ไม่ควร
+// เปิดเผยสาธารณะ — น้องหนาว (เจ้าของบอท) เข้าไปดูเองในเซิร์ฟควบคุมได้ตลอดผ่านสิทธิ์
+// Administrator (ซึ่ง bypass permission overwrite ได้อัตโนมัติอยู่แล้ว)
 //
-// 🆕 อัปเดต 19 ก.ย. 2569 (ดึกมาก) — ทำให้เป็น "ระบบ" ที่โต้ตอบได้จริง ตามภาพเรฟที่
-// น้องหนาวส่งมา (สไตล์การ์ดร้านขายบูสต์เซิร์ฟที่มี dropdown + ปุ่มด้านล่าง) ไม่ใช่แค่
-// ข้อความ/embed นิ่งๆ อีกต่อไป — เพิ่ม 2 อย่าง:
-//   1) Select menu เลือกช่วงเวลา "วันนี้ / เดือนนี้ / ทั้งหมด" — เลือกแล้วการ์ดอัปเดต
-//      ตัวเลขให้ตรงช่วงที่เลือกทันที (ไม่ต้องรอ event ใหม่)
-//   2) ปุ่ม "ข้อกำหนด" — กดแล้วเปิด modal (แบบฟอร์ม) ที่ล็อกไว้อ่านอย่างเดียว อธิบาย
-//      เงื่อนไขการจ่ายค่าคอมให้ผู้ขาย (ใช้ TextDisplay ใน Modal — ฟีเจอร์ใหม่ของ Discord
-//      ที่ให้ใส่ข้อความอ่านอย่างเดียวใน modal ได้โดยไม่ต้องมีช่องกรอกเลย)
+// 🆕 อัปเดต 20 ก.ย. 2569 (รอบ 13 — ล่าสุด) — เพิ่มห้อง #partner-earnings "ในเซิร์ฟของผู้ขาย
+// เอง" ด้วย (คนละที่กับห้อง #referral-earnings ของเซิร์ฟควบคุมด้านบน) ตามที่น้องหนาวขอ:
+// ทันทีที่เพิ่มโค้ดให้ผู้ขายคนไหน (พร้อมตั้ง sellerGuildId ไว้) การ์ดสถิติของโค้ดนั้นจะ
+// "เด้งไปโผล่ในเซิร์ฟของผู้ขายคนนั้นด้วยอัตโนมัติ" เหมือนบอทที่อยู่ในเซิร์ฟนั้นสร้างห้อง/
+// ส่งข้อความเองเลย — โชว์ "เฉพาะการ์ดรายงานสถิติ" เท่านั้น ไม่มีคำสั่งลับ /referral โผล่ให้
+// เห็นเลย (คำสั่งนี้ล็อกด้วย setDefaultMemberPermissions(0) + เช็ค OWNER_ID อยู่แล้วในทุก
+// เซิร์ฟอยู่แล้ว ไม่ต้องทำอะไรเพิ่มเรื่องนี้)
+//
+// ห้อง #partner-earnings ในเซิร์ฟผู้ขาย ตั้งสิทธิ์ "เฉพาะผู้ขายคนนั้น + แอดมินเซิร์ฟ" ตามที่
+// น้องหนาวเลือกไว้ (ดู getOrCreateSellerReportChannel() ด้านล่าง): ปฏิเสธ @everyone,
+// อนุญาตเฉพาะ sellerDiscordId ของโค้ดนั้น — แอดมินเซิร์ฟเห็นได้เองอยู่แล้วเพราะสิทธิ์
+// Administrator bypass permission overwrite ได้เหมือนกับที่น้องหนาวเห็นห้องเซิร์ฟควบคุม
+//
+// ⚠️ ข้อจำกัดที่ต้องรู้ไว้: ฟีเจอร์นี้ทำงานได้ก็ต่อเมื่อ (1) บอทเป็นสมาชิกของเซิร์ฟผู้ขายอยู่
+// แล้ว (2) บอทมีสิทธิ์ "Manage Channels" ในเซิร์ฟนั้น (ไว้สร้างห้องใหม่ได้) — ถ้าขาดอย่างใด
+// อย่างหนึ่ง ฟังก์ชันจะ warn ใน console เฉยๆ ไม่ throw ออกมา (การ์ดในเซิร์ฟควบคุมยังทำงาน
+// ปกติเสมอ ไม่ได้รับผลกระทบ) น้องหนาวเช็คได้จาก Railway logs ว่าทำไมไม่ขึ้นในเซิร์ฟผู้ขาย
+//
+// 🆕 เพิ่มอีก 1 ฟังก์ชัน: postPayoutQrForCode() — ตอบโจทย์ที่น้องหนาวอยากได้ "ระบบกึ่ง
+// อัตโนมัติ" ตอนปิดโค้ด (เช่นตอนสิ้นเดือน): พอกด /referral deactivate บอทจะเช็คอัตโนมัติว่า
+// โค้ดนั้นมียอดค้างจ่ายไหม ถ้ามี + ตั้งเลขพร้อมเพย์ไว้แล้ว จะสร้าง QR โอนเงิน (ยอดฝังในตัว
+// QR เป๊ะๆ ตามระบบคำนวณ ไม่ต้องพิมพ์เอง) แล้วโพสต์เข้าไปทั้งห้อง #referral-earnings (เซิร์ฟ
+// ควบคุม) และห้อง #partner-earnings (เซิร์ฟผู้ขาย ถ้าตั้งไว้) ให้อัตโนมัติเลย — ย้ำ: นี่ยัง
+// "ไม่ใช่การตัดเงินอัตโนมัติจริง" นะครับ (QR พร้อมเพย์ทำงานแบบ "คนสแกน = คนจ่ายเงินออก"
+// เสมอ ไม่มีทาง "สแกนเพื่อรับเงิน" ได้ — น้องหนาวยังต้องเป็นคนสแกนจ่ายเองอยู่ดี แค่ตอนนี้บอท
+// ช่วยสร้าง+โพสต์ QR ให้อัตโนมัติแทนที่จะต้องมารัน /referral payout เองทุกครั้ง) ตัดเงิน
+// อัตโนมัติแบบเต็มรูปแบบต้องผ่าน Stripe Connect ซึ่งเช็คแล้วมีข้อจำกัดชัดเจนสำหรับคู่บัญชี
+// ไทย↔ไทย (ไม่รองรับ separate charges/transfers) — เก็บไว้เป็นไอเดียอนาคตถ้าน้องหนาวอยาก
+// คุยกับทีม Stripe โดยตรงเพื่อหาทางที่ใช้ได้จริงสำหรับเคสนี้
 //
 // 🆕 ประวัติการปรับหน้าตาการ์ด — สลับไปมาหลายรอบกว่าจะลงตัว สรุปสั้นๆ ว่าเคยลองอะไรมาบ้าง:
 //   รอบ 1: Embed ธรรมดา (addFields 3 ช่องเล็ก + 1 ช่องใหญ่)
@@ -34,47 +54,40 @@
 //   รอบ 3: กลับมาเป็น Embed แต่เปลี่ยน description เป็น "・ป้ายกำกับ" + code block
 //     (```ค่า```) — เพราะน้องหนาวก็อปข้อความดิบจากบอทเรฟมาให้ดูตรงๆ แล้วรู้ว่าไม่ใช่รูปภาพเลย
 //   รอบ 4: จัดเป็นกริด 2x2 ด้วย embed fields (inline:true คั่นด้วย field ล่องหน)
-//   รอบ 5: น้องหนาวยืนยันว่า "ไม่เอาแถบสีข้างซ้าย embed เลย" (ไม่ใช่แค่ไม่ตั้งสี — Embed ทุกอัน
-//     ของ Discord มีแถบให้เห็นเสมอไม่ว่าจะตั้งสีหรือไม่) → เลิกใช้ Embed ไปเลย เปลี่ยนเป็น
-//     "plain message content" ธรรมดา จำลองกริด 2 คอลัมน์เองด้วยการเว้นช่องว่างในตัว code
-//     block แทน (ตอนนั้นยังผสม 2 ค่าไว้ในกล่อง code block เดียวกันบรรทัดเดียว)
-//   รอบ 6: น้องหนาวขอปรับ 3 อย่าง: (1) เอาบรรทัด "อัปเดตล่าสุด: <t:...:R>" ท้ายการ์ดออก
-//     (2) เลิกผสม 2 ค่าไว้ในกล่อง code block เดียวกัน — แยกกลับเป็นกล่องของใครของมันคนละกล่อง
+//   รอบ 5: เลิกใช้ Embed ไปเลย เปลี่ยนเป็น "plain message content" ธรรมดา จำลองกริด 2
+//     คอลัมน์เองด้วยการเว้นช่องว่างในตัว code block แทน (กันแถบสีซ้ายมือของ Embed)
+//   รอบ 6: (1) เอาบรรทัด "อัปเดตล่าสุด" ท้ายการ์ดออก (2) แยกค่ากลับเป็นกล่องของใครของมัน
 //     (3) อิโมจิ custom ย่อจาก 5 ID เหลือ 2 ID (title + status)
 //   รอบ 7: (1) แก้ชื่อแบรนด์ที่เคยพิมพ์ผิดเป็น "Aitao Bot" กลับเป็น **Milo Bot** (2) แนบรูป
 //     แบนเนอร์โปรโมทพาร์ทเนอร์ (ที่น้องหนาวออกแบบเอง) ไปกับการ์ดทุกใบ
 //   รอบ 8: ย้ายทั้งการ์ดมาใช้ Discord Components V2 (ContainerBuilder ไม่ตั้งสี → ไม่มีแถบ
 //     ซ้ายมือเลย) จัดเป็น "ชุดบล็อก" ด้วย Separator เหมือน /builder
-//   รอบ 9: อิโมจิ custom ครบทุกช่อง + ย้ายปุ่ม/dropdown ออกมานอก Container (บล็อกคลุมแค่ถึง
-//     footer) + ปุ่ม "ข้อกำหนด" มีไอคอนอิโมจิ custom
+//   รอบ 9: อิโมจิ custom ครบทุกช่อง + ย้ายปุ่ม/dropdown ออกมานอก Container + ปุ่ม "ข้อกำหนด"
+//     มีไอคอนอิโมจิ custom
 //   รอบ 10: ลองจับคู่ 2 ค่า/แถวไว้ใน code block เดียวกัน (padCol()) จำลอง 2x2 แบบไม่มีแถบสี
 //     — ดูแล้วไม่สวยเท่าที่หวัง
+//   รอบ 11: น้องหนาวขอ "แบบแถบสีมาก็ได้ๆๆ" พร้อมให้สีมาด้วย (#7b8eda) — กลับไปใช้
+//     **EmbedBuilder** (เลิกใช้ Components V2 ทั้งไฟล์) เพราะ Embed field (`inline: true`)
+//     เป็นทางเดียวที่ Discord รองรับกริด 2 คอลัมน์แบบกล่องแยกจริงๆ ที่อยู่บรรทัดเดียวกันได้
+//   รอบ 12: แปลข้อความที่ผู้ใช้เห็นจริงทั้งหมด (label, สถานะ, ปุ่ม, dropdown, modal, หัวข้อ
+//     ห้อง) เป็นภาษาอังกฤษล้วน (ห้อง/คำสั่งนี้มีแค่น้องหนาวเห็น เลือกภาษาเดียวง่ายกว่าทำสลับ)
+//   🆕 รอบ 13 (ปัจจุบัน): เพิ่มห้อง #partner-earnings ในเซิร์ฟผู้ขายเอง + ระบบโพสต์ QR
+//     จ่ายเงินอัตโนมัติตอนปิดโค้ด (ดูหมายเหตุยาวด้านบน)
 //
-//   🆕 รอบ 11 (ปัจจุบัน — ของจริงที่ใช้งานอยู่ตอนนี้) — น้องหนาวลองดูรอบ 10 แล้วบอกว่า
-//   "ไม่ค่อยสวยเลย งั้นเอาแบบแถบสีมาก็ได้ๆๆ" พร้อมให้สีมาด้วย (#7b8eda) — กลับไปใช้
-//   **EmbedBuilder** (เลิกใช้ Components V2 ทั้งไฟล์แล้วรอบนี้) เพราะ Embed field
-//   (`inline: true`) เป็นทางเดียวที่ Discord รองรับกริด 2 คอลัมน์แบบกล่องแยกจริงๆ ที่อยู่
-//   บรรทัดเดียวกันได้ (ยืนยันจากการค้นคว้าตั้งแต่รอบ 8 แล้วว่า Components V2 ไม่มีกริดให้ใช้
-//   เลย) คราวนี้ "แถบสี" ไม่ใช่ปัญหาอีกต่อไปเพราะน้องหนาวขอเองพร้อมเฉดสีด้วย — ใช้
-//   `.setColor(0x7b8eda)` ตรงๆ
-//
-//   โครงสร้างใหม่ (ดู buildReportEmbed() ด้านล่าง): title (ไอคอน+ชื่อโค้ด) → description
+//   โครงสร้างการ์ด (ดู buildReportEmbed() ด้านล่าง): title (ไอคอน+ชื่อโค้ด) → description
 //   (ผู้ขาย) → fields จัดกริด 2x2 จริงด้วย inline:true (แถว 1 = สถานะ|ใช้ไปแล้ว, แถว 2 =
-//   ค่าคอมต่อครั้ง|รวมรายได้ คั่นด้วย field ล่องหนระหว่างแถวเหมือนเทคนิคที่เคยลองไว้รอบ 4) →
-//   .setImage() แสดงแบนเนอร์ในตัว embed เอง (แทน MediaGallery เดิม) → .setFooter() แสดง
-//   ข้อความปิดท้ายเล็กๆ (แทน TextDisplay subtext เดิม) — ปุ่ม/dropdown ยังคงอยู่ "นอกกรอบ"
-//   embed เหมือนรอบ 9 โดยธรรมชาติอยู่แล้ว เพราะ Discord render ActionRow แยกจาก embed เสมอ
-//   ไม่ต้องทำอะไรเพิ่ม (Embed ไม่มีทาง "ครอบ" ปุ่มเข้าไปข้างในได้แบบที่ Container เคยทำได้)
+//   ค่าคอมต่อครั้ง|รวมรายได้ คั่นด้วย field ล่องหนระหว่างแถว) → .setImage() แบนเนอร์ในตัว
+//   embed เอง → .setFooter() ข้อความปิดท้ายเล็กๆ — เหมือนกันทั้งการ์ดในเซิร์ฟควบคุมและ
+//   เซิร์ฟผู้ขาย (ใช้ buildReportPayload() ก้อนเดียวกันทั้งคู่ ไม่มีความต่างของเนื้อหา)
 //
-//   ⚠️ **จุดเสี่ยงทางเทคนิคที่ต้องรู้**: การ์ดที่เคย sync ผ่านรอบ 8-10 มาแล้ว (ตั้งค่าเป็น
-//   Components V2 ไปแล้วจริง) การ์ดพวกนี้ **ยืนยันแน่นอนแล้วว่าเอาธง IS_COMPONENTS_V2 ออกไม่
-//   ได้อีกเลย** (ต่างจากตอนรอบ 8 ที่ยังไม่แน่ใจว่า "เพิ่ม" ธงทีหลังได้ไหม — ตอนนี้คือทิศทาง
-//   ตรงข้าม: การ์ดที่มีธงนี้ติดตัวแล้ว จะ "เอาออก" ไม่ได้เลยยืนยันชัดเจน) เพราะฉะนั้นการ .edit()
-//   การ์ดพวกนี้กลับไปเป็น Embed **จะ fail แน่นอน 100%** ไม่ใช่แค่เสี่ยงเหมือนก่อน — โชคดีที่
-//   try/catch ซ้อนใน syncCodeReportMessage() (เดิมทำไว้ตั้งแต่รอบ 8 เผื่อเคสตรงข้าม) ดักเคสนี้
-//   ได้พอดีเป๊ะ: พอ edit() fail จะลบข้อความเก่าทิ้งแล้วส่งใหม่เป็น Embed แทนอัตโนมัติ ไม่ต้อง
-//   แก้อะไรเพิ่ม — แค่ทุกการ์ดที่เคยผ่าน Components V2 มาก่อน จะ "เด้ง" ไปอยู่ล่างสุดของห้อง
-//   แค่ครั้งแรกครั้งเดียวตอน sync รอบถัดไป (เหมือนที่เคยอธิบายไว้ตอนรอบ 8)
+//   ⚠️ **จุดเสี่ยงทางเทคนิคที่ต้องรู้**: การ์ดในเซิร์ฟควบคุมที่เคย sync ผ่านรอบ 8-10 มาแล้ว
+//   (ตั้งค่าเป็น Components V2 ไปแล้วจริง) **ยืนยันแน่นอนแล้วว่าเอาธง IS_COMPONENTS_V2 ออก
+//   ไม่ได้อีกเลย** การ .edit() การ์ดพวกนี้กลับไปเป็น Embed **จะ fail แน่นอน 100%** — โชคดีที่
+//   try/catch ซ้อนใน syncControlGuildReportMessage() (เดิมทำไว้ตั้งแต่รอบ 8) ดักเคสนี้ได้
+//   พอดี: พอ edit() fail จะลบข้อความเก่าทิ้งแล้วส่งใหม่เป็น Embed แทนอัตโนมัติ ไม่ต้องแก้
+//   อะไรเพิ่ม — แค่การ์ดที่เคยผ่าน Components V2 มาก่อน จะ "เด้ง" ไปอยู่ล่างสุดของห้องแค่
+//   ครั้งแรกครั้งเดียว (การ์ดใหม่ในเซิร์ฟผู้ขาย — ฟีเจอร์รอบ 13 — ไม่มีปัญหานี้เลยเพราะเกิด
+//   หลังรอบ 11 ที่กลับมาใช้ Embed แล้ว เป็น Embed มาตั้งแต่ข้อความแรกที่ส่ง)
 // ─────────────────────────────────────────────────────────────────────────
 
 const path = require('path');
@@ -94,19 +107,30 @@ const {
 const {
   listAllCodes,
   getCodeCommissionStats,
+  getUnpaidCommissionSummary,
   saveReportMessageId,
+  saveSellerReportMessageId,
   COMMISSION_PER_REDEMPTION_THB,
 } = require('./referralStorage');
+// 🆕 รอบ 13: ใช้สร้าง QR พร้อมเพย์ตอนปิดโค้ด (postPayoutQrForCode() ด้านล่าง) — ฟังก์ชัน
+// เดียวกับที่ /referral payout ใน commands/referral.js ใช้อยู่แล้ว ไม่ต้องเขียนใหม่
+const { generatePromptPayQrBuffer } = require('./promptpayQr');
 
 const REPORT_CHANNEL_NAME = 'referral-earnings';
+// 🆕 รอบ 13: ชื่อห้องรายงานที่จะไปสร้างในเซิร์ฟของผู้ขายเอง — ตั้งใจใช้ชื่อคนละอันกับ
+// REPORT_CHANNEL_NAME ด้านบน (ห้องนั้นเป็นของเซิร์ฟควบคุม รวมทุกโค้ด) กันสับสนว่าเป็นห้อง
+// เดียวกัน — ห้องนี้จะมีแค่การ์ดของ "โค้ดที่ผูกกับเซิร์ฟนั้น" เท่านั้น (อาจมีมากกว่า 1 การ์ด
+// ถ้าเซิร์ฟเดียวกันมีหลายโค้ดชี้มาที่นี่ — getOrCreateSellerReportChannel() รองรับได้เอง
+// เพราะแต่ละโค้ดเก็บ sellerReportMessageId ของตัวเองแยกกัน ใช้ channel เดียวกันได้ปกติ)
+const SELLER_REPORT_CHANNEL_NAME = 'partner-earnings';
 
 // 🆕 รอบ 11: สีแถบซ้ายมือของการ์ด — น้องหนาวส่งมาเองตรงๆ (#7b8eda) ใช้กับ
 // EmbedBuilder.setColor() ใน buildReportEmbed() ด้านล่าง
 const CARD_ACCENT_COLOR = 0x7b8eda;
 
 // แบนเนอร์โปรโมทพาร์ทเนอร์ — รูปคงที่ (ไม่เปลี่ยนตามโค้ด) ที่น้องหนาวออกแบบเอง แนบไปกับ
-// การ์ดรายงานทุกใบเสมอ (รอบ 11: แสดงผ่าน embed.setImage() — Discord จะวางรูปนี้ไว้ในตัว
-// embed เอง เหนือแถบ footer เล็กๆ ด้านล่างโดยอัตโนมัติ ไม่ต้องจัดตำแหน่งเอง) วางไฟล์ไว้ที่
+// การ์ดรายงานทุกใบเสมอ (แสดงผ่าน embed.setImage() — Discord จะวางรูปนี้ไว้ในตัว embed เอง
+// เหนือแถบ footer เล็กๆ ด้านล่างโดยอัตโนมัติ ไม่ต้องจัดตำแหน่งเอง) วางไฟล์ไว้ที่
 // assets/referral-banner.png (คนละไฟล์กับ assets/mascot-banner.png ที่ใช้เป็นพื้นหลัง hero
 // ของหน้าเว็บ)
 //
@@ -123,10 +147,11 @@ function buildBannerAttachment() {
 }
 
 // ป้ายกำกับ + ตัวเลือกของ dropdown เลือกช่วงเวลา — เรียงตามลำดับที่จะโชว์ในเมนู
+// 🆕 รอบ 12: label เป็นภาษาอังกฤษแล้ว (ดูหมายเหตุหัวไฟล์)
 const RANGE_OPTIONS = [
-  { value: 'today', label: 'วันนี้' },
-  { value: 'month', label: 'เดือนนี้' },
-  { value: 'all', label: 'ทั้งหมด' },
+  { value: 'today', label: 'Today' },
+  { value: 'month', label: 'This month' },
+  { value: 'all', label: 'All time' },
 ];
 const RANGE_LABELS = Object.fromEntries(RANGE_OPTIONS.map((o) => [o.value, o.label]));
 
@@ -191,8 +216,9 @@ function resolveButtonEmoji(client, id, fallback) {
 }
 
 /**
- * หาห้องรายงานยอดที่มีอยู่แล้ว หรือสร้างใหม่ถ้ายังไม่มี (pattern เดียวกับ
- * assetStorage.js → getOrCreateAssetChannel())
+ * หาห้องรายงานยอดที่มีอยู่แล้ว หรือสร้างใหม่ถ้ายังไม่มี — ห้องนี้เป็นของ "เซิร์ฟควบคุม"
+ * เท่านั้น (pattern เดียวกับ assetStorage.js → getOrCreateAssetChannel()) ตั้งสิทธิ์ให้เห็น
+ * ได้แค่บอท (ซ่อนจากทุกคนแม้แต่แอดมิน) เพราะรวมยอดของ "ทุกโค้ด" ไว้ในที่เดียว
  * @param {import('discord.js').Guild} guild เซิร์ฟควบคุม (ตาม GUILD_ID ใน .env)
  */
 async function getOrCreateReportChannel(guild) {
@@ -222,7 +248,7 @@ async function getOrCreateReportChannel(guild) {
     name: REPORT_CHANNEL_NAME,
     type: ChannelType.GuildText,
     topic:
-      'รายงานยอดค่าคอมของผู้ขายแต่ละคนแบบเรียลไทม์ (บอทอัปเดตอัตโนมัติ — ห้ามลบ/แก้ข้อความเอง ไม่งั้นบอทจะส่งข้อความใหม่แทนอันเดิม)',
+      'Real-time commission earnings report per seller (auto-updated by the bot — do not delete/edit messages manually, the bot will just repost a new one)',
     permissionOverwrites: [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
       {
@@ -234,8 +260,72 @@ async function getOrCreateReportChannel(guild) {
 }
 
 /**
- * สร้างการ์ดรายงานยอดของโค้ด 1 อัน เป็น EmbedBuilder ก้อนเดียว — 🆕 รอบ 11: กลับมาใช้ Embed
- * แทน Components V2 Container แล้ว (ดูเหตุผลที่หัวไฟล์)
+ * 🆕 [รอบ 13] หาห้องรายงานยอดที่มีอยู่แล้ว หรือสร้างใหม่ถ้ายังไม่มี — คนละฟังก์ชันกับ
+ * getOrCreateReportChannel() ด้านบน เพราะห้องนี้อยู่ใน "เซิร์ฟของผู้ขายเอง" (คนละเซิร์ฟกับ
+ * เซิร์ฟควบคุม) และสิทธิ์การเห็นต่างกัน: ตามที่น้องหนาวเลือกไว้ (AskUserQuestion) —
+ * **"เฉพาะผู้ขายคนนั้น + แอดมินเซิร์ฟ"** เท่านั้น ไม่เปิดให้สมาชิกทั่วไปในเซิร์ฟเห็น
+ *
+ * กลไกสิทธิ์: ปฏิเสธ @everyone (ViewChannel) เหมือนห้องเซิร์ฟควบคุม แล้วอนุญาตเพิ่มเฉพาะ
+ * sellerDiscordId ของโค้ดนั้น (ถ้ามี) — ส่วนแอดมินเซิร์ฟไม่ต้องตั้งอะไรเพิ่มเลย เพราะสิทธิ์
+ * Administrator ของดิสคอร์ด "มองข้าม" (bypass) permission overwrite ได้อัตโนมัติอยู่แล้ว
+ * (หลักการเดียวกับที่น้องหนาวเห็นห้อง #referral-earnings ของเซิร์ฟควบคุมได้เอง)
+ *
+ * ⚠️ ถ้ายังไม่ได้ผูกบัญชีดิสคอร์ดของผู้ขาย (sellerDiscordId เป็น null) จะสร้างห้องแบบไม่มี
+ * ใครเห็นเลยนอกจากแอดมิน (เพราะไม่รู้จะอนุญาตให้ user ไหนดู) — ควรใส่ seller_discord_user
+ * ตอน /referral add ไว้ด้วยเสมอถ้าจะใช้ฟีเจอร์นี้ ไม่งั้นห้องนี้จะไม่มีประโยชน์กับผู้ขายเลย
+ *
+ * @param {import('discord.js').Guild} guild เซิร์ฟของผู้ขาย
+ * @param {string|null} sellerDiscordId Discord user ID ของผู้ขาย (ถ้ามี)
+ */
+async function getOrCreateSellerReportChannel(guild, sellerDiscordId) {
+  const existing = guild.channels.cache.find(
+    (channel) => channel.name === SELLER_REPORT_CHANNEL_NAME && channel.type === ChannelType.GuildText
+  );
+
+  if (existing) {
+    // เช็คสิทธิ์บอทในห้องเดิมก่อนเสมอ (เหมือน getOrCreateReportChannel() ด้านบน)
+    const me = guild.members.me;
+    const currentPerms = existing.permissionsFor(me);
+    const hasRequiredAccess = currentPerms?.has([
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+    ]);
+    if (!hasRequiredAccess) {
+      await existing.permissionOverwrites.edit(me.id, { ViewChannel: true, SendMessages: true });
+    }
+    // เช็คสิทธิ์ของผู้ขายด้วยทุกครั้ง (เผื่อเปลี่ยน seller_discord_user ทีหลัง หรือผู้ขายคน
+    // เดิมยังไม่เคยได้สิทธิ์เห็นห้องนี้มาก่อน) — ตั้งให้ตรงกับ sellerDiscordId ล่าสุดเสมอ
+    if (sellerDiscordId) {
+      const sellerPerms = existing.permissionsFor(sellerDiscordId);
+      if (!sellerPerms?.has(PermissionFlagsBits.ViewChannel)) {
+        await existing.permissionOverwrites.edit(sellerDiscordId, { ViewChannel: true });
+      }
+    }
+    return existing;
+  }
+
+  const permissionOverwrites = [
+    { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+    {
+      id: guild.members.me.id,
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+    },
+  ];
+  if (sellerDiscordId) {
+    permissionOverwrites.push({ id: sellerDiscordId, allow: [PermissionFlagsBits.ViewChannel] });
+  }
+
+  return guild.channels.create({
+    name: SELLER_REPORT_CHANNEL_NAME,
+    type: ChannelType.GuildText,
+    topic: 'Your Milo Bot partner earnings report (auto-updated by the bot) — only you and server admins can see this channel.',
+    permissionOverwrites,
+  });
+}
+
+/**
+ * สร้างการ์ดรายงานยอดของโค้ด 1 อัน เป็น EmbedBuilder ก้อนเดียว — ใช้ก้อนเดียวกันทั้งการ์ด
+ * ในเซิร์ฟควบคุมและการ์ดในเซิร์ฟผู้ขาย (รอบ 13) เนื้อหาเหมือนกันเป๊ะ ต่างกันแค่ "ที่อยู่"
  *
  * โครงสร้าง: title (ไอคอน+ชื่อโค้ด) → description (ผู้ขาย) → fields จัดกริด 2x2 จริงด้วย
  * `inline: true` (แถว 1 = สถานะ|ใช้ไปแล้ว, แถว 2 = ค่าคอมต่อครั้ง|รวมรายได้ — คั่นระหว่าง
@@ -253,9 +343,9 @@ function buildReportEmbed(stats, range, client) {
 
   const titleEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.title, '📊');
   // อิโมจิสถานะ: ใช้ ID เดียวกันทั้งเปิด/ปิดใช้งาน (น้องหนาวส่งมาแค่ตัวเดียว ไม่ได้แยกสี) —
-  // ความต่างเปิด/ปิดสื่อผ่านข้อความ "เปิดใช้งาน"/"ปิดใช้งาน" แทน ไม่ใช่สีไอคอนอีกต่อไป
+  // ความต่างเปิด/ปิดสื่อผ่านข้อความ "Active"/"Inactive" แทน ไม่ใช่สีไอคอนอีกต่อไป
   const statusEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.status, stats.active ? '🟢' : '🔴');
-  const statusText = stats.active ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+  const statusText = stats.active ? 'Active' : 'Inactive';
   const usesEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.uses, '🔁');
   const perUseEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.perUse, '💸');
   const totalEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.total, '💰');
@@ -263,13 +353,13 @@ function buildReportEmbed(stats, range, client) {
   return new EmbedBuilder()
     .setColor(CARD_ACCENT_COLOR)
     .setTitle(`${titleEmoji} ${stats.code}`)
-    .setDescription(`ผู้ขาย: **${stats.sellerLabel}**`)
+    .setDescription(`Seller: **${stats.sellerLabel}**`)
     .addFields(
       // ── แถว 1: สถานะ | ใช้ไปแล้ว ──────────────────────────────────────
-      { name: `・${statusEmoji} สถานะ`, value: `\`\`\`\n${statusText}\n\`\`\``, inline: true },
+      { name: `・${statusEmoji} Status`, value: `\`\`\`\n${statusText}\n\`\`\``, inline: true },
       {
-        name: `・${usesEmoji} ใช้ไปแล้ว (${rangeLabel})`,
-        value: `\`\`\`\n${stats.totalUses} ครั้ง\n\`\`\``,
+        name: `・${usesEmoji} Uses (${rangeLabel})`,
+        value: `\`\`\`\n${stats.totalUses}\n\`\`\``,
         inline: true,
       },
       // field ล่องหน (zero-width space) บังคับตัดบรรทัดใหม่ก่อนแถวถัดไป — ไม่งั้น Discord
@@ -277,28 +367,26 @@ function buildReportEmbed(stats, range, client) {
       { name: '​', value: '​', inline: false },
       // ── แถว 2: ค่าคอมต่อครั้ง | รวมรายได้ ─────────────────────────────
       {
-        name: `・${perUseEmoji} ค่าคอมต่อครั้ง`,
-        value: `\`\`\`\n${COMMISSION_PER_REDEMPTION_THB} บาท\n\`\`\``,
+        name: `・${perUseEmoji} Per Use`,
+        value: `\`\`\`\n${COMMISSION_PER_REDEMPTION_THB} THB\n\`\`\``,
         inline: true,
       },
       {
-        name: `・${totalEmoji} รวมรายได้ (${rangeLabel})`,
-        value: `\`\`\`\n${stats.totalCommissionThb} บาท\n\`\`\``,
+        name: `・${totalEmoji} Total Earned (${rangeLabel})`,
+        value: `\`\`\`\n${stats.totalCommissionThb} THB\n\`\`\``,
         inline: true,
       }
     )
     .setImage(`attachment://${BANNER_FILENAME}`)
-    .setFooter({ text: '╰ ꒰ Milo Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯' });
+    .setFooter({ text: '╰ ꒰ Milo Bot · Automated Commission Report ꒱ ╯' });
 }
 
 /**
  * สร้างแถว dropdown เลือกช่วงเวลา + ปุ่ม "ข้อกำหนด" — ส่งเป็น `components` แยกต่างหากจาก
- * `embeds` เสมอ (Discord render ActionRow อยู่นอกกรอบ embed โดยธรรมชาติอยู่แล้ว ไม่ต้องทำ
- * อะไรเพิ่มเพื่อให้ปุ่ม "อยู่นอกบล็อก" เหมือนตอนที่เคยต้องแยกออกจาก Container เองในรอบ 9)
+ * `embeds` เสมอ (Discord render ActionRow อยู่นอกกรอบ embed โดยธรรมชาติอยู่แล้ว)
  *
  * ปุ่ม "ข้อกำหนด" ใส่อิโมจิ custom (CUSTOM_EMOJI_IDS.terms) ผ่าน resolveButtonEmoji()
  * แทน resolveEmojiById() ธรรมดา เพราะ .setEmoji() ของปุ่มต้องการ object ไม่ใช่ string
- * (ดูคอมเมนต์ resolveButtonEmoji() ด้านบน)
  * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom ของปุ่มข้อกำหนด
  * @param {string} code
  * @param {'today'|'month'|'all'} range ช่วงเวลาที่กำลังโชว์อยู่ตอนนี้ (ใช้ติ๊ก default ใน dropdown)
@@ -307,7 +395,7 @@ function buildReportEmbed(stats, range, client) {
 function buildReportActionRows(client, code, range) {
   const select = new StringSelectMenuBuilder()
     .setCustomId(`${RANGE_SELECT_PREFIX}${code}`)
-    .setPlaceholder('เลือกช่วงเวลาที่จะแสดง')
+    .setPlaceholder('Select a time range')
     .addOptions(
       RANGE_OPTIONS.map((opt) =>
         new StringSelectMenuOptionBuilder()
@@ -319,7 +407,7 @@ function buildReportActionRows(client, code, range) {
 
   const termsButton = new ButtonBuilder()
     .setCustomId(TERMS_BUTTON_ID)
-    .setLabel('ข้อกำหนด')
+    .setLabel('Terms')
     .setEmoji(resolveButtonEmoji(client, CUSTOM_EMOJI_IDS.terms, '📜'))
     .setStyle(ButtonStyle.Secondary);
 
@@ -331,8 +419,8 @@ function buildReportActionRows(client, code, range) {
 
 /**
  * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้าง Embed + แถวปุ่ม/dropdown" ไว้จุดเดียว
- * ใช้ร่วมกันทั้ง syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ
- * handleReportRangeSelect() (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
+ * ใช้ร่วมกันทั้งการ์ดในเซิร์ฟควบคุมและเซิร์ฟผู้ขาย รวมถึง handleReportRangeSelect() (ตอนมี
+ * คนกด dropdown เปลี่ยนช่วงเวลา ไม่ว่าจะกดจากการ์ดในเซิร์ฟไหนก็ตาม) กันเขียนซ้ำ
  * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
  * @param {string} code
  * @param {'today'|'month'|'all'} range
@@ -361,39 +449,50 @@ function buildReportPayload(client, code, range) {
 }
 
 /**
- * อัปเดต (หรือสร้างใหม่ถ้ายังไม่เคยมี) ข้อความรายงานยอดของโค้ด 1 อัน ให้ตรงกับตัวเลข
- * ล่าสุดในไฟล์ referral-codes.json เสมอ — นี่คือฟังก์ชันหลักที่ทำให้ห้อง "เรียลไทม์"
+ * อัปเดต (หรือสร้างใหม่ถ้ายังไม่เคยมี) การ์ดรายงานยอดของโค้ด 1 อัน ทั้ง "เซิร์ฟควบคุม" และ
+ * "เซิร์ฟของผู้ขายเอง" (ถ้าตั้ง sellerGuildId ไว้) — นี่คือฟังก์ชันหลักที่เรียกจากภายนอกไฟล์
+ * นี้ (server.js, commands/referral.js) ทั้งหมด ตัวมันเองแค่เรียก 2 ฟังก์ชันย่อยด้านล่าง
+ * (syncControlGuildReportMessage + syncSellerGuildReportMessage) ต่อกัน — แยกออกจากกัน
+ * เพราะแต่ละที่มีเงื่อนไข/สิทธิ์คนละแบบ และ **ต้องไม่ให้อีกฝั่งพังตามกัน** (เช่น เซิร์ฟผู้ขาย
+ * เพิ่งเปลี่ยนสิทธิ์บอทจนสร้างห้องไม่ได้ ก็ไม่ควรทำให้การ์ดในเซิร์ฟควบคุมอัปเดตไม่สำเร็จตามไปด้วย)
  *
- * เรียกจาก 3 จุด (ทุกจุดใช้ range='all' ค่าเริ่มต้น — โชว์ยอดตลอดกาลเป็นค่าเริ่มต้นเสมอ
- * ตอนมีเหตุการณ์ใหม่ ถ้าใครเคยเลือกดู "วันนี้/เดือนนี้" ค้างไว้ก่อนหน้านี้ พอมีเหตุการณ์ใหม่
- * เข้ามาการ์ดจะรีเซ็ตกลับไปโชว์ "ทั้งหมด" ก่อนเสมอ ถือว่าเป็นพฤติกรรมที่ยอมรับได้ ไม่ได้
- * เก็บ state ว่าใครเลือกช่วงไหนค้างไว้ถาวร):
+ * เรียกจาก 3 จุด (ทุกจุดใช้ range='all' ค่าเริ่มต้น — โชว์ยอดตลอดกาลเป็นค่าเริ่มต้นเสมอ):
  *   1. server.js — หลัง completeRedemption() สำเร็จ (มีคนใช้โค้ดจ่ายเงินจริง)
  *   2. commands/referral.js — handleAdd() หลังสร้างโค้ดใหม่สำเร็จ (โชว์การ์ด 0 ครั้ง/0 บาท ทันที)
- *   3. commands/referral.js — handleDeactivate() หลังปิดใช้งานโค้ด (อัปเดตสถานะในการ์ด)
- *
- * ⚠️ ฟังก์ชันนี้ต้อง "ไม่มีทาง throw error ออกไปนอกฟังก์ชัน" เด็ดขาด (เหมือน
- * syncDiscordBotList.js) เพราะห้องรายงานเป็นแค่ "ของเสริม" ไม่ใช่ core flow การจ่ายเงิน/
- * ปลดล็อกพรีเมียม — ถ้าอัปเดตห้องนี้พลาด ต้องไม่ทำให้ webhook หลักหรือคำสั่ง /referral พังตาม
- *
- * 🆕 รอบ 11: การ์ดที่เคยผ่าน Components V2 มาก่อน (รอบ 8-10) มีธง IS_COMPONENTS_V2 ติดตัว
- * อยู่แล้ว ซึ่ง **ยืนยันแน่นอนว่าเอาออกไม่ได้** — การ .edit() กลับไปเป็น Embed แบบนี้จะ fail
- * แน่นอนสำหรับการ์ดกลุ่มนั้น (ดูรายละเอียดที่หัวไฟล์) — try/catch ซ้อนด้านล่างนี้ (เดิมทำไว้
- * ตั้งแต่รอบ 8 เผื่อทิศทางตรงข้าม) ดักเคสนี้ได้พอดี: edit() fail → ลบข้อความเก่าทิ้งแล้ว
- * ส่งใหม่เป็น Embed แทนอัตโนมัติ ไม่ต้องแก้อะไรเพิ่ม
+ *   3. commands/referral.js — handleDeactivate()/handleSetGuild() หลังมีการเปลี่ยนแปลง
  *
  * @param {import('discord.js').Client} client
  * @param {string} code
  * @param {'today'|'month'|'all'} [range='all']
  */
 async function syncCodeReportMessage(client, code, range = 'all') {
+  const normalizedCode = String(code || '').trim().toUpperCase();
+  await syncControlGuildReportMessage(client, normalizedCode, range);
+  await syncSellerGuildReportMessage(client, normalizedCode, range);
+}
+
+/**
+ * ส่วนของ "เซิร์ฟควบคุม" — ตรรกะเดิมทั้งหมดจากก่อนรอบ 13 (แยกออกมาเป็นฟังก์ชันของตัวเองตอน
+ * รอบ 13 เพื่อให้ syncCodeReportMessage() เรียกคู่กับ syncSellerGuildReportMessage() ได้
+ * โดยไม่ปนกัน) ⚠️ ต้อง "ไม่มีทาง throw error ออกไปนอกฟังก์ชัน" เด็ดขาด (เหมือน
+ * syncDiscordBotList.js) เพราะห้องรายงานเป็นแค่ "ของเสริม" ไม่ใช่ core flow การจ่ายเงิน/
+ * ปลดล็อกพรีเมียม — ถ้าอัปเดตห้องนี้พลาด ต้องไม่ทำให้ webhook หลักหรือคำสั่ง /referral พังตาม
+ *
+ * การ์ดที่เคยผ่าน Components V2 มาก่อน (รอบ 8-10) มีธง IS_COMPONENTS_V2 ติดตัวอยู่แล้ว ซึ่ง
+ * **ยืนยันแน่นอนว่าเอาออกไม่ได้** — การ .edit() กลับไปเป็น Embed แบบนี้จะ fail แน่นอนสำหรับ
+ * การ์ดกลุ่มนั้น — try/catch ซ้อนด้านล่างนี้ (เดิมทำไว้ตั้งแต่รอบ 8) ดักเคสนี้ได้พอดี: edit()
+ * fail → ลบข้อความเก่าทิ้งแล้วส่งใหม่เป็น Embed แทนอัตโนมัติ ไม่ต้องแก้อะไรเพิ่ม
+ *
+ * @param {import('discord.js').Client} client
+ * @param {string} normalizedCode
+ * @param {'today'|'month'|'all'} range
+ */
+async function syncControlGuildReportMessage(client, normalizedCode, range) {
   const guildId = process.env.GUILD_ID;
   if (!guildId) {
-    console.warn('[referralReportChannel] ไม่พบ GUILD_ID ใน .env — ข้ามการอัปเดตห้องรายงานยอด');
+    console.warn('[referralReportChannel] ไม่พบ GUILD_ID ใน .env — ข้ามการอัปเดตห้องรายงานยอดเซิร์ฟควบคุม');
     return;
   }
-
-  const normalizedCode = String(code || '').trim().toUpperCase();
 
   try {
     const payload = buildReportPayload(client, normalizedCode, range);
@@ -425,14 +524,14 @@ async function syncCodeReportMessage(client, code, range = 'all') {
           // นี่คือสาเหตุที่ยืนยันแล้ว (ธง IS_COMPONENTS_V2 เอาออกไม่ได้ — ดูคอมเมนต์หัวไฟล์) →
           // ลบข้อความเก่าทิ้งแล้วส่งใหม่แทน (fall through ไปส่งใหม่ด้านล่างสุดของฟังก์ชัน)
           console.warn(
-            `[referralReportChannel] แก้ไขการ์ดเดิมของโค้ด ${normalizedCode} ไม่สำเร็จ (${editError.message}) — จะลบแล้วส่งใหม่แทนครับ`
+            `[referralReportChannel] แก้ไขการ์ดเดิมของโค้ด ${normalizedCode} (เซิร์ฟควบคุม) ไม่สำเร็จ (${editError.message}) — จะลบแล้วส่งใหม่แทนครับ`
           );
           await existingMessage.delete().catch(() => {});
         }
       } catch (fetchError) {
         // ข้อความเดิมหาไม่เจอ (เช่นมีคนลบข้อความ/ห้องไปเอง) — ส่งใหม่แทนด้านล่าง
         console.warn(
-          `[referralReportChannel] หาข้อความรายงานเดิมของโค้ด ${normalizedCode} ไม่เจอ จะส่งข้อความใหม่แทนครับ`
+          `[referralReportChannel] หาข้อความรายงานเดิมของโค้ด ${normalizedCode} (เซิร์ฟควบคุม) ไม่เจอ จะส่งข้อความใหม่แทนครับ`
         );
       }
     }
@@ -444,8 +543,172 @@ async function syncCodeReportMessage(client, code, range = 'all') {
     });
     saveReportMessageId(normalizedCode, sentMessage.id);
   } catch (error) {
-    console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอดของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
+    console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอด (เซิร์ฟควบคุม) ของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
   }
+}
+
+/**
+ * 🆕 [รอบ 13] ส่วนของ "เซิร์ฟผู้ขายเอง" — ทำงานคล้าย syncControlGuildReportMessage() ด้าน
+ * บนเป๊ะๆ (fetch/edit/fallback-to-resend pattern เดียวกัน) ต่างกันแค่: (1) ใช้ guild จาก
+ * codeEntry.sellerGuildId แทน GUILD_ID ใน .env (2) ใช้ getOrCreateSellerReportChannel()
+ * (สิทธิ์ต่างจากห้องเซิร์ฟควบคุม — ดูคอมเมนต์ฟังก์ชันนั้น) (3) เก็บ messageId แยกคนละ field
+ * (sellerReportMessageId) กันไปทับ reportMessageId ของเซิร์ฟควบคุม
+ *
+ * ⚠️ เหมือนกันกับด้านบน: ต้อง "ไม่มีทาง throw error ออกไปนอกฟังก์ชัน" เด็ดขาด — ถ้าเซิร์ฟ
+ * ผู้ขายเข้าถึงไม่ได้ (บอทถูกเตะออก/ยังไม่เคยเข้า/ไม่มีสิทธิ์สร้างห้อง) แค่ log แล้วข้าม ไม่
+ * กระทบการ์ดในเซิร์ฟควบคุมหรือ flow หลักเลย — ถ้าโค้ดนี้ไม่มี sellerGuildId เลย จะ return
+ * เงียบๆ ทันที (โค้ดส่วนใหญ่ที่ยังไม่ได้ตั้งค่านี้จะเข้าเคสนี้ ไม่ใช่ error)
+ *
+ * @param {import('discord.js').Client} client
+ * @param {string} normalizedCode
+ * @param {'today'|'month'|'all'} range
+ */
+async function syncSellerGuildReportMessage(client, normalizedCode, range) {
+  const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
+  if (!codeEntry || !codeEntry.sellerGuildId) return; // ไม่ได้ตั้งเซิร์ฟผู้ขายไว้ — ไม่ต้องทำอะไร
+
+  try {
+    const payload = buildReportPayload(client, normalizedCode, range);
+    if (!payload) return;
+
+    const guild = await client.guilds.fetch(codeEntry.sellerGuildId).catch((fetchGuildError) => {
+      console.warn(
+        `[referralReportChannel] เข้าเซิร์ฟผู้ขาย (${codeEntry.sellerGuildId}) ของโค้ด ${normalizedCode} ไม่ได้ (บอทอาจยังไม่ได้เข้าเซิร์ฟนี้ หรือ ID ผิด): ${fetchGuildError.message}`
+      );
+      return null;
+    });
+    if (!guild) return;
+
+    const channel = await getOrCreateSellerReportChannel(guild, codeEntry.sellerDiscordId).catch((createChannelError) => {
+      console.warn(
+        `[referralReportChannel] สร้าง/หาห้อง #${SELLER_REPORT_CHANNEL_NAME} ในเซิร์ฟผู้ขายของโค้ด ${normalizedCode} ไม่สำเร็จ (เช็คว่าบอทมีสิทธิ์ Manage Channels ในเซิร์ฟนั้นไหม): ${createChannelError.message}`
+      );
+      return null;
+    });
+    if (!channel) return;
+
+    if (codeEntry.sellerReportMessageId) {
+      try {
+        const existingMessage = await channel.messages.fetch(codeEntry.sellerReportMessageId);
+        try {
+          await existingMessage.edit({
+            content: null,
+            embeds: [payload.embed],
+            attachments: [],
+            components: payload.actionRows,
+            files: payload.files,
+          });
+          return;
+        } catch (editError) {
+          console.warn(
+            `[referralReportChannel] แก้ไขการ์ดเดิมของโค้ด ${normalizedCode} (เซิร์ฟผู้ขาย) ไม่สำเร็จ (${editError.message}) — จะลบแล้วส่งใหม่แทนครับ`
+          );
+          await existingMessage.delete().catch(() => {});
+        }
+      } catch (fetchError) {
+        console.warn(
+          `[referralReportChannel] หาข้อความรายงานเดิมของโค้ด ${normalizedCode} (เซิร์ฟผู้ขาย) ไม่เจอ จะส่งข้อความใหม่แทนครับ`
+        );
+      }
+    }
+
+    const sentMessage = await channel.send({
+      embeds: [payload.embed],
+      components: payload.actionRows,
+      files: payload.files,
+    });
+    saveSellerReportMessageId(normalizedCode, sentMessage.id);
+  } catch (error) {
+    console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอด (เซิร์ฟผู้ขาย) ของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
+  }
+}
+
+/**
+ * 🆕 [รอบ 13] สร้าง QR พร้อมเพย์สำหรับยอดค้างจ่าย "ของโค้ดเดียว" แล้วโพสต์เข้าห้องรายงานยอด
+ * ทั้งสองที่ (เซิร์ฟควบคุม + เซิร์ฟผู้ขายถ้ามี) ให้อัตโนมัติ — เรียกจาก handleDeactivate()
+ * ใน commands/referral.js ตอนปิดโค้ด (ตามที่น้องหนาวอยากได้ "ระบบกึ่งอัตโนมัติตอนสิ้นเดือน")
+ * แต่จะข้ามเงียบๆ ถ้าโค้ดนี้ไม่มียอดค้างจ่าย หรือยังไม่ได้ตั้งเลขพร้อมเพย์ไว้
+ *
+ * ⚠️ **นี่ไม่ใช่การตัดเงินอัตโนมัติจริง** — QR พร้อมเพย์ทำงานแบบ "คนสแกน = คนจ่ายเงินออก"
+ * เสมอ ไม่มีทาง "สแกนเพื่อรับเงิน" ได้ (อธิบายไว้แล้วในแชท) น้องหนาวยังต้องเป็นคนสแกน+ยืนยัน
+ * โอนเงินจริงเองผ่านแอปธนาคาร แค่ตอนนี้บอทช่วยสร้าง+โพสต์ QR ให้อัตโนมัติแทนที่จะต้องมารัน
+ * `/referral payout` เองทุกครั้ง — โอนเสร็จแล้วยังต้องกด `/referral markpaid` เหมือนเดิม
+ *
+ * ⚠️ ฟังก์ชันนี้ "ไม่ throw" เหมือนฟังก์ชัน sync ด้านบน — คืนค่า object บอกผลลัพธ์แทน ให้
+ * ฝั่งที่เรียก (handleDeactivate) เอาไปแสดงในข้อความตอบกลับได้ว่าเกิดอะไรขึ้น
+ *
+ * @param {import('discord.js').Client} client
+ * @param {string} code
+ * @returns {Promise<{ posted: boolean, reason?: 'no_unpaid_balance'|'no_promptpay_id', amountThb?: number, postedToControlGuild?: boolean, postedToSellerGuild?: boolean }>}
+ */
+async function postPayoutQrForCode(client, code) {
+  const normalizedCode = String(code || '').trim().toUpperCase();
+  const codeEntry = listAllCodes().find((c) => c.code === normalizedCode);
+  if (!codeEntry) return { posted: false, reason: 'no_unpaid_balance' };
+
+  const unpaidEntry = getUnpaidCommissionSummary().find((s) => s.code === normalizedCode);
+  if (!unpaidEntry || unpaidEntry.totalCommissionThb <= 0) {
+    return { posted: false, reason: 'no_unpaid_balance' };
+  }
+
+  if (!codeEntry.promptpayId) {
+    return { posted: false, reason: 'no_promptpay_id', amountThb: unpaidEntry.totalCommissionThb };
+  }
+
+  let qrBuffer;
+  try {
+    qrBuffer = await generatePromptPayQrBuffer(codeEntry.promptpayId, unpaidEntry.totalCommissionThb);
+  } catch (error) {
+    console.warn(`[referralReportChannel] สร้าง QR จ่ายเงินอัตโนมัติให้โค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
+    return { posted: false, reason: 'no_promptpay_id', amountThb: unpaidEntry.totalCommissionThb };
+  }
+
+  const messageText =
+    `💳 **Payout QR generated** for **${codeEntry.sellerLabel}** (code ${normalizedCode})\n` +
+    `Amount: **${unpaidEntry.totalCommissionThb} THB** — scan with a Thai banking app to transfer. ` +
+    `Remember to run \`/referral markpaid code:${normalizedCode}\` after paying.`;
+
+  let postedToControlGuild = false;
+  let postedToSellerGuild = false;
+
+  // ── โพสต์เข้าห้องเซิร์ฟควบคุม ──────────────────────────────────────────────
+  const controlGuildId = process.env.GUILD_ID;
+  if (controlGuildId) {
+    try {
+      const guild = await client.guilds.fetch(controlGuildId);
+      const channel = await getOrCreateReportChannel(guild);
+      // สร้าง AttachmentBuilder ใหม่ทุกครั้งที่ส่ง (ใช้ Buffer เดิมซ้ำได้ แค่ต้องห่อ instance ใหม่)
+      await channel.send({
+        content: messageText,
+        files: [new AttachmentBuilder(qrBuffer, { name: `promptpay-${normalizedCode}.png` })],
+      });
+      postedToControlGuild = true;
+    } catch (error) {
+      console.warn(`[referralReportChannel] โพสต์ QR จ่ายเงินของโค้ด ${normalizedCode} เข้าเซิร์ฟควบคุมไม่สำเร็จ:`, error);
+    }
+  }
+
+  // ── โพสต์เข้าห้องเซิร์ฟผู้ขาย (ถ้าตั้งไว้) ────────────────────────────────
+  if (codeEntry.sellerGuildId) {
+    try {
+      const guild = await client.guilds.fetch(codeEntry.sellerGuildId);
+      const channel = await getOrCreateSellerReportChannel(guild, codeEntry.sellerDiscordId);
+      await channel.send({
+        content: messageText,
+        files: [new AttachmentBuilder(qrBuffer, { name: `promptpay-${normalizedCode}.png` })],
+      });
+      postedToSellerGuild = true;
+    } catch (error) {
+      console.warn(`[referralReportChannel] โพสต์ QR จ่ายเงินของโค้ด ${normalizedCode} เข้าเซิร์ฟผู้ขายไม่สำเร็จ:`, error);
+    }
+  }
+
+  return {
+    posted: postedToControlGuild || postedToSellerGuild,
+    amountThb: unpaidEntry.totalCommissionThb,
+    postedToControlGuild,
+    postedToSellerGuild,
+  };
 }
 
 /** เช็คว่า customId นี้เป็น dropdown เลือกช่วงเวลาของห้องรายงานยอดหรือไม่ (เรียกจาก index.js) */
@@ -457,11 +720,8 @@ function isReportRangeSelect(customId) {
  * รันตอนมีคนเลือกช่วงเวลาใหม่จาก dropdown — อ่านโค้ดจาก customId + ช่วงเวลาที่เลือกจาก
  * interaction.values แล้วสร้างการ์ดใหม่ "แก้ทับข้อความเดิมทันที" ผ่าน interaction.update()
  * (เร็วกว่าไป fetch ข้อความมาแก้ใหม่แบบ syncCodeReportMessage — ในนี้มี interaction.message
- * อยู่แล้วในตัว ไม่ต้องยิง API เพิ่ม)
- *
- * ไม่ต้องห่อ try/catch เพิ่มเรื่องรูปแบบข้อความเหมือน syncCodeReportMessage() เพราะการ์ดที่มี
- * dropdown ให้กดได้ ต้องผ่าน syncCodeReportMessage() มาสร้าง/แก้เป็น Embed แท้ๆ มาก่อนอยู่แล้ว
- * เสมอ (ไม่งั้นจะไม่มี dropdown ให้กดตั้งแต่แรก)
+ * อยู่แล้วในตัว ไม่ต้องยิง API เพิ่ม) — ใช้ได้ทั้งการ์ดในเซิร์ฟควบคุมและเซิร์ฟผู้ขาย เพราะ
+ * customId ไม่ผูกกับเซิร์ฟไหนเป็นพิเศษ (โค้ดคือตัวระบุพอแล้ว)
  * @param {import('discord.js').StringSelectMenuInteraction} interaction
  */
 async function handleReportRangeSelect(interaction) {
@@ -470,7 +730,7 @@ async function handleReportRangeSelect(interaction) {
 
   const payload = buildReportPayload(interaction.client, code, range);
   if (!payload) {
-    await interaction.reply({ content: 'ไม่พบโค้ดนี้แล้วครับ (อาจถูกลบไปแล้ว)', ephemeral: true });
+    await interaction.reply({ content: 'This code no longer exists (it may have been removed).', ephemeral: true });
     return;
   }
 
@@ -493,27 +753,24 @@ function isReportTermsButton(customId) {
 
 /**
  * สร้าง Modal "ข้อกำหนดการจ่ายค่าคอม" — ใช้ TextDisplay (ฟีเจอร์ใหม่ของ Discord ที่ให้ใส่
- * ข้อความอ่านอย่างเดียวในหน้าต่าง modal ได้ ไม่ต้องมีช่องกรอกเลยสักช่อง) ต่างจาก modal
- * ทั่วไปในโปรเจกต์นี้ (เช่น modal กรอกโค้ดส่วนลดใน commands/premium.js) ที่ต้องมี
- * TextInput ให้กรอกเสมอ — อันนี้ตั้งใจให้ "อ่านอย่างเดียว ปิดได้เลย ไม่ต้องกรอกอะไร"
- * (⚠️ TextDisplay ใน Modal เป็นคนละเรื่องกับ Components V2 ของข้อความปกติ — ใช้ได้อิสระ
- * ต่อกัน ไม่ได้ผูกกับว่าตัวการ์ดหลักใช้ Embed หรือ Components V2 อยู่)
+ * ข้อความอ่านอย่างเดียวในหน้าต่าง modal ได้ ไม่ต้องมีช่องกรอกเลยสักช่อง)
  * @returns {import('discord.js').ModalBuilder}
  */
 function buildTermsModal() {
   return new ModalBuilder()
     .setCustomId(TERMS_MODAL_ID)
-    .setTitle('ข้อกำหนดการจ่ายค่าคอม')
+    .setTitle('Commission Payout Terms')
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
-        `ผู้ขายได้ค่าคอม **${COMMISSION_PER_REDEMPTION_THB} บาท** ต่อการใช้โค้ดสำเร็จ 1 ครั้ง ` +
-        '(นับจาก Stripe ยืนยันว่าลูกค้าจ่ายเงินจริงแล้วเท่านั้น — แค่กรอกโค้ดเฉยๆ ไม่นับ)'
+        `Sellers earn **${COMMISSION_PER_REDEMPTION_THB} THB** per successful code redemption ` +
+        '(counted only once Stripe confirms the customer actually paid — just entering the code does not count).'
       ),
       new TextDisplayBuilder().setContent(
-        '**วิธีจ่ายเงินให้ผู้ขาย**: ระบบไม่ได้โอนให้อัตโนมัติ ต้องโอนเองเป็นระยะ (เช่นทุกสัปดาห์/เดือน) — ' +
-        'เช็คยอดค้างจ่ายได้จาก `/referral summary` แล้วโอนจริงผ่าน PromptPay/ธนาคาร ' +
-        '(ใช้ `/referral payout` ช่วยสร้าง QR โอนเงินให้ก็ได้) เสร็จแล้วกด `/referral markpaid` ' +
-        'เพื่อเคลียร์ยอดค้างจ่ายของโค้ดนั้น'
+        '**How sellers get paid**: this is not an automatic transfer. The owner pays out manually on a regular ' +
+        'basis (e.g. weekly/monthly) — check unpaid balances with `/referral summary`, transfer the money ' +
+        'via PromptPay/bank transfer (a payout QR is posted here automatically when the code is deactivated, ' +
+        'or the owner can generate one anytime with `/referral payout`), then run `/referral markpaid` ' +
+        'to clear that code\'s unpaid balance.'
       ),
     );
 }
@@ -537,12 +794,13 @@ function isTermsModalSubmit(customId) {
  * @param {import('discord.js').ModalSubmitInteraction} interaction
  */
 async function handleTermsModalSubmit(interaction) {
-  await interaction.reply({ content: 'รับทราบครับ', ephemeral: true });
+  await interaction.reply({ content: 'Got it.', ephemeral: true });
 }
 
 module.exports = {
   getOrCreateReportChannel,
   syncCodeReportMessage,
+  postPayoutQrForCode,
   isReportRangeSelect,
   handleReportRangeSelect,
   isReportTermsButton,

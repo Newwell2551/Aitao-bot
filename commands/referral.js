@@ -21,6 +21,12 @@
  * เพราะแคมเปญนี้จะมีผู้ขายเข้าร่วมเรื่อยๆ ทีละคน ถ้าต้องเข้า Stripe Dashboard ไปกดสร้าง
  * เองทุกครั้ง (Coupon 1 อัน + Promotion Code 1 อัน ต่อผู้ขาย 1 คน) จะช้าและเสี่ยงพิมพ์
  * ตั้งค่าไม่ตรงกัน (เช่น ลืมตั้ง duration=once) ให้บอททำให้ครบในคำสั่งเดียวจบเลยดีกว่า
+ *
+ * 🆕 อัปเดต 20 ก.ย. 2569 — แปลงข้อความที่ผู้ใช้เห็นจริง (คำอธิบายคำสั่ง/คำตอบ/error) ทั้งหมด
+ * เป็นภาษาอังกฤษล้วนแล้ว ตามที่น้องหนาวขอ (คำสั่งนี้มีแค่น้องหนาวคนเดียวที่เห็น/รันได้ เลย
+ * ไม่ต้องต่อกับระบบสลับภาษา th/en ของบอทเหมือนฟีเจอร์อื่น — เลือกภาษาเดียวไปเลยง่ายกว่า)
+ * คอมเมนต์ในโค้ด (สำหรับน้องหนาวอ่านเอง) ยังเป็นภาษาไทยเหมือนเดิมทุกจุด ไม่ได้แปล — แปลแค่
+ * ข้อความที่ไปโผล่บนดิสคอร์ดจริงๆ (คำอธิบาย option, ข้อความตอบกลับ, error) เท่านั้น
  */
 
 const { SlashCommandBuilder, MessageFlags, AttachmentBuilder } = require('discord.js');
@@ -34,11 +40,16 @@ const {
   markCommissionsPaid,
   listAllCodes,
   savePromptPayId,
+  saveSellerGuildId,
   COMMISSION_PER_REDEMPTION_THB,
 } = require('../utils/referralStorage');
 // 🆕 ห้องรายงานยอดค่าคอมแบบเรียลไทม์ (ดูคำอธิบายเต็มในไฟล์นั้น) — เรียกทุกครั้งที่มีการ
 // เปลี่ยนแปลงที่กระทบยอดของโค้ดใดโค้ดหนึ่ง (สร้างโค้ดใหม่ / ปิดใช้งาน / มีคนใช้โค้ดสำเร็จ)
-const { syncCodeReportMessage } = require('../utils/referralReportChannel');
+// 🆕 [20 ก.ย. 2569] syncCodeReportMessage() ตอนนี้อัปเดตทั้งห้องเซิร์ฟควบคุมและห้องเซิร์ฟ
+// ผู้ขาย (ถ้าตั้ง sellerGuildId ไว้) ในตัวเดียวแล้ว — ไม่ต้องเรียกเพิ่มอะไรเลย ส่วน
+// postPayoutQrForCode() เป็นของใหม่ ใช้ตอนปิดโค้ด (handleDeactivate) เพื่อสร้าง+โพสต์ QR
+// จ่ายเงินอัตโนมัติ (ดูคำอธิบายเต็มในไฟล์นั้น)
+const { syncCodeReportMessage, postPayoutQrForCode } = require('../utils/referralReportChannel');
 // 🆕 ตัวช่วยสร้าง QR PromptPay ให้ /referral payout (ดูคำอธิบายเต็มในไฟล์นั้น — ย้ำอีกที
 // ว่าแค่สร้างรูป QR ให้สแกนจ่ายเร็วขึ้น ไม่ได้โอนเงินให้อัตโนมัติ)
 const { generatePromptPayQrBuffer } = require('../utils/promptpayQr');
@@ -52,6 +63,12 @@ const CODE_PATTERN = /^[A-Z0-9]{3,20}$/;
 // 10 หลัก (เช่น 0812345678) หรือเลขบัตรประชาชน 13 หลัก — ตัวเลขล้วนเท่านั้น ห้ามมีขีด/
 // เว้นวรรค/เครื่องหมายอื่นปนมา (พิมพ์แบบนั้นมา promptpay-qr จะสร้าง QR ผิดพลาดทันที)
 const PROMPTPAY_ID_PATTERN = /^\d{10}$|^\d{13}$/;
+
+// 🆕 [20 ก.ย. 2569] รูปแบบ ID เซิร์ฟของดิสคอร์ด (snowflake) — ตัวเลขล้วน 17-20 หลัก ใช้เช็ค
+// ก่อนบันทึก sellerGuildId (ตอน /referral add หรือ /referral setguild) กันพิมพ์ผิด/วาง
+// ค่าอื่นที่ไม่ใช่ ID เซิร์ฟเข้ามา — น้องหนาวได้ ID นี้จากการเปิด "โหมดนักพัฒนา" (Developer
+// Mode) ในตั้งค่าดิสคอร์ดของตัวเองก่อน แล้วคลิกขวาที่ไอคอนเซิร์ฟนั้น → "Copy Server ID"
+const GUILD_ID_PATTERN = /^\d{17,20}$/;
 
 // 🎲 ชุดตัวอักษรไว้ "สุ่มโค้ด" ให้อัตโนมัติ — ใช้ตอนไม่ใส่ค่า code เอง (เช่น มีผู้ขาย
 // เข้ามาพร้อมกันเยอะๆ ไม่มีเวลานั่งคิดชื่อโค้ดทีละคน) ตัด O, I, 0, 1 ออกจากชุดตัวอักษร
@@ -79,36 +96,30 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('referral')
     .setDescription('For development use only.')
-    .setDescriptionLocalizations({ th: 'สำหรับนักพัฒนาเท่านั้นครับ' })
     // ซ่อนคำสั่งนี้จากสมาชิก/แอดมินทั่วไปเหมือน /dev เป๊ะๆ (ดูคอมเมนต์อธิบายละเอียดใน dev.js)
     .setDefaultMemberPermissions(0)
     .addSubcommand((sub) =>
       sub
         .setName('add')
         .setDescription('Create a new referral code')
-        .setDescriptionLocalizations({ th: 'สร้างโค้ดส่วนลดใหม่ให้ผู้ขาย 1 คนครับ' })
         .addStringOption((opt) =>
           opt.setName('code')
             .setDescription('The code text, e.g. KITTY10 — leave empty to auto-generate one')
-            .setDescriptionLocalizations({ th: 'ตัวโค้ด เช่น KITTY10 (ตัวอักษร A-Z และตัวเลขเท่านั้น) — ไม่ใส่ = ให้บอทสุ่มให้อัตโนมัติ' })
             .setRequired(false)
         )
         .addStringOption((opt) =>
           opt.setName('seller')
             .setDescription('Seller label to show in reports, e.g. @kittyarts')
-            .setDescriptionLocalizations({ th: 'ชื่อ/แฮนเดิลผู้ขาย ใช้โชว์ในรายงานครับ เช่น @kittyarts' })
             .setRequired(true)
         )
         .addUserOption((opt) =>
           opt.setName('seller_discord_user')
             .setDescription('Seller\'s Discord account, so the bot can DM them when their code is used')
-            .setDescriptionLocalizations({ th: 'บัญชีดิสคอร์ดของผู้ขาย (ใส่ไว้บอทจะ DM แจ้งตอนมีคนใช้โค้ดครับ ไม่ใส่ก็ได้)' })
             .setRequired(false)
         )
         .addIntegerOption((opt) =>
           opt.setName('discount_thb')
             .setDescription('Discount amount in THB, default 10 (99 -> 89)')
-            .setDescriptionLocalizations({ th: 'ส่วนลดกี่บาท ไม่ใส่ = 10 บาท (99 → 89) ครับ' })
             .setRequired(false)
             .setMinValue(1)
             .setMaxValue(50)
@@ -116,68 +127,75 @@ module.exports = {
         .addStringOption((opt) =>
           opt.setName('promptpay_id')
             .setDescription('Seller\'s PromptPay ID (10-digit phone or 13-digit citizen ID), for payout QR later')
-            .setDescriptionLocalizations({ th: 'เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ 10 หลัก/บัตร ปชช. 13 หลัก) ไว้สร้าง QR — ไม่ใส่ตอนนี้ก็ได้' })
+            .setRequired(false)
+        )
+        .addStringOption((opt) =>
+          opt.setName('seller_guild_id')
+            .setDescription('Seller\'s own Discord server ID — the bot will post their earnings report there too (bot must already be a member)')
             .setRequired(false)
         )
     )
     .addSubcommand((sub) =>
       sub.setName('list')
         .setDescription('List all referral codes')
-        .setDescriptionLocalizations({ th: 'ดูรายการโค้ดทั้งหมดครับ' })
     )
     .addSubcommand((sub) =>
       sub.setName('summary')
         .setDescription('Show commission totals per seller')
-        .setDescriptionLocalizations({ th: 'สรุปค่าคอมที่ต้องจ่ายแต่ละผู้ขายครับ' })
     )
     .addSubcommand((sub) =>
       sub.setName('deactivate')
         .setDescription('Turn off a referral code')
-        .setDescriptionLocalizations({ th: 'ปิดใช้งานโค้ดอันใดอันหนึ่งครับ' })
         .addStringOption((opt) =>
           opt.setName('code')
             .setDescription('The code to deactivate')
-            .setDescriptionLocalizations({ th: 'โค้ดที่จะปิดใช้งานครับ' })
             .setRequired(true)
         )
     )
     .addSubcommand((sub) =>
       sub.setName('markpaid')
         .setDescription('Mark a code\'s pending commission as paid out for real')
-        .setDescriptionLocalizations({ th: 'ทำเครื่องหมายว่าโอนเงินค่าคอมของโค้ดนี้ให้ผู้ขายจริงแล้ว' })
         .addStringOption((opt) =>
           opt.setName('code')
             .setDescription('The code you just paid the seller for')
-            .setDescriptionLocalizations({ th: 'โค้ดที่เพิ่งโอนเงินให้ผู้ขายไปครับ' })
             .setRequired(true)
         )
     )
     .addSubcommand((sub) =>
       sub.setName('setpromptpay')
         .setDescription('Set or update a seller\'s PromptPay ID for payout QR codes')
-        .setDescriptionLocalizations({ th: 'ตั้ง/แก้ไขเลขพร้อมเพย์ของผู้ขายโค้ดนี้ ไว้สร้าง QR โอนเงินครับ' })
         .addStringOption((opt) =>
           opt.setName('code')
             .setDescription('The code to set the PromptPay ID for')
-            .setDescriptionLocalizations({ th: 'โค้ดที่จะตั้งเลขพร้อมเพย์ให้ครับ' })
             .setRequired(true)
         )
         .addStringOption((opt) =>
           opt.setName('promptpay_id')
             .setDescription('10-digit phone number or 13-digit citizen ID')
-            .setDescriptionLocalizations({ th: 'เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลักครับ' })
             .setRequired(true)
         )
     )
     .addSubcommand((sub) =>
       sub.setName('payout')
         .setDescription('Generate PromptPay QR codes for outstanding commissions')
-        .setDescriptionLocalizations({ th: 'สร้าง QR PromptPay สำหรับยอดค้างจ่าย (ไม่ใส่โค้ด = สร้างให้ทุกคนที่ค้างจ่าย)' })
         .addStringOption((opt) =>
           opt.setName('code')
             .setDescription('Only generate for this code (leave empty for everyone with an unpaid balance)')
-            .setDescriptionLocalizations({ th: 'ระบุโค้ดถ้าอยากได้แค่คนเดียว ไม่ใส่ = สร้างให้ทุกคนที่ค้างจ่ายครับ' })
             .setRequired(false)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub.setName('setguild')
+        .setDescription('Set or update the seller\'s own Discord server for their earnings channel')
+        .addStringOption((opt) =>
+          opt.setName('code')
+            .setDescription('The code to set the seller\'s server for')
+            .setRequired(true)
+        )
+        .addStringOption((opt) =>
+          opt.setName('guild_id')
+            .setDescription('The seller\'s Discord server ID (bot must already be a member)')
+            .setRequired(true)
         )
     ),
 
@@ -185,7 +203,7 @@ module.exports = {
     // ── เช็ค owner-only ก่อนทำอะไรทั้งนั้น (เหมือน /dev เป๊ะๆ) ──────────────────
     if (interaction.user.id !== process.env.OWNER_ID) {
       return interaction.reply({
-        content: '❌ คำสั่งนี้ไม่สามารถใช้งานได้ครับ',
+        content: '❌ This command is not available.',
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -213,6 +231,9 @@ module.exports = {
     if (sub === 'payout') {
       return handlePayout(interaction);
     }
+    if (sub === 'setguild') {
+      return handleSetGuild(interaction);
+    }
   },
 };
 
@@ -234,6 +255,7 @@ async function handleAdd(interaction) {
   const sellerUser = interaction.options.getUser('seller_discord_user');
   const discountThb = interaction.options.getInteger('discount_thb') ?? 10;
   const rawPromptPayId = interaction.options.getString('promptpay_id');
+  const rawSellerGuildId = interaction.options.getString('seller_guild_id');
 
   // เช็ครูปแบบเลขพร้อมเพย์ก่อนเลย (ถ้าใส่มา) — เช็คตั้งแต่ต้นก่อนไปยิง Stripe API เลย
   // กันเสียเวลาสร้าง Coupon/Promotion Code ไปแล้วแต่ดันพิมพ์เลขพร้อมเพย์ผิดรูปแบบทีหลัง
@@ -242,7 +264,20 @@ async function handleAdd(interaction) {
     promptpayId = rawPromptPayId.trim();
     if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
       return interaction.editReply({
-        content: `❌ เลขพร้อมเพย์ "${rawPromptPayId}" รูปแบบไม่ถูกต้องครับ — ใส่ได้แค่เบอร์มือถือ 10 หลัก (เช่น 0812345678) หรือเลขบัตรประชาชน 13 หลักเท่านั้น (ตัวเลขล้วน ไม่มีขีด/เว้นวรรค) ไม่ใส่ตอนนี้ก็ได้ ตั้งทีหลังได้ด้วย /referral setpromptpay`,
+        content: `❌ Invalid PromptPay ID "${rawPromptPayId}" — only a 10-digit phone number (e.g. 0812345678) or a 13-digit citizen ID is accepted (digits only, no dashes/spaces). You can leave it empty for now and set it later with /referral setpromptpay.`,
+      });
+    }
+  }
+
+  // 🆕 [20 ก.ย. 2569] เช็ครูปแบบ ID เซิร์ฟผู้ขายก่อนเลยเหมือนกัน (ถ้าใส่มา) — ยังไม่เช็คว่า
+  // บอทเข้าเซิร์ฟนั้นได้จริงไหมตรงนี้ (เดี๋ยว syncCodeReportMessage() ท้ายฟังก์ชันจะลองสร้าง
+  // ห้องให้เอง ถ้าเข้าไม่ได้จะ log warning ไว้เฉยๆ ไม่ทำให้คำสั่งนี้ทั้งคำสั่งพังตาม)
+  let sellerGuildId = null;
+  if (rawSellerGuildId) {
+    sellerGuildId = rawSellerGuildId.trim();
+    if (!GUILD_ID_PATTERN.test(sellerGuildId)) {
+      return interaction.editReply({
+        content: `❌ Invalid server ID "${rawSellerGuildId}" — it should be a 17-20 digit number (right-click the server icon with Developer Mode on → Copy Server ID). You can leave it empty for now and set it later with /referral setguild.`,
       });
     }
   }
@@ -256,7 +291,7 @@ async function handleAdd(interaction) {
 
     if (!CODE_PATTERN.test(code)) {
       return interaction.editReply({
-        content: `❌ โค้ด "${rawCode}" รูปแบบไม่ถูกต้องครับ — ใช้ได้แค่ตัวอักษร A-Z กับตัวเลข 0-9 ยาว 3-20 ตัว (ไม่มีช่องว่าง/อักขระพิเศษ)`,
+        content: `❌ Invalid code "${rawCode}" — only letters A-Z and digits 0-9 are allowed, 3-20 characters long (no spaces or special characters).`,
       });
     }
 
@@ -265,7 +300,7 @@ async function handleAdd(interaction) {
     const existing = getActiveCode(code);
     if (existing) {
       return interaction.editReply({
-        content: `❌ โค้ด "${code}" มีอยู่แล้วและยังเปิดใช้งานอยู่ครับ (เจ้าของ: ${existing.sellerLabel}) — ถ้าจะสร้างใหม่ทับ ต้อง \`/referral deactivate\` อันเดิมก่อนนะครับ`,
+        content: `❌ Code "${code}" already exists and is still active (owner: ${existing.sellerLabel}) — deactivate the old one with \`/referral deactivate\` first if you want to reuse it.`,
       });
     }
   } else {
@@ -282,7 +317,7 @@ async function handleAdd(interaction) {
 
     if (existingCodes.has(code)) {
       return interaction.editReply({
-        content: '❌ สุ่มโค้ดไม่สำเร็จครับ (ชนโค้ดเดิมซ้ำหลายรอบเกินไป) ลองรันคำสั่งใหม่อีกครั้งนะครับ',
+        content: '❌ Failed to generate a random code (too many collisions with existing codes). Please try running the command again.',
       });
     }
     autoGenerated = true;
@@ -323,6 +358,7 @@ async function handleAdd(interaction) {
       stripeCouponId: coupon.id,
       stripePromotionCodeId: promotionCode.id,
       promptpayId,
+      sellerGuildId,
     });
 
     // 4) 🆕 โพสต์การ์ดรายงานยอดของโค้ดนี้ในห้อง referral-earnings ทันที (เริ่มที่ 0
@@ -334,20 +370,23 @@ async function handleAdd(interaction) {
 
     return interaction.editReply({
       content:
-        `✅ สร้างโค้ด **${code}**${autoGenerated ? ' (สุ่มให้อัตโนมัติครับ)' : ''} ให้ **${sellerLabel}** เรียบร้อยครับ\n` +
-        `• ส่วนลด: ${discountThb} บาท (99 → ${99 - discountThb} บาท) ครั้งเดียวตอนสมัคร\n` +
-        `• เดือนถัดไปกลับราคาปกติอัตโนมัติ (ไม่ต้องกรอกโค้ดซ้ำ)\n` +
-        `• เซิร์ฟไหนใช้โค้ดนี้ไปแล้ว จะใช้ซ้ำอีกไม่ได้ (ต้องรอโค้ดใหม่)\n` +
-        `• ทุกครั้งที่มีคนใช้โค้ดนี้สำเร็จ ${sellerLabel} จะได้ค่าคอม ${COMMISSION_PER_REDEMPTION_THB} บาท` +
-        (sellerUser ? ` (บอทจะ DM แจ้ง ${sellerUser} ให้อัตโนมัติ)` : ' (ยังไม่ได้ผูกบัญชีดิสคอร์ด เลยจะไม่มี DM แจ้ง เช็คยอดได้ผ่าน /referral summary)') +
+        `✅ Created code **${code}**${autoGenerated ? ' (auto-generated)' : ''} for **${sellerLabel}**.\n` +
+        `• Discount: ${discountThb} THB (99 → ${99 - discountThb} THB), applied once at signup\n` +
+        `• Price returns to normal automatically the following month (no need to re-enter the code)\n` +
+        `• Each server can only use this code once (needs a new code for repeat use)\n` +
+        `• Every time this code is used successfully, ${sellerLabel} earns ${COMMISSION_PER_REDEMPTION_THB} THB commission` +
+        (sellerUser ? ` (the bot will DM ${sellerUser} automatically)` : ' (no Discord account linked, so no DM notification — check totals via /referral summary)') +
         (promptpayId
-          ? `\n• ตั้งเลขพร้อมเพย์ไว้แล้ว — ใช้ /referral payout สร้าง QR โอนเงินให้คนนี้ได้เลยครับ`
-          : `\n• ยังไม่ได้ตั้งเลขพร้อมเพย์ — ตั้งทีหลังได้ด้วย /referral setpromptpay code:${code}`),
+          ? `\n• PromptPay ID is set — use /referral payout to generate a payout QR for this seller`
+          : `\n• PromptPay ID not set yet — set it later with /referral setpromptpay code:${code}`) +
+        (sellerGuildId
+          ? `\n• Their earnings report will also be posted in their own server (#${'partner-earnings'}) — check there in a moment; if it doesn't show up, make sure the bot is a member of that server with Manage Channels permission`
+          : `\n• Not posting to a seller-owned server yet — set one later with /referral setguild code:${code} guild_id:XXX`),
     });
   } catch (error) {
     console.error('[referral add] สร้าง Coupon/Promotion Code ที่ Stripe ไม่สำเร็จ:', error);
     return interaction.editReply({
-      content: `❌ สร้างโค้ดไม่สำเร็จครับ (Stripe error: ${error.message})`,
+      content: `❌ Failed to create the code (Stripe error: ${error.message})`,
     });
   }
 }
@@ -360,7 +399,7 @@ async function handleList(interaction) {
 
   if (codes.length === 0) {
     return interaction.reply({
-      content: 'ยังไม่มีโค้ดในระบบเลยครับ ลองสร้างด้วย `/referral add` ก่อนนะครับ',
+      content: 'No codes yet. Try creating one with `/referral add` first.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -369,12 +408,12 @@ async function handleList(interaction) {
   const sorted = [...codes].sort((a, b) => Number(b.active) - Number(a.active));
 
   const lines = sorted.map((c) => {
-    const status = c.active ? '🟢 เปิด' : '🔴 ปิด';
+    const status = c.active ? '🟢 Active' : '🔴 Inactive';
     return `${status} **${c.code}** — ${c.sellerLabel}`;
   });
 
   return interaction.reply({
-    content: `**รายการโค้ดทั้งหมด (${codes.length} โค้ด)**\n${lines.join('\n')}`,
+    content: `**All Referral Codes (${codes.length})**\n${lines.join('\n')}`,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -394,7 +433,7 @@ async function handleSummary(interaction) {
 
   if (lifetimeSummary.length === 0) {
     return interaction.reply({
-      content: 'ยังไม่มีใครใช้โค้ดสำเร็จเลยครับ ยอดค่าคอมตอนนี้คือ 0 บาท',
+      content: 'No one has used a code yet — total commission is 0 THB.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -405,17 +444,17 @@ async function handleSummary(interaction) {
   const lines = lifetimeSummary.map((s) => {
     const unpaidThb = unpaidByCode.get(s.code) ?? 0;
     return (
-      `**${s.sellerLabel}** (โค้ด ${s.code}) — ใช้ไปแล้ว ${s.totalUses} ครั้ง (ตลอดกาล) = ${s.totalCommissionThb} บาท ` +
-      `| ค้างจ่าย: **${unpaidThb} บาท**`
+      `**${s.sellerLabel}** (code ${s.code}) — used ${s.totalUses} times (lifetime) = ${s.totalCommissionThb} THB ` +
+      `| unpaid: **${unpaidThb} THB**`
     );
   });
   const grandUnpaidTotal = [...unpaidByCode.values()].reduce((sum, thb) => sum + thb, 0);
 
   return interaction.reply({
     content:
-      `**สรุปค่าคอม**\n${lines.join('\n')}\n\n` +
-      `💰 รวมยอดที่ต้องโอนตอนนี้: **${grandUnpaidTotal} บาท**\n` +
-      `-# โอนเงินจริงให้ผู้ขายแล้วอย่าลืมกด /referral markpaid code:XXX เพื่อเคลียร์ยอดค้างจ่ายด้วยนะครับ`,
+      `**Commission Summary**\n${lines.join('\n')}\n\n` +
+      `💰 Total to pay out right now: **${grandUnpaidTotal} THB**\n` +
+      `-# After transferring money to a seller, remember to run /referral markpaid code:XXX to clear their unpaid balance.`,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -424,6 +463,13 @@ async function handleSummary(interaction) {
  * /referral deactivate — ปิดโค้ด (แค่ในไฟล์ของเราเอง ไม่ได้ไปปิดที่ Stripe ด้วย
  * เพราะเช็ค "เปิด/ปิด" จากไฟล์เราเองก่อนเสมอตอนลูกค้ากรอกโค้ดผ่านบอทอยู่แล้ว —
  * ดู commands/premium.js → getActiveCode() คืน null ถ้า active = false ทันที)
+ *
+ * 🆕 [20 ก.ย. 2569] หลังปิดโค้ดแล้ว จะเรียก postPayoutQrForCode() ต่อทันที (ตามที่น้องหนาว
+ * อยากได้ "ระบบกึ่งอัตโนมัติตอนสิ้นเดือน") — ถ้าโค้ดนี้มียอดค้างจ่าย + ตั้งเลขพร้อมเพย์ไว้
+ * แล้ว บอทจะสร้าง QR แล้วโพสต์เข้าห้องรายงานยอดทั้งสองที่ (เซิร์ฟควบคุม + เซิร์ฟผู้ขายถ้ามี)
+ * ให้อัตโนมัติเลย ไม่ต้องมารัน /referral payout เองอีกที — ⚠️ ย้ำอีกรอบ: นี่ไม่ใช่การตัด
+ * เงินอัตโนมัติจริง น้องหนาวยังต้องสแกน QR จ่ายเองผ่านแอปธนาคาร แค่ขั้นตอน "สร้าง + โพสต์"
+ * ทำให้อัตโนมัติแล้วเท่านั้น (ดูคำอธิบายเต็มใน postPayoutQrForCode() ที่ referralReportChannel.js)
  */
 async function handleDeactivate(interaction) {
   const code = interaction.options.getString('code').trim().toUpperCase();
@@ -431,7 +477,7 @@ async function handleDeactivate(interaction) {
 
   if (!ok) {
     return interaction.reply({
-      content: `❌ ไม่เจอโค้ด "${code}" ในระบบเลยครับ`,
+      content: `❌ Code "${code}" not found.`,
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -440,8 +486,24 @@ async function handleDeactivate(interaction) {
   // ตามที่น้องหนาวขอ — นับเป็น "การเปลี่ยนแปลง" ที่ต้องอัปเดตห้องรายงานด้วยเหมือนกัน)
   await syncCodeReportMessage(interaction.client, code);
 
+  // 🆕 ลองสร้าง+โพสต์ QR จ่ายเงินอัตโนมัติต่อทันที (ดูคอมเมนต์ด้านบนฟังก์ชัน) — ฟังก์ชันนี้
+  // ไม่ throw เลย คืน object บอกผลลัพธ์แทน เอามาแปลงเป็นข้อความบอกน้องหนาวว่าเกิดอะไรขึ้น
+  const payoutResult = await postPayoutQrForCode(interaction.client, code);
+  let payoutNote;
+  if (payoutResult.posted) {
+    const locations = [
+      payoutResult.postedToControlGuild ? 'control server' : null,
+      payoutResult.postedToSellerGuild ? "seller's server" : null,
+    ].filter(Boolean).join(' and ');
+    payoutNote = `\n💳 Posted a payout QR for **${payoutResult.amountThb} THB** to the ${locations} earnings channel${payoutResult.postedToControlGuild && payoutResult.postedToSellerGuild ? 's' : ''}.`;
+  } else if (payoutResult.reason === 'no_promptpay_id') {
+    payoutNote = `\n⚠️ This code has an unpaid balance of **${payoutResult.amountThb} THB**, but no PromptPay ID is set — set one with /referral setpromptpay to auto-generate a payout QR next time.`;
+  } else {
+    payoutNote = ''; // ไม่มียอดค้างจ่าย — ไม่ต้องพูดถึงเรื่องนี้เพิ่ม
+  }
+
   return interaction.reply({
-    content: `✅ ปิดใช้งานโค้ด **${code}** แล้วครับ (ประวัติการใช้เดิมยังอยู่ครบ)`,
+    content: `✅ Deactivated code **${code}** (usage history is preserved).${payoutNote}`,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -458,13 +520,13 @@ async function handleMarkPaid(interaction) {
 
   if (count === 0) {
     return interaction.reply({
-      content: `ℹ️ โค้ด "${code}" ไม่มียอดค้างจ่ายเลยครับ (อาจจะจ่ายไปหมดแล้ว หรือยังไม่มีคนใช้โค้ดนี้สำเร็จเลย)`,
+      content: `ℹ️ Code "${code}" has no unpaid balance (it may already be fully paid, or nobody has used it successfully yet).`,
       flags: MessageFlags.Ephemeral,
     });
   }
 
   return interaction.reply({
-    content: `✅ ทำเครื่องหมายว่าจ่ายแล้วให้โค้ด **${code}** จำนวน ${count} ครั้ง รวม **${totalThb} บาท** ครับ — ยอดค้างจ่ายของโค้ดนี้เคลียร์เรียบร้อย`,
+    content: `✅ Marked ${count} redemption(s) of code **${code}** as paid, totaling **${totalThb} THB** — this code's unpaid balance is now cleared.`,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -480,7 +542,7 @@ async function handleSetPromptPay(interaction) {
 
   if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
     return interaction.reply({
-      content: `❌ เลขพร้อมเพย์ "${promptpayId}" รูปแบบไม่ถูกต้องครับ — ใส่ได้แค่เบอร์มือถือ 10 หลัก (เช่น 0812345678) หรือเลขบัตรประชาชน 13 หลักเท่านั้น (ตัวเลขล้วน ไม่มีขีด/เว้นวรรค)`,
+      content: `❌ Invalid PromptPay ID "${promptpayId}" — only a 10-digit phone number (e.g. 0812345678) or a 13-digit citizen ID is accepted (digits only, no dashes/spaces).`,
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -488,7 +550,7 @@ async function handleSetPromptPay(interaction) {
   const codeEntry = listAllCodes().find((c) => c.code === code);
   if (!codeEntry) {
     return interaction.reply({
-      content: `❌ ไม่เจอโค้ด "${code}" ในระบบเลยครับ`,
+      content: `❌ Code "${code}" not found.`,
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -496,8 +558,53 @@ async function handleSetPromptPay(interaction) {
   savePromptPayId(code, promptpayId);
 
   return interaction.reply({
-    content: `✅ ตั้งเลขพร้อมเพย์ของโค้ด **${code}** (${codeEntry.sellerLabel}) เรียบร้อยครับ — ใช้ \`/referral payout\` สร้าง QR โอนเงินให้คนนี้ได้แล้ว`,
+    content: `✅ Set the PromptPay ID for code **${code}** (${codeEntry.sellerLabel}) — you can now use \`/referral payout\` to generate a payout QR for this seller.`,
     flags: MessageFlags.Ephemeral,
+  });
+}
+
+/**
+ * 🆕 [20 ก.ย. 2569] /referral setguild — ตั้ง/แก้ "ID เซิร์ฟของผู้ขายเอง" ทีหลังได้ เผื่อ
+ * ตอนสร้างโค้ดด้วย /referral add ยังไม่รู้ ID เซิร์ฟ หรือผู้ขายเปลี่ยนเซิร์ฟทีหลัง — เช็คก่อน
+ * ว่าบอทเข้าเซิร์ฟนั้นได้จริงไหม (ผ่าน client.guilds.fetch()) ก่อนบันทึก กันตั้งค่า ID ผิด/
+ * เซิร์ฟที่บอทไม่ได้อยู่ไปเงียบๆ โดยไม่รู้ตัว — ถ้าเช็คผ่าน จะ sync การ์ดเข้าเซิร์ฟนั้นทันที
+ */
+async function handleSetGuild(interaction) {
+  const code = interaction.options.getString('code').trim().toUpperCase();
+  const guildId = interaction.options.getString('guild_id').trim();
+
+  if (!GUILD_ID_PATTERN.test(guildId)) {
+    return interaction.reply({
+      content: `❌ Invalid server ID "${guildId}" — it should be a 17-20 digit number (right-click the server icon with Developer Mode on → Copy Server ID).`,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  const codeEntry = listAllCodes().find((c) => c.code === code);
+  if (!codeEntry) {
+    return interaction.reply({
+      content: `❌ Code "${code}" not found.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  // เช็คก่อนบันทึกว่าบอทเข้าเซิร์ฟนี้ได้จริงไหม — กันตั้งค่า ID ผิด/เซิร์ฟที่บอทไม่ได้อยู่
+  // ไปเงียบๆ โดยไม่รู้ตัว (ถ้าไม่เช็คตรงนี้ จะไปเจอ error ตอน sync ในพื้นหลังแทน ซึ่งไม่มีใคร
+  // เห็นนอกจาก Railway logs)
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  try {
+    await interaction.client.guilds.fetch(guildId);
+  } catch (error) {
+    return interaction.editReply({
+      content: `❌ The bot isn't a member of server "${guildId}" (or the ID is wrong) — invite the bot to that server first, then try again. (${error.message})`,
+    });
+  }
+
+  saveSellerGuildId(code, guildId);
+  await syncCodeReportMessage(interaction.client, code);
+
+  return interaction.editReply({
+    content: `✅ Set the seller's server for code **${code}** (${codeEntry.sellerLabel}) — their earnings report has been posted to #partner-earnings in that server. Make sure the bot has Manage Channels permission there if it didn't appear.`,
   });
 }
 
@@ -517,7 +624,7 @@ async function handlePayout(interaction) {
   const unpaidSummary = getUnpaidCommissionSummary();
 
   if (unpaidSummary.length === 0) {
-    return interaction.editReply({ content: 'ไม่มียอดค้างจ่ายเลยครับ ทุกคนได้รับเงินครบแล้ว 🎉' });
+    return interaction.editReply({ content: 'No unpaid balances — everyone has been paid in full. 🎉' });
   }
 
   const codeInfoMap = new Map(listAllCodes().map((c) => [c.code, c]));
@@ -528,7 +635,7 @@ async function handlePayout(interaction) {
     targets = targets.filter((s) => s.code === normalized);
     if (targets.length === 0) {
       return interaction.editReply({
-        content: `❌ โค้ด "${normalized}" ไม่มียอดค้างจ่ายเลยครับ (เช็คด้วย /referral summary ได้)`,
+        content: `❌ Code "${normalized}" has no unpaid balance (check with /referral summary).`,
       });
     }
   }
@@ -557,26 +664,26 @@ async function handlePayout(interaction) {
     try {
       const qrBuffer = await generatePromptPayQrBuffer(info.promptpayId, s.totalCommissionThb);
       files.push(new AttachmentBuilder(qrBuffer, { name: `promptpay-${s.code}.png` }));
-      lines.push(`🟢 **${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} บาท`);
+      lines.push(`🟢 **${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} THB`);
     } catch (error) {
       console.error(`[referral payout] สร้าง QR ให้โค้ด ${s.code} ไม่สำเร็จ:`, error);
-      lines.push(`⚠️ **${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} บาท (สร้าง QR ไม่สำเร็จ)`);
+      lines.push(`⚠️ **${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} THB (failed to generate QR)`);
     }
   }
 
   let content =
-    `**QR PromptPay สำหรับโอนเงินค่าคอม** (${toGenerate.length} คน)\n${lines.join('\n')}\n\n` +
-    `สแกนจ่ายแล้วอย่าลืมกด \`/referral markpaid code:XXX\` ทีละโค้ดที่โอนเสร็จด้วยนะครับ`;
+    `**PromptPay QR Codes for Commission Payouts** (${toGenerate.length} seller(s))\n${lines.join('\n')}\n\n` +
+    `After scanning and paying, remember to run \`/referral markpaid code:XXX\` for each code you've paid out.`;
 
   if (overflowCount > 0) {
-    content += `\n\n⚠️ มีอีก ${overflowCount} คนที่ยังไม่ได้สร้าง QR ให้ (ดิสคอร์ดจำกัดไฟล์แนบสูงสุด 10 ไฟล์/ข้อความ) รัน \`/referral payout\` อีกรอบสำหรับคนที่เหลือ`;
+    content += `\n\n⚠️ There are ${overflowCount} more seller(s) without a generated QR (Discord limits attachments to 10 files per message) — run \`/referral payout\` again for the rest.`;
   }
 
   if (missingPromptPay.length > 0) {
     const missingLines = missingPromptPay.map(
-      (s) => `**${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} บาท`
+      (s) => `**${s.code}** — ${s.sellerLabel}: ${s.totalCommissionThb} THB`
     );
-    content += `\n\n❌ ยังไม่มีเลขพร้อมเพย์ให้ ${missingPromptPay.length} คนนี้ (ตั้งก่อนด้วย \`/referral setpromptpay\`):\n${missingLines.join('\n')}`;
+    content += `\n\n❌ These ${missingPromptPay.length} seller(s) don't have a PromptPay ID set yet (set one first with \`/referral setpromptpay\`):\n${missingLines.join('\n')}`;
   }
 
   return interaction.editReply({ content, files });
