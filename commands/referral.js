@@ -103,14 +103,14 @@ module.exports = {
         .setName('add')
         .setDescription('Create a new referral code')
         .addStringOption((opt) =>
-          opt.setName('code')
-            .setDescription('The code text, e.g. KITTY10 — leave empty to auto-generate one')
-            .setRequired(false)
-        )
-        .addStringOption((opt) =>
           opt.setName('seller')
             .setDescription('Seller label to show in reports, e.g. @kittyarts')
             .setRequired(true)
+        )
+        .addStringOption((opt) =>
+          opt.setName('code')
+            .setDescription('The code text, e.g. KITTY10 — leave empty to auto-generate one')
+            .setRequired(false)
         )
         .addUserOption((opt) =>
           opt.setName('seller_discord_user')
@@ -131,7 +131,7 @@ module.exports = {
         )
         .addStringOption((opt) =>
           opt.setName('seller_guild_id')
-            .setDescription('Seller\'s own Discord server ID — the bot will post their earnings report there too (bot must already be a member)')
+            .setDescription('Seller\'s own Discord server ID — posts earnings report there too (bot must be a member)')
             .setRequired(false)
         )
     )
