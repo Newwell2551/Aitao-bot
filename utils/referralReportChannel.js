@@ -192,9 +192,7 @@ const CUSTOM_EMOJI_IDS = {
   perUse: '1546199675491852398',  // ค่าคอมต่อครั้ง
   total: '1546199649902133358',   // รวมรายได้
   terms: '1542210287015436379',   // ไอคอนปุ่ม "ข้อกำหนด"
-  // 🆕 รอบ 14: ไอคอนปุ่ม "Payment" — ยังไม่มี ID ที่น้องหนาวส่งมา ปล่อยว่างไว้ก่อน (undefined)
-  // resolveButtonEmoji() จะ fallback เป็น 💳 (Unicode) ให้เองอัตโนมัติจนกว่าจะส่ง ID มาเพิ่ม
-  payment: undefined,
+  payment: '1551266671841517638', // 🆕 รอบ 14: ไอคอนปุ่ม "Payment" — น้องหนาวส่ง ID มาแล้ว
 };
 
 /**
@@ -436,7 +434,10 @@ function buildReportActionRows(client, code, range) {
     .setCustomId(`${PAYMENT_BUTTON_PREFIX}${code}`)
     .setLabel('Payment')
     .setEmoji(resolveButtonEmoji(client, CUSTOM_EMOJI_IDS.payment, '💳'))
-    .setStyle(ButtonStyle.Success);
+    // 🆕 รอบ 14 (แก้): น้องหนาวขอสีขาว — ดิสคอร์ดไม่มีสไตล์ปุ่มสีขาวจริงๆ ให้ใช้ (มีแค่ 4 แบบ:
+    // Primary ฟ้าม่วง, Secondary เทา, Success เขียว, Danger แดง) เลยใช้ Secondary (เทา) ซึ่ง
+    // เป็นสีที่ใกล้เคียง/อ่อนที่สุดที่มีให้เลือก — ผลคือจะเป็นสีเดียวกับปุ่ม "Terms" ข้างๆ กันเลย
+    .setStyle(ButtonStyle.Secondary);
 
   return [
     new ActionRowBuilder().addComponents(select),
