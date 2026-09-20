@@ -38,24 +38,29 @@
 //     ของ Discord มีแถบให้เห็นเสมอไม่ว่าจะตั้งสีหรือไม่) → เลิกใช้ Embed ไปเลย เปลี่ยนเป็น
 //     "plain message content" ธรรมดา จำลองกริด 2 คอลัมน์เองด้วยการเว้นช่องว่างในตัว code
 //     block แทน (ตอนนั้นยังผสม 2 ค่าไว้ในกล่อง code block เดียวกันบรรทัดเดียว)
-//   รอบ 6 (ปัจจุบัน — ของจริง): น้องหนาวขอปรับ 3 อย่าง:
+//   รอบ 6: น้องหนาวขอปรับ 3 อย่าง:
 //     1) เอาบรรทัด "อัปเดตล่าสุด: <t:...:R>" ท้ายการ์ดออก (ไม่ต้องมีเวลาสัมพัทธ์ต่อแล้ว)
 //     2) เลิกผสม 2 ค่าไว้ในกล่อง code block เดียวกัน — แยกกลับเป็นกล่องของใครของมัน (คนละ
 //        code block กัน) เหมือนตอนแรกๆ แค่ยังจัดป้ายกำกับเป็นคู่ๆ บนบรรทัดเดียวกันไว้เหมือนเดิม
 //        (ดู buildReportContent() ด้านล่าง) — หมายเหตุ: Discord "ข้อความธรรมดา" ไม่มีทาง
 //        วางกล่อง 2 กล่องเรียงข้างกันจริงๆ ได้ (ทำได้แค่ Embed field เท่านั้น ซึ่งจะดึงแถบสี
 //        กลับมาด้วย) กล่องแต่ละคู่เลยเรียงต่อกันแนวตั้งแทน ไม่ใช่ซ้าย-ขวาจริงๆ
-//     3) น้องหนาวบอกว่าอนาคตจะเอารูปภาพมาแปะเพิ่มด้านล่างการ์ดเอง — ตอนนี้ยังไม่ต้องทำอะไร
-//        (บันทึกไว้เป็นไอเดียอนาคตในเอกสารแล้ว)
+//     3) อิโมจิ custom ย่อจาก 5 ID เหลือ 2 ID — ตัวแรกใช้เป็นไอคอนหัวการ์ด (แทน 📊 หน้าชื่อโค้ด)
+//        ตัวที่สองใช้เป็นไอคอนของ "สถานะ" (ตัวเดียวใช้ทั้งเปิด/ปิด ไม่มีแยกเขียว/แดงอีกต่อไป —
+//        สถานะจริงบอกผ่านข้อความ "เปิดใช้งาน"/"ปิดใช้งาน" แทน) ส่วนอีก 3 ช่อง (ใช้ไปแล้ว/
+//        ค่าคอมต่อครั้ง/รวมรายได้) กลับไปใช้ Unicode ธรรมดาเหมือนเดิมก่อน เพราะยังไม่มี ID มาให้
 //
-//   อิโมจิ custom: ย่อจาก 5 ID เหลือ 2 ID ตามที่น้องหนาวยืนยัน — ตัวแรกใช้เป็นไอคอนหัวการ์ด
-//   (แทน 📊 หน้าชื่อโค้ด) ตัวที่สองใช้เป็นไอคอนของ "สถานะ" (ตัวเดียวใช้ทั้งเปิด/ปิด ไม่มีแยก
-//   เขียว/แดงอีกต่อไป — สถานะจริงบอกผ่านข้อความ "เปิดใช้งาน"/"ปิดใช้งาน" แทน) ส่วนอีก 3
-//   ช่อง (ใช้ไปแล้ว/ค่าคอมต่อครั้ง/รวมรายได้) กลับไปใช้ Unicode ธรรมดาเหมือนเดิมก่อน เพราะ
-//   ยังไม่มี ID มาให้ — resolveEmojiById() ยังอยู่เหมือนเดิม ค้นด้วย ID จาก client.emojis.cache
-//   หาไม่เจอ (ID ผิด/บอทยังไม่เข้าเซิร์ฟที่มีอิโมจินี้) จะ fallback เป็น Unicode สำรองอัตโนมัติ
+//   รอบ 7 (ปัจจุบัน — ของจริง): 2 เรื่อง:
+//     1) ⚠️ แก้ชื่อแบรนด์ที่ผิดพลาด — โค้ดหลายรอบก่อนหน้าเขียนบรรทัดท้ายการ์ดว่า "Aitao Bot"
+//        (เข้าใจผิดเอาชื่อโปรเจกต์ Claude มาใช้) ทั้งที่บอทตัวนี้ชื่อจริงคือ **Milo Bot** —
+//        แก้กลับให้ถูกแล้วครับ (ดูบรรทัดสุดท้ายของ buildReportContent())
+//     2) แนบรูปแบนเนอร์โปรโมทพาร์ทเนอร์ (ที่น้องหนาวออกแบบเอง — สไตล์โปสเตอร์ ตัวหนังสือทับ
+//        ตัวละคร) ไปกับการ์ดรายงานทุกใบเสมอ อยู่ใต้ข้อความ เหนือแถบปุ่ม/dropdown (ลำดับที่
+//        Discord จัดให้อัตโนมัติ: content → attachment → components ไม่ต้องเซ็ตอะไรเพิ่ม)
+//        ไฟล์อยู่ที่ assets/referral-banner.png — ดู BANNER_PATH/buildBannerAttachment()
 // ─────────────────────────────────────────────────────────────────────────
 
+const path = require('path');
 const {
   ChannelType,
   PermissionFlagsBits,
@@ -66,6 +71,7 @@ const {
   ButtonStyle,
   ModalBuilder,
   TextDisplayBuilder,
+  AttachmentBuilder,
 } = require('discord.js');
 const {
   listAllCodes,
@@ -75,6 +81,17 @@ const {
 } = require('./referralStorage');
 
 const REPORT_CHANNEL_NAME = 'referral-earnings';
+
+// 🆕 แบนเนอร์โปรโมทพาร์ทเนอร์ — รูปคงที่ (ไม่เปลี่ยนตามโค้ด) ที่น้องหนาวออกแบบเอง แนบไปกับ
+// การ์ดรายงานทุกใบเสมอ (อยู่ใต้ข้อความ เหนือแถบปุ่ม/dropdown — Discord จัดตำแหน่งให้เองอัตโนมัติ
+// ตามลำดับ content → attachment → components) วางไฟล์ไว้ที่ assets/referral-banner.png
+// (คนละไฟล์กับ assets/mascot-banner.png ที่ใช้เป็นพื้นหลัง hero ของหน้าเว็บ)
+const BANNER_PATH = path.join(__dirname, '..', 'assets', 'referral-banner.png');
+
+/** สร้าง attachment ของแบนเนอร์โปรโมท — เรียกใหม่ทุกครั้งที่ส่ง/แก้ข้อความ เพราะ AttachmentBuilder ผูกกับข้อความทีละอันเสมอ ใช้ซ้ำข้าม request ไม่ได้ */
+function buildBannerAttachment() {
+  return new AttachmentBuilder(BANNER_PATH, { name: 'milo-partner-banner.png' });
+}
 
 // ป้ายกำกับ + ตัวเลือกของ dropdown เลือกช่วงเวลา — เรียงตามลำดับที่จะโชว์ในเมนู
 const RANGE_OPTIONS = [
@@ -225,7 +242,7 @@ function buildReportContent(stats, range, client) {
     `${stats.totalCommissionThb} บาท`,
     '```',
     '',
-    '╰ ꒰ Aitao Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯',
+    '╰ ꒰ Milo Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯',
   ].join('\n');
 }
 
@@ -269,7 +286,7 @@ function buildReportComponents(code, range) {
  * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
  * @param {string} code
  * @param {'today'|'month'|'all'} range
- * @returns {{ content: string, components: import('discord.js').ActionRowBuilder[] } | null}
+ * @returns {{ content: string, components: import('discord.js').ActionRowBuilder[], files: import('discord.js').AttachmentBuilder[] } | null}
  *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว)
  */
 function buildReportPayload(client, code, range) {
@@ -289,6 +306,7 @@ function buildReportPayload(client, code, range) {
   return {
     content: buildReportContent(stats, range, client),
     components: buildReportComponents(normalizedCode, range),
+    files: [buildBannerAttachment()],
   };
 }
 
@@ -340,6 +358,7 @@ async function syncCodeReportMessage(client, code, range = 'all') {
           content: payload.content,
           embeds: [],
           attachments: [],
+          files: payload.files,
           components: payload.components,
         });
         return;
@@ -351,7 +370,11 @@ async function syncCodeReportMessage(client, code, range = 'all') {
       }
     }
 
-    const sentMessage = await channel.send({ content: payload.content, components: payload.components });
+    const sentMessage = await channel.send({
+      content: payload.content,
+      files: payload.files,
+      components: payload.components,
+    });
     saveReportMessageId(normalizedCode, sentMessage.id);
   } catch (error) {
     console.warn(`[referralReportChannel] อัปเดตห้องรายงานยอดของโค้ด ${normalizedCode} ไม่สำเร็จ:`, error);
@@ -381,7 +404,15 @@ async function handleReportRangeSelect(interaction) {
   }
 
   // เคลียร์ embeds: []/attachments: [] ไว้ด้วยเสมอ — เผื่อการ์ดนี้เคยเป็นเวอร์ชันเก่าค้างมาก่อน
-  await interaction.update({ content: payload.content, embeds: [], attachments: [], components: payload.components });
+  // แล้วแนบไฟล์แบนเนอร์กลับเข้าไปใหม่ทุกครั้ง (ไม่งั้นตอนเปลี่ยนช่วงเวลา แบนเนอร์จะหายไปเพราะ
+  // attachments: [] ล้างของเดิมออกหมดรวมถึงแบนเนอร์ที่เคยแนบไว้ด้วย)
+  await interaction.update({
+    content: payload.content,
+    embeds: [],
+    attachments: [],
+    files: payload.files,
+    components: payload.components,
+  });
 }
 
 /** เช็คว่า customId นี้เป็นปุ่ม "ข้อกำหนด" ของห้องรายงานยอดหรือไม่ (เรียกจาก index.js) */
