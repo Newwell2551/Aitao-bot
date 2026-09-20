@@ -26,7 +26,7 @@
 //      เงื่อนไขการจ่ายค่าคอมให้ผู้ขาย (ใช้ TextDisplay ใน Modal — ฟีเจอร์ใหม่ของ Discord
 //      ที่ให้ใส่ข้อความอ่านอย่างเดียวใน modal ได้โดยไม่ต้องมีช่องกรอกเลย)
 //
-// 🆕 อัปเดตล่าสุด — สลับหน้าตาการ์ดไปมาหลายรอบกว่าจะลงตัว สรุปสั้นๆ ว่าเคยลองอะไรมาบ้าง:
+// 🆕 ประวัติการปรับหน้าตาการ์ด — สลับไปมาหลายรอบกว่าจะลงตัว สรุปสั้นๆ ว่าเคยลองอะไรมาบ้าง:
 //   รอบ 1: Embed ธรรมดา (addFields 3 ช่องเล็ก + 1 ช่องใหญ่)
 //   รอบ 2 (เข้าใจผิด — เลิกใช้แล้ว): ลองวาดเป็นรูปภาพจริงด้วย canvas เพราะเข้าใจผิดว่าภาพเรฟ
 //     "MAMOMI STORE" ต้องวาดถึงจะได้กรอบกล่อง (ไฟล์ utils/drawReferralReportCard.js ที่ค้าง
@@ -38,26 +38,47 @@
 //     ของ Discord มีแถบให้เห็นเสมอไม่ว่าจะตั้งสีหรือไม่) → เลิกใช้ Embed ไปเลย เปลี่ยนเป็น
 //     "plain message content" ธรรมดา จำลองกริด 2 คอลัมน์เองด้วยการเว้นช่องว่างในตัว code
 //     block แทน (ตอนนั้นยังผสม 2 ค่าไว้ในกล่อง code block เดียวกันบรรทัดเดียว)
-//   รอบ 6: น้องหนาวขอปรับ 3 อย่าง:
-//     1) เอาบรรทัด "อัปเดตล่าสุด: <t:...:R>" ท้ายการ์ดออก (ไม่ต้องมีเวลาสัมพัทธ์ต่อแล้ว)
-//     2) เลิกผสม 2 ค่าไว้ในกล่อง code block เดียวกัน — แยกกลับเป็นกล่องของใครของมัน (คนละ
-//        code block กัน) เหมือนตอนแรกๆ แค่ยังจัดป้ายกำกับเป็นคู่ๆ บนบรรทัดเดียวกันไว้เหมือนเดิม
-//        (ดู buildReportContent() ด้านล่าง) — หมายเหตุ: Discord "ข้อความธรรมดา" ไม่มีทาง
-//        วางกล่อง 2 กล่องเรียงข้างกันจริงๆ ได้ (ทำได้แค่ Embed field เท่านั้น ซึ่งจะดึงแถบสี
-//        กลับมาด้วย) กล่องแต่ละคู่เลยเรียงต่อกันแนวตั้งแทน ไม่ใช่ซ้าย-ขวาจริงๆ
-//     3) อิโมจิ custom ย่อจาก 5 ID เหลือ 2 ID — ตัวแรกใช้เป็นไอคอนหัวการ์ด (แทน 📊 หน้าชื่อโค้ด)
-//        ตัวที่สองใช้เป็นไอคอนของ "สถานะ" (ตัวเดียวใช้ทั้งเปิด/ปิด ไม่มีแยกเขียว/แดงอีกต่อไป —
-//        สถานะจริงบอกผ่านข้อความ "เปิดใช้งาน"/"ปิดใช้งาน" แทน) ส่วนอีก 3 ช่อง (ใช้ไปแล้ว/
-//        ค่าคอมต่อครั้ง/รวมรายได้) กลับไปใช้ Unicode ธรรมดาเหมือนเดิมก่อน เพราะยังไม่มี ID มาให้
+//   รอบ 6: น้องหนาวขอปรับ 3 อย่าง: (1) เอาบรรทัด "อัปเดตล่าสุด: <t:...:R>" ท้ายการ์ดออก
+//     (2) เลิกผสม 2 ค่าไว้ในกล่อง code block เดียวกัน — แยกกลับเป็นกล่องของใครของมันคนละกล่อง
+//     (3) อิโมจิ custom ย่อจาก 5 ID เหลือ 2 ID (title + status)
+//   รอบ 7: (1) แก้ชื่อแบรนด์ที่เคยพิมพ์ผิดเป็น "Aitao Bot" กลับเป็น **Milo Bot** (2) แนบรูป
+//     แบนเนอร์โปรโมทพาร์ทเนอร์ (ที่น้องหนาวออกแบบเอง) ไปกับการ์ดทุกใบ — ตอนนั้นยังเป็น
+//     "plain message content" อยู่ เลยได้แค่ content → attachment → components เรียงกัน
+//     อัตโนมัติ ไม่มีทางจัดกล่องสถิติให้เป็น "ชุดบล็อก" สวยๆ เหมือน /builder ได้จริง
 //
-//   รอบ 7 (ปัจจุบัน — ของจริง): 2 เรื่อง:
-//     1) ⚠️ แก้ชื่อแบรนด์ที่ผิดพลาด — โค้ดหลายรอบก่อนหน้าเขียนบรรทัดท้ายการ์ดว่า "Aitao Bot"
-//        (เข้าใจผิดเอาชื่อโปรเจกต์ Claude มาใช้) ทั้งที่บอทตัวนี้ชื่อจริงคือ **Milo Bot** —
-//        แก้กลับให้ถูกแล้วครับ (ดูบรรทัดสุดท้ายของ buildReportContent())
-//     2) แนบรูปแบนเนอร์โปรโมทพาร์ทเนอร์ (ที่น้องหนาวออกแบบเอง — สไตล์โปสเตอร์ ตัวหนังสือทับ
-//        ตัวละคร) ไปกับการ์ดรายงานทุกใบเสมอ อยู่ใต้ข้อความ เหนือแถบปุ่ม/dropdown (ลำดับที่
-//        Discord จัดให้อัตโนมัติ: content → attachment → components ไม่ต้องเซ็ตอะไรเพิ่ม)
-//        ไฟล์อยู่ที่ assets/referral-banner.png — ดู BANNER_PATH/buildBannerAttachment()
+//   🆕 รอบ 8 (ปัจจุบัน) — ย้ายทั้งการ์ดมาใช้ Discord Components V2 แทน "plain message
+//   content" ทั้งหมด (ContainerBuilder/TextDisplayBuilder/SeparatorBuilder/
+//   MediaGalleryBuilder) ตามที่น้องหนาวขอ 3 อย่าง:
+//     1) "กรอบข้อความแบ่งเท่ากันให้พอดีกับรูป" — ทำได้แล้วเพราะ Container กว้างเท่า
+//        ความกว้างข้อความ Discord เสมอ (เท่ากับความกว้างรูปแบนเนอร์ด้านล่างโดยอัตโนมัติ
+//        ไม่ต้องคำนวณ padding เองแบบ padCol() เวอร์ชันก่อนหน้าอีกต่อไป — เลยตัดทิ้งไปเลย)
+//     2) "รูปอยู่เหนือข้อความ Milo คำว่ารายงานอัตโนมัติ" — ย้าย MediaGallery (แบนเนอร์) มา
+//        วางไว้ "เหนือ" TextDisplay footer แล้ว (ดู buildReportContainer() ด้านล่าง ลำดับ
+//        การเรียก .addMediaGalleryComponents() มาก่อน .addTextDisplayComponents() ของ footer)
+//     3) "ทำให้หน้าตาเหมือน builder หน่อย จัดเป็นบล้อกเป็นชุด" — ใช้ ContainerBuilder
+//        ห่อทุกอย่างไว้ก้อนเดียว (**ไม่เรียก .setAccentColor() เลย** — ยืนยันจากเอกสาร
+//        Discord แล้วว่า Container ต่างจาก Embed ตรงที่ "ไม่ตั้งสี = แถบซ้ายกลืนกับพื้นหลัง
+//        พอดี ไม่ใช่แค่จางลง" เลยได้ทั้งหน้าตาแบบบล็อกที่มีกรอบ/เส้นคั่นชัดเจน แต่ไม่มีแถบสี
+//        เลยสักนิด) คั่นแต่ละกลุ่ม (หัวการ์ด / สถิติ 4 ช่อง / แบนเนอร์ / footer) ด้วย
+//        SeparatorBuilder ให้ดูเป็น "ชุดบล็อก" เหมือนการ์ด /builder กับ /role-setup จริงๆ
+//        (ก็อป pattern มาจาก utils/buildPremiumCard.js + utils/guildJoinGreeting.js ที่มี
+//        อยู่แล้วในโปรเจกต์ ให้หน้าตาตรงกันทั้งระบบ)
+//
+//   ⚠️ ข้อจำกัดที่ต้องรู้ไว้ (คุยกับน้องหนาวแล้วในแชต): Components V2 ของ Discord **ไม่มี
+//   กริดหลายคอลัมน์จริงๆ ให้ใช้** — ทุก component เรียงจากบนลงล่างเป็นแนวตั้งเท่านั้น (มีแค่
+//   Section ที่จับคู่ข้อความกับรูป/ปุ่ม "1 อัน" ด้านข้างได้) เพราะงั้นการ์ดนี้จะไม่ได้กริด
+//   3 คอลัมน์ x 2 แถวเป๊ะๆ เหมือนภาพเรฟ "MAMOMI BOOST" แต่ได้ 4 กล่องสถิติเรียงต่อกัน
+//   แนวตั้งแทน — แต่ละกล่องยังคงกรอบ/code block ของตัวเองชัดเจน กว้างเท่ากันทุกกล่องเป๊ะๆ
+//   (ทางเดียวที่จะได้กริดจริงๆ คือกลับไปใช้ Embed field ซึ่งจะดึงแถบสีซ้ายมือกลับมาด้วย —
+//   ถ้าอยากได้กริดจริงมากกว่าไม่มีแถบสี บอกได้เลยครับ สลับกลับไปใช้ Embed ให้ได้)
+//
+//   ⚠️ เรื่องเทคนิคอีกจุด: การ์ดเก่า (ก่อนรอบ 8) เป็น "plain content" มาก่อน ไม่ใช่
+//   Components V2 — ตอน sync ครั้งแรกของแต่ละการ์ดหลังอัปเดตนี้ ฟังก์ชัน .edit() จะเท่ากับ
+//   "เพิ่มธง IS_COMPONENTS_V2 ทีหลัง" ซึ่ง Discord ไม่มีเอกสารยืนยันชัดเจนว่าทำได้เสมอ (ที่
+//   ยืนยันแน่ๆ คือ "เอาธงนี้ออกไม่ได้" หลังตั้งแล้ว แต่ "เพิ่มเข้าไปทีหลัง" ไม่ชัดเจน) — กันพลาด
+//   ด้วยการห่อ .edit() ด้วย try/catch ซ้อนอีกชั้นใน syncCodeReportMessage(): ถ้า edit()
+//   ล้มเหลว จะลบข้อความเก่าทิ้งแล้วส่งใหม่แทนอัตโนมัติ การันตีว่าได้การ์ด Components V2
+//   แท้ๆ เสมอ ไม่ค้างเป็นข้อความครึ่งๆ กลางๆ
 // ─────────────────────────────────────────────────────────────────────────
 
 const path = require('path');
@@ -72,6 +93,15 @@ const {
   ModalBuilder,
   TextDisplayBuilder,
   AttachmentBuilder,
+  // ── 🆕 Components V2 — ใช้แทน "plain message content" ทั้งหมดตั้งแต่รอบ 8 ────────
+  ContainerBuilder,        // "กล่อง" ห่อทุก component ของการ์ดไว้ด้วยกัน มีแถบสี (accent
+                            // color) ทางซ้ายให้ตั้งได้เหมือน embed แต่ "ไม่เรียกเลย" ในไฟล์นี้
+                            // เพื่อให้แถบซ้ายกลืนกับพื้นหลัง ไม่มีให้เห็นเลย ตามที่ขอ
+  SeparatorBuilder,         // เส้นคั่นจริงๆ ระหว่างกลุ่ม component (ไม่ใช่ตัวอักษรวาดเอง)
+  SeparatorSpacingSize,     // ขนาดระยะห่างของเส้นคั่น — Small (แคบ) / Large (กว้าง)
+  MediaGalleryBuilder,      // "แกลเลอรีรูปภาพ" — ใช้แสดงรูปแบนเนอร์เต็มความกว้างการ์ด
+  MediaGalleryItemBuilder,  // รูปแต่ละรูปใน MediaGallery (มีรูปเดียวคือแบนเนอร์)
+  MessageFlags,             // ใช้ธง IsComponentsV2 บอก Discord ว่าข้อความนี้เป็น Components V2
 } = require('discord.js');
 const {
   listAllCodes,
@@ -83,14 +113,20 @@ const {
 const REPORT_CHANNEL_NAME = 'referral-earnings';
 
 // 🆕 แบนเนอร์โปรโมทพาร์ทเนอร์ — รูปคงที่ (ไม่เปลี่ยนตามโค้ด) ที่น้องหนาวออกแบบเอง แนบไปกับ
-// การ์ดรายงานทุกใบเสมอ (อยู่ใต้ข้อความ เหนือแถบปุ่ม/dropdown — Discord จัดตำแหน่งให้เองอัตโนมัติ
-// ตามลำดับ content → attachment → components) วางไฟล์ไว้ที่ assets/referral-banner.png
-// (คนละไฟล์กับ assets/mascot-banner.png ที่ใช้เป็นพื้นหลัง hero ของหน้าเว็บ)
+// การ์ดรายงานทุกใบเสมอ (ตั้งแต่รอบ 8: อยู่ "เหนือ" บรรทัด footer ผ่าน MediaGallery — ดู
+// buildReportContainer() ด้านล่าง) วางไฟล์ไว้ที่ assets/referral-banner.png (คนละไฟล์กับ
+// assets/mascot-banner.png ที่ใช้เป็นพื้นหลัง hero ของหน้าเว็บ)
+//
+// เก็บชื่อไฟล์ตอนแนบ (BANNER_FILENAME) เป็นค่าคงที่แยกจาก path บนดิสก์ (BANNER_PATH) แล้ว
+// ใช้ตัวแปรเดียวกันซ้ำทั้งตอนสร้าง AttachmentBuilder และตอนอ้างอิงด้วย attachment:// ใน
+// MediaGalleryItemBuilder ด้านล่าง — กันพิมพ์ชื่อไฟล์ไม่ตรงกัน 2 จุด (ถ้าไม่ตรงกัน Discord
+// จะหารูปไม่เจอ โชว์เป็นภาพแตกทันที) — pattern เดียวกับ utils/guildJoinGreeting.js
+const BANNER_FILENAME = 'milo-partner-banner.png';
 const BANNER_PATH = path.join(__dirname, '..', 'assets', 'referral-banner.png');
 
 /** สร้าง attachment ของแบนเนอร์โปรโมท — เรียกใหม่ทุกครั้งที่ส่ง/แก้ข้อความ เพราะ AttachmentBuilder ผูกกับข้อความทีละอันเสมอ ใช้ซ้ำข้าม request ไม่ได้ */
 function buildBannerAttachment() {
-  return new AttachmentBuilder(BANNER_PATH, { name: 'milo-partner-banner.png' });
+  return new AttachmentBuilder(BANNER_PATH, { name: BANNER_FILENAME });
 }
 
 // ป้ายกำกับ + ตัวเลือกของ dropdown เลือกช่วงเวลา — เรียงตามลำดับที่จะโชว์ในเมนู
@@ -105,7 +141,7 @@ const RANGE_SELECT_PREFIX = 'referral_range_select_';
 const TERMS_BUTTON_ID = 'referral_terms_button';
 const TERMS_MODAL_ID = 'referral_terms_modal';
 
-// 🆕 ID อิโมจิ custom จากเซิร์ฟ Milo Support ที่น้องหนาวยืนยันมาชัดเจนแล้ว (2 ช่องเท่านั้น
+// ID อิโมจิ custom จากเซิร์ฟ Milo Support ที่น้องหนาวยืนยันมาชัดเจนแล้ว (2 ช่องเท่านั้น
 // ตอนนี้ — อันอื่นยังไม่ได้ส่ง ID มา ปล่อยเป็น Unicode ไปก่อน):
 //   1) title  → ไอคอนหัวการ์ด (แทน 📊 หน้าชื่อโค้ด)
 //   2) status → ไอคอนของบรรทัด "สถานะ" (ใช้ตัวเดียวกันทั้งเปิด/ปิดใช้งาน ไม่มีแยกสีอีกต่อไป)
@@ -175,40 +211,24 @@ async function getOrCreateReportChannel(guild) {
   });
 }
 
-// ความกว้างคอลัมน์ (นับเป็นตัวอักษร) ที่ใช้ตอนจัดคู่ป้ายกำกับให้อยู่บรรทัดเดียวกัน — เว้นช่อง
-// ว่างท้ายป้ายกำกับแรกให้ครบตามนี้ เพื่อให้ป้ายกำกับที่ 2 เริ่มตำแหน่งเดียวกันทุกแถว (บรรทัด
-// ป้ายกำกับอยู่นอก code block เลยอาจไม่เป๊ะเป๊ะ 100% เพราะมีอิโมจิ/สระ-วรรณยุกต์ไทยปนอยู่ซึ่ง
-// กว้างไม่เท่ากันเป๊ะในทุกฟอนต์ ถ้าเห็นจริงแล้วเยื้องนิดหน่อยบอกได้เลย ปรับเลขในนี้เพิ่ม/ลดได้ง่ายๆ)
-//
-// ⚠️ ค่าของแต่ละสถิติ (ตัวเลข/ข้อความในกล่อง code block) ไม่ได้จัดคอลัมน์คู่กันแบบนี้อีกต่อไป —
-// แยกเป็นกล่อง code block ของใครของมันคนละกล่อง (ตามที่น้องหนาวขอ "ไม่รวมกัน") เรียงต่อกัน
-// แนวตั้งใต้บรรทัดป้ายกำกับคู่นั้น ไม่ใช่วางเคียงข้างกันจริงๆ (ข้อความธรรมดาของ Discord ทำ
-// กล่องเรียงซ้าย-ขวาจริงๆ ไม่ได้ ทำได้แค่ตอนใช้ Embed field เท่านั้น ซึ่งจะดึงแถบสีกลับมาด้วย)
-const LABEL_COL_WIDTH = 30;
-
-/** เติมช่องว่างท้ายข้อความให้ครบความกว้างคอลัมน์ที่กำหนด (อย่างน้อยเว้น 2 ช่องเสมอ แม้ข้อความจะยาวเกินคอลัมน์ไปแล้ว) */
-function padCol(text, width) {
-  return text.length >= width ? `${text}  ` : text.padEnd(width, ' ');
-}
-
 /**
- * แปลงตัวเลขสถิติของโค้ด 1 อัน (ที่กรองตามช่วงเวลาที่เลือกมาแล้ว) เป็นข้อความการ์ด — ข้อความ
- * ธรรมดาล้วนๆ (ไม่ใช่ Embed) เพื่อการันตีว่าไม่มีแถบสี/กรอบการ์ดใดๆ ติดมาด้วยเลย (Embed ของ
- * Discord มีแถบสีข้างซ้ายเสมอไม่ว่าจะตั้งสีหรือไม่ก็ตาม — เอาแถบออกได้จริงแค่ทางเดียวคือเลิก
- * ใช้ Embed ไปเลย) ใช้เทคนิค "・ป้ายกำกับ" ตามด้วย code block (```ค่า```) แบบเดียวกับที่
- * น้องหนาวก็อปเรฟ "MAMOMI STORE" มาให้ดูตรงๆ — Discord render code block เป็นกล่อง
- * พื้นหลังเข้ม/ตัว monospace ให้เองอัตโนมัติ
+ * สร้างการ์ดรายงานยอดของโค้ด 1 อัน เป็น Components V2 Container ก้อนเดียว — แทนที่
+ * buildReportContent()/buildReportComponents() เวอร์ชัน "plain message content" เดิม
+ * ไปเลยทั้งคู่ (2 ฟังก์ชันนั้นรวมเป็นฟังก์ชันเดียวตรงนี้แทน เพราะ Components V2 ต้องประกอบ
+ * ทุกอย่าง — ข้อความ, รูป, ปุ่ม/dropdown — ไว้ใน Container เดียวกันตั้งแต่ต้น ไม่ได้แยก
+ * content กับ components ออกจากกันเหมือนเดิมอีกต่อไป)
  *
- * จัดป้ายกำกับเป็นคู่ๆ บนบรรทัดเดียวกัน (padCol) ให้ดูเป็น 2 คอลัมน์ — แถวบน: สถานะ | ใช้ไปแล้ว,
- * แถวล่าง: ค่าคอมต่อครั้ง | รวมรายได้ — ส่วน "ค่า" ของแต่ละอันแยกเป็นกล่อง code block ของ
- * ใครของมันคนละกล่อง ไม่ผสมกันในกล่องเดียวแบบก่อนหน้านี้ (ตามที่น้องหนาวขอ "แบ่งช่องเท่าๆกัน
- * ไม่รวมกัน") เรียงต่อกันแนวตั้งใต้บรรทัดป้ายกำกับคู่นั้น
+ * โครงสร้างจากบนลงล่าง (คั่นแต่ละกลุ่มด้วย Separator ให้ดูเป็น "ชุดบล็อก" ตามที่ขอ):
+ *   หัวการ์ด (ชื่อโค้ด + ผู้ขาย) → เส้นคั่น → สถิติ 4 กล่อง (สถานะ/ใช้ไปแล้ว/ค่าคอมต่อครั้ง/
+ *   รวมรายได้ — กล่องละ TextDisplay 1 อัน ค่าอยู่ใน code block ของตัวเอง) → เส้นคั่น →
+ *   แบนเนอร์โปรโมท (MediaGallery) → เส้นคั่นเบาๆ → footer เล็กๆ → แถวปุ่ม/dropdown
+ *
  * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number }} stats
  * @param {'today'|'month'|'all'} range
  * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
- * @returns {string}
+ * @returns {import('discord.js').ContainerBuilder}
  */
-function buildReportContent(stats, range, client) {
+function buildReportContainer(stats, range, client) {
   const rangeLabel = RANGE_LABELS[range] ?? RANGE_LABELS.all;
 
   const titleEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.title, '📊');
@@ -221,43 +241,10 @@ function buildReportContent(stats, range, client) {
   const perUseEmoji = '💸';
   const totalEmoji = '💰';
 
-  return [
-    `${titleEmoji} **${stats.code}**`,
-    `ผู้ขาย: **${stats.sellerLabel}**`,
-    '',
-    // แถวที่ 1: ป้ายกำกับ "สถานะ" กับ "ใช้ไปแล้ว" อยู่บรรทัดเดียวกัน ตามด้วยกล่องค่าของใครของมัน
-    padCol(`・${statusEmoji} สถานะ`, LABEL_COL_WIDTH) + `・${usesEmoji} ใช้ไปแล้ว (${rangeLabel})`,
-    '```',
-    statusText,
-    '```',
-    '```',
-    `${stats.totalUses} ครั้ง`,
-    '```',
-    // แถวที่ 2: ป้ายกำกับ "ค่าคอมต่อครั้ง" กับ "รวมรายได้" อยู่บรรทัดเดียวกัน ตามด้วยกล่องค่า
-    padCol(`・${perUseEmoji} ค่าคอมต่อครั้ง`, LABEL_COL_WIDTH) + `・${totalEmoji} รวมรายได้ (${rangeLabel})`,
-    '```',
-    `${COMMISSION_PER_REDEMPTION_THB} บาท`,
-    '```',
-    '```',
-    `${stats.totalCommissionThb} บาท`,
-    '```',
-    '',
-    '╰ ꒰ Milo Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯',
-  ].join('\n');
-}
-
-/**
- * สร้างแถวปุ่ม/dropdown ที่ต่อท้ายการ์ด — 2 แถว: (1) dropdown เลือกช่วงเวลา ผูก code
- * ไว้ใน customId เอง เพราะแต่ละการ์ดเป็นคนละโค้ดกัน ต้องรู้ว่ากำลังกดของการ์ดไหนอยู่
- * (2) ปุ่ม "ข้อกำหนด" — customId เดียวกันทุกการ์ด เพราะเนื้อหาข้อกำหนดเหมือนกันหมด
- * ไม่ต้องผูกกับโค้ดใดโค้ดหนึ่งเป็นพิเศษ
- * @param {string} code
- * @param {'today'|'month'|'all'} range ช่วงเวลาที่กำลังโชว์อยู่ตอนนี้ (ใช้ติ๊ก default ใน dropdown)
- * @returns {import('discord.js').ActionRowBuilder[]}
- */
-function buildReportComponents(code, range) {
+  // ── dropdown เลือกช่วงเวลา + ปุ่ม "ข้อกำหนด" — ตั้งแต่รอบ 8 ผูกเข้ามาใน Container นี้เลย
+  // ผ่าน .addActionRowComponents() ไม่ได้คืนเป็น array แยกต่างหากเหมือนเวอร์ชันก่อนแล้ว ────
   const select = new StringSelectMenuBuilder()
-    .setCustomId(`${RANGE_SELECT_PREFIX}${code}`)
+    .setCustomId(`${RANGE_SELECT_PREFIX}${stats.code}`)
     .setPlaceholder('เลือกช่วงเวลาที่จะแสดง')
     .addOptions(
       RANGE_OPTIONS.map((opt) =>
@@ -273,20 +260,78 @@ function buildReportComponents(code, range) {
     .setLabel('ข้อกำหนด')
     .setStyle(ButtonStyle.Secondary);
 
-  return [
-    new ActionRowBuilder().addComponents(select),
-    new ActionRowBuilder().addComponents(termsButton),
-  ];
+  return (
+    new ContainerBuilder()
+      // ⚠️ จงใจ "ไม่เรียก" .setAccentColor() เลยสักบรรทัด — นี่คือจุดที่ทำให้ไม่มีแถบสี
+      // ซ้ายมือเหลืออยู่เลย (ต่างจาก Embed ที่มีแถบให้เห็นเสมอไม่ว่าจะตั้งสีหรือไม่ก็ตาม —
+      // ดูคอมเมนต์รอบ 8 ที่หัวไฟล์)
+
+      // ── บล็อกที่ 1: หัวการ์ด (ชื่อโค้ด + ผู้ขาย) ──────────────────────────
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`${titleEmoji} **${stats.code}**\nผู้ขาย: **${stats.sellerLabel}**`)
+      )
+
+      .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
+
+      // ── บล็อกที่ 2: สถิติ 4 กล่อง — TextDisplay แยกกล่องของใครของมัน (ตามที่ขอ "ไม่รวมกัน")
+      // แต่ละกล่องกว้าง "เท่ากับความกว้างการ์ดเสมอ" (Container กว้างเท่าข้อความ Discord
+      // เต็มความกว้างเสมอ พอดีกับรูปแบนเนอร์ด้านล่างโดยอัตโนมัติ — ไม่ต้องคำนวณ padding เอง
+      // เหมือน padCol() เวอร์ชันก่อนหน้าอีกต่อไป) เรียงต่อกันแนวตั้งเป็น "ชุดบล็อกเดียวกัน"
+      // (Components V2 ไม่มีกริดหลายคอลัมน์จริงๆ ให้ใช้ — ดูคอมเมนต์ข้อจำกัดที่หัวไฟล์)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`・${statusEmoji} สถานะ\n\`\`\`\n${statusText}\n\`\`\``),
+        new TextDisplayBuilder().setContent(
+          `・${usesEmoji} ใช้ไปแล้ว (${rangeLabel})\n\`\`\`\n${stats.totalUses} ครั้ง\n\`\`\``
+        ),
+        new TextDisplayBuilder().setContent(
+          `・${perUseEmoji} ค่าคอมต่อครั้ง\n\`\`\`\n${COMMISSION_PER_REDEMPTION_THB} บาท\n\`\`\``
+        ),
+        new TextDisplayBuilder().setContent(
+          `・${totalEmoji} รวมรายได้ (${rangeLabel})\n\`\`\`\n${stats.totalCommissionThb} บาท\n\`\`\``
+        )
+      )
+
+      .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
+
+      // ── บล็อกที่ 3: แบนเนอร์โปรโมท — 🆕 ย้ายมาอยู่ "เหนือ" footer แล้วตามที่ขอรอบนี้
+      // (เดิมอยู่ใต้ dropdown/ปุ่มสุดท้าย เพราะตอนนั้นยังเป็น plain content ที่ Discord
+      // จัดลำดับให้เองตายตัว content → attachment → components เท่านั้น — ตอนนี้ควบคุม
+      // ตำแหน่งได้เองเป๊ะๆ ผ่านลำดับการเรียก .addXComponents() ใน Container)
+      //
+      // .setURL('attachment://...') อ้างอิงไฟล์ที่แนบมาคู่กันผ่าน key `files:` ตอนส่ง/แก้
+      // ข้อความ (ดู buildReportPayload() ด้านล่าง) — ชื่อไฟล์ต้องตรงกับ BANNER_FILENAME เป๊ะๆ
+      .addMediaGalleryComponents(
+        new MediaGalleryBuilder().addItems(
+          new MediaGalleryItemBuilder()
+            .setURL(`attachment://${BANNER_FILENAME}`)
+            .setDescription('Milo Bot partner banner')
+        )
+      )
+
+      .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+
+      // ── บล็อกที่ 4: footer เล็กๆ ("-# " = markdown "subtext" ของ Discord ตัวหนังสือเล็ก
+      // สีเทาจางๆ — Components V2 ไม่มี component "footer" ตรงๆ เหมือน embed เลยใช้แบบนี้แทน)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent('-# ╰ ꒰ Milo Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯')
+      )
+
+      // ── แถวปุ่ม/dropdown ท้ายสุด ───────────────────────────────────────────
+      .addActionRowComponents(
+        new ActionRowBuilder().addComponents(select),
+        new ActionRowBuilder().addComponents(termsButton)
+      )
+  );
 }
 
 /**
- * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้างข้อความ+components" ไว้จุดเดียว
- * ใช้ร่วมกันทั้ง syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ
- * handleReportRangeSelect() (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
+ * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้าง Container" ไว้จุดเดียว ใช้ร่วมกันทั้ง
+ * syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ handleReportRangeSelect()
+ * (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
  * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
  * @param {string} code
  * @param {'today'|'month'|'all'} range
- * @returns {{ content: string, components: import('discord.js').ActionRowBuilder[], files: import('discord.js').AttachmentBuilder[] } | null}
+ * @returns {{ container: import('discord.js').ContainerBuilder, files: import('discord.js').AttachmentBuilder[] } | null}
  *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว)
  */
 function buildReportPayload(client, code, range) {
@@ -304,8 +349,7 @@ function buildReportPayload(client, code, range) {
   };
 
   return {
-    content: buildReportContent(stats, range, client),
-    components: buildReportComponents(normalizedCode, range),
+    container: buildReportContainer(stats, range, client),
     files: [buildBannerAttachment()],
   };
 }
@@ -325,6 +369,12 @@ function buildReportPayload(client, code, range) {
  * ⚠️ ฟังก์ชันนี้ต้อง "ไม่มีทาง throw error ออกไปนอกฟังก์ชัน" เด็ดขาด (เหมือน
  * syncDiscordBotList.js) เพราะห้องรายงานเป็นแค่ "ของเสริม" ไม่ใช่ core flow การจ่ายเงิน/
  * ปลดล็อกพรีเมียม — ถ้าอัปเดตห้องนี้พลาด ต้องไม่ทำให้ webhook หลักหรือคำสั่ง /referral พังตาม
+ *
+ * 🆕 ตั้งแต่รอบ 8: การ์ดเก่า (ก่อนย้ายมา Components V2) เป็น "plain content" มาก่อน — การ
+ * .edit() ครั้งแรกของแต่ละการ์ดหลังอัปเดตนี้จึงเท่ากับ "เพิ่มธง IS_COMPONENTS_V2 ทีหลัง"
+ * ซึ่งไม่มีเอกสารยืนยันจาก Discord ว่าทำได้เสมอ — ห่อ .edit() ด้วย try/catch ซ้อนอีกชั้น
+ * ถ้าล้มเหลว จะลบข้อความเก่าทิ้งแล้วส่งใหม่แทนอัตโนมัติ (การันตีว่าได้การ์ด Components V2
+ * แท้ๆ เสมอ ไม่ค้างเป็นข้อความครึ่งๆ กลางๆ)
  *
  * @param {import('discord.js').Client} client
  * @param {string} code
@@ -350,18 +400,33 @@ async function syncCodeReportMessage(client, code, range = 'all') {
     if (codeEntry.reportMessageId) {
       try {
         const existingMessage = await channel.messages.fetch(codeEntry.reportMessageId);
-        // เคลียร์ embeds: [] + attachments: [] ด้วยเสมอตอนแก้ไขข้อความเก่า — เผื่อข้อความ
-        // เดิมของโค้ดนี้เคยผ่านเวอร์ชัน Embed หรือเวอร์ชันรูปภาพแนบมาก่อน (มีมาแล้วหลายรอบ
-        // ระหว่างที่ปรับดีไซน์ ดูคอมเมนต์หัวไฟล์) ถ้าไม่เคลียร์ ของเก่าจะค้างซ้อนอยู่เหนือ
-        // ข้อความใหม่ (Discord แก้เฉพาะ field ที่ส่งมาเท่านั้น ไม่ได้ล้างของเดิมให้อัตโนมัติ)
-        await existingMessage.edit({
-          content: payload.content,
-          embeds: [],
-          attachments: [],
-          files: payload.files,
-          components: payload.components,
-        });
-        return;
+
+        try {
+          // เคลียร์ content/embeds/attachments เก่าทิ้งด้วยเสมอ — เผื่อข้อความเดิมของโค้ดนี้
+          // เคยผ่านเวอร์ชัน plain content/Embed/รูปภาพแนบมาก่อน (มีมาแล้วหลายรอบ ดูคอมเมนต์
+          // หัวไฟล์) ถ้าไม่เคลียร์ ของเก่าจะค้างซ้อนอยู่ (Discord แก้เฉพาะ field ที่ส่งมา
+          // เท่านั้น ไม่ได้ล้างของเดิมให้อัตโนมัติ) — content: null คือวิธีเคลียร์ content
+          // เก่าทิ้งตอน edit() ของ discord.js (ไม่ใช่การ "ใส่ content" เข้าไปในข้อความ
+          // Components V2 ซึ่งทำไม่ได้ — นี่แค่บอกให้ล้างค่าเดิมออก)
+          await existingMessage.edit({
+            content: null,
+            embeds: [],
+            attachments: [],
+            components: [payload.container],
+            files: payload.files,
+            flags: MessageFlags.IsComponentsV2,
+          });
+          return;
+        } catch (editError) {
+          // แก้ไขข้อความเดิมไม่สำเร็จ — อาจเพราะเพิ่มธง Components V2 เข้าไปทีหลังให้ข้อความ
+          // ที่เคยเป็น plain content มาก่อนไม่ได้ตามที่กังวลไว้ด้านบน → ลบข้อความเก่าทิ้งแล้ว
+          // ส่งใหม่แทน (fall through ไปส่งใหม่ด้านล่างสุดของฟังก์ชัน) วิธีนี้การันตีว่าได้
+          // ข้อความ Components V2 แท้ๆ เสมอ ไม่เสี่ยงค้างเป็นข้อความครึ่งๆ กลางๆ
+          console.warn(
+            `[referralReportChannel] แก้ไขการ์ดเดิมของโค้ด ${normalizedCode} ไม่สำเร็จ (${editError.message}) — จะลบแล้วส่งใหม่แทนครับ`
+          );
+          await existingMessage.delete().catch(() => {});
+        }
       } catch (fetchError) {
         // ข้อความเดิมหาไม่เจอ (เช่นมีคนลบข้อความ/ห้องไปเอง) — ส่งใหม่แทนด้านล่าง
         console.warn(
@@ -371,9 +436,9 @@ async function syncCodeReportMessage(client, code, range = 'all') {
     }
 
     const sentMessage = await channel.send({
-      content: payload.content,
+      components: [payload.container],
       files: payload.files,
-      components: payload.components,
+      flags: MessageFlags.IsComponentsV2,
     });
     saveReportMessageId(normalizedCode, sentMessage.id);
   } catch (error) {
@@ -391,6 +456,10 @@ function isReportRangeSelect(customId) {
  * interaction.values แล้วสร้างการ์ดใหม่ "แก้ทับข้อความเดิมทันที" ผ่าน interaction.update()
  * (เร็วกว่าไป fetch ข้อความมาแก้ใหม่แบบ syncCodeReportMessage — ในนี้มี interaction.message
  * อยู่แล้วในตัว ไม่ต้องยิง API เพิ่ม)
+ *
+ * ⚠️ จุดนี้ไม่ต้องห่อ try/catch เพิ่มเรื่องธง Components V2 เหมือน syncCodeReportMessage()
+ * เพราะการ์ดที่มี dropdown ให้กดได้ ต้องผ่าน syncCodeReportMessage() มาสร้าง/แก้เป็น
+ * Components V2 แท้ๆ มาก่อนอยู่แล้วเสมอ (ไม่งั้นจะไม่มี dropdown ให้กดตั้งแต่แรก)
  * @param {import('discord.js').StringSelectMenuInteraction} interaction
  */
 async function handleReportRangeSelect(interaction) {
@@ -403,15 +472,16 @@ async function handleReportRangeSelect(interaction) {
     return;
   }
 
-  // เคลียร์ embeds: []/attachments: [] ไว้ด้วยเสมอ — เผื่อการ์ดนี้เคยเป็นเวอร์ชันเก่าค้างมาก่อน
-  // แล้วแนบไฟล์แบนเนอร์กลับเข้าไปใหม่ทุกครั้ง (ไม่งั้นตอนเปลี่ยนช่วงเวลา แบนเนอร์จะหายไปเพราะ
-  // attachments: [] ล้างของเดิมออกหมดรวมถึงแบนเนอร์ที่เคยแนบไว้ด้วย)
+  // เคลียร์ content/embeds/attachments เก่าด้วยเสมอ แล้วแนบไฟล์แบนเนอร์กลับเข้าไปใหม่ทุกครั้ง
+  // (ไม่งั้นตอนเปลี่ยนช่วงเวลา แบนเนอร์จะหายไปเพราะ attachments: [] ล้างของเดิมออกหมดรวมถึง
+  // แบนเนอร์ที่เคยแนบไว้ด้วย — ต้องส่ง files: payload.files คู่กันเสมอ)
   await interaction.update({
-    content: payload.content,
+    content: null,
     embeds: [],
     attachments: [],
+    components: [payload.container],
     files: payload.files,
-    components: payload.components,
+    flags: MessageFlags.IsComponentsV2,
   });
 }
 
