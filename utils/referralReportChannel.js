@@ -101,6 +101,8 @@ const {
   ButtonStyle,
   ModalBuilder,
   TextDisplayBuilder,
+  TextInputBuilder, // 🆕 รอบ 14: ใช้สร้างช่องกรอกเลขพร้อมเพย์ในปุ่ม "Payment" self-service
+  TextInputStyle,   // 🆕 รอบ 14: เหมือนกัน
   AttachmentBuilder,
   EmbedBuilder, // 🆕 รอบ 11: กลับมาใช้ Embed แทน Components V2 (ContainerBuilder ฯลฯ) แล้ว
 } = require('discord.js');
@@ -110,7 +112,9 @@ const {
   getUnpaidCommissionSummary,
   saveReportMessageId,
   saveSellerReportMessageId,
+  savePromptPayId, // 🆕 รอบ 14: ใช้บันทึกเลขพร้อมเพย์ตอนผู้ขายกดปุ่ม "Payment" กรอกเอง
   COMMISSION_PER_REDEMPTION_THB,
+  PROMPTPAY_ID_PATTERN, // 🆕 รอบ 14: กฎเช็ครูปแบบเลขพร้อมเพย์ — จุดเดียวกับที่ /referral setpromptpay ใช้
 } = require('./referralStorage');
 // 🆕 รอบ 13: ใช้สร้าง QR พร้อมเพย์ตอนปิดโค้ด (postPayoutQrForCode() ด้านล่าง) — ฟังก์ชัน
 // เดียวกับที่ /referral payout ใน commands/referral.js ใช้อยู่แล้ว ไม่ต้องเขียนใหม่
@@ -159,6 +163,16 @@ const RANGE_SELECT_PREFIX = 'referral_range_select_';
 const TERMS_BUTTON_ID = 'referral_terms_button';
 const TERMS_MODAL_ID = 'referral_terms_modal';
 
+// 🆕 รอบ 14: ปุ่ม "Payment" ข้างปุ่ม "Terms" — ให้ผู้ขาย "กรอกเลขพร้อมเพย์ของตัวเองได้เลย"
+// ผ่านโมดัลในห้องรายงานยอด (ทั้งเซิร์ฟควบคุมและเซิร์ฟผู้ขาย) แทนที่จะต้องให้น้องหนาวคอย
+// พิมพ์ให้ทีละคนผ่าน /referral add หรือ /referral setpromptpay — ตัดขั้นตอนกลาง (เช่น
+// Google Form + ก๊อปมาใส่บอทเอง) ออกไปเลย ลดความเสี่ยงพิมพ์ผิด/สลับคนด้วย
+//
+// ต้องผูก "โค้ด" ไว้ใน customId เหมือน dropdown ช่วงเวลาด้านบน (ใช้ prefix แบบเดียวกัน)
+// เพราะการ์ด 1 ใบ = 1 โค้ด และแต่ละโค้ดมีเลขพร้อมเพย์ของตัวเองแยกกัน
+const PAYMENT_BUTTON_PREFIX = 'referral_payment_button_';
+const PAYMENT_MODAL_PREFIX = 'referral_payment_modal_';
+
 // ID อิโมจิ custom จากเซิร์ฟ Milo Support — ครบทุกช่องแล้วตั้งแต่รอบ 9 (title/status/uses/
 // perUse/total + terms) น้องหนาวยืนยันมาชัดเจน:
 //   ชื่อโค้ด → 1548426060180492368
@@ -178,6 +192,9 @@ const CUSTOM_EMOJI_IDS = {
   perUse: '1546199675491852398',  // ค่าคอมต่อครั้ง
   total: '1546199649902133358',   // รวมรายได้
   terms: '1542210287015436379',   // ไอคอนปุ่ม "ข้อกำหนด"
+  // 🆕 รอบ 14: ไอคอนปุ่ม "Payment" — ยังไม่มี ID ที่น้องหนาวส่งมา ปล่อยว่างไว้ก่อน (undefined)
+  // resolveButtonEmoji() จะ fallback เป็น 💳 (Unicode) ให้เองอัตโนมัติจนกว่าจะส่ง ID มาเพิ่ม
+  payment: undefined,
 };
 
 /**
@@ -411,9 +428,19 @@ function buildReportActionRows(client, code, range) {
     .setEmoji(resolveButtonEmoji(client, CUSTOM_EMOJI_IDS.terms, '📜'))
     .setStyle(ButtonStyle.Secondary);
 
+  // 🆕 รอบ 14: ปุ่ม "Payment" อยู่แถวเดียวกับปุ่ม "Terms" เลย (ข้างๆ กันตามที่น้องหนาวขอ) —
+  // customId ผูกกับโค้ดนี้โดยเฉพาะ (เหมือน dropdown เลือกช่วงเวลาด้านบน) กันเข้าใจผิดว่า
+  // กดแล้วกรอกให้โค้ดไหนไม่รู้ ตัวสิทธิ์ที่ว่าใครกดได้ เช็คตอนกด (handlePaymentButton)
+  // ไม่ใช่ตอนสร้างปุ่ม เพราะปุ่มต้องโชว์เหมือนกันสำหรับทุกคนที่เห็นข้อความอยู่แล้ว
+  const paymentButton = new ButtonBuilder()
+    .setCustomId(`${PAYMENT_BUTTON_PREFIX}${code}`)
+    .setLabel('Payment')
+    .setEmoji(resolveButtonEmoji(client, CUSTOM_EMOJI_IDS.payment, '💳'))
+    .setStyle(ButtonStyle.Success);
+
   return [
     new ActionRowBuilder().addComponents(select),
-    new ActionRowBuilder().addComponents(termsButton),
+    new ActionRowBuilder().addComponents(termsButton, paymentButton),
   ];
 }
 
@@ -797,6 +824,120 @@ async function handleTermsModalSubmit(interaction) {
   await interaction.reply({ content: 'Got it.', ephemeral: true });
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// 🆕 รอบ 14 — ปุ่ม "Payment" ให้ผู้ขายกรอกเลขพร้อมเพย์ของตัวเองได้เลย (self-service)
+//
+// จุดประสงค์: ตัดขั้นตอนกลางที่น้องหนาวต้องเป็นคนพิมพ์เลขพร้อมเพย์ให้ผู้ขายทุกคนเองผ่าน
+// /referral add หรือ /referral setpromptpay (ต้องคอยถามทีละคนแล้วมาพิมพ์เอง เสี่ยงพิมพ์
+// ผิด/สลับคน + ล่าช้าเวลามีผู้ขายเยอะๆ) — ตอนนี้ผู้ขายกดปุ่มนี้ที่การ์ดรายงานยอดของตัวเอง
+// (ในห้อง #partner-earnings ของเซิร์ฟตัวเอง หรือ #referral-earnings ถ้าน้องหนาวอยากกรอก
+// แทนก็ได้) แล้วกรอกเลขพร้อมเพย์เข้าไปเองได้เลย ไม่ต้องผ่านน้องหนาวเป็นตัวกลางอีกต่อไป
+//
+// ⚠️ ขอบเขตที่ตัดสินใจแล้ว (คุยกับน้องหนาวแล้ว): แคมเปญนี้ใช้ได้เฉพาะผู้ขายที่มีเลขพร้อมเพย์
+// ไทยเท่านั้น (ไม่มีช่องสำหรับ PayPal/Wise หรือช่องทางต่างชาติอื่นๆ) — เพราะพร้อมเพย์เป็น
+// ระบบของธนาคารแห่งประเทศไทยโดยเฉพาะ ไม่มีทาง auto-generate QR ให้ช่องทางอื่นได้อยู่แล้ว
+// ผู้ขายต่างชาติยังคงต้องติดต่อน้องหนาวนอกระบบเหมือนเดิม (ดู claude/referral-campaign-
+// build-notes.md หัวข้อ "ไอเดียอนาคต" ข้อ 4 ถ้าอยากทำเพิ่มในอนาคต)
+
+/** เช็คว่า customId นี้เป็นปุ่ม "Payment" ของห้องรายงานยอดหรือไม่ (เรียกจาก index.js) */
+function isPaymentButton(customId) {
+  return typeof customId === 'string' && customId.startsWith(PAYMENT_BUTTON_PREFIX);
+}
+
+/**
+ * สร้าง Modal กรอกเลขพร้อมเพย์ — มีช่องเดียว ถ้ามีเลขเดิมอยู่แล้วจะ pre-fill ให้ (สะดวกเวลา
+ * แค่จะแก้เลขเดิม ไม่ต้องพิมพ์ใหม่ทั้งหมด)
+ * @param {string} code
+ * @param {string|null} existingPromptPayId เลขเดิมที่เคยตั้งไว้ (ถ้ามี) — เอามา pre-fill ในช่อง
+ * @returns {import('discord.js').ModalBuilder}
+ */
+function buildPaymentModal(code, existingPromptPayId) {
+  const input = new TextInputBuilder()
+    .setCustomId('promptpay_id')
+    .setLabel('Your PromptPay ID')
+    .setPlaceholder('10-digit phone number or 13-digit citizen ID')
+    .setStyle(TextInputStyle.Short)
+    .setMinLength(10)
+    .setMaxLength(13)
+    .setRequired(true);
+
+  if (existingPromptPayId) {
+    input.setValue(existingPromptPayId);
+  }
+
+  return new ModalBuilder()
+    .setCustomId(`${PAYMENT_MODAL_PREFIX}${code}`)
+    .setTitle('Set Payout PromptPay ID')
+    .addComponents(new ActionRowBuilder().addComponents(input));
+}
+
+/**
+ * รันตอนกดปุ่ม "Payment" — เช็คสิทธิ์ก่อนเปิด modal เสมอ (ห้ามใครก็ได้แก้เลขพร้อมเพย์ของ
+ * คนอื่น) อนุญาตแค่ 2 กลุ่ม: (1) บัญชีดิสคอร์ดที่ผูกไว้กับโค้ดนี้โดยตรง (sellerDiscordId)
+ * หรือ (2) คนที่มีสิทธิ์ Administrator ในเซิร์ฟที่กดปุ่มอยู่ (เผื่อน้องหนาวอยากกรอกแทนเอง)
+ * — ห้องที่ปุ่มนี้โผล่อยู่แล้วก็ถูกจำกัดสิทธิ์การมองเห็นไว้ระดับ channel อยู่แล้ว (เฉพาะผู้ขาย
+ * คนนั้น + แอดมิน) เช็คซ้ำอีกชั้นตรงนี้กันเคส sellerDiscordId ยังไม่เคยผูกไว้ตอนสร้างโค้ด
+ * @param {import('discord.js').ButtonInteraction} interaction
+ */
+async function handlePaymentButton(interaction) {
+  const code = interaction.customId.slice(PAYMENT_BUTTON_PREFIX.length);
+  const codeEntry = listAllCodes().find((c) => c.code === code);
+
+  if (!codeEntry) {
+    await interaction.reply({ content: 'This code no longer exists (it may have been removed).', ephemeral: true });
+    return;
+  }
+
+  const isLinkedSeller = Boolean(codeEntry.sellerDiscordId) && interaction.user.id === codeEntry.sellerDiscordId;
+  const isAdminHere = interaction.inGuild() && interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+
+  if (!isLinkedSeller && !isAdminHere) {
+    await interaction.reply({
+      content: 'This code isn\'t linked to your Discord account, so you can\'t set its payout info here — ask the bot owner to link your account first (with `/referral setguild` or by re-adding the code with your account attached).',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.showModal(buildPaymentModal(code, codeEntry.promptpayId));
+}
+
+/** เช็คว่า customId นี้เป็น modal กรอกเลขพร้อมเพย์หรือไม่ (เรียกจาก index.js ตอน submit) */
+function isPaymentModalSubmit(customId) {
+  return typeof customId === 'string' && customId.startsWith(PAYMENT_MODAL_PREFIX);
+}
+
+/**
+ * รันตอนกด Submit บน modal กรอกเลขพร้อมเพย์ — เช็ครูปแบบก่อนบันทึกเสมอ (กฎเดียวกับ
+ * /referral setpromptpay เป๊ะๆ เพราะ import PROMPTPAY_ID_PATTERN จากจุดเดียวกัน)
+ * @param {import('discord.js').ModalSubmitInteraction} interaction
+ */
+async function handlePaymentModalSubmit(interaction) {
+  const code = interaction.customId.slice(PAYMENT_MODAL_PREFIX.length);
+  const rawValue = interaction.fields.getTextInputValue('promptpay_id').trim();
+
+  if (!PROMPTPAY_ID_PATTERN.test(rawValue)) {
+    await interaction.reply({
+      content: `❌ Invalid PromptPay ID "${rawValue}" — only a 10-digit phone number (e.g. 0812345678) or a 13-digit citizen ID is accepted (digits only, no dashes/spaces). Click Payment again to retry.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const codeEntry = listAllCodes().find((c) => c.code === code);
+  if (!codeEntry) {
+    await interaction.reply({ content: 'This code no longer exists (it may have been removed).', ephemeral: true });
+    return;
+  }
+
+  savePromptPayId(code, rawValue);
+
+  await interaction.reply({
+    content: `✅ Payout PromptPay ID saved for code **${code}**. The owner can now use it to pay out your commission automatically.`,
+    ephemeral: true,
+  });
+}
+
 module.exports = {
   getOrCreateReportChannel,
   syncCodeReportMessage,
@@ -807,4 +948,8 @@ module.exports = {
   handleReportTermsButton,
   isTermsModalSubmit,
   handleTermsModalSubmit,
+  isPaymentButton,
+  handlePaymentButton,
+  isPaymentModalSubmit,
+  handlePaymentModalSubmit,
 };

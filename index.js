@@ -8,10 +8,13 @@ const { sendGuildJoinGreeting }          = require('./utils/guildJoinGreeting');
 const { syncDiscordBotListCommands }     = require('./utils/syncDiscordBotList');
 const { createWebhookServer }            = require('./server');
 // ระบบห้องรายงานค่าคอมมิชชั่น #referral-earnings แบบโต้ตอบได้ (dropdown เลือกช่วงเวลา + ปุ่มข้อกำหนด)
+// 🆕 [20 ก.ย. 2569 รอบ 14] เพิ่มปุ่ม "Payment" ให้ผู้ขายกรอกเลขพร้อมเพย์ของตัวเองได้เลย
 const {
   isReportRangeSelect, handleReportRangeSelect,
   isReportTermsButton, handleReportTermsButton,
   isTermsModalSubmit, handleTermsModalSubmit,
+  isPaymentButton, handlePaymentButton,
+  isPaymentModalSubmit, handlePaymentModalSubmit,
 } = require('./utils/referralReportChannel');
 
 // 1. สร้างบอท พร้อมระบุ "intents" และ "partials" ที่ต้องการ
@@ -227,6 +230,19 @@ client.on('interactionCreate', async interaction => {
         }
       }
     }
+
+    // 🆕 referral_payment_button_XXX = ปุ่ม "Payment" ที่การ์ดรายงาน — ให้ผู้ขายกดกรอก
+    // เลขพร้อมเพย์ของตัวเองได้เลย (เช็คสิทธิ์ก่อนเปิด modal อยู่ในตัว handlePaymentButton แล้ว)
+    if (isPaymentButton(interaction.customId)) {
+      try {
+        await handlePaymentButton(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเปิดช่องกรอกข้อมูลจ่ายเงิน', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
     return;
   }
 
@@ -307,6 +323,19 @@ client.on('interactionCreate', async interaction => {
         console.error(error);
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({ content: 'เกิดข้อผิดพลาด', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
+
+    // 🆕 referral_payment_modal_XXX = modal กรอกเลขพร้อมเพย์จากปุ่ม "Payment" — เช็ครูปแบบ
+    // + บันทึกอยู่ในตัว handlePaymentModalSubmit แล้ว
+    if (isPaymentModalSubmit(interaction.customId)) {
+      try {
+        await handlePaymentModalSubmit(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนบันทึกข้อมูลจ่ายเงิน', flags: MessageFlags.Ephemeral });
         }
       }
     }

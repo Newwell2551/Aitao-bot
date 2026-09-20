@@ -56,6 +56,13 @@ const FILE_PATH = path.join(DATA_DIR, 'referral-codes.json');
 // แก้เลขตรงนี้ที่เดียวพอ ไม่ต้องไปไล่หาในไฟล์อื่น
 const COMMISSION_PER_REDEMPTION_THB = 5;
 
+// 🆕 [20 ก.ย. 2569] รูปแบบเลขพร้อมเพย์ที่ยอมรับ — เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน
+// 13 หลัก (ตัวเลขล้วน ห้ามมีขีด/เว้นวรรค) — ย้ายมาไว้จุดเดียวตรงนี้ (เดิมมีอยู่ซ้ำใน
+// commands/referral.js) เพื่อให้ทั้งคำสั่งลับ /referral setpromptpay และปุ่ม "Payment"
+// self-service ในห้องรายงานยอด (utils/referralReportChannel.js) ใช้กฎเดียวกันเป๊ะๆ
+// แก้ทีเดียวตรงนี้พอ ไม่ต้องไล่แก้หลายที่
+const PROMPTPAY_ID_PATTERN = /^\d{10}$|^\d{13}$/;
+
 /**
  * โครงสร้างไฟล์เริ่มต้น (ตอนยังไม่เคยมีไฟล์เลย)
  */
@@ -518,6 +525,7 @@ function saveSellerReportMessageId(code, messageId) {
 
 module.exports = {
   COMMISSION_PER_REDEMPTION_THB,
+  PROMPTPAY_ID_PATTERN,
   saveCode,
   getActiveCode,
   deactivateCode,
