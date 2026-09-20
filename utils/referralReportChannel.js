@@ -79,6 +79,19 @@
 //   ด้วยการห่อ .edit() ด้วย try/catch ซ้อนอีกชั้นใน syncCodeReportMessage(): ถ้า edit()
 //   ล้มเหลว จะลบข้อความเก่าทิ้งแล้วส่งใหม่แทนอัตโนมัติ การันตีว่าได้การ์ด Components V2
 //   แท้ๆ เสมอ ไม่ค้างเป็นข้อความครึ่งๆ กลางๆ
+//
+//   🆕 รอบ 9 (ปัจจุบัน) — น้องหนาวส่ง ID อิโมจิที่เหลือมาครบ + ปรับ 2 อย่าง:
+//     1) อิโมจิ custom ครบทุกช่องแล้ว (title/status/uses/perUse/total + terms ใหม่) — ดู
+//        CUSTOM_EMOJI_IDS ด้านล่าง (มีหมายเหตุเรื่องสมมติฐานการจับคู่ 1 จุดที่ควรเช็คซ้ำ)
+//     2) "เอาบล็อกให้คลุมแค่ถึง footer พอ ปุ่ม/dropdown ไว้ข้างล่างบล็อกอีกที" — Container
+//        (buildReportContainer()) ตอนนี้จบแค่บรรทัด footer เท่านั้น ไม่มีปุ่ม/dropdown ผูก
+//        อยู่ข้างในแล้ว (เดิมรอบ 8 ผูกไว้ข้างในผ่าน .addActionRowComponents() ท้ายสุด) —
+//        แยกไปสร้างที่ buildReportActionRows() ใหม่แทน แล้วส่งเป็น component อีกก้อนต่อท้าย
+//        Container ตอนส่ง/แก้ข้อความ (`components: [container, ...actionRows]`) ผลคือกรอบ/
+//        บล็อกที่เห็นครอบแค่ข้อความ+รูป ส่วนปุ่ม/dropdown ลอยอยู่ "นอกกรอบ" ด้านล่างแทน
+//     3) ปุ่ม "ข้อกำหนด" ใส่อิโมจิ custom ใหม่แล้ว (CUSTOM_EMOJI_IDS.terms) ผ่านฟังก์ชันใหม่
+//        resolveButtonEmoji() (คืนเป็น object ให้ .setEmoji() ใช้ ต่างจาก resolveEmojiById()
+//        ที่คืนเป็น string สำหรับใส่ในเนื้อข้อความ)
 // ─────────────────────────────────────────────────────────────────────────
 
 const path = require('path');
@@ -141,14 +154,25 @@ const RANGE_SELECT_PREFIX = 'referral_range_select_';
 const TERMS_BUTTON_ID = 'referral_terms_button';
 const TERMS_MODAL_ID = 'referral_terms_modal';
 
-// ID อิโมจิ custom จากเซิร์ฟ Milo Support ที่น้องหนาวยืนยันมาชัดเจนแล้ว (2 ช่องเท่านั้น
-// ตอนนี้ — อันอื่นยังไม่ได้ส่ง ID มา ปล่อยเป็น Unicode ไปก่อน):
-//   1) title  → ไอคอนหัวการ์ด (แทน 📊 หน้าชื่อโค้ด)
-//   2) status → ไอคอนของบรรทัด "สถานะ" (ใช้ตัวเดียวกันทั้งเปิด/ปิดใช้งาน ไม่มีแยกสีอีกต่อไป)
-// ⚠️ ถ้าจับคู่ผิดช่อง บอกมาได้เลยครับ สลับแค่ค่าในอ็อบเจกต์นี้จบ ไม่ต้องแก้ตรรกะที่ไหนอีก
+// 🆕 รอบ 9: น้องหนาวส่ง ID ครบทุกช่องแล้ว (6 ช่อง — 4 ค่าสถิติ แบ่งฝั่งละ 2 ตามที่บอก
+// + title เดิม + terms ใหม่) ตามที่แจ้งมาในแชต:
+//   ชื่อโค้ด → 1548426060180492368
+//   แถวบน:   สถานะ → 1546199668793282560, [ช่องที่ 2] → 1548426051452145765
+//   แถวล่าง: ค่าคอมต่อครั้ง → 1546199675491852398, รวมเงิน → 1546199649902133358
+//
+// ⚠️ ช่องที่ 2 ของแถวบน น้องหนาวพิมพ์ป้ายกำกับว่า "ค่าคอมต่อครั้ง" ซ้ำกับช่องแรกของแถวล่าง
+// (ID คนละตัวกัน) — พี่เข้าใจว่าน่าจะพิมพ์ซ้ำโดยไม่ตั้งใจ เพราะ ID นี้ (1548426051452145765)
+// ตรงกับ ID ที่เคยส่งมาก่อนหน้านี้สำหรับ "จำนวนครั้งที่ใช้" (ดูตารางในเอกสารโปรเจกต์รอบ
+// "อิโมจิ custom กลับมาอีกครั้ง") และตำแหน่งก็ตรงกับเลย์เอาต์เดิม (แถวบน = สถานะ|ใช้ไปแล้ว,
+// แถวล่าง = ค่าคอมต่อครั้ง|รวมรายได้) พี่เลยจับคู่ให้เป็น "ใช้ไปแล้ว" ตามนี้ไปก่อนนะครับ —
+// ถ้าจับผิด บอกมาได้เลย สลับแค่ค่าในอ็อบเจกต์นี้จบ ไม่ต้องแก้ตรรกะที่ไหนอีก
 const CUSTOM_EMOJI_IDS = {
-  title: '1548426060180492368',
-  status: '1546199668793282560',
+  title: '1548426060180492368',   // ไอคอนหัวการ์ด (แทน 📊 หน้าชื่อโค้ด)
+  status: '1546199668793282560',  // สถานะ (ใช้ตัวเดียวกันทั้งเปิด/ปิดใช้งาน)
+  uses: '1548426051452145765',    // ใช้ไปแล้ว (ดูหมายเหตุด้านบน — สมมติฐานจากป้ายกำกับซ้ำ)
+  perUse: '1546199675491852398',  // ค่าคอมต่อครั้ง
+  total: '1546199649902133358',   // รวมรายได้
+  terms: '1542210287015436379',   // 🆕 ไอคอนปุ่ม "ข้อกำหนด" (ใหม่รอบนี้)
 };
 
 /**
@@ -166,6 +190,23 @@ function resolveEmojiById(client, id, fallback) {
   const emoji = client?.emojis?.cache?.get(id);
   if (!emoji) return fallback;
   return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+}
+
+/**
+ * 🆕 รอบ 9: เหมือน resolveEmojiById() แต่คืนค่าเป็น "object" แทน string — ใช้กับ
+ * `ButtonBuilder.setEmoji()` โดยเฉพาะ เพราะ setEmoji() ของ discord.js ไม่รับ format
+ * string แบบ `<:name:id>` เหมือนที่ใช้ในข้อความทั่วไป ต้องเป็น object `{ id, name,
+ * animated }` (สำหรับอิโมจิ custom) หรือ `{ name: 'อิโมจิ' }` (สำหรับ Unicode) แทน
+ * หาไม่เจอ → คืน fallback แบบ Unicode object ให้เงียบๆ ไม่ error เหมือน resolveEmojiById()
+ * @param {import('discord.js').Client} client
+ * @param {string} id
+ * @param {string} fallback อิโมจิ Unicode สำรอง
+ * @returns {{ id?: string, name: string, animated?: boolean }}
+ */
+function resolveButtonEmoji(client, id, fallback) {
+  const emoji = client?.emojis?.cache?.get(id);
+  if (!emoji) return { name: fallback };
+  return { id: emoji.id, name: emoji.name, animated: emoji.animated };
 }
 
 /**
@@ -213,15 +254,21 @@ async function getOrCreateReportChannel(guild) {
 
 /**
  * สร้างการ์ดรายงานยอดของโค้ด 1 อัน เป็น Components V2 Container ก้อนเดียว — แทนที่
- * buildReportContent()/buildReportComponents() เวอร์ชัน "plain message content" เดิม
- * ไปเลยทั้งคู่ (2 ฟังก์ชันนั้นรวมเป็นฟังก์ชันเดียวตรงนี้แทน เพราะ Components V2 ต้องประกอบ
- * ทุกอย่าง — ข้อความ, รูป, ปุ่ม/dropdown — ไว้ใน Container เดียวกันตั้งแต่ต้น ไม่ได้แยก
- * content กับ components ออกจากกันเหมือนเดิมอีกต่อไป)
+ * buildReportContent() เวอร์ชัน "plain message content" เดิมไปเลย
  *
  * โครงสร้างจากบนลงล่าง (คั่นแต่ละกลุ่มด้วย Separator ให้ดูเป็น "ชุดบล็อก" ตามที่ขอ):
  *   หัวการ์ด (ชื่อโค้ด + ผู้ขาย) → เส้นคั่น → สถิติ 4 กล่อง (สถานะ/ใช้ไปแล้ว/ค่าคอมต่อครั้ง/
  *   รวมรายได้ — กล่องละ TextDisplay 1 อัน ค่าอยู่ใน code block ของตัวเอง) → เส้นคั่น →
- *   แบนเนอร์โปรโมท (MediaGallery) → เส้นคั่นเบาๆ → footer เล็กๆ → แถวปุ่ม/dropdown
+ *   แบนเนอร์โปรโมท (MediaGallery) → เส้นคั่นเบาๆ → footer เล็กๆ (จบตรงนี้)
+ *
+ * 🆕 รอบ 9: ตามที่ขอ "เอาบล็อกให้คลุมแค่ตั้งแต่แรกจนถึงข้อความ Milo Bot รายงาน... พอ" — Container
+ * นี้**ไม่มีปุ่ม/dropdown อยู่ข้างในแล้ว** (เดิมรอบ 8 ผูก dropdown+ปุ่มไว้ข้างในผ่าน
+ * .addActionRowComponents() ท้ายสุด) ตอนนี้ Container จบแค่บรรทัด footer เท่านั้น —
+ * dropdown/ปุ่มแยกไปสร้างที่ buildReportActionRows() ด้านล่างแทน แล้วเอามาต่อเป็น component
+ * แยกอีกก้อนหนึ่ง "นอก" Container ตอนประกอบ payload (ดู buildReportPayload()) — Discord
+ * รองรับให้ข้อความเดียวมี component หลายก้อนเรียงกันได้ (Container 1 ก้อน + ActionRow
+ * อีกกี่ก้อนก็ได้) ผลคือกรอบ/บล็อกที่เห็นจะครอบแค่ส่วนข้อความ+รูป ส่วนปุ่ม/dropdown จะอยู่
+ * "นอกกรอบ" ด้านล่างแทน ตามที่ขอเป๊ะๆ
  *
  * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number }} stats
  * @param {'today'|'month'|'all'} range
@@ -236,29 +283,10 @@ function buildReportContainer(stats, range, client) {
   // ความต่างเปิด/ปิดสื่อผ่านข้อความ "เปิดใช้งาน"/"ปิดใช้งาน" แทน ไม่ใช่สีไอคอนอีกต่อไป
   const statusEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.status, stats.active ? '🟢' : '🔴');
   const statusText = stats.active ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
-  // อีก 3 ช่องนี้ยังไม่มี ID ส่งมา เลยใช้ Unicode ธรรมดาไปก่อน
-  const usesEmoji = '🔁';
-  const perUseEmoji = '💸';
-  const totalEmoji = '💰';
-
-  // ── dropdown เลือกช่วงเวลา + ปุ่ม "ข้อกำหนด" — ตั้งแต่รอบ 8 ผูกเข้ามาใน Container นี้เลย
-  // ผ่าน .addActionRowComponents() ไม่ได้คืนเป็น array แยกต่างหากเหมือนเวอร์ชันก่อนแล้ว ────
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`${RANGE_SELECT_PREFIX}${stats.code}`)
-    .setPlaceholder('เลือกช่วงเวลาที่จะแสดง')
-    .addOptions(
-      RANGE_OPTIONS.map((opt) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(opt.label)
-          .setValue(opt.value)
-          .setDefault(opt.value === range)
-      )
-    );
-
-  const termsButton = new ButtonBuilder()
-    .setCustomId(TERMS_BUTTON_ID)
-    .setLabel('ข้อกำหนด')
-    .setStyle(ButtonStyle.Secondary);
+  // 🆕 รอบ 9: อีก 3 ช่องนี้ได้ ID มาครบแล้ว เปลี่ยนจาก Unicode มาใช้อิโมจิ custom เหมือนกันหมด
+  const usesEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.uses, '🔁');
+  const perUseEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.perUse, '💸');
+  const totalEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.total, '💰');
 
   return (
     new ContainerBuilder()
@@ -293,11 +321,7 @@ function buildReportContainer(stats, range, client) {
 
       .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
 
-      // ── บล็อกที่ 3: แบนเนอร์โปรโมท — 🆕 ย้ายมาอยู่ "เหนือ" footer แล้วตามที่ขอรอบนี้
-      // (เดิมอยู่ใต้ dropdown/ปุ่มสุดท้าย เพราะตอนนั้นยังเป็น plain content ที่ Discord
-      // จัดลำดับให้เองตายตัว content → attachment → components เท่านั้น — ตอนนี้ควบคุม
-      // ตำแหน่งได้เองเป๊ะๆ ผ่านลำดับการเรียก .addXComponents() ใน Container)
-      //
+      // ── บล็อกที่ 3: แบนเนอร์โปรโมท — ย้ายมาอยู่ "เหนือ" footer ตั้งแต่รอบ 8
       // .setURL('attachment://...') อ้างอิงไฟล์ที่แนบมาคู่กันผ่าน key `files:` ตอนส่ง/แก้
       // ข้อความ (ดู buildReportPayload() ด้านล่าง) — ชื่อไฟล์ต้องตรงกับ BANNER_FILENAME เป๊ะๆ
       .addMediaGalleryComponents(
@@ -310,28 +334,68 @@ function buildReportContainer(stats, range, client) {
 
       .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
 
-      // ── บล็อกที่ 4: footer เล็กๆ ("-# " = markdown "subtext" ของ Discord ตัวหนังสือเล็ก
-      // สีเทาจางๆ — Components V2 ไม่มี component "footer" ตรงๆ เหมือน embed เลยใช้แบบนี้แทน)
+      // ── บล็อกที่ 4 (สุดท้ายของ Container นี้): footer เล็กๆ ("-# " = markdown "subtext"
+      // ของ Discord ตัวหนังสือเล็กสีเทาจางๆ) — 🆕 รอบ 9: Container จบตรงนี้เลย ไม่มีปุ่ม/
+      // dropdown ต่อท้ายในนี้อีกต่อไป (ย้ายออกไปอยู่นอกกรอบแล้ว ดู buildReportActionRows())
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent('-# ╰ ꒰ Milo Bot · ระบบรายงานค่าคอมมิชชั่นอัตโนมัติ ꒱ ╯')
-      )
-
-      // ── แถวปุ่ม/dropdown ท้ายสุด ───────────────────────────────────────────
-      .addActionRowComponents(
-        new ActionRowBuilder().addComponents(select),
-        new ActionRowBuilder().addComponents(termsButton)
       )
   );
 }
 
 /**
- * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้าง Container" ไว้จุดเดียว ใช้ร่วมกันทั้ง
- * syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ handleReportRangeSelect()
- * (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
+ * 🆕 รอบ 9: สร้างแถว dropdown เลือกช่วงเวลา + ปุ่ม "ข้อกำหนด" แยกออกมาจาก
+ * buildReportContainer() แล้ว (เดิมรอบ 8 ผูกไว้ข้างใน Container เลย) — ตามที่ขอ "เอาบล็อก
+ * ให้คลุมแค่ถึง footer พอ ปุ่ม/dropdown ไว้ข้างล่างบล็อกอีกที" คืนเป็น array ของ
+ * ActionRowBuilder 2 แถว เอาไปต่อท้าย [container] ตอนส่ง/แก้ข้อความ (ดู buildReportPayload())
+ *
+ * ปุ่ม "ข้อกำหนด" ใส่อิโมจิ custom ใหม่ (CUSTOM_EMOJI_IDS.terms) ผ่าน resolveButtonEmoji()
+ * แทน resolveEmojiById() ธรรมดา เพราะ .setEmoji() ของปุ่มต้องการ object ไม่ใช่ string
+ * (ดูคอมเมนต์ resolveButtonEmoji() ด้านบน)
+ * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom ของปุ่มข้อกำหนด
+ * @param {string} code
+ * @param {'today'|'month'|'all'} range ช่วงเวลาที่กำลังโชว์อยู่ตอนนี้ (ใช้ติ๊ก default ใน dropdown)
+ * @returns {import('discord.js').ActionRowBuilder[]}
+ */
+function buildReportActionRows(client, code, range) {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`${RANGE_SELECT_PREFIX}${code}`)
+    .setPlaceholder('เลือกช่วงเวลาที่จะแสดง')
+    .addOptions(
+      RANGE_OPTIONS.map((opt) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(opt.label)
+          .setValue(opt.value)
+          .setDefault(opt.value === range)
+      )
+    );
+
+  const termsButton = new ButtonBuilder()
+    .setCustomId(TERMS_BUTTON_ID)
+    .setLabel('ข้อกำหนด')
+    .setEmoji(resolveButtonEmoji(client, CUSTOM_EMOJI_IDS.terms, '📜'))
+    .setStyle(ButtonStyle.Secondary);
+
+  return [
+    new ActionRowBuilder().addComponents(select),
+    new ActionRowBuilder().addComponents(termsButton),
+  ];
+}
+
+/**
+ * รวมขั้นตอน "หาโค้ด → คำนวณสถิติตามช่วงเวลา → สร้าง Container + แถวปุ่ม/dropdown" ไว้จุดเดียว
+ * ใช้ร่วมกันทั้ง syncCodeReportMessage() (เรียกตอนมีเหตุการณ์ใหม่ๆ) และ
+ * handleReportRangeSelect() (เรียกตอนมีคนกด dropdown เปลี่ยนช่วงเวลา) กันเขียนซ้ำ
+ *
+ * 🆕 รอบ 9: คืนค่าเพิ่มอีก field คือ `actionRows` แยกจาก `container` แล้ว (เดิมรอบ 8
+ * ปุ่ม/dropdown ถูกผูกไว้ข้างใน container เลย) ตอนใช้งานต้องส่ง
+ * `components: [payload.container, ...payload.actionRows]` เสมอ (ดูตัวอย่างใน
+ * syncCodeReportMessage()/handleReportRangeSelect() ด้านล่าง) — ลืมกระจาย actionRows
+ * ต่อท้ายจะทำให้การ์ดไม่มีปุ่ม/dropdown ให้กดเลย
  * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
  * @param {string} code
  * @param {'today'|'month'|'all'} range
- * @returns {{ container: import('discord.js').ContainerBuilder, files: import('discord.js').AttachmentBuilder[] } | null}
+ * @returns {{ container: import('discord.js').ContainerBuilder, actionRows: import('discord.js').ActionRowBuilder[], files: import('discord.js').AttachmentBuilder[] } | null}
  *   null ถ้าไม่เจอโค้ดนี้เลย (เช่นถูกลบไปแล้ว)
  */
 function buildReportPayload(client, code, range) {
@@ -350,6 +414,7 @@ function buildReportPayload(client, code, range) {
 
   return {
     container: buildReportContainer(stats, range, client),
+    actionRows: buildReportActionRows(client, normalizedCode, range),
     files: [buildBannerAttachment()],
   };
 }
@@ -412,7 +477,9 @@ async function syncCodeReportMessage(client, code, range = 'all') {
             content: null,
             embeds: [],
             attachments: [],
-            components: [payload.container],
+            // 🆕 รอบ 9: components ตอนนี้เป็น 2 ก้อนเรียงกัน — [container, ...actionRows]
+            // (container ครอบแค่ข้อความ+รูปถึง footer, actionRows คือปุ่ม/dropdown "นอกกรอบ")
+            components: [payload.container, ...payload.actionRows],
             files: payload.files,
             flags: MessageFlags.IsComponentsV2,
           });
@@ -436,7 +503,7 @@ async function syncCodeReportMessage(client, code, range = 'all') {
     }
 
     const sentMessage = await channel.send({
-      components: [payload.container],
+      components: [payload.container, ...payload.actionRows],
       files: payload.files,
       flags: MessageFlags.IsComponentsV2,
     });
@@ -479,7 +546,7 @@ async function handleReportRangeSelect(interaction) {
     content: null,
     embeds: [],
     attachments: [],
-    components: [payload.container],
+    components: [payload.container, ...payload.actionRows],
     files: payload.files,
     flags: MessageFlags.IsComponentsV2,
   });
