@@ -910,6 +910,20 @@ module.exports = {
     // แลกกับเห็นภาพเคลื่อนไหวจริง
     if (id === WGS.PREVIEW) {
       await interaction.deferUpdate();
+
+      // 🆕 [21 ก.ย. 2569] เหมือนที่แก้ใน welcome-setup.js จุดเดียวกัน — ขึ้นข้อความ
+      // "⏳ กำลังสร้าง..." ทันทีก่อน กันดูเหมือนปุ่มไม่ติดตอนรอ genPreview() (โดยเฉพาะ
+      // background เป็น GIF เคลื่อนไหว) แล้วค่อย .edit() ข้อความเดิมให้กลายเป็นรูปจริง
+      let loadingMsg = null;
+      try {
+        loadingMsg = await interaction.followUp({
+          content: t('goodbye_setup.preview.loading'),
+          flags:   MessageFlags.Ephemeral,
+        });
+      } catch (e) {
+        console.error('[wgs preview loading]', e.message);
+      }
+
       try {
         const preview    = await genPreview(interaction, config, { fullGif: true });
         const fname      = `wgs_preview.${preview.ext}`;
@@ -921,22 +935,29 @@ module.exports = {
         const farewellTemplate = config.farewellText || DEFAULT_CONFIG.farewellText;
         const farewellPreview  = resolveFarewellPlaceholders(farewellTemplate, interaction.member);
 
-        await interaction.followUp({
+        const resultPayload = {
           // ไม่มี header ครอบ — Discord โชว์ "Only you can see this" ให้อัตโนมัติทุก ephemeral อยู่แล้ว
           // เหลือแค่ farewellPreview ตรงๆ = เหมือนของจริงที่ handleMemberRemove() ส่งเป๊ะ
           content: farewellPreview,
           files:   [attachment],
-          flags:   MessageFlags.Ephemeral,
           // 🚨 กัน mention ทุกชนิด — preview นี้ไม่ควร ping ใครเลย (ไม่มี {user} ให้ resolve
           // อยู่แล้ว แต่กันไว้เผื่อ user พิมพ์ mention คนอื่นเองในข้อความ)
           allowedMentions: { parse: [], users: [] },
-        });
+        };
+
+        if (loadingMsg) {
+          await loadingMsg.edit(resultPayload);
+        } else {
+          await interaction.followUp({ ...resultPayload, flags: MessageFlags.Ephemeral });
+        }
       } catch (e) {
         console.error('[wgs preview error]', e);
-        await interaction.followUp({
-          content: t('goodbye_setup.preview.error', { error: e.message }),
-          flags:   MessageFlags.Ephemeral,
-        }).catch(() => {});
+        const errorPayload = { content: t('goodbye_setup.preview.error', { error: e.message }) };
+        if (loadingMsg) {
+          await loadingMsg.edit(errorPayload).catch(() => {});
+        } else {
+          await interaction.followUp({ ...errorPayload, flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
       }
       return;
     }

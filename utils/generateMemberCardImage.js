@@ -47,8 +47,21 @@ async function generateMemberCardStatic(avatarImg, config) {
   }
   const canvas = createCanvas(canvasW, canvasH);
   const ctx    = canvas.getContext('2d');
-  if (bgImage) { ctx.drawImage(bgImage, 0, 0, canvasW, canvasH); }
-  else          { drawFallbackBg(ctx, canvasW, canvasH); }
+  if (bgImage) {
+    // 🐛→✅ [21 ก.ย. 2569] บั๊กที่น้องหนาวเจอ: การ์ดดูซีด/มีพื้นดำที่ไม่ควรมี — เช็คแล้ว
+    // พบว่ารูปพื้นหลังที่น้องหนาวใช้ (นกขาว + ดาวกระจาย) เป็นรูปที่ "ตัดพื้นหลังออกแล้ว"
+    // (โปร่งใสรอบๆ ลวดลาย ไม่ใช่พื้นขาวจริงๆ) แต่พื้นที่ของ canvas ที่ยังไม่ได้วาดอะไรเลย
+    // ค่าเริ่มต้นคือ "ดำโปร่งใส" (rgba(0,0,0,0)) ไม่ใช่ขาว — ยืนยันด้วยการทดสอบจริงในแซนด์
+    // บ็อกซ์แล้วว่าพอส่งออกเป็น GIF (ไม่รองรับความโปร่งใสแบบเต็ม เหมือน PNG) ส่วนที่โปร่งใส
+    // จะถูกเข้ารหัสเป็น "ดำทึบ" ไปเลยแทนที่จะเป็นโปร่งใสอย่างที่ตั้งใจ — แก้โดยเติมพื้นขาวรองไว้
+    // ก่อนเสมอ ก่อนวาดรูปพื้นหลังทับ (ถ้ารูปพื้นหลังทึบเต็มภาพอยู่แล้วจะไม่เห็นผลอะไรเปลี่ยนเลย
+    // เพราะถูกทับมิดหมด แต่ถ้ามีส่วนโปร่งใส จะได้เห็นเป็นพื้นขาวแทนพื้นดำ)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
+  } else {
+    drawFallbackBg(ctx, canvasW, canvasH);
+  }
   drawOverlay(ctx, config.overlayOpacity, canvasW, canvasH);
   if (config.avatarEnabled && avatarImg) drawAvatar(ctx, avatarImg, config, canvasW, canvasH);
   // ⚠️ drawAllTextBlocks ตอนนี้เป็น async แล้ว (ต้องโหลดรูปอิโมจิก่อนวาด ถ้ามี)

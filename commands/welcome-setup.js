@@ -936,6 +936,25 @@ module.exports = {
     // genPreview() จะ fallback เป็น PNG ให้เองอัตโนมัติ ไม่ error อะไรทั้งนั้น)
     if (id === WS.PREVIEW) {
       await interaction.deferUpdate();
+
+      // 🆕 [21 ก.ย. 2569] ตามที่น้องหนาวขอ — ตอนก่อน กด Preview แล้วเงียบไปเฉยๆ
+      // ระหว่างรอ (โดยเฉพาะถ้า background เป็น GIF เคลื่อนไหว ต้องรอ worker thread
+      // เข้ารหัส GIF ใหม่ซึ่งกินเวลาหลายวินาที) ทำให้ดูเหมือนปุ่มไม่ติด คนเลยกดซ้ำๆ
+      // แก้โดยส่งข้อความ "⏳ กำลังสร้าง..." ออกไปก่อนทันที (เห็นผลทันทีที่กด ไม่เงียบ)
+      // แล้วพอรูปจริงเสร็จ ค่อย "แก้ข้อความเดิมอันนั้น" ให้กลายเป็นรูป — ไม่ต้องส่งข้อความ
+      // ใหม่ซ้อนกัน 2 อัน (ใช้ .edit() ของ Message ที่ followUp() คืนกลับมาตรงๆ)
+      let loadingMsg = null;
+      try {
+        loadingMsg = await interaction.followUp({
+          content: t('welcome_setup.preview.loading'),
+          flags:   MessageFlags.Ephemeral,
+        });
+      } catch (e) {
+        // ส่งข้อความ loading ไม่สำเร็จ (เคสหายากมาก) → ปล่อยผ่าน ไปต่อแบบเดิม
+        // (ไม่มี loading message ให้เห็น แต่ผลลัพธ์สุดท้ายจะส่งเป็นข้อความใหม่แทน)
+        console.error('[ws preview loading]', e.message);
+      }
+
       try {
         const preview    = await genPreview(interaction, config, { fullGif: true });
         const fname      = `ws_preview.${preview.ext}`;
@@ -947,25 +966,32 @@ module.exports = {
         const greetingTemplate = config.greetingText || DEFAULT_CONFIG.greetingText;
         const greetingPreview  = resolveGreetingPlaceholders(greetingTemplate, interaction.member);
 
-        await interaction.followUp({
+        const resultPayload = {
           // เอา header "👀 ตัวอย่าง (เฉพาะคุณเห็นนะครับ) — ..." ออกแล้ว
           // Discord โชว์ "Only you can see this" ให้อัตโนมัติทุก ephemeral อยู่แล้ว
           // เหลือแค่ greetingPreview ตรงๆ = เหมือนของจริงที่ handleMemberAdd() ส่งเป๊ะ
           content: greetingPreview,
           files:   [attachment],
-          flags:   MessageFlags.Ephemeral,
           // 🚨 กัน self-ping: {user} ถูก resolve เป็น <@interactionUserId> ซึ่งคือแอดมินเอง
           // ถ้าไม่กันไว้ Discord จะยิง notification ping ตัวเองทุกครั้งที่กดดูตัวอย่าง
           // ต่างจาก handleMemberAdd() ที่อนุญาต ping สมาชิกใหม่ได้จริง 1 คน
           // แต่ preview นี้ไม่ควร ping ใครเลย — ป้องกันด้วย allowedMentions ว่างเปล่า
           allowedMentions: { parse: [], users: [] },
-        });
+        };
+
+        if (loadingMsg) {
+          await loadingMsg.edit(resultPayload);
+        } else {
+          await interaction.followUp({ ...resultPayload, flags: MessageFlags.Ephemeral });
+        }
       } catch (e) {
         console.error('[ws preview error]', e);
-        await interaction.followUp({
-          content: t('welcome_setup.preview.error', { error: e.message }),
-          flags:   MessageFlags.Ephemeral,
-        }).catch(() => {});
+        const errorPayload = { content: t('welcome_setup.preview.error', { error: e.message }) };
+        if (loadingMsg) {
+          await loadingMsg.edit(errorPayload).catch(() => {});
+        } else {
+          await interaction.followUp({ ...errorPayload, flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
       }
       return;
     }

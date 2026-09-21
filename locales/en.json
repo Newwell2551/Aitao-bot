@@ -702,6 +702,7 @@
       "txb_size_label": "Font Size (% of height, 4-25)"
     },
     "preview": {
+      "loading": "⏳ Generating your preview... this may take a few seconds if the background is an animated GIF.",
       "error": "❌ Couldn't create preview: {error}"
     },
     "block_not_found": "⚠️ This block no longer exists",
@@ -834,6 +835,7 @@
       "txb_size_label": "Font Size (% of height, 4-25)"
     },
     "preview": {
+      "loading": "⏳ Generating your preview... this may take a few seconds if the background is an animated GIF.",
       "error": "❌ Couldn't create preview: {error}"
     },
     "block_not_found": "⚠️ This block no longer exists",

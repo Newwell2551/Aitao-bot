@@ -128,6 +128,16 @@ async function generateWelcomeGif(config) {
   );
 
   // ── ขั้นที่ 2: extract full frames ด้วย sharp พร้อม resize + frame step
+  //
+  // 🔍 [21 ก.ย. 2569] เคยลองสงสัยว่าตรงนี้ต้องเติม animated: true คู่กับ page: i ไหม
+  // (กลัวว่า sharp จะไม่ resolve frame disposal ของ GIF แบบ "diff frame" ให้ครบ) —
+  // ทดสอบจริงในแซนด์บ็อกซ์ด้วย GIF ตัวอย่างที่จงใจทำให้เป็น diff-frame (เฟรมหลังๆ เก็บ
+  // แค่พื้นที่เล็กๆ ที่เปลี่ยน ไม่ใช่ทั้งภาพ) แล้วเทียบกับต้นฉบับที่ประกอบถูกต้องแน่นอน
+  // (ผ่าน Pillow) พบว่า `sharp(rawBuffer, { page: i })` เดิม (ไม่มี animated: true)
+  // **ประกอบเฟรมถูกต้องสมบูรณ์อยู่แล้ว** (พิกเซลตรงกัน 100% กับต้นฉบับ) — ส่วนการเติม
+  // `animated: true` เข้าไปด้วยกลับทำให้พังกว่าเดิม เพราะ sharp ตีความเป็น "อ่านทุกเฟรม
+  // ตั้งแต่ page i ไปจนจบ" (เทียบเท่า pages: -1) ไม่ใช่ "เฟรมเดียวที่ i" เลย (ทดสอบแล้ว
+  // meta.height ออกมาเป็นหลายเฟรมซ้อนกันจริงๆ) เลย **ไม่แก้ตรงนี้** ปล่อยไว้แบบเดิม
   const framePngs = [];
   for (let i = 0; i < pages; i += GIF_FRAME_STEP) {
     const png = await sharp(rawBuffer, { page: i, limitInputPixels: SHARP_PIXEL_LIMIT })
@@ -164,6 +174,18 @@ async function generateWelcomeGif(config) {
     const canvas  = createCanvas(canvasW, canvasH);
     const ctx     = canvas.getContext('2d');
 
+    // 🐛→✅ [21 ก.ย. 2569] บั๊กจริงที่เจอ (เทียบภาพ Preview vs รูปนิ่งแล้วเห็นชัดว่า
+    // พื้นหลังกลายเป็นสีดำทั้งที่ต้นฉบับเป็นสีขาว) — GIF ที่น้องหนาวใช้ (นกขาว+ดาว) ตัด
+    // พื้นหลังออกแล้ว มีส่วนโปร่งใสเยอะ พอ canvas วาดทับแค่ส่วนที่มีลวดลาย ส่วนที่เหลือ
+    // (โปร่งใส) จะมีค่าสีเริ่มต้นเป็น "ดำโปร่งใส" (rgba(0,0,0,0)) — ปัญหาคือ gif-encoder-2
+    // ที่ใช้เข้ารหัส GIF ตอนท้าย **ไม่รองรับความโปร่งใสแบบเต็มเหมือน PNG** (ไม่ได้เรียก
+    // .setTransparent() ตั้งค่าไว้เลย) เลยเอาแค่ค่าสี RGB ไปเข้ารหัสตรงๆ โดยไม่สนใจ alpha
+    // — ผลคือทุกจุดที่ "โปร่งใส" ในต้นฉบับ กลายเป็น "ดำทึบ" ในไฟล์ GIF สุดท้ายแทน (ทดสอบ
+    // ยืนยันจริงในแซนด์บ็อกซ์แล้ว: RGBA (0,0,0,0) ก่อนเข้ารหัส → (0,0,0,255) หลังเข้ารหัส)
+    // แก้โดยเติมพื้นขาวรองไว้ก่อนเสมอ ก่อนวาดเฟรมพื้นหลังทับ (ถ้าเฟรมทึบเต็มอยู่แล้วจะไม่มีผล
+    // อะไรเปลี่ยนเลย เพราะโดนทับมิดหมด แต่ถ้ามีส่วนโปร่งใสจะได้เห็นเป็นพื้นขาวแทนพื้นดำ)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasW, canvasH);
     ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
     drawOverlay(ctx, config.overlayOpacity, canvasW, canvasH);
     if (config.avatarEnabled && avatarImg) drawAvatar(ctx, avatarImg, config, canvasW, canvasH);
