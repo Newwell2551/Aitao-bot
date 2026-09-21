@@ -1407,12 +1407,24 @@ module.exports = {
     }
 
     // ─── Modal: ความทึบ overlay
+    // 🐛→✅ [21 ก.ย. 2569] บั๊กเดียวกับฝั่ง welcome-setup.js (โค้ดก็อปกันมา) — เดิมเรียก
+    // interaction.update() ตรงๆ โดยไม่เคยสร้าง preview ใหม่เลย ทำให้รูปในพาเนลไม่เคยอัปเดต
+    // ตามค่า Opacity ที่เพิ่งตั้ง ค้างโชว์รูปเก่าจาก config.lastPreview ซ้ำเดิมทุกครั้ง — ดู
+    // คอมเมนต์อธิบายเต็มๆ ในไฟล์ commands/welcome-setup.js จุดเดียวกันนี้ แก้ด้วย pattern
+    // เดียวกับ modal พื้นหลังด้านบน: deferUpdate() ก่อน → genPreview() → editReply()
     if (interaction.customId === WGS.MODAL_OPACITY) {
+      try {
+        await interaction.deferUpdate();
+      } catch (deferErr) {
+        console.error('[wgs modal_opacity] deferUpdate ล้มเหลว — interaction อาจหมดอายุ:', deferErr.message);
+        return;
+      }
+
       const raw = interaction.fields.getTextInputValue(WGS.INPUT_OPACITY).trim();
       const val = parseInt(raw, 10);
 
       if (isNaN(val) || val < 0 || val > 100) {
-        await interaction.reply({
+        await interaction.followUp({
           content: t('goodbye_setup.opacity.invalid'),
           flags: MessageFlags.Ephemeral,
         });
@@ -1423,7 +1435,15 @@ module.exports = {
         config.overlayOpacity = val;
         persist(interaction.guildId, config);
       }
-      await interaction.update(buildMainPanelPayload(userId, interaction.guildId));
+
+      let preview = null;
+      try {
+        preview = await genPreview(interaction, config);
+      } catch (e) {
+        console.error('[wgs modal_opacity] generate preview ล้มเหลว:', e.message);
+      }
+
+      await interaction.editReply(buildMainPanelPayload(userId, interaction.guildId, preview));
       return;
     }
 

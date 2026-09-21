@@ -1436,11 +1436,28 @@ module.exports = {
 
     // ─── Modal: ความทึบ overlay
     if (interaction.customId === WS.MODAL_OPACITY) {
+      // 🐛→✅ [21 ก.ย. 2569] บั๊กที่น้องหนาวเจอ: "เลือก Opacity แล้วภาพดำไปเลย" — สาเหตุจริง
+      // คือโค้ดเดิมตรงนี้เรียก interaction.update() ทันที โดย "ไม่เคยสร้าง preview ใหม่เลย"
+      // (ต่างจาก modal พื้นหลัง/avatar/ข้อความ ที่เรียก genPreview() ทุกจุด) ผลคือไม่ว่าจะตั้ง
+      // Opacity เป็นเลขอะไรก็ตาม รูปที่โชว์ในพาเนลไม่เคยเปลี่ยนจริง — ค้างโชว์รูป preview
+      // อันเก่าจาก config.lastPreview ซ้ำเดิมทุกครั้ง (ดู buildMainPanelPayload บรรทัด 386
+      // ที่ fallback ไปใช้ lastPreview ถ้าไม่มี preview ใหม่ส่งมา) พอบังเอิญรูปที่แคชไว้ตอนนั้น
+      // มืด/ดำอยู่แล้ว (เช่นพื้นหลังที่ตั้งไว้โหลดไม่ขึ้นแล้ว fallback เป็นพื้นหลังไล่สีเข้มแทน)
+      // เลยเห็นเป็น "ดำสนิท" ทุกครั้งไม่ว่าจะลองใส่ 0 หรือ 100 ก็ตาม (เพราะจริงๆ แล้วไม่มีครั้งไหน
+      // ถูกวาดใหม่เลย) — แก้โดยเปลี่ยนมาใช้ pattern เดียวกับ modal พื้นหลังด้านบนเป๊ะๆ:
+      // deferUpdate() ก่อน → genPreview() สร้างรูปใหม่จริงด้วยค่า Opacity ล่าสุด → editReply()
+      try {
+        await interaction.deferUpdate();
+      } catch (deferErr) {
+        console.error('[ws modal_opacity] deferUpdate ล้มเหลว — interaction อาจหมดอายุ:', deferErr.message);
+        return;
+      }
+
       const raw = interaction.fields.getTextInputValue(WS.INPUT_OPACITY).trim();
       const val = parseInt(raw, 10);
 
       if (isNaN(val) || val < 0 || val > 100) {
-        await interaction.reply({
+        await interaction.followUp({
           content: t('welcome_setup.opacity.invalid'),
           flags: MessageFlags.Ephemeral,
         });
@@ -1451,7 +1468,15 @@ module.exports = {
         config.overlayOpacity = val;
         persist(interaction.guildId, config);
       }
-      await interaction.update(buildMainPanelPayload(userId, interaction.guildId));
+
+      let preview = null;
+      try {
+        preview = await genPreview(interaction, config);
+      } catch (e) {
+        console.error('[ws modal_opacity] generate preview ล้มเหลว:', e.message);
+      }
+
+      await interaction.editReply(buildMainPanelPayload(userId, interaction.guildId, preview));
       return;
     }
 
