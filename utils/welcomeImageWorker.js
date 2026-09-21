@@ -44,6 +44,21 @@ const {
 const GIF_MAX_WIDTH  = 480; // scale ลงถ้ากว้างเกินนี้ (ความสูงลดตามสัดส่วน)
 const GIF_FRAME_STEP = 3;   // เอาทุกๆ N เฟรม (step=3 เร็วกว่า step=2 ราว 35% จากการทดสอบจริง)
 
+// 🐛→✅ [21 ก.ย. 2569] บั๊กที่น้องหนาวเจอ: สมาชิกใหม่เข้าเซิร์ฟ DE♡O แล้วไม่ได้รูปต้อนรับเลย
+// (log ขึ้น "Input image exceeds pixel limit") — sharp/libvips มีลิมิตความปลอดภัยในตัว
+// (ค่าเริ่มต้นประมาณ 268 ล้านพิกเซล) กันเปิดไฟล์ภาพที่ถูกปลอมขนาดใหญ่เกินจริงมาทำให้โปรแกรม
+// เปลืองหน่วยความจำจนพัง (เรียกว่า "decompression bomb") — ปัญหาคือตอนอ่าน metadata ด้วย
+// `{ animated: true }` (บรรทัดด้านล่าง) sharp จะเอา "ความสูงของ 1 เฟรม × จำนวนเฟรมทั้งหมด"
+// มานับรวมเป็นพิกเซลทั้งก้อนเดียว ถ้า GIF พื้นหลังมีความละเอียดต่อเฟรมสูงและมีหลายเฟรม
+// (เช่น GIF ต้อนรับสวยๆ ที่วาดมาอย่างดี ไม่ได้เป็นไฟล์ประสงค์ร้ายเลย) ก็มีโอกาสชนลิมิตนี้ได้
+// จริงๆ ทำให้ sharp ปฏิเสธตั้งแต่ยังไม่ทันได้ลดขนาดตามที่ตั้งใจไว้ (GIF_MAX_WIDTH ด้านบน)
+// ด้วยซ้ำ — แก้โดยขยับลิมิตของ sharp ขึ้นเอง (ยังไม่ปิดไปเลยด้วย `false` เพราะงั้นจะเสีย
+// การป้องกันไฟล์ประสงค์ร้ายไปหมด — ตั้งเป็นตัวเลขที่ใหญ่ขึ้นพอรองรับ GIF ต้อนรับที่ใหญ่จริงๆ
+// ได้ (ราว 1,000 ล้านพิกเซล เผื่อไว้เกิน 3 เท่าของค่าเริ่มต้น) แต่ยังกันไฟล์ที่ใหญ่เกินจริง
+// แบบผิดปกติสุดขั้วอยู่ — ถ้าเจอ GIF ที่ยังชนลิมิตใหม่นี้อีก แปลว่าใหญ่ผิดปกติจริงๆ ควรเตือน
+// user ให้ลดขนาดไฟล์ลง ไม่ใช่ขยับลิมิตต่อไปเรื่อยๆ)
+const SHARP_PIXEL_LIMIT = 1_000_000_000; // ~1,000 ล้านพิกเซล (ดีฟอลต์ของ sharp ~268 ล้าน)
+
 // เวลาที่ยอมรอสูงสุดตอนดาวน์โหลดรูป/GIF พื้นหลัง ก่อนยกเลิก (กันบอทค้าง/คิว worker
 // ตันทั้งระบบ ถ้า URL พื้นหลังที่ user ใส่มาค้างไม่ตอบ) — ตั้งไว้นานกว่า checkImageUrl.js
 // (ที่ใช้แค่ 3 วิ) เพราะตรงนี้โหลดไฟล์ GIF เต็มๆ ทั้งไฟล์ (อาจหนักหลาย MB) ไม่ใช่แค่
@@ -95,7 +110,7 @@ async function generateWelcomeGif(config) {
   const rawBuffer = Buffer.from(await res.arrayBuffer());
 
   // ── อ่าน metadata: ขนาดเฟรม + จำนวนเฟรม + delay ต้นฉบับ
-  const meta   = await sharp(rawBuffer, { animated: true }).metadata();
+  const meta   = await sharp(rawBuffer, { animated: true, limitInputPixels: SHARP_PIXEL_LIMIT }).metadata();
   const origW  = meta.width;
   const origH  = meta.pageHeight ?? meta.height; // pageHeight = 1 เฟรม (ไม่ใช่ height รวม)
   const pages  = meta.pages ?? 1;
@@ -115,7 +130,7 @@ async function generateWelcomeGif(config) {
   // ── ขั้นที่ 2: extract full frames ด้วย sharp พร้อม resize + frame step
   const framePngs = [];
   for (let i = 0; i < pages; i += GIF_FRAME_STEP) {
-    const png = await sharp(rawBuffer, { page: i })
+    const png = await sharp(rawBuffer, { page: i, limitInputPixels: SHARP_PIXEL_LIMIT })
       .resize(canvasW, canvasH)
       .png()
       .toBuffer();
