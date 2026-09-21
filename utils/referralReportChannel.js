@@ -919,7 +919,7 @@ async function handlePaymentModalSubmit(interaction) {
 
   if (!PROMPTPAY_ID_PATTERN.test(rawValue)) {
     await interaction.reply({
-      content: `❌ Invalid PromptPay ID "${rawValue}" — only a 10-digit phone number (e.g. 0812345678) or a 13-digit citizen ID is accepted (digits only, no dashes/spaces). Click Payment again to retry.`,
+      content: `❌ Invalid PromptPay ID "${rawValue}" — enter a 10-digit phone number or 13-digit citizen ID (digits only, no dashes/spaces), and it must be the number you already registered with PromptPay at your bank (not just any number of the right length). Click Payment again to retry.`,
       ephemeral: true,
     });
     return;

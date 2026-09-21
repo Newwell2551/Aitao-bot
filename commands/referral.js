@@ -266,7 +266,7 @@ async function handleAdd(interaction) {
     promptpayId = rawPromptPayId.trim();
     if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
       return interaction.editReply({
-        content: `❌ Invalid PromptPay ID "${rawPromptPayId}" — only a 10-digit phone number (e.g. 0812345678) or a 13-digit citizen ID is accepted (digits only, no dashes/spaces). You can leave it empty for now and set it later with /referral setpromptpay.`,
+        content: `❌ Invalid PromptPay ID "${rawPromptPayId}" — enter a 10-digit phone number or 13-digit citizen ID (digits only, no dashes/spaces), and it must be the number already registered with PromptPay at the bank (not just any number of the right length). You can leave it empty for now and set it later with /referral setpromptpay.`,
       });
     }
   }
@@ -544,7 +544,7 @@ async function handleSetPromptPay(interaction) {
 
   if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
     return interaction.reply({
-      content: `❌ Invalid PromptPay ID "${promptpayId}" — only a 10-digit phone number (e.g. 0812345678) or a 13-digit citizen ID is accepted (digits only, no dashes/spaces).`,
+      content: `❌ Invalid PromptPay ID "${promptpayId}" — enter a 10-digit phone number or 13-digit citizen ID (digits only, no dashes/spaces), and it must be the number already registered with PromptPay at the bank (not just any number of the right length).`,
       flags: MessageFlags.Ephemeral,
     });
   }
