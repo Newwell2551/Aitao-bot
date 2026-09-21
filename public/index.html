@@ -166,41 +166,12 @@
     .hero-overlay-1 { position: absolute; inset: 0; background: linear-gradient(100deg, rgba(5,7,15,0.72) 0%, rgba(5,7,15,0.42) 30%, rgba(5,7,15,0.06) 55%, rgba(5,7,15,0.02) 100%); }
     .hero-overlay-2 { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(5,7,15,0.55) 0%, rgba(5,7,15,0) 22%, rgba(5,7,15,0) 78%, rgba(5,7,15,0.3) 100%); }
 
-    /* ── NAV — แคปซูลลอยแบบกระจกฝ้า (glassmorphism) กึ่งกลางบน ── */
-    .hero-nav-wrap { position: relative; z-index: 5; padding: 22px 24px 0; }
-    .hero-nav {
-      max-width: 1080px;
-      margin: 0 auto;
-      min-height: 60px;
-      background: rgba(19,26,46,0.4);
-      border: 1px solid rgba(255,255,255,0.16);
-      border-radius: 999px;
-      backdrop-filter: blur(20px) saturate(140%);
-      -webkit-backdrop-filter: blur(20px) saturate(140%);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 8px 10px 8px 20px;
-      flex-wrap: wrap;
-    }
-    .hero-nav .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
-    .hero-nav .brand img { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; border: 1.5px solid rgba(74,90,168,0.5); }
-    .hero-nav .brand span { font-size: 16px; font-weight: 700; color: #f3f1fb; }
-    .hero-nav .center-links { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
-    .hero-nav .center-links .nav-link { font-size: 13.5px; }
-    .hero-nav .right-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-    .lang-btn {
-      height: 38px; padding: 0 14px; border-radius: 999px;
-      border: 1px solid rgba(154,162,196,0.3); background: rgba(255,255,255,0.04);
-      color: #f3f1fb; font-size: 12.5px; font-weight: 700;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .add-bot-btn {
-      height: 42px; padding: 0 20px; border-radius: 999px; border: none;
-      background: #4a5aa8; color: #f3f1fb; font-size: 13px; font-weight: 700;
-      display: flex; align-items: center; gap: 6px;
-    }
+    /* ── NAV ──────────────────────────────────────────────────────────────
+       🆕 [21 ก.ย. 2569] ย้าย CSS ของ navbar ทั้งหมด (.hero-nav-wrap, .hero-nav,
+       .lang-btn, .add-bot-btn ฯลฯ) ออกไปอยู่ที่ public/nav.css ไฟล์เดียวที่ใช้
+       ร่วมกันทุกหน้าแล้ว (เดิมหน้านี้มี CSS นาวบาร์เป็นของตัวเอง ไม่ตรงกับหน้าอื่น
+       เลยสักหน้า — ดูคอมเมนต์หัวไฟล์ nav.css สำหรับรายละเอียดเต็มๆ) หน้านี้แค่
+       <link> ไฟล์นั้นในส่วน <head> แทน */
 
     /* ── เนื้อหา hero (badge, headline, tagline, description, CTA, chips) ── */
     .hero-content {
@@ -264,14 +235,15 @@
        ปุ่ม Add Bot ให้กดง่ายบนจอเล็ก ส่วน now-playing ยังโชว์ได้เพราะเป็น pill
        เล็กพอ ── */
     @media (max-width: 760px) {
-      .hero-nav .center-links { display: none; }
-      .hero-nav .lang-btn span.lang-label { display: none; }
       .hero { min-height: auto; padding-bottom: 24px; }
       .hero-bg { position: absolute; }
       .hero-content { padding-top: 32px; }
       .now-playing-row { padding-bottom: 24px; }
     }
   </style>
+  <!-- 🆕 [21 ก.ย. 2569] navbar (โครง+สไตล์) ใช้ไฟล์กลางร่วมกับทุกหน้าแล้ว ดูคอมเมนต์
+       หัวไฟล์ nav.css -->
+  <link rel="stylesheet" href="/nav.css">
 </head>
 <body>
 
@@ -283,18 +255,23 @@
       <div class="hero-overlay-2"></div>
     </div>
 
-    <div class="hero-nav-wrap">
-      <nav class="hero-nav">
-        <a href="/" class="brand">
+    <!-- 🆕 [21 ก.ย. 2569] class เปลี่ยนจาก .hero-nav-wrap/.hero-nav → .site-nav-wrap/
+         .site-nav ให้ตรงกับทุกหน้า (สไตล์มาจาก public/nav.css ไฟล์เดียวกันหมดแล้ว)
+         + เติม class="active" ที่ลิงก์ Home (หน้านี้แหละ) ที่หายไปก่อนหน้านี้ — เดิม
+         ไม่มีเส้นใต้กำกับว่าอยู่หน้าไหน ตอนนี้จะมีเหมือนทุกหน้าแล้ว + เอาลิงก์ "Dashboard"
+         ธรรมดาออกจาก center-links (แทนที่ด้วย auth widget ปุ่ม login/avatar มุมขวาบน
+         ใน right-actions ด้านล่าง — ดู #auth-widget) -->
+    <div class="site-nav-wrap">
+      <nav class="site-nav">
+        <a href="/" class="brand plain">
           <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
           <span>Milo Bot</span>
         </a>
         <div class="center-links">
-          <a href="/" class="nav-link">Home</a>
+          <a href="/" class="nav-link active">Home</a>
           <a href="/features" class="nav-link">Features</a>
           <a href="/pricing" class="nav-link">Pricing</a>
           <a href="/marketplace" class="nav-link">Marketplace</a>
-          <a href="/auth/login" class="nav-link">Dashboard</a>
         </div>
         <div class="right-actions">
           <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
@@ -306,6 +283,9 @@
             Add Bot
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
+          <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js
+               เป็นคนเติมเนื้อหาข้างในให้ตอนหน้าเว็บโหลดเสร็จ ดูคอมเมนต์ในไฟล์นั้น -->
+          <div id="auth-widget"></div>
         </div>
       </nav>
     </div>
@@ -378,5 +358,10 @@
        เลื่อนลง (no scroll) มีแค่ hero เท่านั้น ไม่มี Features/Pricing/Footer
        ต่อท้าย เนื้อหาพวกนั้นย้ายไปอยู่หน้า /features (public/features.html)
        แทนแล้ว ปุ่ม "View All Features" ข้างบนพาไปที่นั่น ═══ -->
+
+  <!-- 🆕 [21 ก.ย. 2569] สคริปต์ auth widget (ปุ่ม login/avatar มุมขวาบน) — ใช้ไฟล์
+       กลางร่วมกับทุกหน้า ดูคอมเมนต์หัวไฟล์ public/nav.js — defer กันไม่ให้บล็อก
+       การเรนเดอร์หน้าเว็บระหว่างโหลด -->
+  <script src="/nav.js" defer></script>
 </body>
 </html>

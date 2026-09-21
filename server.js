@@ -85,7 +85,7 @@ const {
 // 🆕 หน้า Server Picker (การ์ดกริดเลือกเซิร์ฟหลัง login) — แยกไว้คนละไฟล์เพราะเป็น
 // โค้ดสร้าง HTML ล้วนๆ ยาวๆ ไม่อยากให้ server.js (ที่จัดการ route) ยาวเทอะทะเกินไป
 // ดูคำอธิบายเต็มๆ ในไฟล์นั้นเลย
-const { renderServerPickerPage, renderPremiumServerPickerPage } = require('./utils/renderServerPicker');
+const { renderServerPickerPage, renderPremiumServerPickerPage, defaultAvatarUrl } = require('./utils/renderServerPicker');
 // 🆕 ใช้ buildInviteUrl() ตัวเดียวกับที่ /help ใช้สร้างลิงก์เชิญบอท — ไม่เขียนซ้ำใหม่
 // ที่นี่ เพราะถ้าวันหน้ามีคนไปแก้สิทธิ์ที่บอทขอตอนเชิญ (invitePermissions ใน help.js)
 // จะได้แก้จุดเดียวแล้วสองที่นี้อัปเดตตามกันอัตโนมัติ ไม่ต้องมาคอยจำว่าต้องแก้ 2 จุด
@@ -298,11 +298,16 @@ function createWebhookServer(client) {
   });
 
   // ─────────────────────────────────────────────────────────────────────
-  // 🆕 GET /dashboard — หน้า Server Picker จริง (ขั้นที่ 2 จาก 10 ของแผน Dashboard)
+  // 🆕 [21 ก.ย. 2569] ดึง logic "หาเซิร์ฟที่ผู้ใช้คนนี้จัดการได้ + เช็คว่าบอทอยู่
+  // เซิร์ฟไหนแล้วบ้าง" ออกมาเป็นฟังก์ชันกลางตรงนี้ — เดิมโค้ดชุดนี้ซ้ำกันอยู่ 2 ที่
+  // (ใน /dashboard กับ /premium/start ด้านล่าง) พอดีมาเพิ่ม GET /api/me (ให้ auth
+  // widget บน navbar ของหน้าเว็บสาธารณะเรียกใช้ — ดู public/nav.js) ซึ่งต้องการ
+  // ข้อมูลชุดเดียวกันเป๊ะเป็นที่ 3 เลยรวบมาไว้จุดเดียวกันจะได้ไม่ต้องแก้ 3 ที่พร้อมกัน
+  // ทุกครั้งที่ logic นี้เปลี่ยน (เช่นวันหน้าอยากเพิ่มข้อมูลอะไรต่อเซิร์ฟ)
   //
   // logic หลักคือ 3 ขั้นตอน:
-  //   1) กรอง req.session.guilds (ทุกเซิร์ฟที่ผู้ใช้เป็นสมาชิกอยู่ — เก็บไว้ตอน login
-  //      ใน /auth/callback ด้านบน) ให้เหลือแค่เซิร์ฟที่เขามีสิทธิ์ "Manage Server" เท่านั้น
+  //   1) กรอง sessionGuilds (ทุกเซิร์ฟที่ผู้ใช้เป็นสมาชิกอยู่ — เก็บไว้ตอน login ใน
+  //      /auth/callback ด้านบน) ให้เหลือแค่เซิร์ฟที่เขามีสิทธิ์ "Manage Server" เท่านั้น
   //      (ตามที่ milo-bot-design-brief.md ข้อ 3.2 กำหนดไว้ — เซิร์ฟที่เขาแค่เป็นสมาชิก
   //      ธรรมดาไม่ควรโผล่ในหน้านี้ เพราะเขาไม่มีสิทธิ์ตั้งค่าอะไรอยู่แล้ว)
   //   2) เอาแต่ละเซิร์ฟที่เหลือ ไปเทียบกับ client.guilds.cache (แคชเซิร์ฟทั้งหมดที่บอท
@@ -316,8 +321,8 @@ function createWebhookServer(client) {
   // Discord API จริงตอน login, จำนวนสมาชิกมาจาก client.guilds.cache จริงของบอท,
   // สถานะ Free/Premium มาจากไฟล์ data/guild-tiers.json จริงที่ webhook Stripe เป็นคน
   // อัปเดต — ตรงตาม checklist ข้อ 2 ใน milo-bot-ai-build-prompt.md เป๊ะ
-  app.get('/dashboard', requireAuth, (req, res) => {
-    const manageableGuilds = req.session.guilds.filter((g) => hasManageGuild(g.permissions));
+  function computeManageableServers(sessionGuilds) {
+    const manageableGuilds = (sessionGuilds || []).filter((g) => hasManageGuild(g.permissions));
 
     const servers = manageableGuilds.map((g) => {
       // client.guilds.cache คือรายชื่อเซิร์ฟที่ "บอทตัวเองอยู่จริง" ตอนนี้ (อัปเดตสดๆ
@@ -338,13 +343,20 @@ function createWebhookServer(client) {
       };
     });
 
-    // เรียง: เซิร์ฟที่มีบอทอยู่แล้วขึ้นก่อน (ใช้งานได้จริงตอนนี้) แล้วเรียงชื่อ ก-ฮ/A-Z
+    // เรียง: เซิร์ฟที่มีบอทอยู่แล้วขึ้นก่อน (ใช้งานได้เลย สำคัญกว่า) แล้วเรียงชื่อ ก-ฮ/A-Z
     // ในแต่ละกลุ่ม (locale 'th' ให้เรียงภาษาไทยถูกต้องตามพจนานุกรม ไม่ใช่เรียงตาม
     // รหัส unicode ดิบๆ ซึ่งจะได้ลำดับที่แปลกๆ)
     servers.sort((a, b) => {
       if (a.hasBot !== b.hasBot) return a.hasBot ? -1 : 1;
       return a.name.localeCompare(b.name, 'th');
     });
+
+    return servers;
+  }
+
+  // GET /dashboard — หน้า Server Picker จริง (ขั้นที่ 2 จาก 10 ของแผน Dashboard)
+  app.get('/dashboard', requireAuth, (req, res) => {
+    const servers = computeManageableServers(req.session.guilds);
 
     res.send(renderServerPickerPage({
       user: req.session.user,
@@ -354,6 +366,42 @@ function createWebhookServer(client) {
       // ทักทายกลางหน้า — client.user คือบอทตัวเอง มี .displayAvatarURL() ให้ใช้ตรงๆ
       botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
     }));
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [21 ก.ย. 2569] GET /api/me — endpoint เบาๆ ให้ auth widget บน navbar ของ
+  // หน้าเว็บสาธารณะ (index.html/features.html/pricing.html/marketplace.html —
+  // ดู public/nav.js) เรียกถามว่า "ตอนนี้ใคร login อยู่บ้าง" เพราะ 4 หน้านั้นเป็น
+  // static HTML ธรรมดา (เสิร์ฟผ่าน express.static ด้านบน) ไม่ได้เรนเดอร์จาก server
+  // ทุกครั้งแบบหน้า /dashboard เลยไม่รู้สถานะ login ล่วงหน้าได้ ต้องให้ JS ฝั่ง
+  // เบราว์เซอร์ยิงมาถามทีหลังจากโหลดหน้าเสร็จแทน
+  //
+  // ⚠️ จงใจ "ไม่" ใช้ requireAuth ห่อ endpoint นี้ — เพราะ requireAuth จะ redirect
+  // ไป /auth/login ทันทีถ้ายังไม่ login ซึ่งไม่ใช่พฤติกรรมที่ต้องการเลยสำหรับ endpoint
+  // ที่แค่ "ถามสถานะเฉยๆ" (ยังไม่ login ก็เป็นคำตอบที่ถูกต้องอันนึง ไม่ใช่ข้อผิดพลาด)
+  // เลยเช็ค req.session.user เองตรงๆ แล้วตอบ loggedIn: false กลับไปเฉยๆ แทน
+  //
+  // ส่ง avatarUrl ที่ "พร้อมใช้แสดงผลเลย" กลับไปเสมอ (ไม่ใช่ null) — ถ้าผู้ใช้ไม่เคย
+  // ตั้งรูปโปรไฟล์เอง (req.session.user.avatar เป็น null) ให้ประกอบ URL รูป default
+  // ของ Discord เอง (defaultAvatarUrl — ฟังก์ชันเดียวกับที่หน้า Server Picker ใช้)
+  // แทน เพื่อให้ nav.js ฝั่งเบราว์เซอร์ไม่ต้องมานั่งเขียนสูตรคำนวณซ้ำเองอีกที
+  app.get('/api/me', (req, res) => {
+    if (!req.session.user) {
+      return res.json({ loggedIn: false });
+    }
+
+    const user = req.session.user;
+    res.json({
+      loggedIn: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        avatarUrl: user.avatar || defaultAvatarUrl(user.id),
+      },
+      servers: computeManageableServers(req.session.guilds),
+      inviteUrl: buildInviteUrl(),
+      premiumStartUrl: '/premium/start',
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────
@@ -756,19 +804,11 @@ function createWebhookServer(client) {
   // แล้วจริง" พอดีแค่เซิร์ฟเดียว ค่อยเด้งข้ามหน้าเลือกไปหน้าเลือกวิธีจ่ายเงินของเซิร์ฟนั้นตรงๆ
   // เลย (ลดขั้นตอน) — ถ้ามีหลายเซิร์ฟ หรือไม่มีเซิร์ฟไหนมีบอทอยู่เลย ค่อยโชว์หน้าเลือกตามปกติ
   app.get('/premium/start', requireAuth, (req, res) => {
-    const manageableGuilds = req.session.guilds
-      .filter((g) => hasManageGuild(g.permissions))
-      .map((g) => {
-        const botGuild = client.guilds.cache.get(g.id);
-        return {
-          id: g.id,
-          name: g.name,
-          iconUrl: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null,
-          hasBot: Boolean(botGuild),
-          memberCount: botGuild ? botGuild.memberCount : null,
-          tier: botGuild ? getGuildTier(g.id) : null,
-        };
-      });
+    // 🆕 [21 ก.ย. 2569] ใช้ computeManageableServers() ตัวกลางแทนที่จะคำนวณเองซ้ำ
+    // (ดูคอมเมนต์เต็มๆ ตรงที่ประกาศฟังก์ชันนี้ ใกล้ๆ route /dashboard ด้านบน) — ผลลัพธ์
+    // หน้าตาเหมือนเดิมทุกฟิลด์ ต่างแค่ตอนนี้เรียงเซิร์ฟที่มีบอทขึ้นก่อนให้ด้วยเหมือนหน้า
+    // /dashboard (เดิมโค้ดจุดนี้ไม่ได้ sort เลย) ซึ่งเป็นผลข้างเคียงที่ดี ไม่ใช่บั๊ก
+    const manageableGuilds = computeManageableServers(req.session.guilds);
 
     const guildsWithBot = manageableGuilds.filter((g) => g.hasBot);
     if (guildsWithBot.length === 1) {

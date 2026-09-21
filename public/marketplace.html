@@ -125,8 +125,6 @@
     .pill-btn { transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; cursor: pointer; }
     .pill-btn:hover { transform: translateY(-1px); }
     .pill-btn.primary:hover { box-shadow: 0 8px 24px rgba(74,90,168,0.4); }
-    .nav-link { transition: color .15s ease; }
-    .nav-link:hover { color: #f3f1fb !important; }
     .cat-tab, .side-cat-row { transition: background .15s ease, color .15s ease, border-color .15s ease; cursor: pointer; }
     .side-cat-row:hover { background: rgba(74,90,168,0.08); }
     .listing-card { transition: border-color .15s ease, transform .15s ease; cursor: pointer; border: 1px solid transparent; }
@@ -151,21 +149,12 @@
     .preview-strip span { font-size: 12px; color: #e2c48f; line-height: 1.5; }
     .preview-strip strong { color: #f4b860; font-weight: 700; }
 
-    /* ── NAV — แถบทึบเต็มความกว้าง (ต่างจากแคปซูลลอยของหน้าอื่น ตามที่ไฟล์ดีไซน์ตั้งใจ) ── */
-    .mkt-nav { position: sticky; top: 0; z-index: 30; height: 64px; background: rgba(10,14,26,0.94); border-bottom: 1px solid #1c2340; backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); display: flex; align-items: center; padding: 0 18px; gap: 14px; }
-    .mkt-nav .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
-    .mkt-nav .brand img { width: 26px; height: 26px; border-radius: 999px; object-fit: cover; border: 1.5px solid rgba(74,90,168,0.5); }
-    .mkt-nav .brand span { font-size: 15px; font-weight: 700; color: #f3f1fb; }
-    .mkt-nav .center-links { display: flex; align-items: center; gap: 26px; flex: 1 1 auto; justify-content: center; flex-wrap: wrap; }
-    .mkt-nav .center-links .nav-link { font-size: 13.5px; color: #c3c8e6; }
-    .mkt-nav .center-links .nav-link.active { color: #f3f1fb; border-bottom: 1.5px solid #4a5aa8; padding-bottom: 2px; }
-    .mkt-nav .right-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-    .lang-btn { height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(154,162,196,0.3); background: rgba(255,255,255,0.04); color: #f3f1fb; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-    .add-bot-btn { height: 38px; padding: 0 16px; border-radius: 999px; border: none; background: #4a5aa8; color: #f3f1fb; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-    @media (max-width: 900px) {
-      .mkt-nav .center-links { display: none; }
-      .lang-btn span.lang-label { display: none; }
-    }
+    /* ── NAV ──────────────────────────────────────────────────────────────
+       🆕 [21 ก.ย. 2569] เดิมหน้านี้ (marketplace.html) ใช้ดีไซน์ navbar คนละแบบ
+       จากหน้าอื่นเลยโดยตั้งใจ (แถบทึบเต็มความกว้าง สูง 64px ไม่ใช่แคปซูลลอย) —
+       ตอนนี้เปลี่ยนให้ใช้แคปซูลลอยแบบเดียวกับทุกหน้าแล้วตามที่น้องหนาวขอ
+       ("ทำให้เท่ากันทุกหน้า") CSS ทั้งหมดย้ายไปอยู่ที่ public/nav.css ไฟล์เดียว
+       ที่ใช้ร่วมกันหมดแล้ว — ดูคอมเมนต์หัวไฟล์นั้น */
 
     /* ── โครงหลัก 3 คอลัมน์ — mobile-first: ซ้อนเป็นคอลัมน์เดียวก่อน แล้วค่อยกางเป็น 3 คอลัมน์ตอนจอกว้างพอ ── */
     .mkt-shell { max-width: 1680px; margin: 0 auto; padding: 18px 16px 48px; }
@@ -235,34 +224,39 @@
     .report-evidence-thumb { width: 100%; height: 100%; border-radius: 3px; object-fit: cover; display: block; }
     .report-evidence-remove { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 999px; border: none; background: rgba(5,7,15,0.9); color: #f3f1fb; display: flex; align-items: center; justify-content: center; cursor: pointer; }
   </style>
+  <!-- 🆕 [21 ก.ย. 2569] navbar (โครง+สไตล์) ใช้ไฟล์กลางร่วมกับทุกหน้าแล้ว ดูคอมเมนต์
+       หัวไฟล์ nav.css -->
+  <link rel="stylesheet" href="/nav.css">
 </head>
 <body>
 
   <!-- ═══════════ NAV ═══════════ -->
-  <nav class="mkt-nav">
-    <a href="/" class="brand plain">
-      <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
-      <span>Milo Bot</span>
-    </a>
-    <div class="center-links">
-      <a href="/" class="nav-link" style="color:#c3c8e6;">Home</a>
-      <a href="/features" class="nav-link" style="color:#c3c8e6;">Features</a>
-      <a href="/pricing" class="nav-link" style="color:#c3c8e6;">Pricing</a>
-      <a href="/marketplace" class="nav-link active">Marketplace</a>
-      <a href="/auth/login" class="nav-link" style="color:#c3c8e6;">Dashboard</a>
-    </div>
-    <div class="right-actions">
-      <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
-        <span class="lang-label">EN</span>
-      </button>
-      <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-         class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
-        Add Bot
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="site-nav-wrap">
+    <nav class="site-nav">
+      <a href="/" class="brand plain">
+        <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+        <span>Milo Bot</span>
       </a>
-    </div>
-  </nav>
+      <div class="center-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/features" class="nav-link">Features</a>
+        <a href="/pricing" class="nav-link">Pricing</a>
+        <a href="/marketplace" class="nav-link active">Marketplace</a>
+      </div>
+      <div class="right-actions">
+        <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+          <span class="lang-label">EN</span>
+        </button>
+        <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+           class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
+          Add Bot
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div id="auth-widget"></div>
+      </div>
+    </nav>
+  </div>
 
   <!-- ═══════════ แถบตัวอย่างพรีวิว (พี่เพิ่มเอง) ═══════════ -->
   <div class="preview-strip">
@@ -1287,5 +1281,6 @@
   }
   setInterval(function () { showNewShop((newShopIndex + 1) % NEW_SHOP_COUNT); }, 4600);
 </script>
+<script src="/nav.js" defer></script>
 </body>
 </html>

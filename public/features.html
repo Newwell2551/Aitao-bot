@@ -101,8 +101,6 @@
     .pill-btn { transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; cursor: pointer; }
     .pill-btn:hover { transform: translateY(-1px); }
     .pill-btn.primary:hover { box-shadow: 0 8px 24px rgba(74,90,168,0.4); }
-    .nav-link { transition: color .15s ease; color: #c3c8e6; }
-    .nav-link:hover { color: #f3f1fb; }
 
     /* ── แถบภาพเบลอด้านหลัง (แค่ช่วงบนสุด) ── */
     .top-glow { position: absolute; top: 0; left: 0; right: 0; height: 1000px; overflow: hidden; z-index: 0; pointer-events: none; }
@@ -110,33 +108,11 @@
     .top-glow .wash { position: absolute; inset: 0; background: rgba(5,7,15,0.8); }
     .top-glow .radial { position: absolute; inset: 0; background: radial-gradient(ellipse 900px 500px at 22% 0%, rgba(74,90,168,0.14), transparent 65%); }
 
-    /* ── NAV — เหมือนหน้าแรกเป๊ะๆ ──
-       [แก้บั๊กขอบดำด้านบน 15 ก.ย. 2569] เดิม .site-nav ใช้ margin: 16px auto 0
-       (margin-top บนตัวการ์ดเอง) — เพราะ .site-nav-wrap ที่ห่ออยู่ไม่มี
-       padding-top เลยไม่มีอะไรกัน margin-top นี้ไว้ มันเลย "หลุด" ทะลุออกไปนอก
-       body จนไปโผล่เป็นช่องว่างโปร่งใสเหนือสุดของหน้า (เห็นเป็นสีดำ เพราะ
-       <html> ไม่ได้ตั้งสีพื้นหลังไว้) — ย้ายระยะห่าง 16px จาก margin บนตัวการ์ด
-       มาเป็น padding-top บนตัวห่อ (.site-nav-wrap) แทน ได้ระยะห่างเท่าเดิมเป๊ะ
-       แต่เป็น padding ที่ "กันไม่ให้หลุด" แทน margin ที่หลุดได้ + เพิ่ม
-       min-height: 60px ให้เท่ากับ .hero-nav ของหน้าแรกเป๊ะๆ (กันขนาดต่างกันจาก
-       ฟอนต์โหลดช้า/ไม่ครบ) */
-    .site-nav-wrap { position: sticky; top: 16px; z-index: 20; padding: 16px 24px 0; margin-bottom: 8px; }
-    .site-nav {
-      max-width: 1080px; margin: 0 auto; min-height: 60px;
-      background: rgba(19,26,46,0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
-      backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 8px 10px 8px 20px; flex-wrap: wrap;
-    }
-    .site-nav .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
-    .site-nav .brand img { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; border: 1.5px solid rgba(74,90,168,0.5); }
-    .site-nav .brand span { font-size: 16px; font-weight: 700; color: #f3f1fb; }
-    .site-nav .center-links { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
-    .site-nav .center-links .nav-link { font-size: 13.5px; }
-    .site-nav .center-links .nav-link.active { color: #f3f1fb; border-bottom: 1.5px solid #4a5aa8; padding-bottom: 2px; }
-    .site-nav .right-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-    .lang-btn { height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(154,162,196,0.3); background: rgba(255,255,255,0.04); color: #f3f1fb; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-    .add-bot-btn { height: 42px; padding: 0 20px; border-radius: 999px; border: none; background: #4a5aa8; color: #f3f1fb; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    /* ── NAV ──────────────────────────────────────────────────────────────
+       🆕 [21 ก.ย. 2569] ย้าย CSS ของ navbar ทั้งหมด (.site-nav-wrap, .site-nav,
+       .nav-link, .lang-btn, .add-bot-btn ฯลฯ) ออกไปอยู่ที่ public/nav.css ไฟล์
+       เดียวที่ใช้ร่วมกันทุกหน้าแล้ว (แก้ปัญหาขนาด navbar ไม่เท่ากันแต่ละหน้า —
+       ดูคอมเมนต์หัวไฟล์ nav.css) หน้านี้แค่ <link> ไฟล์นั้นในส่วน <head> แทน */
 
     /* ── หัวข้อหน้า ── */
     .page-head { position: relative; z-index: 2; padding: 56px 0 10px; }
@@ -202,9 +178,11 @@
 
     @media (max-width: 900px) {
       .preview-col { position: static; max-width: 100%; }
-      .site-nav .center-links { display: none; }
     }
   </style>
+  <!-- 🆕 [21 ก.ย. 2569] navbar (โครง+สไตล์) ใช้ไฟล์กลางร่วมกับทุกหน้าแล้ว ดูคอมเมนต์
+       หัวไฟล์ nav.css -->
+  <link rel="stylesheet" href="/nav.css">
 </head>
 <body>
 
@@ -244,7 +222,6 @@
         <a href="/features" class="nav-link active">Features</a>
         <a href="/pricing" class="nav-link">Pricing</a>
         <a href="/marketplace" class="nav-link">Marketplace</a>
-        <a href="/auth/login" class="nav-link">Dashboard</a>
       </div>
       <div class="right-actions">
         <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
@@ -256,6 +233,9 @@
           Add Bot
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
+        <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js
+             เป็นคนเติมเนื้อหาข้างในให้ตอนหน้าเว็บโหลดเสร็จ ดูคอมเมนต์ในไฟล์นั้น -->
+        <div id="auth-widget"></div>
       </div>
     </nav>
   </div>
@@ -612,5 +592,9 @@
       input.addEventListener('click', function (e) { e.stopPropagation(); });
     })();
   </script>
+
+  <!-- 🆕 [21 ก.ย. 2569] สคริปต์ auth widget (ปุ่ม login/avatar มุมขวาบน) — ใช้ไฟล์
+       กลางร่วมกับทุกหน้า ดูคอมเมนต์หัวไฟล์ public/nav.js -->
+  <script src="/nav.js" defer></script>
 </body>
 </html>
