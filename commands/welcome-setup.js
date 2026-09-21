@@ -941,8 +941,16 @@ module.exports = {
       // ระหว่างรอ (โดยเฉพาะถ้า background เป็น GIF เคลื่อนไหว ต้องรอ worker thread
       // เข้ารหัส GIF ใหม่ซึ่งกินเวลาหลายวินาที) ทำให้ดูเหมือนปุ่มไม่ติด คนเลยกดซ้ำๆ
       // แก้โดยส่งข้อความ "⏳ กำลังสร้าง..." ออกไปก่อนทันที (เห็นผลทันทีที่กด ไม่เงียบ)
-      // แล้วพอรูปจริงเสร็จ ค่อย "แก้ข้อความเดิมอันนั้น" ให้กลายเป็นรูป — ไม่ต้องส่งข้อความ
-      // ใหม่ซ้อนกัน 2 อัน (ใช้ .edit() ของ Message ที่ followUp() คืนกลับมาตรงๆ)
+      // แล้วพอรูปจริงเสร็จ ค่อย "แก้ข้อความเดิมอันนั้น" ให้กลายเป็นรูป
+      //
+      // 🐛→✅ [21 ก.ย. 2569 รอบสอง] บั๊กที่เจอหลังดีพลอยรอบแรก: DiscordAPIError[50001]
+      // "Missing Access" ตอนแก้ข้อความ loading ให้กลายเป็นรูปจริง — สาเหตุคือ loadingMsg
+      // เป็นข้อความ "ephemeral" (มองเห็นเฉพาะคนกดเท่านั้น) ซึ่งจริงๆ แล้วไม่ใช่ข้อความปกติ
+      // ในแชแนล บอทเลยไม่มีสิทธิ์แก้มันผ่าน Message.edit() ธรรมดา (อันนั้นมันไปเรียก
+      // ผ่าน channel.messages.edit() ซึ่งใช้ path สำหรับข้อความปกติในแชแนล ไม่ใช่ ephemeral)
+      // ข้อความ ephemeral ที่มาจาก interaction (ทั้งข้อความหลักและ followUp) ต้องแก้ผ่าน
+      // "interaction webhook" เท่านั้น คือ interaction.webhook.editMessage(messageId, payload)
+      // ถึงจะมีสิทธิ์แก้ได้จริง — เปลี่ยนจาก loadingMsg.edit(...) เป็นแบบนี้ทั้งหมด
       let loadingMsg = null;
       try {
         loadingMsg = await interaction.followUp({
@@ -980,7 +988,9 @@ module.exports = {
         };
 
         if (loadingMsg) {
-          await loadingMsg.edit(resultPayload);
+          // ⚠️ ต้องใช้ interaction.webhook.editMessage(id, payload) ไม่ใช่ loadingMsg.edit(payload)
+          // ตรงๆ — ดูคอมเมนต์ยาวด้านบนตรงที่ประกาศ loadingMsg ว่าทำไม
+          await interaction.webhook.editMessage(loadingMsg.id, resultPayload);
         } else {
           await interaction.followUp({ ...resultPayload, flags: MessageFlags.Ephemeral });
         }
@@ -988,7 +998,7 @@ module.exports = {
         console.error('[ws preview error]', e);
         const errorPayload = { content: t('welcome_setup.preview.error', { error: e.message }) };
         if (loadingMsg) {
-          await loadingMsg.edit(errorPayload).catch(() => {});
+          await interaction.webhook.editMessage(loadingMsg.id, errorPayload).catch(() => {});
         } else {
           await interaction.followUp({ ...errorPayload, flags: MessageFlags.Ephemeral }).catch(() => {});
         }

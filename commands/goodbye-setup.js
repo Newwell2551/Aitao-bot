@@ -913,7 +913,13 @@ module.exports = {
 
       // 🆕 [21 ก.ย. 2569] เหมือนที่แก้ใน welcome-setup.js จุดเดียวกัน — ขึ้นข้อความ
       // "⏳ กำลังสร้าง..." ทันทีก่อน กันดูเหมือนปุ่มไม่ติดตอนรอ genPreview() (โดยเฉพาะ
-      // background เป็น GIF เคลื่อนไหว) แล้วค่อย .edit() ข้อความเดิมให้กลายเป็นรูปจริง
+      // background เป็น GIF เคลื่อนไหว) แล้วค่อยแก้ข้อความเดิมให้กลายเป็นรูปจริง
+      //
+      // 🐛→✅ [21 ก.ย. 2569 รอบสอง] เหมือนที่เจอใน welcome-setup.js จุดเดียวกัน —
+      // DiscordAPIError[50001] "Missing Access" ตอนแก้ข้อความ loading เพราะ loadingMsg
+      // เป็นข้อความ ephemeral (มองเห็นเฉพาะคนกด) บอทไม่มีสิทธิ์แก้ผ่าน Message.edit()
+      // ธรรมดา (นั่นเรียกผ่าน path ของข้อความปกติในแชแนล) ต้องแก้ผ่าน "interaction
+      // webhook" เท่านั้น คือ interaction.webhook.editMessage(messageId, payload)
       let loadingMsg = null;
       try {
         loadingMsg = await interaction.followUp({
@@ -946,7 +952,9 @@ module.exports = {
         };
 
         if (loadingMsg) {
-          await loadingMsg.edit(resultPayload);
+          // ⚠️ ต้องใช้ interaction.webhook.editMessage(id, payload) ไม่ใช่ loadingMsg.edit(payload)
+          // ตรงๆ — ดูคอมเมนต์ยาวด้านบนตรงที่ประกาศ loadingMsg ว่าทำไม
+          await interaction.webhook.editMessage(loadingMsg.id, resultPayload);
         } else {
           await interaction.followUp({ ...resultPayload, flags: MessageFlags.Ephemeral });
         }
@@ -954,7 +962,7 @@ module.exports = {
         console.error('[wgs preview error]', e);
         const errorPayload = { content: t('goodbye_setup.preview.error', { error: e.message }) };
         if (loadingMsg) {
-          await loadingMsg.edit(errorPayload).catch(() => {});
+          await interaction.webhook.editMessage(loadingMsg.id, errorPayload).catch(() => {});
         } else {
           await interaction.followUp({ ...errorPayload, flags: MessageFlags.Ephemeral }).catch(() => {});
         }
