@@ -41,6 +41,11 @@ const {
 } = require('./canvasDrawHelpers');
 
 // Discord จำกัดขนาดไฟล์อัปโหลดสูงสุด 8MB (ปกติ) — ต้องลดขนาด GIF ให้ไม่เกินนี้
+//
+// 🆕 [21 ก.ย. 2569] ค่าทั้งสองนี้ตอนนี้เป็นแค่ "baseline" (จุดเริ่มต้น/ค่าคุณภาพดีสุด
+// ที่ยอมรับได้) เท่านั้น — งานจริงแต่ละครั้งอาจถูกปรับขึ้น (frameStep) หรือลง (maxWidth)
+// อัตโนมัติโดย pickAdaptiveGifSettings() ด้านล่าง ถ้าคาดว่า GIF ต้นฉบับจะใช้เวลาสร้างนาน
+// เกินเป้าที่ตั้งไว้ (ดูคอมเมนต์ยาวตรง "Adaptive speed control" ด้านล่าง)
 const GIF_MAX_WIDTH  = 480; // scale ลงถ้ากว้างเกินนี้ (ความสูงลดตามสัดส่วน)
 const GIF_FRAME_STEP = 3;   // เอาทุกๆ N เฟรม (step=3 เร็วกว่า step=2 ราว 35% จากการทดสอบจริง)
 
@@ -64,6 +69,107 @@ const SHARP_PIXEL_LIMIT = 1_000_000_000; // ~1,000 ล้านพิกเซ�
 // (ที่ใช้แค่ 3 วิ) เพราะตรงนี้โหลดไฟล์ GIF เต็มๆ ทั้งไฟล์ (อาจหนักหลาย MB) ไม่ใช่แค่
 // ยิง HEAD request เช็ค header เฉยๆ เหมือนที่นั่น
 const BACKGROUND_FETCH_TIMEOUT_MS = 15000;
+
+// ─── 🚀 Adaptive speed control [21 ก.ย. 2569] ──────────────────────────────
+// ที่มา: น้องหนาวถามว่าเวลาที่ใช้สร้าง GIF ขึ้นกับอะไรบ้าง แล้วอยากให้ "ถ้าคาดว่าจะ
+// เกิน 5 วิ ให้ลดงานลงอัตโนมัติ" เพื่อให้พร้อมส่งเร็วเสมอ ไม่ต้องรอนานเกินไป
+//
+// 🔬 ทดสอบจริงในแซนด์บ็อกซ์ก่อนเขียนโค้ดนี้ (สร้าง GIF สังเคราะห์ 4 ขนาด ตั้งแต่
+// 30 ถึง 250 เฟรม ความละเอียดต้นฉบับ 600×340 ถึง 1200×675 แล้ววัดเวลาแต่ละขั้น
+// ของ pipeline จริงๆ ทีละเฟรม) เจอสิ่งที่ไม่คาดคิดและสำคัญมาก:
+//
+//   "ตัวที่กินเวลาส่วนใหญ่ที่สุด คือจำนวนเฟรมทั้งหมดของ GIF ต้นฉบับ (pages) — ไม่ใช่
+//   ความละเอียดที่จะ resize ออกมา!" เพราะ sharp(buf, {page: i}) ต้องไล่ประกอบ
+//   (resolve disposal) เฟรมตั้งแต่ 0 ถึง i ใหม่ทุกครั้งที่เรียก แล้วค่อย resize ทีหลัง —
+//   ลอง resize เหลือ 320px หรือ 240px แทน 480px เวลา extract แทบไม่ลดลงเลยสักนิด
+//   (วัดจริง: 480px กับ 320px ที่จำนวนเฟรมเท่ากัน ใช้เวลาต่างกันแค่ ~2%) และยิ่งเฟรม
+//   ท้ายๆ ของ GIF ยาวๆ ยิ่งช้าขึ้นเรื่อยๆ แบบไม่เป็นเส้นตรง (ประมาณ pages² เพราะเฟรม
+//   ท้ายสุดต้องไล่ประกอบเฟรมก่อนหน้าทั้งหมด)
+//
+//   สรุปเชิงปฏิบัติ: "ข้ามเฟรมให้ถี่ขึ้น" (เพิ่ม GIF_FRAME_STEP) ช่วยลดเวลาได้จริงและ
+//   คุ้มกว่า "ลดความละเอียด" (maxWidth) มาก — เพราะงั้นเวลาต้องลดงานให้ทันเป้า 5 วิ
+//   จะลอง "เพิ่ม step" ก่อนเป็นอันดับแรกเสมอ แล้วค่อยใช้ "ลด maxWidth" เป็นตัวช่วยรอง
+//   (ช่วยเวลา encode กับขนาดไฟล์ผลลัพธ์ แต่ไม่ได้ช่วยเวลา extract อย่างมีนัยสำคัญ)
+//
+// ค่าคงที่ EXTRACT_K1 / EXTRACT_OVERHEAD / ENCODE_K2 ด้านล่างมาจากการ fit สมการ
+// ถดถอยจากตัวเลขที่วัดได้จริง (ไม่ได้เดา) ความแม่นยำอยู่ในช่วง ±15% เทียบกับเวลาจริง
+// — แม่นพอสำหรับ "ประมาณการก่อนเริ่มงาน" ไม่จำเป็นต้องแม่นยำ 100% เพราะเป้าหมาย
+// แค่ตัดสินใจว่า "ต้องลดงานไหม" ไม่ใช่ต้องรู้เวลาที่แน่นอนเป๊ะๆ
+const TARGET_GENERATION_MS      = 4500;    // เผื่อ buffer ไว้ใต้ 5 วิที่ตั้งเป้า (กันเวลาส่วนอื่น เช่น ดาวน์โหลด/avatar บวกเพิ่มมา)
+const EXTRACT_K1_MS_PER_PXIDX   = 0.0000017; // ms ต่อ (พิกเซลต้นฉบับ 1 พิกเซล × ตำแหน่งเฟรมที่ i)
+const EXTRACT_OVERHEAD_MS       = 15;        // overhead คงที่ต่อการเรียก sharp() 1 ครั้ง (เปิด/ปิดไฟล์ ฯลฯ)
+const ENCODE_K2_MS_PER_PXFRAME  = 0.00008;   // ms ต่อ (พิกเซล output 1 พิกเซล × 1 เฟรมที่ encode)
+const MAX_FRAME_STEP            = 10;        // step สูงสุดที่ยอมให้ข้าม (เกินนี้ animation จะกระตุกเกินไปจนดูไม่ออกว่าเป็น GIF)
+const MIN_FRAMES_KEPT           = 8;         // อย่างน้อยต้องเหลือกี่เฟรมถึงจะยังพอ "ดูเคลื่อนไหว" ได้ไม่กระตุกเกินไป
+const MIN_ADAPTIVE_WIDTH        = 240;       // ไม่ลดความละเอียดลงต่ำกว่านี้ (กันภาพแตกจนดูไม่ออก)
+
+// 🆕 [21 ก.ย. 2569] ตามที่น้องหนาวขอเพิ่ม — นอกจากประมาณเวลาแล้วค่อยๆ ปรับ (ขั้น 1-2
+// ด้านล่าง) ยังอยากได้ "เพดานแข็ง" (hard cap) กันพลาดอีกชั้นด้วย เผื่อสูตรประมาณเวลา
+// คลาดเคลื่อน (มีค่าคลาดเคลื่อนได้ ±15% ตามที่ทดสอบไว้ — เป็นการประมาณ ไม่ใช่วัดจริง)
+// หรือเจอ GIF ที่ผิดปกติเกินกว่าที่เคยทดสอบ — เพดานนี้ "ไม่ยอมให้เกินเด็ดขาด" ไม่ว่า
+// ผลลัพธ์จากขั้น 1-2 จะออกมาเป็นเท่าไหร่ก็ตาม (ทำงานเป็นขั้นที่ 3 ถัดจากนั้นเสมอ)
+const MAX_FRAMES_HARD_CAP       = 60;        // จำนวนเฟรมสูงสุดที่ยอมให้ใช้จริง ไม่ว่ากรณีใดๆ
+
+/**
+ * ประมาณเวลารวม (extract + encode) ล่วงหน้า จากจำนวนเฟรม/ความละเอียดต้นฉบับ
+ * + การตั้งค่าที่จะใช้จริง — ใช้ตัดสินใจ "ก่อน" เริ่มงานหนักจริง ไม่ใช่วัดย้อนหลัง
+ */
+function predictGenerationMs(origW, origH, pages, frameStep, canvasW, canvasH) {
+  const framesUsed = Math.max(1, Math.ceil(pages / frameStep));
+  const extractMs =
+    EXTRACT_K1_MS_PER_PXIDX * origW * origH * pages * pages / frameStep +
+    EXTRACT_OVERHEAD_MS * framesUsed;
+  const encodeMs = ENCODE_K2_MS_PER_PXFRAME * canvasW * canvasH * framesUsed;
+  return extractMs + encodeMs;
+}
+
+/**
+ * เลือกค่า frameStep / maxWidth แบบ adaptive ให้เวลาที่คาดว่าจะใช้ไม่เกิน
+ * TARGET_GENERATION_MS — ลองเพิ่ม frameStep (ข้ามเฟรมถี่ขึ้น) ก่อนเสมอ เพราะ
+ * ช่วยเวลาได้มากกว่า (ดูคอมเมนต์ยาวด้านบน) แล้วค่อยลด maxWidth เป็นตัวช่วยรอง
+ * ถ้ายังไม่เข้าเป้า (เช่น GIF ต้นฉบับใหญ่/ยาวมากจริงๆ)
+ */
+function pickAdaptiveGifSettings(origW, origH, pages) {
+  let frameStep = GIF_FRAME_STEP; // เริ่มจากค่า baseline เดิม (คุณภาพดีสุดที่ยอมรับได้)
+  let maxWidth  = GIF_MAX_WIDTH;
+  const calcCanvas = (w) => {
+    const scale = origW > w ? w / origW : 1;
+    return { canvasW: Math.round(origW * scale), canvasH: Math.round(origH * scale) };
+  };
+  let { canvasW, canvasH } = calcCanvas(maxWidth);
+
+  // ── ขั้น 1: เพิ่ม frameStep ทีละ 1 จนกว่าจะเข้าเป้า (หรือแตะเพดานที่ยอมรับได้)
+  while (
+    predictGenerationMs(origW, origH, pages, frameStep, canvasW, canvasH) > TARGET_GENERATION_MS &&
+    frameStep < MAX_FRAME_STEP &&
+    Math.ceil(pages / (frameStep + 1)) >= MIN_FRAMES_KEPT
+  ) {
+    frameStep++;
+  }
+
+  // ── ขั้น 2: ถ้ายังไม่เข้าเป้า (GIF ต้นฉบับใหญ่มากจริงๆ) ค่อยลดความละเอียดช่วยเสริม
+  while (
+    predictGenerationMs(origW, origH, pages, frameStep, canvasW, canvasH) > TARGET_GENERATION_MS &&
+    maxWidth > MIN_ADAPTIVE_WIDTH
+  ) {
+    maxWidth -= 60;
+    ({ canvasW, canvasH } = calcCanvas(maxWidth));
+  }
+
+  // ── ขั้น 3: เพดานแข็ง (hard cap) — ไม่สนใจว่าขั้น 1-2 ทำนายเวลาไว้เท่าไหร่ ถ้าจำนวน
+  // เฟรมที่จะใช้จริง (pages / frameStep) ยังเกิน MAX_FRAMES_HARD_CAP อยู่ ให้เพิ่ม
+  // frameStep ต่อไปอีกจนกว่าจะไม่เกิน (ตรงนี้ "ยอมทะลุ" MAX_FRAME_STEP ของขั้น 1 ได้
+  // เพราะเป็นกฎคนละชั้นกัน — ขั้น 1 คือ "กันภาพกระตุกเกินไป" ส่วนขั้นนี้คือ "กันเวลา/
+  // ขนาดไฟล์หลุดโผ" ซึ่งสำคัญกว่า ถ้าเจอ GIF ที่ยาวขนาดต้องข้ามเฟรมเยอะขนาดนี้ ภาพเคลื่อนไหว
+  // จะกระตุกก็จริง แต่ก็ยังดีกว่าปล่อยให้ผู้ใช้รอนานเกินไปหรือได้ไฟล์ใหญ่เกิน)
+  const hardCapStep = Math.ceil(pages / MAX_FRAMES_HARD_CAP);
+  if (hardCapStep > frameStep) {
+    frameStep = hardCapStep;
+  }
+
+  const predictedMs = Math.round(predictGenerationMs(origW, origH, pages, frameStep, canvasW, canvasH));
+  return { frameStep, maxWidth, canvasW, canvasH, predictedMs };
+}
 
 /**
  * สร้าง animated GIF ต้อนรับด้วย hybrid approach 3 ขั้น (เหมือนเดิมทุกประการ
@@ -116,16 +222,26 @@ async function generateWelcomeGif(config) {
   const pages  = meta.pages ?? 1;
   const delays = meta.delay ?? [];
 
-  // ── ขั้นที่ 1: คำนวณขนาด output — scale ลงถ้ากว้างเกิน GIF_MAX_WIDTH
-  const scale   = origW > GIF_MAX_WIDTH ? GIF_MAX_WIDTH / origW : 1;
-  const canvasW = Math.round(origW * scale);
-  const canvasH = Math.round(origH * scale);
+  // ── ขั้นที่ 1: คำนวณขนาด output + frameStep แบบ adaptive (ดูคอมเมนต์ยาวที่
+  // ประกาศ pickAdaptiveGifSettings ด้านบนว่าทำไมต้องปรับ 2 ค่านี้คู่กัน)
+  // ถ้า GIF ต้นฉบับไม่ใหญ่/ไม่ยาวมาก ฟังก์ชันนี้จะคืนค่า baseline เดิมกลับมาเป๊ะๆ
+  // (frameStep = GIF_FRAME_STEP, maxWidth = GIF_MAX_WIDTH) ไม่มีอะไรเปลี่ยนเลย
+  const { frameStep, maxWidth, canvasW, canvasH, predictedMs } =
+    pickAdaptiveGifSettings(origW, origH, pages);
 
   console.log(
     `[worker] input: ${origW}×${origH}, ${pages} เฟรม` +
-    ` → output: ${canvasW}×${canvasH} (scale=${scale.toFixed(2)})` +
-    `, ${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB`
+    ` → output: ${canvasW}×${canvasH} (step=${frameStep}, maxWidth=${maxWidth})` +
+    `, ${(rawBuffer.length / 1024 / 1024).toFixed(2)} MB` +
+    `, คาดว่าใช้เวลา ~${(predictedMs / 1000).toFixed(1)} วิ`
   );
+  if (frameStep !== GIF_FRAME_STEP || maxWidth !== GIF_MAX_WIDTH) {
+    console.log(
+      `[worker] ⚡ ปรับลดอัตโนมัติ เพราะ GIF ต้นฉบับใหญ่/ยาวเกินไป ` +
+      `(step ${GIF_FRAME_STEP}→${frameStep}, maxWidth ${GIF_MAX_WIDTH}→${maxWidth}) ` +
+      `เพื่อให้ยังพร้อมส่งได้ภายในเวลาที่ตั้งเป้าไว้ (~${(TARGET_GENERATION_MS / 1000).toFixed(1)} วิ)`
+    );
+  }
 
   // ── ขั้นที่ 2: extract full frames ด้วย sharp พร้อม resize + frame step
   //
@@ -139,7 +255,7 @@ async function generateWelcomeGif(config) {
   // ตั้งแต่ page i ไปจนจบ" (เทียบเท่า pages: -1) ไม่ใช่ "เฟรมเดียวที่ i" เลย (ทดสอบแล้ว
   // meta.height ออกมาเป็นหลายเฟรมซ้อนกันจริงๆ) เลย **ไม่แก้ตรงนี้** ปล่อยไว้แบบเดิม
   const framePngs = [];
-  for (let i = 0; i < pages; i += GIF_FRAME_STEP) {
+  for (let i = 0; i < pages; i += frameStep) {
     const png = await sharp(rawBuffer, { page: i, limitInputPixels: SHARP_PIXEL_LIMIT })
       .resize(canvasW, canvasH)
       .png()
@@ -148,7 +264,7 @@ async function generateWelcomeGif(config) {
   }
   console.log(
     `[worker] extracted ${framePngs.length}/${pages} เฟรม` +
-    ` (step=${GIF_FRAME_STEP}, resize=${canvasW}×${canvasH})`
+    ` (step=${frameStep}, resize=${canvasW}×${canvasH})`
   );
 
   // ── ขั้นที่ 3: composite per frame → encode ทันที
@@ -168,7 +284,7 @@ async function generateWelcomeGif(config) {
   // ดังนั้นถึง drawAllTextBlocks จะเป็น async แล้ว ก็แทบไม่กระทบความเร็วรวมของ
   // การ encode GIF เลย (ยกเว้นเฟรมแรกที่ต้องรอโหลดรูปจริงๆ ครั้งเดียว)
   for (let i = 0; i < framePngs.length; i++) {
-    const originalIndex = i * GIF_FRAME_STEP;
+    const originalIndex = i * frameStep;
 
     const bgImage = await loadImage(framePngs[i]);
     const canvas  = createCanvas(canvasW, canvasH);
@@ -191,7 +307,7 @@ async function generateWelcomeGif(config) {
     if (config.avatarEnabled && avatarImg) drawAvatar(ctx, avatarImg, config, canvasW, canvasH);
     await drawAllTextBlocks(ctx, config, canvasW, canvasH);
 
-    encoder.setDelay((delays[originalIndex] ?? 100) * GIF_FRAME_STEP);
+    encoder.setDelay((delays[originalIndex] ?? 100) * frameStep);
     encoder.addFrame(ctx.getImageData(0, 0, canvasW, canvasH).data);
   }
 
