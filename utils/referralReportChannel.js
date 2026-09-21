@@ -346,9 +346,21 @@ async function getOrCreateSellerReportChannel(guild, sellerDiscordId) {
  * `inline: true` (แถว 1 = สถานะ|ใช้ไปแล้ว, แถว 2 = ค่าคอมต่อครั้ง|รวมรายได้ — คั่นระหว่าง
  * 2 แถวด้วย field "ล่องหน" ชื่อ/ค่าเป็น zero-width-space `inline:false` บังคับให้ Discord
  * ตัดขึ้นบรรทัดใหม่พอดีทุก 2 ช่อง ไม่งั้น Discord จะแพ็ก field แบบ auto-wrap ตามความกว้างที่
- * เหลือเอง ไม่ใช่นับจำนวนช่องแบบที่เราต้องการ) → .setImage() แบนเนอร์ (แสดงในตัว embed เอง
- * เหนือ footer อัตโนมัติ) → .setFooter() ข้อความปิดท้ายเล็กๆ → .setColor() แถบสีซ้ายมือ
- * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number }} stats
+ * เหลือเอง ไม่ใช่นับจำนวนช่องแบบที่เราต้องการ) → 🆕 field "แก้ไขล่าสุด" (ถ้าเคยมีใครตั้งเลข
+ * พร้อมเพย์แล้ว — ดูคอมเมนต์ด้านล่าง) → .setImage() แบนเนอร์ (แสดงในตัว embed เองเหนือ footer
+ * อัตโนมัติ) → .setFooter() ข้อความปิดท้ายเล็กๆ → .setColor() แถบสีซ้ายมือ
+ *
+ * 🆕 [21 ก.ย. 2569] เรื่อง field "แก้ไขล่าสุด" — น้องหนาวขอให้โชว์ "ใครแก้เลขพร้อมเพย์ล่าสุด"
+ * ไว้ในบล็อกใต้ข้อความ footer (╰ ꒰ Milo Bot · ... ꒱ ╯) เป๊ะๆ แต่ทำแบบนั้นจริงๆ ไม่ได้ครับ —
+ * `.setFooter()` คือ "องค์ประกอบสุดท้ายสุดของ embed" ตามลำดับที่ Discord กำหนดตายตัว
+ * (title → description → fields → image → footer) ไม่มีทางเขียนอะไรต่อท้ายมันได้อีก แถม
+ * ข้อความใน footer เป็น plain text ล้วนๆ ด้วย (ใส่ `<@userId>` ไปก็จะขึ้นเป็นตัวหนังสือดิบๆ
+ * ไม่ใช่แท็กที่กดได้จริง) ซึ่งขัดกับที่น้องหนาวต้องการเป๊ะๆ คือ "ตามตัวได้แน่นอน" (กดแท็กแล้ว
+ * เด้งไปโปรไฟล์จริง) — เลยเลือกใส่เป็น field ธรรมดาแทน วางไว้เป็นช่องสุดท้ายก่อนรูปแบนเนอร์/
+ * footer (ตำแหน่งที่ใกล้เคียงที่สุดที่ทำได้ในกรอบของ Discord) field รองรับ `<@userId>` แล้ว
+ * เรนเดอร์เป็นแท็กกดได้จริงตามที่ขอ — ถ้ายังไม่เคยมีใครตั้งเลขพร้อมเพย์เลย (promptpayUpdatedBy
+ * เป็น null) จะไม่โชว์ field นี้เลย กันการ์ดโค้ดใหม่ๆ ดูรกเกินจำเป็น
+ * @param {{ code: string, sellerLabel: string, active: boolean, totalUses: number, totalCommissionThb: number, promptpayId?: string|null, promptpayUpdatedBy?: string|null }} stats
  * @param {'today'|'month'|'all'} range
  * @param {import('discord.js').Client} client ใช้หาอิโมจิ custom จาก ID
  * @returns {import('discord.js').EmbedBuilder}
@@ -365,33 +377,46 @@ function buildReportEmbed(stats, range, client) {
   const perUseEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.perUse, '💸');
   const totalEmoji = resolveEmojiById(client, CUSTOM_EMOJI_IDS.total, '💰');
 
+  const fields = [
+    // ── แถว 1: สถานะ | ใช้ไปแล้ว ──────────────────────────────────────
+    { name: `・${statusEmoji} Status`, value: `\`\`\`\n${statusText}\n\`\`\``, inline: true },
+    {
+      name: `・${usesEmoji} Uses (${rangeLabel})`,
+      value: `\`\`\`\n${stats.totalUses}\n\`\`\``,
+      inline: true,
+    },
+    // field ล่องหน (zero-width space) บังคับตัดบรรทัดใหม่ก่อนแถวถัดไป — ไม่งั้น Discord
+    // จะพยายามแพ็ก field ที่ 3 ต่อท้ายแถวเดิมถ้าจอกว้างพอ ทำให้ไม่ได้ 2x2 จริงตามที่ขอ
+    { name: '​', value: '​', inline: false },
+    // ── แถว 2: ค่าคอมต่อครั้ง | รวมรายได้ ─────────────────────────────
+    {
+      name: `・${perUseEmoji} Per Use`,
+      value: `\`\`\`\n${COMMISSION_PER_REDEMPTION_THB} THB\n\`\`\``,
+      inline: true,
+    },
+    {
+      name: `・${totalEmoji} Total Earned (${rangeLabel})`,
+      value: `\`\`\`\n${stats.totalCommissionThb} THB\n\`\`\``,
+      inline: true,
+    },
+  ];
+
+  // 🆕 [21 ก.ย. 2569] Audit trail — โชว์เฉพาะตอนเคยมีใครตั้ง/แก้เลขพร้อมเพย์แล้วจริงๆ เท่านั้น
+  // (promptpayUpdatedBy ไม่ใช่ null) ใช้ `<@id>` แบบนี้ตรงๆ ใน field value ได้เลย Discord จะ
+  // เรนเดอร์เป็นแท็กชื่อที่กดได้จริงอัตโนมัติ (field รองรับ mention ต่างจาก footer)
+  if (stats.promptpayUpdatedBy) {
+    fields.push({
+      name: '・🔄 Payout Info Last Updated By',
+      value: `<@${stats.promptpayUpdatedBy}> — \`${stats.promptpayId}\``,
+      inline: false,
+    });
+  }
+
   return new EmbedBuilder()
     .setColor(CARD_ACCENT_COLOR)
     .setTitle(`${titleEmoji} ${stats.code}`)
     .setDescription(`Seller: **${stats.sellerLabel}**`)
-    .addFields(
-      // ── แถว 1: สถานะ | ใช้ไปแล้ว ──────────────────────────────────────
-      { name: `・${statusEmoji} Status`, value: `\`\`\`\n${statusText}\n\`\`\``, inline: true },
-      {
-        name: `・${usesEmoji} Uses (${rangeLabel})`,
-        value: `\`\`\`\n${stats.totalUses}\n\`\`\``,
-        inline: true,
-      },
-      // field ล่องหน (zero-width space) บังคับตัดบรรทัดใหม่ก่อนแถวถัดไป — ไม่งั้น Discord
-      // จะพยายามแพ็ก field ที่ 3 ต่อท้ายแถวเดิมถ้าจอกว้างพอ ทำให้ไม่ได้ 2x2 จริงตามที่ขอ
-      { name: '​', value: '​', inline: false },
-      // ── แถว 2: ค่าคอมต่อครั้ง | รวมรายได้ ─────────────────────────────
-      {
-        name: `・${perUseEmoji} Per Use`,
-        value: `\`\`\`\n${COMMISSION_PER_REDEMPTION_THB} THB\n\`\`\``,
-        inline: true,
-      },
-      {
-        name: `・${totalEmoji} Total Earned (${rangeLabel})`,
-        value: `\`\`\`\n${stats.totalCommissionThb} THB\n\`\`\``,
-        inline: true,
-      }
-    )
+    .addFields(...fields)
     .setImage(`attachment://${BANNER_FILENAME}`)
     .setFooter({ text: '╰ ꒰ Milo Bot · Automated Commission Report ꒱ ╯' });
 }
@@ -467,6 +492,10 @@ function buildReportPayload(client, code, range) {
     active: codeEntry.active,
     totalUses,
     totalCommissionThb,
+    // 🆕 [21 ก.ย. 2569] ส่งต่อไปให้ buildReportEmbed() โชว์เป็นบรรทัด audit trail "แก้ไขล่าสุด
+    // โดยใคร" บนการ์ด — null ทั้งคู่ถ้ายังไม่เคยมีใครตั้งเลขพร้อมเพย์ให้โค้ดนี้เลย
+    promptpayId: codeEntry.promptpayId,
+    promptpayUpdatedBy: codeEntry.promptpayUpdatedBy,
   };
 
   return {
@@ -855,11 +884,13 @@ function isPaymentButton(customId) {
 function buildPaymentModal(code, existingPromptPayId) {
   const input = new TextInputBuilder()
     .setCustomId('promptpay_id')
-    .setLabel('Your PromptPay ID')
-    .setPlaceholder('10-digit phone number or 13-digit citizen ID')
+    .setLabel('Your PromptPay Phone Number')
+    // 🆕 [21 ก.ย. 2569] ตัดตัวเลือกเลขบัตรประชาชน 13 หลักออก เหลือรับแค่เบอร์มือถือ 10 หลัก
+    // เท่านั้น — เหตุผลด้านความปลอดภัย ดูคอมเมนต์ยาวที่ PROMPTPAY_ID_PATTERN ใน referralStorage.js
+    .setPlaceholder('10-digit phone number, e.g. 0812345678')
     .setStyle(TextInputStyle.Short)
     .setMinLength(10)
-    .setMaxLength(13)
+    .setMaxLength(10)
     .setRequired(true);
 
   if (existingPromptPayId) {
@@ -919,7 +950,7 @@ async function handlePaymentModalSubmit(interaction) {
 
   if (!PROMPTPAY_ID_PATTERN.test(rawValue)) {
     await interaction.reply({
-      content: `❌ Invalid PromptPay ID "${rawValue}" — enter a 10-digit phone number or 13-digit citizen ID (digits only, no dashes/spaces), and it must be the number you already registered with PromptPay at your bank (not just any number of the right length). Click Payment again to retry.`,
+      content: `❌ Invalid PromptPay ID "${rawValue}" — enter a 10-digit mobile phone number (digits only, no dashes/spaces), and it must be the number you already registered with PromptPay at your bank (not just any number of the right length). Click Payment again to retry.`,
       ephemeral: true,
     });
     return;
@@ -931,7 +962,9 @@ async function handlePaymentModalSubmit(interaction) {
     return;
   }
 
-  savePromptPayId(code, rawValue);
+  // 🆕 [21 ก.ย. 2569] ส่ง ID ของคนที่กรอกฟอร์มนี้ไปด้วย (ผู้ขายเองหรือแอดมินที่กดแทน) ให้ขึ้น
+  // audit trail บนการ์ดว่าใครแก้ล่าสุด (ดู buildReportEmbed ด้านล่าง)
+  savePromptPayId(code, rawValue, interaction.user.id);
 
   await interaction.reply({
     content: `✅ Payout PromptPay ID saved for code **${code}**. The owner can now use it to pay out your commission automatically.`,

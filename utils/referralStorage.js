@@ -14,7 +14,14 @@
 //       "active": true,                       ← false = โค้ดถูกปิดใช้งานแล้ว (แต่ประวัติยังอยู่)
 //       "createdAt": "2026-09-17T12:00:00.000Z",
 //       "reportMessageId": "1234567890",      ← พิกัดข้อความการ์ดในห้อง #referral-earnings ของเซิร์ฟควบคุม (ดู referralReportChannel.js)
-//       "promptpayId": "0812345678",          ← เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ/บัตร ปชช.) ไว้สร้าง QR โอนเงิน, null ถ้ายังไม่ตั้ง
+//       "promptpayId": "0812345678",          ← เลขพร้อมเพย์ผู้ขาย (เบอร์มือถือ) ไว้สร้าง QR โอนเงิน, null ถ้ายังไม่ตั้ง
+//                                                (โค้ดเก่าบางอันอาจยังเป็นเลขบัตร ปชช. 13 หลักค้างอยู่ — ยังใช้งานได้ปกติ
+//                                                แค่ตั้งแต่ 21 ก.ย. 2569 เป็นต้นไป ระบบจะรับแค่เบอร์มือถือ 10 หลักเท่านั้นแล้ว)
+//       "promptpayUpdatedBy": "123456789012",  ← 🆕 [21 ก.ย. 2569] Discord user ID ของคนที่ "กรอก/แก้เลขพร้อมเพย์ล่าสุด"
+//                                                (ไม่ว่าจะเป็นตัวผู้ขายเองกดปุ่ม Payment กรอกเอง หรือแอดมินพิมพ์ /referral
+//                                                setpromptpay/add ให้) โชว์บนการ์ดรายงานยอดเป็น audit trail กันแก้แล้วไม่มีร่องรอย
+//                                                — null ถ้ายังไม่เคยมีใครตั้งเลขพร้อมเพย์เลย
+//       "promptpayUpdatedAt": "2026-09-21T12:00:00.000Z", ← 🆕 เวลาที่แก้ล่าสุด คู่กับ promptpayUpdatedBy ด้านบน, null ถ้ายังไม่เคยตั้ง
 //       "sellerGuildId": "9876543210",        ← 🆕 [20 ก.ย. 2569] ID เซิร์ฟของผู้ขายเอง (ไม่ใช่เซิร์ฟควบคุม) ไว้ให้
 //                                                บอทไปสร้างห้อง #partner-earnings ในเซิร์ฟนั้นให้เอง — null ถ้ายังไม่ตั้ง
 //       "sellerReportMessageId": "111222333"  ← 🆕 พิกัดข้อความการ์ดในห้อง #partner-earnings ของเซิร์ฟผู้ขาย (คนละอันกับ
@@ -56,12 +63,17 @@ const FILE_PATH = path.join(DATA_DIR, 'referral-codes.json');
 // แก้เลขตรงนี้ที่เดียวพอ ไม่ต้องไปไล่หาในไฟล์อื่น
 const COMMISSION_PER_REDEMPTION_THB = 5;
 
-// 🆕 [20 ก.ย. 2569] รูปแบบเลขพร้อมเพย์ที่ยอมรับ — เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน
-// 13 หลัก (ตัวเลขล้วน ห้ามมีขีด/เว้นวรรค) — ย้ายมาไว้จุดเดียวตรงนี้ (เดิมมีอยู่ซ้ำใน
-// commands/referral.js) เพื่อให้ทั้งคำสั่งลับ /referral setpromptpay และปุ่ม "Payment"
-// self-service ในห้องรายงานยอด (utils/referralReportChannel.js) ใช้กฎเดียวกันเป๊ะๆ
-// แก้ทีเดียวตรงนี้พอ ไม่ต้องไล่แก้หลายที่
-const PROMPTPAY_ID_PATTERN = /^\d{10}$|^\d{13}$/;
+// 🆕 [21 ก.ย. 2569 — แก้] รูปแบบเลขพร้อมเพย์ที่ยอมรับ — ตอนนี้รับแค่ "เบอร์มือถือ 10 หลัก"
+// เท่านั้น (ตัวเลขล้วน ห้ามมีขีด/เว้นวรรค) เดิมเคยรับเลขบัตรประชาชน 13 หลักด้วย แต่น้องหนาว
+// ตัดสินใจตัดออก เพราะเลขบัตรประชาชนเป็นข้อมูลอ่อนไหวกว่าเบอร์โทรมาก ถ้าหลุด/ถูกเห็นบนการ์ด
+// รายงานยอด (ซึ่งตอนนี้โชว์เลขนี้ตรงๆ เป็น audit trail ด้วย) เสี่ยงเอาไปสวมรอย/โจรกรรมข้อมูล
+// อย่างอื่นต่อได้มากกว่าเบอร์โทรเยอะ — โค้ดเก่าที่เคยตั้งเป็นเลขบัตร ปชช. ไว้ก่อนหน้านี้จะยังใช้
+// งานได้ตามปกติ (ไม่ลบ/ไม่บังคับเปลี่ยน) กฎนี้บังคับแค่ตอน "ตั้งค่าใหม่/แก้ไข" เท่านั้น
+//
+// ย้ายมาไว้จุดเดียวตรงนี้ (เดิมมีอยู่ซ้ำใน commands/referral.js) เพื่อให้ทั้งคำสั่งลับ
+// /referral setpromptpay และปุ่ม "Payment" self-service ในห้องรายงานยอด
+// (utils/referralReportChannel.js) ใช้กฎเดียวกันเป๊ะๆ แก้ทีเดียวตรงนี้พอ ไม่ต้องไล่แก้หลายที่
+const PROMPTPAY_ID_PATTERN = /^\d{10}$/;
 
 /**
  * โครงสร้างไฟล์เริ่มต้น (ตอนยังไม่เคยมีไฟล์เลย)
@@ -129,10 +141,15 @@ function normalizeCode(code) {
  * 🆕 [20 ก.ย. 2569] เพิ่ม sellerGuildId (ไม่บังคับ) — ID เซิร์ฟของผู้ขายเอง ไว้ให้บอทไป
  * สร้างห้อง #partner-earnings ในเซิร์ฟนั้นให้อัตโนมัติ (ดู utils/referralReportChannel.js)
  *
+ * 🆕 [21 ก.ย. 2569] เพิ่ม promptpayUpdatedBy (ไม่บังคับ) — ถ้าใส่ promptpayId มาตั้งแต่ตอน
+ * สร้างโค้ดเลย (ผ่าน /referral add) ให้ส่ง Discord ID ของแอดมินที่พิมพ์คำสั่งนี้มาด้วย จะได้
+ * ขึ้น audit trail บนการ์ดตั้งแต่สร้างโค้ดเสร็จทันที — ถ้าไม่ใส่ promptpayId มา ก็ไม่ต้องส่งอันนี้มา
+ * (จะถูกบันทึกเป็น null ไปเอง รอคนตั้งค่าทีหลังผ่าน savePromptPayId())
+ *
  * @param {string} code
- * @param {{ sellerLabel: string, sellerDiscordId: string|null, stripeCouponId: string, stripePromotionCodeId: string, promptpayId?: string|null, sellerGuildId?: string|null }} info
+ * @param {{ sellerLabel: string, sellerDiscordId: string|null, stripeCouponId: string, stripePromotionCodeId: string, promptpayId?: string|null, promptpayUpdatedBy?: string|null, sellerGuildId?: string|null }} info
  */
-function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePromotionCodeId, promptpayId, sellerGuildId }) {
+function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePromotionCodeId, promptpayId, promptpayUpdatedBy, sellerGuildId }) {
   const data = readAll();
   const key = normalizeCode(code);
   data.codes[key] = {
@@ -141,6 +158,10 @@ function saveCode(code, { sellerLabel, sellerDiscordId, stripeCouponId, stripePr
     stripeCouponId,
     stripePromotionCodeId,
     promptpayId: promptpayId || null,
+    // 🆕 [21 ก.ย. 2569] ตั้งค่าเริ่มต้นตอนสร้างโค้ด — ถ้ามี promptpayId มาด้วยตั้งแต่แรก ก็ถือว่า
+    // คนที่รัน /referral add นี่แหละคือคน "ตั้งค่าล่าสุด" ครั้งแรก (ประทับเวลาไว้ด้วยเลย)
+    promptpayUpdatedBy: promptpayId ? (promptpayUpdatedBy || null) : null,
+    promptpayUpdatedAt: promptpayId ? new Date().toISOString() : null,
     sellerGuildId: sellerGuildId || null,
     sellerReportMessageId: null,
     active: true,
@@ -470,18 +491,30 @@ function saveReportMessageId(code, messageId) {
 }
 
 /**
- * 🆕 ตั้ง/แก้ไขเลขพร้อมเพย์ของผู้ขายโค้ดนี้ (เรียกจาก /referral add ตอนใส่มาตั้งแต่แรก
- * หรือ /referral setpromptpay ตอนตั้งทีหลัง) — ใช้ตอนสร้าง QR โอนเงินด้วย
- * utils/promptpayQr.js (ดู /referral payout ใน commands/referral.js)
+ * 🆕 ตั้ง/แก้ไขเลขพร้อมเพย์ของผู้ขายโค้ดนี้ (เรียกจาก /referral add ตอนใส่มาตั้งแต่แรก,
+ * /referral setpromptpay ตอนแอดมินตั้งทีหลัง, หรือปุ่ม "Payment" self-service ตอนผู้ขายกรอกเอง)
+ * — ใช้ตอนสร้าง QR โอนเงินด้วย utils/promptpayQr.js (ดู /referral payout ใน commands/referral.js)
+ *
+ * 🆕 [21 ก.ย. 2569] เพิ่มพารามิเตอร์ updatedBy — Discord ID ของคนที่กดบันทึกครั้งนี้ (ไม่ว่าจะ
+ * เป็นผู้ขายเองหรือแอดมิน) บันทึกไว้คู่กับเวลา ให้การ์ดรายงานยอดโชว์เป็น audit trail
+ * "แก้ไขล่าสุดโดยใคร" ได้ (ดู buildReportEmbed ใน utils/referralReportChannel.js) — กันปัญหา
+ * ที่น้องหนาวกังวลไว้ว่าแอดมินคนอื่นอาจจะแอบแก้เลขพร้อมเพย์กันเองโดยไม่มีร่องรอย
+ *
  * @param {string} code
- * @param {string} promptpayId เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก
+ * @param {string} promptpayId เบอร์มือถือ 10 หลัก (โค้ดเก่าที่เคยเป็นเลขบัตร ปชช. 13 หลักจะยัง
+ *   ถูกเขียนทับได้ปกติถ้าค่าที่ส่งมาผ่าน PROMPTPAY_ID_PATTERN ปัจจุบัน — การตรวจรูปแบบทำที่
+ *   ฝั่งเรียกใช้ก่อนแล้ว ฟังก์ชันนี้แค่บันทึกอย่างเดียว ไม่ validate ซ้ำ)
+ * @param {string|null} [updatedBy] Discord user ID ของคนที่แก้ล่าสุด — ใส่ null/ไม่ใส่ได้ถ้าไม่รู้
+ *   (เช่น กรณีเรียกจากสคริปต์ภายใน) แต่ปกติควรส่ง interaction.user.id มาเสมอ
  * @returns {boolean} true ถ้าเจอโค้ดและบันทึกสำเร็จ, false ถ้าไม่เจอโค้ดนี้เลย
  */
-function savePromptPayId(code, promptpayId) {
+function savePromptPayId(code, promptpayId, updatedBy = null) {
   const data = readAll();
   const key = normalizeCode(code);
   if (!data.codes[key]) return false;
   data.codes[key].promptpayId = promptpayId;
+  data.codes[key].promptpayUpdatedBy = updatedBy || null;
+  data.codes[key].promptpayUpdatedAt = new Date().toISOString();
   writeAll(data);
   return true;
 }

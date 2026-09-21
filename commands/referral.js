@@ -128,7 +128,7 @@ module.exports = {
         )
         .addStringOption((opt) =>
           opt.setName('promptpay_id')
-            .setDescription('Seller\'s PromptPay ID (10-digit phone or 13-digit citizen ID), for payout QR later')
+            .setDescription('Seller\'s PromptPay phone number (10 digits), for payout QR later')
             .setRequired(false)
         )
         .addStringOption((opt) =>
@@ -173,7 +173,7 @@ module.exports = {
         )
         .addStringOption((opt) =>
           opt.setName('promptpay_id')
-            .setDescription('10-digit phone number or 13-digit citizen ID')
+            .setDescription('10-digit PromptPay phone number')
             .setRequired(true)
         )
     )
@@ -266,7 +266,7 @@ async function handleAdd(interaction) {
     promptpayId = rawPromptPayId.trim();
     if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
       return interaction.editReply({
-        content: `❌ Invalid PromptPay ID "${rawPromptPayId}" — enter a 10-digit phone number or 13-digit citizen ID (digits only, no dashes/spaces), and it must be the number already registered with PromptPay at the bank (not just any number of the right length). You can leave it empty for now and set it later with /referral setpromptpay.`,
+        content: `❌ Invalid PromptPay ID "${rawPromptPayId}" — enter a 10-digit mobile phone number (digits only, no dashes/spaces), and it must be the number already registered with PromptPay at the bank (not just any number of the right length). You can leave it empty for now and set it later with /referral setpromptpay.`,
       });
     }
   }
@@ -360,6 +360,9 @@ async function handleAdd(interaction) {
       stripeCouponId: coupon.id,
       stripePromotionCodeId: promotionCode.id,
       promptpayId,
+      // 🆕 [21 ก.ย. 2569] ถ้าใส่เลขพร้อมเพย์มาตั้งแต่ตอนสร้างโค้ดเลย ให้นับว่าแอดมินที่รันคำสั่งนี้
+      // คือคน "ตั้งค่าล่าสุด" ครั้งแรก — ขึ้น audit trail บนการ์ดได้ทันทีไม่ต้องรอแก้ทีหลัง
+      promptpayUpdatedBy: interaction.user.id,
       sellerGuildId,
     });
 
@@ -544,7 +547,7 @@ async function handleSetPromptPay(interaction) {
 
   if (!PROMPTPAY_ID_PATTERN.test(promptpayId)) {
     return interaction.reply({
-      content: `❌ Invalid PromptPay ID "${promptpayId}" — enter a 10-digit phone number or 13-digit citizen ID (digits only, no dashes/spaces), and it must be the number already registered with PromptPay at the bank (not just any number of the right length).`,
+      content: `❌ Invalid PromptPay ID "${promptpayId}" — enter a 10-digit mobile phone number (digits only, no dashes/spaces), and it must be the number already registered with PromptPay at the bank (not just any number of the right length).`,
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -557,7 +560,8 @@ async function handleSetPromptPay(interaction) {
     });
   }
 
-  savePromptPayId(code, promptpayId);
+  // 🆕 [21 ก.ย. 2569] ส่ง ID ของแอดมินที่รันคำสั่งนี้ไปด้วย ให้ขึ้น audit trail บนการ์ดว่าใครแก้ล่าสุด
+  savePromptPayId(code, promptpayId, interaction.user.id);
 
   return interaction.reply({
     content: `✅ Set the PromptPay ID for code **${code}** (${codeEntry.sellerLabel}) — you can now use \`/referral payout\` to generate a payout QR for this seller.`,
