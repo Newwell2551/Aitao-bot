@@ -966,6 +966,15 @@ async function handlePaymentModalSubmit(interaction) {
   // audit trail บนการ์ดว่าใครแก้ล่าสุด (ดู buildReportEmbed ด้านล่าง)
   savePromptPayId(code, rawValue, interaction.user.id);
 
+  // 🐛→✅ [21 ก.ย. 2569] บั๊กที่น้องหนาวเจอ: บันทึกเลขพร้อมเพย์สำเร็จ แต่การ์ดไม่ยอมอัปเดตให้เห็น
+  // field "แก้ไขล่าสุดโดยใคร" ทันที — สาเหตุคือลืมเรียก syncCodeReportMessage() ตรงนี้ (ทุกจุด
+  // อื่นที่แก้ข้อมูลโค้ด เช่น handleAdd/handleDeactivate ใน commands/referral.js และ webhook ใน
+  // server.js เรียกฟังก์ชันนี้ทุกครั้งหลังแก้ข้อมูลเสร็จ เพื่อสั่งให้การ์ดในทั้ง 2 ห้อง (เซิร์ฟ
+  // ควบคุม + เซิร์ฟผู้ขาย) แก้ไขข้อความใหม่ให้ตรงกับข้อมูลล่าสุด — จุดนี้ลืมเรียกไปตอนเขียนรอบ 14
+  // ทำให้ข้อมูลถูกบันทึกจริงในไฟล์แล้ว แค่การ์ดที่โชว์อยู่ยังเป็นเวอร์ชันเก่าค้างอยู่ จนกว่าจะมี
+  // เหตุการณ์อื่นมา sync การ์ดให้บังเอิญ (เช่นมีคนใช้โค้ดสำเร็จ หรือแอดมินรันคำสั่งอื่น)
+  await syncCodeReportMessage(interaction.client, code);
+
   await interaction.reply({
     content: `✅ Payout PromptPay ID saved for code **${code}**. The owner can now use it to pay out your commission automatically.`,
     ephemeral: true,

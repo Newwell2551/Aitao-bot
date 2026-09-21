@@ -563,6 +563,12 @@ async function handleSetPromptPay(interaction) {
   // 🆕 [21 ก.ย. 2569] ส่ง ID ของแอดมินที่รันคำสั่งนี้ไปด้วย ให้ขึ้น audit trail บนการ์ดว่าใครแก้ล่าสุด
   savePromptPayId(code, promptpayId, interaction.user.id);
 
+  // 🐛→✅ [21 ก.ย. 2569] เหมือนบั๊กที่เจอในปุ่ม Payment — คำสั่งนี้ก็ไม่เคยเรียก
+  // syncCodeReportMessage() มาตั้งแต่แรก (ตั้งแต่ก่อนรอบ 14 ด้วยซ้ำ แค่ตอนนั้นยังไม่มี field
+  // ไหนบนการ์ดที่ต้องโชว์ผลจากคำสั่งนี้ เลยไม่มีใครสังเกตเห็นว่าการ์ดไม่อัปเดต) เพิ่มเข้ามาให้
+  // ตรงนี้ด้วย การ์ดทั้ง 2 ห้อง (เซิร์ฟควบคุม + เซิร์ฟผู้ขาย) จะได้ขึ้น audit trail ทันทีเหมือนกัน
+  await syncCodeReportMessage(interaction.client, code);
+
   return interaction.reply({
     content: `✅ Set the PromptPay ID for code **${code}** (${codeEntry.sellerLabel}) — you can now use \`/referral payout\` to generate a payout QR for this seller.`,
     flags: MessageFlags.Ephemeral,
