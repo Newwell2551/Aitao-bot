@@ -136,13 +136,12 @@
     .market-dropdown-item:hover { background: rgba(255,255,255,0.06); }
     .market-dropdown-item.active { background: rgba(74,90,168,0.16); color: #f3f1fb; font-weight: 600; }
 
-    /* สกรอลล์บาร์บางๆ เฉพาะ 2 ลิสต์ย่อยของหมวดหมู่ (Image & Media / Role ตอนกางออก)
-       ไม่ได้ใช้กับทั้งหน้าแล้ว เพราะทั้งหน้าเปลี่ยนไปสกรอลล์ปกติตามที่อธิบายไว้ข้างบน */
-    .thin-scroll::-webkit-scrollbar { width: 3px; }
-    .thin-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-    .thin-scroll::-webkit-scrollbar-track { background: transparent; }
-    .thin-scroll::-webkit-scrollbar-thumb { background: rgba(154,162,196,0.45); border-radius: 0; }
-    .thin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(244,184,96,0.65); }
+    /* 🆕 [22 ก.ย. 2569] ดีไซน์ .thin-scroll (สกรอลล์บาร์บางๆ ของเว็บเราเอง) ย้าย
+       ไปรวมไว้ที่ public/scrollbar.css ไฟล์เดียวใช้ร่วมกันทุกหน้าแล้ว (เดิม
+       ประกาศซ้ำเฉพาะไฟล์นี้ไฟล์เดียว) — class "thin-scroll" ที่ใช้อยู่ 3 จุดใน
+       หน้านี้ (ลิสต์ย่อย Image & Media / Role, และแผงรายละเอียดสินค้า) ยังทำงาน
+       เหมือนเดิมทุกอย่าง แค่ไปอ่านสไตล์จากไฟล์กลางแทน ดูคอมเมนต์หัวไฟล์
+       scrollbar.css สำหรับรายละเอียดเต็มๆ */
 
     /* ── แถบ "ตัวอย่างพรีวิว" — พี่เพิ่มเองไม่ได้อยู่ในไฟล์ดีไซน์ อธิบายเหตุผลไว้ในคอมเมนต์บนสุดแล้ว ── */
     .preview-strip { background: rgba(244,184,96,0.07); border-bottom: 1px solid rgba(244,184,96,0.22); padding: 9px 20px; text-align: center; }
@@ -227,6 +226,9 @@
   <!-- 🆕 [21 ก.ย. 2569] navbar (โครง+สไตล์) ใช้ไฟล์กลางร่วมกับทุกหน้าแล้ว ดูคอมเมนต์
        หัวไฟล์ nav.css -->
   <link rel="stylesheet" href="/nav.css">
+  <!-- 🆕 [22 ก.ย. 2569] ซ่อน scrollbar เดิมของเบราว์เซอร์ + ดีไซน์แถบเลื่อนเล็กๆ
+       เป็นสไตล์ของเราเอง (ดูคอมเมนต์หัวไฟล์ scrollbar.css) -->
+  <link rel="stylesheet" href="/scrollbar.css">
 </head>
 <body>
 

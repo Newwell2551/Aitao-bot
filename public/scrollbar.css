@@ -1,0 +1,54 @@
+/* public/scrollbar.css
+   ─────────────────────────────────────────────────────────────────────────
+   🆕 [22 ก.ย. 2569] ไฟล์นี้สร้างใหม่ตามที่น้องหนาวขอ — ดีไซน์ scrollbar เป็น
+   ของเว็บเราเอง ไม่ใช้ของเบราว์เซอร์เดิมๆ แยกเป็น 2 ส่วน:
+
+   ส่วนที่ 1) แถบเลื่อนหลักของทั้งหน้า (ที่เลื่อนเว็บทั้งหน้าขึ้น-ลง) — ซ่อนไป
+   เลยตามที่ขอ ("จะได้ฟีลเต็มจอๆ ไปเลย") เลื่อนหน้าได้ปกติทุกทาง (ลูกกลิ้งเมาส์/
+   trackpad/ลูกศรคีย์บอร์ด/นิ้วสัมผัสจอ) แค่ไม่มีแถบให้เห็นเฉยๆ
+
+   ส่วนที่ 2) จุดเลื่อนเล็กๆ ภายในหน้า (เช่น แถบเลื่อนดูรายการหมวดหมู่สินค้าใน
+   หน้า marketplace, เมนู "Servers" ที่ขยายในปุ่มโปรไฟล์มุมขวาบน ฯลฯ) ออกแบบ
+   เป็นแถบบางๆ สไตล์เดียวกันหมดทั้งเว็บ (class "thin-scroll") สีเทาอมม่วงจางๆ
+   ตามปกติ พอเอาเมาส์ชี้จะเปลี่ยนเป็นสีทอง (ให้ความรู้สึกเดียวกับสีเน้น/สีไฮไลต์
+   ที่ใช้อยู่ทั่วเว็บ เช่น badge "ใหม่" หรือจุดไฮไลต์ eyebrow) เดิมมีดีไซน์นี้อยู่
+   แล้วแต่ประกาศซ้ำเฉพาะในไฟล์ marketplace.html ไฟล์เดียว — ย้ายมารวมไว้ที่นี่
+   ไฟล์เดียว ใช้ร่วมกันได้ทุกหน้า/ทุกจุดในอนาคต ไม่ต้องก๊อปซ้ำอีก
+
+   ไฟล์นี้ต้อง <link> ไว้ในทุกหน้าเว็บสาธารณะ (index/features/pricing/
+   marketplace/privacy/terms) — ดูส่วนหัวไฟล์แต่ละหน้าประกอบ */
+
+/* ── ส่วนที่ 1: ซ่อนแถบเลื่อนหลักของทั้งหน้า ──────────────────────────────
+   🛠️ ผลพลอยได้ที่สำคัญ: ปกติบน Windows เบราว์เซอร์จะกันพื้นที่ด้านขวาไว้
+   ~17px เสมอตอนมีแถบเลื่อน (คนละแบบกับ Mac ที่แถบเลื่อนลอยทับเนื้อหา ไม่กิน
+   พื้นที่) พอความสูงเนื้อหาขยับข้าม "เส้นพอดีจอ/เกินจอ" ไปมา (เช่นตอนการ์ด
+   แนะนำร้านค้าสลับสไลด์อัตโนมัติที่หน้า marketplace) แถบเลื่อนจะโผล่/หายสลับ
+   กัน ทำให้เนื้อหาทั้งหน้าขยับซ้าย-ขวานิดๆ ตามไปด้วย — นี่คือสาเหตุของอาการ
+   "หน้าขยึกๆ" ที่น้องหนาวสังเกตเจอครับ พอซ่อนแถบเลื่อนแบบนี้ พื้นที่ก็ไม่ถูก
+   กันไว้เลย ไม่มีอะไรให้ขยับอีกต่อไป (ได้ 2 เด้งจากการแก้จุดเดียว) */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / Edge รุ่นเก่า */
+}
+html::-webkit-scrollbar { display: none; width: 0; height: 0; } /* Chrome / Edge ใหม่ / Safari */
+
+/* ── ส่วนที่ 2: แถบเลื่อนบาง สไตล์ของเว็บเราเอง สำหรับจุดเลื่อนเล็กๆ ──────────
+   ใส่ class="thin-scroll" ให้ container ที่มี overflow(-y):auto/scroll ได้เลย
+   (ต้องมี class เท่านั้นถึงจะเห็นผล — container ที่ไม่ overflow จะไม่มีอะไรให้
+   ดีไซน์อยู่แล้ว) รวม .auth-servers-list (เมนู "Servers" ในปุ่มโปรไฟล์) ไว้ใน
+   กลุ่มเดียวกันเลย เพราะจุดนั้นก็เลื่อนได้เหมือนกันแต่ไม่ได้ใส่ class ไว้ตรงๆ */
+.thin-scroll,
+.auth-servers-list {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(154, 162, 196, 0.45) transparent; /* Firefox: (สีแท่ง, สีราง) */
+}
+.thin-scroll::-webkit-scrollbar,
+.auth-servers-list::-webkit-scrollbar { width: 5px; }
+.thin-scroll::-webkit-scrollbar-button,
+.auth-servers-list::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.thin-scroll::-webkit-scrollbar-track,
+.auth-servers-list::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb,
+.auth-servers-list::-webkit-scrollbar-thumb { background: rgba(154, 162, 196, 0.45); border-radius: 999px; }
+.thin-scroll::-webkit-scrollbar-thumb:hover,
+.auth-servers-list::-webkit-scrollbar-thumb:hover { background: rgba(244, 184, 96, 0.65); }
