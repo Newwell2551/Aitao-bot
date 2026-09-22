@@ -104,7 +104,10 @@
 
     /* ── แถบภาพเบลอด้านหลัง (แค่ช่วงบนสุด) ── */
     .top-glow { position: absolute; top: 0; left: 0; right: 0; height: 1000px; overflow: hidden; z-index: 0; pointer-events: none; }
-    .top-glow img { position: absolute; top: -40px; left: 50%; transform: translateX(-50%) scale(1.06); width: 110%; min-width: 1200px; height: 1040px; object-fit: cover; object-position: 72% 22%; filter: blur(30px) saturate(85%); }
+    /* 🆕 [21 ก.ย. 2569] object-position แนวตั้งเปลี่ยนจาก 22% → 0% (ชิดขอบบนสุด
+       ของภาพ) ให้ตรงกับ .hero-bg ของหน้า index.html — เดิมครอปพื้นที่ว่างเหนือหัว
+       Milo ที่เผื่อไว้สำหรับ navbar ออกไปเกือบหมด */
+    .top-glow img { position: absolute; top: -40px; left: 50%; transform: translateX(-50%) scale(1.06); width: 110%; min-width: 1200px; height: 1040px; object-fit: cover; object-position: 72% 0%; filter: blur(30px) saturate(85%); }
     .top-glow .wash { position: absolute; inset: 0; background: rgba(5,7,15,0.8); }
     .top-glow .radial { position: absolute; inset: 0; background: radial-gradient(ellipse 900px 500px at 22% 0%, rgba(74,90,168,0.14), transparent 65%); }
 
