@@ -225,35 +225,41 @@
     <div class="radial"></div>
   </div>
 
+  <!-- 🆕 [23 ก.ย. 2569 รอบถัดมา] ย้ายปุ่ม Log in / avatar ออกนอกวงรีเมนู — ดูคอมเมนต์เต็มใน
+       index.html จุดเดียวกัน + nav.css จุด .site-nav-row/.auth-widget-corner -->
   <div class="site-nav-wrap">
-    <nav class="site-nav">
-      <a href="/" class="brand plain">
-        <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
-        <span>Milo Bot</span>
-      </a>
-      <div class="center-links">
-        <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
-        <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
-        <a href="/pricing" class="nav-link active" data-i18n="nav.pricing">Pricing</a>
-        <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
-        <!-- 🆕 [23 ก.ย. 2569] ลิงก์ Dashboard กลับเข้าแถบนำทาง — ดูคอมเมนต์เต็มใน index.html -->
-        <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
-      </div>
-      <div class="right-actions">
-        <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
-          <span class="lang-label">EN</span>
-        </button>
-        <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-           class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
-          <span data-i18n="nav.addBot">Add Bot</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="site-nav-row">
+      <nav class="site-nav">
+        <a href="/" class="brand plain">
+          <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+          <span>Milo Bot</span>
         </a>
-        <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js
-             เป็นคนเติมเนื้อหาข้างในให้ตอนหน้าเว็บโหลดเสร็จ ดูคอมเมนต์ในไฟล์นั้น -->
+        <div class="center-links">
+          <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
+          <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
+          <a href="/pricing" class="nav-link active" data-i18n="nav.pricing">Pricing</a>
+          <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
+          <!-- 🆕 [23 ก.ย. 2569] ลิงก์ Dashboard กลับเข้าแถบนำทาง — ดูคอมเมนต์เต็มใน index.html -->
+          <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+        </div>
+        <div class="right-actions">
+          <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+            <span class="lang-label">EN</span>
+          </button>
+          <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+             class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
+            <span data-i18n="nav.addBot">Add Bot</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </div>
+      </nav>
+      <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js เป็นคน
+           เติมเนื้อหาข้างในให้ตอนหน้าเว็บโหลดเสร็จ ดูคอมเมนต์ในไฟล์นั้น -->
+      <div class="auth-widget-corner">
         <div id="auth-widget"></div>
       </div>
-    </nav>
+    </div>
   </div>
 
   <div class="page-head">
