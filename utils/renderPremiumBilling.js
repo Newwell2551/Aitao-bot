@@ -59,9 +59,16 @@ const { PREMIUM_PRICE_THB_DISPLAY, getPaypalDisplayPrice, PAYPAL_FEE_SURCHARGE_P
 //   เป็นโลโก้จริงหมดแล้วตอนนี้ (TrueMoney ยังเป็นแถว "Coming soon" กดไม่ได้เหมือนเดิมนะครับ —
 //   แค่เปลี่ยนไอคอนเป็นโลโก้จริง ไม่ได้แปลว่า Stripe รองรับแล้ว ดูคอมเมนต์ที่ PAYMENT_ROWS
 //   ด้านล่างสำหรับเหตุผลเดิม)
-const ICON_APPLE = `<img src="/images/payment-icons/applepay.svg" alt="Apple Pay" width="34" height="20" />`;
-const ICON_GOOGLE = `<img src="/images/payment-icons/googlepay.svg" alt="Google Pay" width="26" height="26" />`;
-const ICON_PAYPAL = `<span class="logo-chip"><img src="/images/payment-icons/paypal.svg" alt="PayPal" width="18" height="18" /></span>`;
+//   🆕 [23 ก.ย. 2569 รอบ 5] น้องหนาวส่งรูปโลโก้ "ทางการ" ของ Apple Pay / Google Pay / PayPal
+//   มาให้เองอีกชุด (ภาพจริง ไม่ใช่จาก simple-icons) — ตัด/รีไซซ์ให้พอดีแล้วเปลี่ยนมาใช้แทน:
+//   - applepay.png / googlepay.png: เป็นภาพ "ตราปุ่มทางการ" ที่มีกรอบ/การ์ดสีขาวติดมาในรูป
+//     อยู่แล้ว เลยไม่ต้องห่อด้วย .logo-chip ซ้ำอีกชั้น (ปล่อยให้การ์ดสีขาวในรูปเป็นพื้นหลัง
+//     ของตัวเองไปเลย ดูเป็นปุ่มจริงๆ)
+//   - paypal.png: เป็นแค่โลโก้ตัวหนังสือ ไม่มีกรอบมาด้วย เลยยังห่อด้วย .logo-chip เหมือนเดิม
+//     เพื่อให้เด้งชัดบนพื้นหลังเข้มของเว็บ
+const ICON_APPLE = `<img src="/images/payment-icons/applepay.png" alt="Apple Pay" width="34" height="22" />`;
+const ICON_GOOGLE = `<img src="/images/payment-icons/googlepay.png" alt="Google Pay" width="34" height="22" />`;
+const ICON_PAYPAL = `<span class="logo-chip"><img src="/images/payment-icons/paypal.png" alt="PayPal" width="57" height="16" /></span>`;
 const ICON_CARD = `<span class="logo-chip"><img src="/images/payment-icons/visa.svg" alt="Visa" width="26" height="18" /></span><span class="logo-chip"><img src="/images/payment-icons/mastercard.svg" alt="Mastercard" width="22" height="18" /></span>`;
 const ICON_PROMPTPAY = `<span class="logo-chip"><img src="/images/payment-icons/promptpay.png" alt="PromptPay" width="42" height="14" /></span>`;
 const ICON_WALLET = `<img src="/images/payment-icons/truemoney.png" alt="TrueMoney" width="22" height="22" />`;
