@@ -922,6 +922,14 @@ function createWebhookServer(client) {
       }
 
       if (method === 'paypal') {
+        // ⚠️⚠️ [23 ก.ย. 2569 รอบ 6] โค้ดส่วนนี้ **ยังเรียกไม่ถึงจาก UI แล้วตอนนี้** — ปุ่ม PayPal
+        // บนหน้าเว็บถูกเปลี่ยนเป็นแถว "Coming soon" กดไม่ได้แล้ว (ดู utils/renderPremiumBilling.js
+        // ตรง PAYMENT_ROWS สำหรับเหตุผลเต็มๆ) เพราะพบว่า `payment_method_types: ['paypal']`
+        // แบบมาตรฐานนี้ **ใช้ได้เฉพาะบัญชี Stripe ที่จดทะเบียนในยุโรปเท่านั้น** บัญชีไทยของ
+        // น้องหนาวใช้ทางนี้ไม่ได้จริงๆ (ทดสอบจริงแล้วเจอ Stripe Dashboard พาไปหน้า "Custom
+        // payment methods" แทน ซึ่งเป็นฟีเจอร์คนละตัว ต้องขอสิทธิ์ + host adapter เอง — ดู
+        // คอมเมนต์เต็มๆ ใน renderPremiumBilling.js) เก็บโค้ดนี้ไว้เฉยๆ เผื่ออนาคตอยากทำ custom
+        // adapter จริงจัง — ยังไม่ได้ลบเพราะโครงสร้าง Checkout Session ยังใช้อ้างอิงได้อยู่
         // ── ทาง PayPal: ยังใช้ Checkout Session แบบ subscription เหมือนทางบัตรได้เลย (Stripe
         // รองรับ PayPal กับ subscription mode ผ่าน Checkout Session จริงๆ — ต่างจาก PromptPay
         // ที่ทำไม่ได้ต้องเลี่ยงไปใช้ Subscription API ตรงๆ) จุดที่ต่างจากทางบัตรมีแค่ 2 อย่าง:

@@ -93,8 +93,27 @@ const ICON_WALLET = `<img src="/images/payment-icons/truemoney.png" alt="TrueMon
  *   อุปกรณ์รองรับ) ✅ เงื่อนไขที่ต้องเช็คก่อนใช้งานจริง: ต้องเปิด Apple Pay/Google Pay ใน
  *   Stripe Dashboard → Settings → Payment methods ก่อน ไม่งั้นจะไม่โชว์ปุ่มแม้เครื่องรองรับ
  *
- * PayPal เป็น method แยกจริง ('paypal') เพราะ Stripe คิดเป็นช่องทางเต็มรูปแบบของตัวเอง (ดู
- * โค้ดฝั่ง server.js) ส่วน PromptPay ก็ยังเป็น 'promptpay' เหมือนเดิม
+ * PayPal ⚠️ [23 ก.ย. 2569 รอบ 6 — ปิดชั่วคราว] ตอนแรกทำเป็น method แยก ('paypal') เพราะคิดว่า
+ * Stripe รองรับ PayPal เป็นช่องทางเต็มรูปแบบเหมือนบัตรได้เลย — น้องหนาวลองกดจริงแล้วเจอว่า
+ * Stripe Dashboard พาไปหน้า "Custom payment methods" แทนที่จะให้เปิดปุ่ม PayPal ตรงๆ แบบง่ายๆ
+ * (ได้ ID แบบ `cpmt_...` มา ไม่มีอะไรให้ทำต่อ) เช็คเอกสาร Stripe ซ้ำอีกรอบพบสาเหตุจริง:
+ *   Stripe PayPal "แบบมาตรฐาน" (payment_method_types: ['paypal'] ที่ใช้อยู่ตอนนี้ใน server.js)
+ *   **เปิดให้ใช้เฉพาะบัญชี Stripe ที่จดทะเบียนในกลุ่มประเทศยุโรปเท่านั้น** (AT, BE, BG, CH, CY,
+ *   CZ, DE, DK, EE, ES, FI, FR, GB, GR, HR, IE, IT, LI, LT, LU, LV, MT, NL, NO, PL, PT, RO, SE,
+ *   SI, SK — ดู https://docs.stripe.com/payments/paypal#business-locations) **ไทยไม่อยู่ในรายชื่อ
+ *   นี้เลย** บัญชีของน้องหนาว (จดทะเบียนไทย) เลยใช้ทางนี้ไม่ได้จริงๆ ไม่ใช่แค่ยังไม่ได้เปิด
+ *
+ *   ทางเลือกที่ Stripe เสนอให้บัญชีนอกยุโรปคือ "PayPal custom payment method" (เอกสาร:
+ *   https://docs.stripe.com/payments/payment-methods/custom-payment-methods/paypal) ซึ่งเป็น
+ *   คนละระบบเลย: ต้องสมัครขอสิทธิ์เข้าใช้งานก่อน (ยัง preview อยู่) + ต้องมีบัญชี PayPal
+ *   Business ของตัวเอง + ต้อง host "adapter" ที่ Stripe เขียนให้ไว้บนเซิร์ฟเวอร์ของเราเอง +
+ *   มีค่าธรรมเนียมเพิ่มที่ต้องคุยราค กับ Stripe ตรงๆ (merchant-hosted-adapter@stripe.com) — เป็น
+ *   งานเชื่อมระบบใหม่ทั้งชุด ใหญ่กว่าที่ทำไว้ตอนนี้มาก ไม่ใช่แค่เปิด toggle ใน Dashboard
+ *
+ *   **เลยปิดปุ่ม PayPal ไว้ก่อนเป็น "Coming soon" เหมือน TrueMoney** จนกว่าน้องหนาวจะตัดสินใจ
+ *   ว่าอยากลงทุนทำ custom adapter จริงไหม (โค้ดฝั่ง server.js ที่สร้าง Checkout Session ด้วย
+ *   `payment_method_types: ['paypal']` ยังอยู่ในไฟล์เหมือนเดิม แต่ตอนนี้กดไม่ถึงจาก UI แล้ว
+ *   เพราะปุ่มไม่มี method ส่งไป — เก็บไว้เผื่อใช้อ้างอิงถ้าจะกลับมาทำอนาคต)
  *
  * TrueMoney ไม่มี field "method" เลย เพราะยังกดไม่ได้ (disabled: true) — Stripe ไม่รองรับ
  * TrueMoney เป็นช่องทางจ่ายเงินเลย (เช็คจากเอกสาร Stripe แล้วตอนคุยกับน้องหนาว 23 ก.ย. 2569)
@@ -119,12 +138,6 @@ const PAYMENT_ROWS = [
     icon: ICON_GOOGLE,
     label: 'Google Pay',
     sub: 'Pay instantly if your device supports it',
-  },
-  {
-    method: 'paypal',
-    icon: ICON_PAYPAL,
-    label: 'PayPal',
-    sub: `${getPaypalDisplayPrice()} / month · includes ~${PAYPAL_FEE_SURCHARGE_PERCENT}% processing fee`,
   },
   {
     method: 'promptpay',
@@ -174,6 +187,7 @@ function renderPaymentMethodsBox(guildId) {
     </label>
     <div class="pay-row-list">
       ${PAYMENT_ROWS.map(renderPaymentRow).join('\n      ')}
+      ${renderComingSoonRow({ icon: ICON_PAYPAL, label: 'PayPal' })}
       ${renderComingSoonRow({ icon: ICON_WALLET, label: 'TrueMoney Wallet' })}
     </div>
     <div class="pay-box-note">Have a discount code? Type it above before picking how to pay — it applies automatically.</div>
@@ -217,10 +231,22 @@ function renderPremiumBillingPage({ guild, user, botAvatarUrl, botName, tier, su
       </div>`
     : renderPaymentMethodsBox(guild.id);
 
-  // 🆕 แถวหัวข้อ "เซิร์ฟไหน" — โชว์ไอคอน+ชื่อเซิร์ฟให้ชัดเจนว่ากำลังซื้อพรีเมียมให้เซิร์ฟไหนอยู่
-  const guildIconHtml = guild.iconUrl
-    ? `<img src="${escapeHtml(guild.iconUrl)}" alt="" style="width:28px;height:28px;border-radius:8px;object-fit:cover;" />`
-    : `<div style="width:28px;height:28px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);"></div>`;
+  // 🆕 [23 ก.ย. 2569 รอบ 7] "โปรไฟล์เซิร์ฟเวอร์" แบบใหญ่ๆ ชัดๆ + เขียนชื่อเซิร์ฟทับตรงกลางภาพ
+  // แทนไอคอนเล็ก 28x28 + ข้อความข้างๆ แบบเดิม (ดู CSS .server-hero ด้านบนสำหรับรายละเอียด)
+  const serverHeroHtml = guild.iconUrl
+    ? `<div class="server-hero">
+        <img src="${escapeHtml(guild.iconUrl)}" alt="" />
+        <div class="server-hero-overlay">
+          <span class="server-hero-label">Premium for</span>
+          <span class="server-hero-name">${escapeHtml(guild.name)}</span>
+        </div>
+      </div>`
+    : `<div class="server-hero server-hero-placeholder">
+        <div class="server-hero-overlay">
+          <span class="server-hero-label">Premium for</span>
+          <span class="server-hero-name">${escapeHtml(guild.name)}</span>
+        </div>
+      </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -287,9 +313,44 @@ function renderPremiumBillingPage({ guild, user, botAvatarUrl, botName, tier, su
 
   .billing-left .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
   .billing-left .back-link:hover { color: var(--text); }
-  .billing-left .server-row { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
-  .billing-left .server-row span { font-size: 13px; color: var(--text-muted); }
-  .billing-left h1 { font-size: 24px; font-weight: 700; color: var(--text); margin: 14px 0 0; }
+
+  /* 🆕 [23 ก.ย. 2569 รอบ 7] "โปรไฟล์เซิร์ฟเวอร์" แบบใหญ่ๆ ชัดๆ ตามที่ขอ — เดิมเป็นไอคอน
+     เล็ก 28x28 + ข้อความ "Premium for ชื่อเซิร์ฟ" อยู่ข้างๆ กัน ตอนนี้เปลี่ยนเป็นรูปสี่เหลี่ยม
+     จัตุรัสใหญ่ (สูงสุด 260px กว้างเต็มคอลัมน์บนมือถือ ใช้ aspect-ratio: 1/1 แทนกำหนดความสูง
+     ตายตัว เพื่อให้ย่อขนาดตามหน้าจอได้เอง) แล้ว "เขียนชื่อเซิร์ฟทับตรงกลางภาพ" ด้วย
+     position: absolute + flex center — ใช้ gradient สีเข้มไล่จากบางไปเข้มทับด้านล่างของรูป
+     (.server-hero-overlay) เพื่อให้ตัวหนังสือสีขาวอ่านออกชัดเจนไม่ว่ารูปไอคอนพื้นหลังจะเป็น
+     สีอะไรก็ตาม ถ้าเซิร์ฟไม่มีไอคอน (guild.iconUrl เป็น null) ใช้ gradient สี accent/teal ของ
+     เว็บเป็นพื้นหลังแทนรูป (.server-hero-placeholder) กันไม่ให้เป็นกล่องว่างๆ น่าเกลียด */
+  .server-hero {
+    position: relative;
+    width: 100%;
+    max-width: 260px;
+    aspect-ratio: 1 / 1;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin-top: 18px;
+    background: var(--bg-card);
+  }
+  .server-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .server-hero-placeholder { background: linear-gradient(135deg, var(--accent), var(--teal)); }
+  .server-hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
+    padding: 20px;
+    background: linear-gradient(180deg, rgba(10,14,26,0.05) 0%, rgba(10,14,26,0.7) 100%);
+  }
+  .server-hero-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.8); }
+  .server-hero-name { font-size: 22px; font-weight: 800; color: #fff; line-height: 1.25; word-break: break-word; text-shadow: 0 2px 10px rgba(0,0,0,0.55); }
+
+  .billing-left h1 { font-size: 24px; font-weight: 700; color: var(--text); margin: 18px 0 0; }
   .billing-left p { font-size: 13.5px; color: var(--text-muted); margin-top: 8px; max-width: 380px; line-height: 1.7; }
 
   /* ── กล่องเลือกวิธีจ่ายเงิน (คอลัมน์ขวา) ── */
@@ -355,10 +416,7 @@ function renderPremiumBillingPage({ guild, user, botAvatarUrl, botName, tier, su
     <div class="billing-layout">
       <div class="billing-left">
         <a href="/premium/start" class="back-link">&larr; Choose a different server</a>
-        <div class="server-row">
-          ${guildIconHtml}
-          <span>Premium for <strong style="color:var(--text);">${escapeHtml(guild.name)}</strong></span>
-        </div>
+        ${serverHeroHtml}
         <h1>Premium & Billing</h1>
         <p>${isPremium ? 'Thanks for supporting Aitao Bot!' : 'Pick how you would like to pay for Premium.'}</p>
       </div>
