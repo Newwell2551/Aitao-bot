@@ -184,6 +184,9 @@
         features: 'Features',
         pricing: 'Pricing',
         marketplace: 'Marketplace',
+        // 🆕 [23 ก.ย. 2569] เพิ่มลิงก์ Dashboard กลับเข้าแถบนำทาง — ดูคอมเมนต์ที่ตัว
+        // <a href="/dashboard"> ใน public/index.html
+        dashboard: 'Dashboard',
         addBot: 'Add Bot',
       },
       home: {
@@ -366,6 +369,7 @@
         features: 'ฟีเจอร์',
         pricing: 'ราคา',
         marketplace: 'มาร์เก็ตเพลส',
+        dashboard: 'แดชบอร์ด',
         addBot: 'เพิ่มบอท',
       },
       home: {
