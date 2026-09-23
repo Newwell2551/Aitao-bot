@@ -21,6 +21,11 @@
 //   6) ราคาที่โชว์แก้จาก "$2.99"/"฿89" (ราคาเก่าที่ไม่ตรงกับ Stripe จริงมานานแล้ว) มาดึงจาก
 //      utils/premiumPricing.js จุดเดียวแทน กันปัญหาราคาไม่ตรงแบบเดิมอีก
 //
+// 🔄 อัปเดตรอบ 2 (23 ก.ย. 2569 ต่อเนื่อง) — น้องหนาวขอ "โลโก้จริง ไม่ใช่วาด/เลียนแบบ" เปลี่ยน
+// ไอคอน Apple Pay/Google Pay/PayPal/Visa/Mastercard จาก SVG วาดเองเป็นไฟล์โลโก้จริงจากคลัง
+// simple-icons แล้ว (เก็บไว้ที่ public/images/payment-icons/) — PromptPay/TrueMoney ยังหา
+// ไฟล์จริงมาใส่แทนไม่ได้ในรอบนี้ (รายละเอียด/เหตุผลอยู่ในคอมเมนต์ตรงประกาศไอคอนด้านล่าง)
+//
 // ⚠️ ข้อความในหน้านี้ทั้งหมดเป็นภาษาอังกฤษล้วนๆ ให้เข้าชุดกับหน้า Pricing สาธารณะ (ต่างจาก
 // ข้อความในดิสคอร์ด/คอมเมนต์โค้ดที่เป็นภาษาไทย)
 // ─────────────────────────────────────────────────────────────────────────
@@ -29,14 +34,37 @@ const { escapeHtml } = require('./renderServerPicker');
 const { PREMIUM_PRICE_THB_DISPLAY, getPaypalDisplayPrice, PAYPAL_FEE_SURCHARGE_PERCENT } = require('./premiumPricing');
 
 // ── ไอคอนแต่ละช่องทางจ่ายเงิน ────────────────────────────────────────────
-// วาดเป็น inline SVG เองทั้งหมด (ไม่โหลดรูปจากที่อื่น) เพื่อให้หน้าโหลดไวและไม่มีปัญหาโลโก้
-// หาย/โหลดไม่ทันเวลาเน็ตช้า — ตั้งใจทำให้ "เรียบง่าย/จำได้" มากกว่าก็อปโลโก้จริงมาเป๊ะๆ
-const ICON_CARD = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M2 9.5h20" stroke="currentColor" stroke-width="1.7"/><rect x="5" y="13.2" width="5" height="2.2" rx="0.6" fill="currentColor"/></svg>`;
-const ICON_APPLE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.4c0-2.5 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.6.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1.9-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.6-.9.9-1.5 1.4-2.6-3.6-1.4-3.8-4.1-3.8-4.1zM14.2 5.2c.7-.8 1.1-2 1-3.2-1 .1-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.3z"/></svg>`;
-const ICON_GOOGLE = `<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.7-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.1-4 1.1-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1C3.4 21.3 7.4 24 12 24z"/><path fill="#FBBC05" d="M5.4 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.6H1.4C.5 8.3 0 10.1 0 12s.5 3.7 1.4 5.4l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.6l4 3.1c.9-2.8 3.5-4.9 6.6-4.9z"/></svg>`;
-const ICON_PAYPAL = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.5 19.5l1.8-11.4c.2-1.2 1.2-2.1 2.4-2.1h4.1c2.6 0 4.4 1.7 4 4.2-.5 3-2.9 4.8-5.9 4.8h-2l-.9 5.5-3.5-1z" fill="#003087"/><path d="M6 19.5l1.8-11.4C8 6.9 9 6 10.2 6h4.1c2.6 0 4.4 1.7 4 4.2-.5 3-2.9 4.8-5.9 4.8h-2l-.9 5.5-3.5-1z" fill="#009cde" opacity="0.85"/></svg>`;
-const ICON_PROMPTPAY = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.2" stroke="#f4b860" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.2" stroke="#f4b860" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.2" stroke="#f4b860" stroke-width="1.8"/><rect x="15.3" y="15.3" width="2.2" height="2.2" fill="#f4b860"/><rect x="19" y="15.3" width="2.2" height="2.2" fill="#f4b860"/><rect x="15.3" y="19" width="2.2" height="2.2" fill="#f4b860"/><rect x="19" y="19" width="2.2" height="2.2" fill="#f4b860"/></svg>`;
-const ICON_WALLET = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 9.5h19" stroke="currentColor" stroke-width="1.7"/><circle cx="17.5" cy="13.5" r="1.4" fill="currentColor"/></svg>`;
+// 🔄 [23 ก.ย. 2569 รอบ 2] น้องหนาวขอ "โลโก้จริง ไม่ใช่วาดเอง/เลียนแบบ" — รอบแรกผมวาด SVG
+// เองทั้งหมด (เรียบง่าย จำได้ แต่ไม่ใช่โลโก้จริง) รอบนี้เปลี่ยนมาใช้ไฟล์โลโก้จริงแทนสำหรับ
+// ช่องทางที่หาได้แน่ชัด:
+//
+//   Apple Pay / Google Pay / PayPal / Visa / Mastercard → ดึงมาจากแพ็กเกจ npm ชื่อ
+//   "simple-icons" (https://simpleicons.org) ซึ่งเป็นคลังโลโก้แบรนด์ที่ใช้กันทั่วไปสำหรับ
+//   จุดประสงค์แบบนี้เป๊ะๆ (โชว์ "รับชำระผ่านช่องทางไหนบ้าง") ไฟล์ svg เก็บไว้ที่
+//   public/images/payment-icons/*.svg แล้ว (ไม่ได้ฝังเป็น inline SVG ในไฟล์นี้อีกต่อไป
+//   เพราะเป็นไฟล์โลโก้จริง ควรเก็บแยกเป็นไฟล์รูปเหมือนโลโก้อื่นๆ ในเว็บ)
+//
+//   ⚠️ Visa/Mastercard/PayPal ใช้สีตราสินค้าจริง ซึ่งเข้มกว่าพื้นหลังการ์ดของเรา (var(--bg-card))
+//   นิดหน่อย เลยห่อด้วย "chip" พื้นขาวเล็กๆ ให้สีจริงของโลโก้เด้งชัดเจน (แพตเทิร์นเดียวกับที่
+//   เว็บอีคอมเมิร์ซทั่วไปใช้ตอนโชว์แบดจ์ "we accept") ส่วน Apple Pay ใช้เวอร์ชัน "สีขาว" ตาม
+//   แนวทางแบรนด์ของ Apple เอง (ใช้บนพื้นหลังเข้มได้ตรงๆ ไม่ต้องมี chip)
+//
+//   🆕 [23 ก.ย. 2569 รอบ 3] น้องหนาวส่งไฟล์โลโก้มาให้เอง 2 อัน:
+//     - PromptPay: เป็นภาพ PNG แบดจ์ทางการที่ดูสะอาด ไม่มีลายน้ำ ใช้ได้เลย → เปลี่ยนเป็น
+//       โลโก้จริงแล้ว (public/images/payment-icons/promptpay.png)
+//     - TrueMoney: รอบแรกที่ส่งมา (.svg) มีลายน้ำฝังอยู่ในไฟล์ (ไฟล์ตัวอย่างจากเว็บขายภาพ) —
+//       ใช้ไม่ได้ เลยขอไฟล์ใหม่ไป
+//   🆕 [23 ก.ย. 2569 รอบ 4] น้องหนาวส่งไฟล์ TrueMoney ใหม่มา (.png ไอคอนวงกลม ไม่มีลายน้ำ) →
+//   เปลี่ยนเป็นโลโก้จริงแล้ว (public/images/payment-icons/truemoney.png) ครบทั้ง 6 ช่องทาง
+//   เป็นโลโก้จริงหมดแล้วตอนนี้ (TrueMoney ยังเป็นแถว "Coming soon" กดไม่ได้เหมือนเดิมนะครับ —
+//   แค่เปลี่ยนไอคอนเป็นโลโก้จริง ไม่ได้แปลว่า Stripe รองรับแล้ว ดูคอมเมนต์ที่ PAYMENT_ROWS
+//   ด้านล่างสำหรับเหตุผลเดิม)
+const ICON_APPLE = `<img src="/images/payment-icons/applepay.svg" alt="Apple Pay" width="34" height="20" />`;
+const ICON_GOOGLE = `<img src="/images/payment-icons/googlepay.svg" alt="Google Pay" width="26" height="26" />`;
+const ICON_PAYPAL = `<span class="logo-chip"><img src="/images/payment-icons/paypal.svg" alt="PayPal" width="18" height="18" /></span>`;
+const ICON_CARD = `<span class="logo-chip"><img src="/images/payment-icons/visa.svg" alt="Visa" width="26" height="18" /></span><span class="logo-chip"><img src="/images/payment-icons/mastercard.svg" alt="Mastercard" width="22" height="18" /></span>`;
+const ICON_PROMPTPAY = `<span class="logo-chip"><img src="/images/payment-icons/promptpay.png" alt="PromptPay" width="42" height="14" /></span>`;
+const ICON_WALLET = `<img src="/images/payment-icons/truemoney.png" alt="TrueMoney" width="22" height="22" />`;
 
 /**
  * รายชื่อแถวช่องทางจ่ายเงินที่โชว์บนหน้านี้ (เรียงจากบนลงล่างตามลำดับนี้เป๊ะๆ)
@@ -278,7 +306,15 @@ function renderPremiumBillingPage({ guild, user, botAvatarUrl, botName, tier, su
   }
   .pay-row:hover { border-color: var(--accent); background: rgba(124,131,253,0.08); }
   .pay-row:active { transform: scale(0.99); }
-  .pay-row-icon { flex: 0 0 auto; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+  /* 🔄 [23 ก.ย. 2569 รอบ 2] เปลี่ยนจาก width ตายตัว 22px เป็น min-width + gap เพราะแถว
+     "Credit / Debit Card" ตอนนี้โชว์ 2 โลโก้ (Visa + Mastercard) พร้อมกัน ส่วนแถวอื่นที่มี
+     โลโก้เดียวก็ยังอยู่กึ่งกลางช่องเท่าเดิม (min-width กันไม่ให้ label เยื้องกันระหว่างแถว) */
+  .pay-row-icon { flex: 0 0 auto; min-width: 40px; height: 22px; display: flex; align-items: center; gap: 5px; color: var(--text-muted); }
+  /* กรอบขาวเล็กๆ หลังโลโก้ที่ใช้สีตราสินค้าเข้ม (Visa/Mastercard/PayPal) ให้สีจริงเด้งชัดบน
+     พื้นหลังเข้มของเว็บเรา — Apple Pay/Google Pay ไม่ต้องใช้ เพราะเลือกเวอร์ชันที่อ่านง่าย
+     บนพื้นเข้มอยู่แล้ว (ดูคอมเมนต์ตรงประกาศไอคอนด้านบนของไฟล์) */
+  .logo-chip { display: inline-flex; align-items: center; justify-content: center; background: #ffffff; border-radius: 4px; padding: 3px 4px; }
+  .logo-chip img { display: block; }
   .pay-row-text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .pay-row-label { font-size: 13.5px; font-weight: 700; color: var(--text); }
   .pay-row-sub { font-size: 11px; color: var(--text-muted); }
