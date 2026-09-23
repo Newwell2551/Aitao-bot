@@ -897,7 +897,8 @@
     "manage_no_customer": "⚠️ No Stripe subscription found on file for this server yet. If your admin was set to premium manually, there's nothing to manage here.",
     "already_premium": "✅ This server is already Premium — no need to subscribe again",
     "dm": {
-      "activated": "🎉 Your Milo Bot Premium subscription is now active for **{guildName}**! Thank you for supporting us 💚"
+      "activated": "🎉 Your Milo Bot Premium subscription is now active for **{guildName}**! Thank you for supporting us 💚",
+      "promptpay_expired": "⚠️ Premium for **{guildName}** has been turned off — the PromptPay renewal invoice went past its due date without being paid. No extra charge was made. Want Premium back? Just run `/premium` to subscribe again."
     }
   },
   "premium_gate": {

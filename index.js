@@ -6,6 +6,7 @@ const { isRoleButton, handleRoleButton } = require('./utils/handleRoleButton');
 const { initImageWorkerPool }            = require('./utils/imageWorkerPool');
 const { sendGuildJoinGreeting }          = require('./utils/guildJoinGreeting');
 const { syncDiscordBotListCommands }     = require('./utils/syncDiscordBotList');
+const { checkOverduePromptPayInvoices }  = require('./utils/promptpayOverdueCheck');
 const { createWebhookServer }            = require('./server');
 // ระบบห้องรายงานค่าคอมมิชชั่น #referral-earnings แบบโต้ตอบได้ (dropdown เลือกช่วงเวลา + ปุ่มข้อกำหนด)
 // 🆕 [20 ก.ย. 2569 รอบ 14] เพิ่มปุ่ม "Payment" ให้ผู้ขายกรอกเลขพร้อมเพย์ของตัวเองได้เลย
@@ -95,6 +96,26 @@ client.once('ready', () => {
   // discordbotlist.com ก่อนจะทำงานส่วนอื่นต่อ ปล่อยให้มันรันคู่ขนานไปเบื้องหลังได้เลย
   // (ฟังก์ชันข้างในดัก error ไว้หมดแล้ว รับประกันว่าไม่มีทาง throw หลุดออกมา)
   syncDiscordBotListCommands();
+
+  // 4c. 🆕 [22 ก.ย. 2569] ตรวจใบแจ้งหนี้ PromptPay ที่เลยกำหนดจ่าย แล้วดีดกลับเป็น free
+  // อัตโนมัติ — เหตุผลที่ต้อง "ตั้งเวลารันซ้ำเอง" แทนที่จะรอ webhook จาก Stripe เฉยๆ (ต่าง
+  // จากทางบัตรเครดิตที่มี webhook customer.subscription.deleted คอยบอกอยู่แล้ว) อธิบายไว้
+  // ละเอียดที่หัวไฟล์ utils/promptpayOverdueCheck.js แล้ว สรุปสั้นๆ: PromptPay ใช้
+  // collection_method แบบ 'send_invoice' ซึ่ง Stripe ไม่มีระบบรีทราย/ยกเลิกอัตโนมัติให้เลย
+  // ถ้าลูกค้าไม่จ่าย ต้องมีคนมา "เดินตรวจ" เองเป็นระยะๆ
+  //
+  // รันครั้งแรกทันทีตอนบอทออนไลน์ (เผื่อบอท restart บ่อยๆ ระหว่างพัฒนา จะได้ไม่ต้องรอ 6
+  // ชม.แรกเปล่าๆ) แล้วตั้ง setInterval ให้รันซ้ำทุก 6 ชั่วโมงหลังจากนั้น — เลือก 6 ชม.
+  // เพราะ due_date ของใบแจ้งหนี้ห่างจากวันครบกำหนดจริงหลายชั่วโมงถึงเป็นวันอยู่แล้ว (ตั้งไว้
+  // ที่ PROMPTPAY_INVOICE_DAYS_UNTIL_DUE = 3 วันใน server.js) ไม่จำเป็นต้องเช็คถี่กว่านี้
+  // (เช่นทุกชั่วโมง) เพราะช้าไปไม่กี่ชั่วโมงไม่กระทบอะไร แต่ก็ไม่ห่างเกินไปจนลูกค้าที่ไม่จ่าย
+  // แล้วยังได้ใช้พรีเมียมฟรีต่อไปนานเกินสมควร
+  //
+  // ❗ จงใจไม่ใส่ await ตรงนี้เหมือนกัน (เหตุผลเดียวกับ syncDiscordBotListCommands() ด้านบน)
+  // ฟังก์ชันข้างในกันไม่ให้ throw หลุดออกมาไว้แล้วเช่นกัน (ดู try/catch/finally ในไฟล์นั้น)
+  const PROMPTPAY_OVERDUE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
+  checkOverduePromptPayInvoices(client);
+  setInterval(() => checkOverduePromptPayInvoices(client), PROMPTPAY_OVERDUE_CHECK_INTERVAL_MS);
 });
 
 // 5. เมื่อมีคนใช้ slash command / กดปุ่ม / submit modal
