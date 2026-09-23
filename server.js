@@ -36,6 +36,10 @@ const stripe = require('./utils/stripeClient');
 const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo, isPremiumGuild } = require('./utils/tierManager');
 const { getGuildLanguage } = require('./utils/languageStorage');
 const { createTranslator } = require('./utils/i18n');
+// 🆕 [23 ก.ย. 2569] ค่าคงที่ราคา Premium ที่ใช้ทั้งฝั่งแสดงผล (renderPremiumBilling.js) และ
+// ฝั่งคำนวณราคาจริงตอนสร้าง Stripe Checkout (ตรงนี้) — ดูคอมเมนต์หัวไฟล์ premiumPricing.js
+// ว่าทำไมต้องแยกออกมาจุดเดียว
+const { getPaypalChargeCents } = require('./utils/premiumPricing');
 // 🆕 [แคมเปญโค้ดส่วนลดพ่อค้าแม่ค้า] completeRedemption() = จุดที่ "ยืนยันว่าใช้โค้ด
 // สำเร็จจริง" (มีคนจ่ายเงินสำเร็จจริง ไม่ใช่แค่กรอกโค้ดในมือถือ) เรียกจาก webhook
 // checkout.session.completed ด้านล่างเท่านั้น — ดู utils/referralStorage.js
@@ -857,7 +861,10 @@ function createWebhookServer(client) {
       return res.redirect(`/premium/${guildId}`);
     }
 
-    if (method !== 'card' && method !== 'promptpay') {
+    // 🆕 [23 ก.ย. 2569] เพิ่ม 'paypal' เข้ามาเป็นตัวเลือกที่ 3 — ปุ่ม Apple Pay/Google Pay บน
+    // หน้าเว็บใหม่ยังคงส่ง method เป็น 'card' เหมือนเดิม (ไม่ใช่ช่องทางแยก ดูคอมเมนต์ยาวๆ ใน
+    // renderPremiumBilling.js ว่าทำไม) เลยไม่ต้องเพิ่มเงื่อนไขอะไรเพิ่มสำหรับ 2 ปุ่มนั้น
+    if (method !== 'card' && method !== 'promptpay' && method !== 'paypal') {
       return res.redirect(`/premium/${guildId}?error=${encodeURIComponent('Please pick a payment method.')}`);
     }
 
@@ -902,6 +909,49 @@ function createWebhookServer(client) {
         // บันทึก "รอผลชำระเงิน" ไว้ก่อน เหมือนกับที่ handleModalSubmit() ใน commands/premium.js
         // ทำ — ผูกกับ session.id เพื่อให้ webhook checkout.session.completed มาเทียบได้ตอน
         // จ่ายเงินสำเร็จจริง แล้วค่อยนับว่า "ใช้โค้ดนี้ไปแล้ว" + คิดค่าคอมให้ผู้ขาย
+        if (codeEntry) {
+          recordPendingRedemption(session.id, {
+            guildId,
+            code: rawDiscountCode,
+            sellerLabel: codeEntry.sellerLabel,
+            sellerDiscordId: codeEntry.sellerDiscordId,
+          });
+        }
+
+        return res.redirect(303, session.url);
+      }
+
+      if (method === 'paypal') {
+        // ── ทาง PayPal: ยังใช้ Checkout Session แบบ subscription เหมือนทางบัตรได้เลย (Stripe
+        // รองรับ PayPal กับ subscription mode ผ่าน Checkout Session จริงๆ — ต่างจาก PromptPay
+        // ที่ทำไม่ได้ต้องเลี่ยงไปใช้ Subscription API ตรงๆ) จุดที่ต่างจากทางบัตรมีแค่ 2 อย่าง:
+        //
+        //   1) payment_method_types: ['paypal'] — บังคับให้หน้า Stripe โชว์แค่ตัวเลือก PayPal
+        //      อย่างเดียว (ไม่ให้โชว์บัตรปนด้วย เพราะลูกค้ากดปุ่ม "PayPal" มาจากหน้าเราแล้ว)
+        //   2) ใช้ price_data แบบ "inline" (สร้างราคาสดๆ ตรงนี้เลย) แทน STRIPE_PREMIUM_PRICE_ID
+        //      เพราะ Stripe ไม่รองรับสกุลบาท (THB) กับ PayPal เลย — ต้องคิดเป็นดอลลาร์แทน
+        //      (ตัวเลขราคา + % ค่าธรรมเนียมที่บวกเพิ่ม ดูที่ utils/premiumPricing.js จุดเดียว)
+        const session = await stripe.checkout.sessions.create({
+          mode: 'subscription',
+          payment_method_types: ['paypal'],
+          line_items: [{
+            price_data: {
+              currency: 'usd',
+              unit_amount: getPaypalChargeCents(),
+              recurring: { interval: 'month' },
+              product_data: { name: 'Aitao Bot Premium' },
+            },
+            quantity: 1,
+          }],
+          ...(codeEntry
+            ? { discounts: [{ promotion_code: codeEntry.stripePromotionCodeId }] }
+            : { allow_promotion_codes: true }),
+          success_url: `${PUBLIC_BASE_URL}/premium/${guildId}`,
+          cancel_url: `${PUBLIC_BASE_URL}/premium/${guildId}`,
+          metadata: { guildId, discordUserId, ...(codeEntry ? { referralCode: rawDiscountCode.toUpperCase() } : {}) },
+          subscription_data: { metadata: { guildId, discordUserId } },
+        });
+
         if (codeEntry) {
           recordPendingRedemption(session.id, {
             guildId,
@@ -973,6 +1023,8 @@ function createWebhookServer(client) {
       // ไม่โชว์ err.message ดิบๆ เพราะอาจมีรายละเอียดทางเทคนิคที่ไม่เหมาะให้ผู้ใช้ทั่วไปเห็น
       const friendlyMessage = method === 'promptpay'
         ? 'PromptPay is not available for this account right now. Please try the credit card option instead.'
+        : method === 'paypal'
+        ? 'PayPal is not available for this account right now. Please try the credit card option instead.'
         : 'Something went wrong starting checkout. Please try again.';
       return res.redirect(`/premium/${guildId}?error=${encodeURIComponent(friendlyMessage)}`);
     }
