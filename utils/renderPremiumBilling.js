@@ -327,7 +327,7 @@ function renderPremiumBillingPage({ guild, user, botAvatarUrl, botName, tier, su
     width: 100%;
     max-width: 260px;
     aspect-ratio: 1 / 1;
-    border-radius: 24px;
+    border-radius: 0;
     overflow: hidden;
     border: 1px solid var(--border);
     margin-top: 18px;
