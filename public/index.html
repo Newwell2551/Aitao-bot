@@ -278,51 +278,51 @@
          ไม่มีเส้นใต้กำกับว่าอยู่หน้าไหน ตอนนี้จะมีเหมือนทุกหน้าแล้ว + เอาลิงก์ "Dashboard"
          ธรรมดาออกจาก center-links (แทนที่ด้วย auth widget ปุ่ม login/avatar มุมขวาบน
          ใน right-actions ด้านล่าง — ดู #auth-widget) -->
-    <!-- 🆕 [23 ก.ย. 2569 รอบถัดมา] ย้ายปุ่ม Log in / avatar ออกมาไว้นอกแถบวงรีของเมนู เป็น
-         "แถวนอก" (.site-nav-row) ครอบทั้งเมนูวงรี (.site-nav) กับกล่อง auth widget แยกไว้ข้างๆ
-         (.auth-widget-corner) ที่มุมขวาสุด — เหตุผล: เดิมปุ่ม login/avatar อยู่ในวงรีเดียวกับ
-         เมนู ทำให้ฝั่งขวาของวงรี "หนัก" กว่าฝั่งซ้าย (โลโก้) ไม่เท่ากัน มองแล้วเมนูกลางดูเยื้อง
-         ไปทางซ้าย ไม่กลางจริง — ย้ายออกมาแบบนี้ วงรีเมนูก็เบาลง สมดุลขึ้นเอง (ดูคอมเมนต์ในไฟล์
-         nav.css จุด .site-nav-row/.auth-widget-corner ประกอบด้วย) -->
+    <!-- 🆕 [23 ก.ย. 2569 รอบที่ 3] ตามที่น้องหนาวขอเพิ่ม: ปุ่ม Log in ให้ไปชิดขอบเว็บจริงๆ
+         (มุมขวาบนสุดของหน้าเว็บ ไม่ผูกกับแถบเมนูอีกต่อไป แม้แต่ระยะห่างก็ไม่เกี่ยว) ส่วนแถบ
+         เมนูวงรีให้กลับไปอยู่กึ่งกลางหน้าเว็บตามปกติ (ไม่ต้องเผื่อที่ให้ปุ่ม login แล้ว) — เลย
+         แยก 2 อย่างนี้ออกจากกันเด็ดขาด: .site-nav-wrap (วงรีเมนู กึ่งกลางหน้า อิสระ) กับ
+         .auth-widget-corner (ปุ่ม login ลอยตรึงมุมขวาบนของ "หน้าเว็บ" ด้วย position:fixed —
+         อิงตำแหน่งจากขอบจอ ไม่ใช่จากแถบเมนู เลยไม่ขยับตามกันอีกต่อไป) ดูรายละเอียดที่
+         public/nav.css จุด .auth-widget-corner -->
     <div class="site-nav-wrap">
-      <div class="site-nav-row">
-        <nav class="site-nav">
-          <a href="/" class="brand plain">
-            <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
-            <span>Milo Bot</span>
-          </a>
-          <div class="center-links">
-            <a href="/" class="nav-link active" data-i18n="nav.home">Home</a>
-            <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
-            <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
-            <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
-            <!-- 🆕 [23 ก.ย. 2569] เพิ่มลิงก์ "Dashboard" กลับเข้ามาในแถบนำทาง — น้องหนาวแจ้งว่า
-                 หาไม่เจอเลย (เดิมตั้งใจตัดออกแล้วให้กดผ่าน avatar เมนู > Servers แทน แต่ผู้ใช้
-                 จริงมองไม่เห็น/นึกไม่ถึงว่าต้องกดตรงนั้น) กดแล้วพาไป /dashboard ตรงๆ — ถ้ายังไม่
-                 login จะโดน requireAuth เด้งไปหน้า login discord ก่อนอัตโนมัติ (มี ?returnTo=
-                 พากลับมา /dashboard ให้เองหลัง login เสร็จ) ถ้า login อยู่แล้วเจอหน้าเลือกเซิร์ฟ
-                 เลย ไม่ต้องพึ่งเมนู avatar อีกต่อไป -->
-            <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
-          </div>
-          <div class="right-actions">
-            <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
-              <span class="lang-label">EN</span>
-            </button>
-            <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-               class="add-bot-btn pill-btn primary" target="_blank" rel="noopener">
-              <span data-i18n="nav.addBot">Add Bot</span>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </a>
-          </div>
-        </nav>
-        <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js เป็นคน
-             เติมเนื้อหาข้างในให้ตอนหน้าเว็บโหลดเสร็จ ดูคอมเมนต์ในไฟล์นั้น — ตอนนี้ลอยแยกอยู่
-             นอกวงรีเมนู มุมขวาสุดของแถว -->
-        <div class="auth-widget-corner">
-          <div id="auth-widget"></div>
+      <nav class="site-nav">
+        <a href="/" class="brand plain">
+          <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+          <span>Milo Bot</span>
+        </a>
+        <div class="center-links">
+          <a href="/" class="nav-link active" data-i18n="nav.home">Home</a>
+          <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
+          <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
+          <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
+          <!-- 🆕 [23 ก.ย. 2569] เพิ่มลิงก์ "Dashboard" กลับเข้ามาในแถบนำทาง — น้องหนาวแจ้งว่า
+               หาไม่เจอเลย (เดิมตั้งใจตัดออกแล้วให้กดผ่าน avatar เมนู > Servers แทน แต่ผู้ใช้
+               จริงมองไม่เห็น/นึกไม่ถึงว่าต้องกดตรงนั้น) กดแล้วพาไป /dashboard ตรงๆ — ถ้ายังไม่
+               login จะโดน requireAuth เด้งไปหน้า login discord ก่อนอัตโนมัติ (มี ?returnTo=
+               พากลับมา /dashboard ให้เองหลัง login เสร็จ) ถ้า login อยู่แล้วเจอหน้าเลือกเซิร์ฟ
+               เลย ไม่ต้องพึ่งเมนู avatar อีกต่อไป -->
+          <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
         </div>
-      </div>
+        <div class="right-actions">
+          <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+            <span class="lang-label">EN</span>
+          </button>
+          <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+             class="add-bot-btn pill-btn primary" target="_blank" rel="noopener">
+            <span data-i18n="nav.addBot">Add Bot</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </div>
+      </nav>
+    </div>
+
+    <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js เป็นคนเติม
+         เนื้อหาข้างในให้ตอนหน้าเว็บโหลดเสร็จ ดูคอมเมนต์ในไฟล์นั้น — ตรึงอยู่มุมขวาบนสุดของ
+         หน้าเว็บเลย ไม่อยู่ในแถบเมนูแล้ว -->
+    <div class="auth-widget-corner">
+      <div id="auth-widget"></div>
     </div>
 
     <div class="hero-content">
