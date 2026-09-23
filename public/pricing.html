@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="pricing">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -205,6 +205,10 @@
   <!-- 🆕 [22 ก.ย. 2569] ซ่อน scrollbar เดิมของเบราว์เซอร์ + ดีไซน์แถบเลื่อนเล็กๆ
        เป็นสไตล์ของเราเอง (ดูคอมเมนต์หัวไฟล์ scrollbar.css) -->
   <link rel="stylesheet" href="/scrollbar.css">
+  <!-- 🆕 [23 ก.ย. 2569 รอบ 8] ปุ่มสลับภาษา EN/TH ใช้งานได้จริงแล้ว (ดู
+       public/js/site-lang.js) โหลดไว้ใน <head> ก่อน ให้ window.SiteLang พร้อมใช้
+       งานเร็วที่สุด -->
+  <script src="/js/site-lang.js"></script>
 </head>
 <body>
 
@@ -228,19 +232,19 @@
         <span>Milo Bot</span>
       </a>
       <div class="center-links">
-        <a href="/" class="nav-link">Home</a>
-        <a href="/features" class="nav-link">Features</a>
-        <a href="/pricing" class="nav-link active">Pricing</a>
-        <a href="/marketplace" class="nav-link">Marketplace</a>
+        <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
+        <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
+        <a href="/pricing" class="nav-link active" data-i18n="nav.pricing">Pricing</a>
+        <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
       </div>
       <div class="right-actions">
-        <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
+        <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
-          EN
+          <span class="lang-label">EN</span>
         </button>
         <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
            class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
-          Add Bot
+          <span data-i18n="nav.addBot">Add Bot</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
         <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js
@@ -251,45 +255,45 @@
   </div>
 
   <div class="page-head">
-    <div class="eyebrow">Pricing</div>
-    <h1>Simple pricing, real limits</h1>
-    <p>Every number below is pulled straight from the bot's code — no rounding, no fine print.</p>
+    <div class="eyebrow" data-i18n="pricing.eyebrow">Pricing</div>
+    <h1 data-i18n="pricing.title">Simple pricing, real limits</h1>
+    <p data-i18n="pricing.subtitle">Every number below is pulled straight from the bot's code — no rounding, no fine print.</p>
   </div>
 
   <div class="pricing-layout">
     <!-- Free -->
     <div class="price-card">
-      <div class="tier-label">Free</div>
+      <div class="tier-label" data-i18n="pricing.free.tierLabel">Free</div>
       <div class="amount-row">
         <span class="amount">฿0</span>
-        <span class="suffix">forever</span>
+        <span class="suffix" data-i18n="pricing.free.suffix">forever</span>
       </div>
-      <div class="desc">Everything you need to get a server started — no card required.</div>
+      <div class="desc" data-i18n="pricing.free.desc">Everything you need to get a server started — no card required.</div>
 
       <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
-         class="cta-btn ghost pill-btn plain" target="_blank" rel="noopener">Add Milo Bot to Server</a>
+         class="cta-btn ghost pill-btn plain" target="_blank" rel="noopener" data-i18n="home.cta.addBot">Add Milo Bot to Server</a>
 
       <div class="divider"></div>
 
       <div class="feat-list free-list">
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>Welcome &amp; Goodbye cards <span class="sub">— PNG/JPG/WebP backgrounds</span></span></div>
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>1 Role Setup <span class="sub">— Reaction type, up to 2 roles</span></span></div>
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>1 Message Builder <span class="sub">— text + image block</span></span></div>
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>Up to 20 custom fonts <span class="sub">per server</span></span></div>
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span>Thai / English language switch</span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span data-i18n="pricing.free.feat1" data-i18n-html="1">Welcome &amp; Goodbye cards <span class="sub">— PNG/JPG/WebP backgrounds</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span data-i18n="pricing.free.feat2" data-i18n-html="1">1 Role Setup <span class="sub">— Reaction type, up to 2 roles</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span data-i18n="pricing.free.feat3" data-i18n-html="1">1 Message Builder <span class="sub">— text + image block</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span data-i18n="pricing.free.feat4" data-i18n-html="1">Up to 20 custom fonts <span class="sub">per server</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-check"/></svg></span><span data-i18n="pricing.free.feat5">Thai / English language switch</span></div>
       </div>
     </div>
 
     <!-- Premium -->
     <div class="price-card premium">
-      <div class="ribbon"><svg width="10" height="10"><use href="#ic-star"/></svg> Most Popular</div>
+      <div class="ribbon"><svg width="10" height="10"><use href="#ic-star"/></svg> <span data-i18n="pricing.premium.ribbon">Most Popular</span></div>
 
-      <div class="tier-label">Premium</div>
+      <div class="tier-label" data-i18n="pricing.premium.tierLabel">Premium</div>
       <div class="amount-row">
         <span class="amount">฿99</span>
-        <span class="suffix">/ month</span>
+        <span class="suffix" data-i18n="pricing.premium.suffix">/ month</span>
       </div>
-      <div class="desc">Everything in Free, plus the full Layout Builder and unlimited setups.</div>
+      <div class="desc" data-i18n="pricing.premium.desc">Everything in Free, plus the full Layout Builder and unlimited setups.</div>
 
       <!-- 🔄 [แก้ 19 ก.ย. 2569 ดึกมาก] เดิมปุ่มนี้ลิงก์ไปหน้าเชิญบอทเฉยๆ เพราะตอนนั้นยังไม่มี
            ระบบล็อกอิน+เลือกเซิร์ฟ+จ่ายเงินผ่านเว็บ (ดูคอมเมนต์จุดที่ 1 ด้านบนสุดของไฟล์ —
@@ -300,24 +304,24 @@
            ให้เซิร์ฟไหน (หรือข้ามขั้นนี้ไปเลยถ้ามีเซิร์ฟที่ติดตั้งบอทแล้วแค่เซิร์ฟเดียว) จบที่
            หน้าเลือกวิธีจ่ายเงิน (บัตร/PromptPay) ของเซิร์ฟนั้น — ไม่ใช่ target="_blank" อีก
            ต่อไปเพราะเป็นหน้าในเว็บเราเอง ไม่ใช่ลิงก์ไปเว็บนอกแบบก่อนหน้านี้ -->
-      <a href="/premium/start" class="cta-btn gold pill-btn primary plain">
+      <a href="/premium/start" class="cta-btn gold pill-btn primary plain" data-i18n="pricing.premium.cta">
         Subscribe to Premium (฿99)
       </a>
-      <div class="cta-note">Already added the bot? You'll pick which server this is for on the next page.</div>
+      <div class="cta-note" data-i18n="pricing.premium.ctaNote">Already added the bot? You'll pick which server this is for on the next page.</div>
 
       <div class="divider"></div>
 
-      <div class="plus-label">Everything in Free, plus:</div>
+      <div class="plus-label" data-i18n="pricing.premium.plusLabel">Everything in Free, plus:</div>
       <div class="feat-list">
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Animated GIF backgrounds</span></div>
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Unlimited Builders <span class="sub">+ full Layout Builder access</span></span></div>
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Unlimited Role Setups <span class="sub">+ unlock Menu/Button types</span></span></div>
-        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span>Tag users/roles/channels <span class="sub">(@mentions) in messages</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span data-i18n="pricing.premium.feat1">Animated GIF backgrounds</span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span data-i18n="pricing.premium.feat2" data-i18n-html="1">Unlimited Builders <span class="sub">+ full Layout Builder access</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span data-i18n="pricing.premium.feat3" data-i18n-html="1">Unlimited Role Setups <span class="sub">+ unlock Menu/Button types</span></span></div>
+        <div class="feat-row"><span class="ic"><svg width="14" height="14"><use href="#ic-star"/></svg></span><span data-i18n="pricing.premium.feat4" data-i18n-html="1">Tag users/roles/channels <span class="sub">(@mentions) in messages</span></span></div>
       </div>
     </div>
   </div>
 
-  <div class="price-footnote">Cancel anytime from <span>/premium → Manage Subscription</span> — no lock-in.</div>
+  <div class="price-footnote" data-i18n="pricing.footnote" data-i18n-html="1">Cancel anytime from <span>/premium → Manage Subscription</span> — no lock-in.</div>
 
   <!-- 🆕 [21 ก.ย. 2569] สคริปต์ auth widget (ปุ่ม login/avatar มุมขวาบน) — ใช้ไฟล์
        กลางร่วมกับทุกหน้า ดูคอมเมนต์หัวไฟล์ public/nav.js -->

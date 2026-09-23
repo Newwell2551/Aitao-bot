@@ -34,7 +34,7 @@ const session = require('express-session');
 const { TextDisplayBuilder, MessageFlags, ChannelType } = require('discord.js');
 const stripe = require('./utils/stripeClient');
 const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo, isPremiumGuild } = require('./utils/tierManager');
-const { getGuildLanguage } = require('./utils/languageStorage');
+const { getGuildLanguage, setGuildLanguage } = require('./utils/languageStorage');
 const { createTranslator } = require('./utils/i18n');
 // 🆕 [23 ก.ย. 2569] ค่าคงที่ราคา Premium ที่ใช้ทั้งฝั่งแสดงผล (renderPremiumBilling.js) และ
 // ฝั่งคำนวณราคาจริงตอนสร้าง Stripe Checkout (ตรงนี้) — ดูคอมเมนต์หัวไฟล์ premiumPricing.js
@@ -100,6 +100,8 @@ const { buildInviteUrl } = require('./commands/help');
 // "Subscribe to Premium" ที่หน้า public/pricing.html → /premium/start (เลือกเซิร์ฟ) →
 // /premium/:guildId (เลือกวิธีจ่าย) ดูคอมเมนต์เต็มๆ ตรง route ด้านล่างสำหรับรายละเอียด
 const { renderPremiumBillingPage } = require('./utils/renderPremiumBilling');
+// 🆕 หน้า Language จริงในแดชบอร์ด (แทนที่ "เร็วๆ นี้" เดิม) — ดูคอมเมนต์เต็มๆ หัวไฟล์
+const { renderLanguageSettingsPage } = require('./utils/renderLanguageSettings');
 
 // 🆕 โดเมนจริงของเว็บเรา — ใช้สร้าง "redirect_uri" ตอนคุยกับ Discord OAuth2 (Discord
 // บังคับว่าต้องส่งค่าเดียวกันเป๊ะทั้งตอนขอ authorize และตอนแลก token ดูคอมเมนต์ใน
@@ -737,9 +739,10 @@ function createWebhookServer(client) {
     res.json({ ok: true });
   });
 
-  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 5 หน้าที่ยังไม่ได้สร้างจริง (task #17-22 — Welcome Card
+  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 4 หน้าที่ยังไม่ได้สร้างจริง (task #17-22 — Welcome Card
   // มี route จริงแล้วด้านบน, Premium ก็มี route จริงแล้วเช่นกันตั้งแต่ 19 ก.ย. 2569
-  // (ดู GET /dashboard/:guildId/premium ด้านล่าง) จึงตัดออกจากลิสต์นี้ทั้งคู่) กันไม่ให้เมนู
+  // (ดู GET /dashboard/:guildId/premium ด้านล่าง) และตอนนี้ Language ก็มี route จริงแล้ว
+  // เช่นกัน (23 ก.ย. 2569 — ดูด้านล่างบล็อกนี้) จึงตัดออกจากลิสต์นี้ทั้งสามแล้ว) กันไม่ให้เมนู
   // sidebar/เช็กลิสต์ของหน้า Overview กดแล้วเจอ 404 เฉยๆ ระหว่างที่ยังทยอยสร้างทีละหน้าตามแผน
   // — แต่ละเส้นทางในนี้จะถูกแทนที่ด้วย route จริงทีละหน้าเรื่อยๆ ต่อจากนี้ (ลบออกจากลิสต์นี้
   // ทันทีที่หน้านั้นมีของจริง)
@@ -748,7 +751,6 @@ function createWebhookServer(client) {
     { path: 'fonts', key: 'fonts', label: 'Fonts' },
     { path: 'roles', key: 'roles', label: 'Role Setup' },
     { path: 'builder', key: 'builder', label: 'Message Builder' },
-    { path: 'language', key: 'language', label: 'Language' },
   ];
   for (const page of COMING_SOON_PAGES) {
     app.get(`/dashboard/:guildId/${page.path}`, requireAuth, requireGuildAccess, (req, res) => {
@@ -763,6 +765,46 @@ function createWebhookServer(client) {
       }));
     });
   }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [23 ก.ย. 2569] หน้า Language จริงในแดชบอร์ด — เลือกภาษาที่บอทตอบกลับในเซิร์ฟนี้ได้
+  // จากหน้าเว็บโดยตรง แทนที่จะต้องพิมพ์ /language ในดิสคอร์ดเท่านั้น อ่าน/เขียนข้อมูลที่
+  // เดียวกับคำสั่งสแลชเป๊ะๆ (utils/languageStorage.js → data/guild-language.json) เปลี่ยน
+  // จากตรงไหนก็เห็นผลตรงกันหมด ไม่มีระบบซ้อนทับกัน — ดูคอมเมนต์เต็มๆ ที่หัวไฟล์
+  // utils/renderLanguageSettings.js
+  //
+  // ฟอร์มธรรมดา <form method="POST"> ไม่มี JS/AJAX (ตามธรรมเนียมเดียวกับ
+  // /premium/:guildId/checkout ด้านล่าง) ใช้ express.urlencoded({ extended: false }) แบบ
+  // ผูกเฉพาะ route นี้ (ไม่ใช่ middleware กลางทั้งแอป) เหมือนกันเป๊ะๆ
+  app.get('/dashboard/:guildId/language', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const currentLang = getGuildLanguage(guildId);
+    // ?saved=1 มาจาก redirect หลังกด Save สำเร็จด้านล่าง — โชว์แบนเนอร์ยืนยันแค่ครั้งเดียว
+    const saved = req.query.saved === '1';
+
+    res.send(renderLanguageSettingsPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      currentLang,
+      saved,
+    }));
+  });
+
+  app.post('/dashboard/:guildId/language', requireAuth, requireGuildAccess, express.urlencoded({ extended: false }), (req, res) => {
+    const { guildId } = req.params;
+    const lang = req.body?.lang;
+    // ✅ validate ให้แน่ใจว่าเป็น 'en'/'th' เท่านั้น — กันคนแก้ค่าในฟอร์ม (devtools) ส่งค่า
+    // แปลกๆ เข้ามาแล้วไปเก็บลงไฟล์ data/guild-language.json เละ
+    if (lang !== 'en' && lang !== 'th') {
+      return res.redirect(`/dashboard/${guildId}/language`);
+    }
+    setGuildLanguage(guildId, lang);
+    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) เปลี่ยนภาษาบอทของเซิร์ฟ ${guildId} เป็น "${lang}" แล้ว`);
+    res.redirect(`/dashboard/${guildId}/language?saved=1`);
+  });
 
   // ─────────────────────────────────────────────────────────────────────
   // 🆕 หน้า Premium & Billing จริง (เพิ่ม 19 ก.ย. 2569, ย้ายออกจาก /dashboard/:guildId/premium

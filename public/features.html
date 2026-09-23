@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-page="features">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Milo Bot — Features</title>
   <meta name="description" content="Everything Milo Bot ships with today: welcome/goodbye cards, custom server fonts, auto roles, message builder, GIF cards, and multi-language support." />
+  <!-- 🆕 [23 ก.ย. 2569 รอบ 8] data-page="features" + ปุ่มสลับภาษา EN/TH ใช้งานได้
+       จริงแล้ว (ดู public/js/site-lang.js) — ส่วนแผง "Live Preview" ทางขวาที่มี
+       แท็บให้กดสลับ (Reaction/Menu/Button, Free/Premium, ไทย/English) ก็แปลตาม
+       ภาษาเว็บด้วยเหมือนกัน แต่ทำผ่านกลไกแยกต่างหาก (ดูคอมเมนต์ตรง FEAT_I18N
+       ในสคริปต์ท้ายไฟล์นี้) เพราะข้อความพวกนั้นเปลี่ยนด้วย JavaScript ของตัวเอง
+       อยู่แล้ว ไม่ได้เป็น data-i18n ธรรมดา -->
 
   <!--
     ═══════════════════════════════════════════════════════════════════════
@@ -189,6 +195,11 @@
   <!-- 🆕 [22 ก.ย. 2569] ซ่อน scrollbar เดิมของเบราว์เซอร์ + ดีไซน์แถบเลื่อนเล็กๆ
        เป็นสไตล์ของเราเอง (ดูคอมเมนต์หัวไฟล์ scrollbar.css) -->
   <link rel="stylesheet" href="/scrollbar.css">
+  <!-- 🆕 [23 ก.ย. 2569 รอบ 8] โหลด site-lang.js ไว้ใน <head> ก่อนสคริปต์ของหน้านี้
+       (ดูคอมเมนต์ตรง FEAT_I18N ด้านล่าง) — สำคัญมากที่ต้องมาก่อนสคริปต์ท้ายไฟล์
+       เพราะสคริปต์นั้นเรียก window.SiteLang.onChange(...) ตอนโหลดหน้า ถ้า
+       site-lang.js ยังไม่รันก็จะยังไม่มี window.SiteLang ให้เรียก -->
+  <script src="/js/site-lang.js"></script>
 </head>
 <body>
 
@@ -224,19 +235,19 @@
         <span>Milo Bot</span>
       </a>
       <div class="center-links">
-        <a href="/" class="nav-link">Home</a>
-        <a href="/features" class="nav-link active">Features</a>
-        <a href="/pricing" class="nav-link">Pricing</a>
-        <a href="/marketplace" class="nav-link">Marketplace</a>
+        <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
+        <a href="/features" class="nav-link active" data-i18n="nav.features">Features</a>
+        <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
+        <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
       </div>
       <div class="right-actions">
-        <button type="button" class="lang-btn pill-btn" title="Website is in English for now">
+        <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
-          EN
+          <span class="lang-label">EN</span>
         </button>
         <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
            class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
-          Add Bot
+          <span data-i18n="nav.addBot">Add Bot</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
         <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js
@@ -248,9 +259,9 @@
 
   <div class="wrap">
     <div class="page-head">
-      <div class="eyebrow">Features</div>
-      <h1>Everything your server needs</h1>
-      <p>One bot, six core tools — click one to see it in action.</p>
+      <div class="eyebrow" data-i18n="features.eyebrow">Features</div>
+      <h1 data-i18n="features.title">Everything your server needs</h1>
+      <p data-i18n="features.subtitle">One bot, six core tools — click one to see it in action.</p>
     </div>
 
     <div class="feat-layout">
@@ -259,12 +270,12 @@
         <div id="row-1" class="feat-row active" onclick="selectFeature(1)">
           <div id="num-1" class="feat-num">01</div>
           <div style="flex:1;">
-            <div class="feat-title-row"><div id="title-1" class="feat-title">Welcome &amp; Goodbye Cards</div></div>
+            <div class="feat-title-row"><div id="title-1" class="feat-title" data-i18n="features.feat.1.title">Welcome &amp; Goodbye Cards</div></div>
             <div id="desc-1" class="feat-desc">
-              Fully custom card designs that greet new members and say goodbye — pick a layout, drop in your own background and font, Milo does the rest.
+              <span data-i18n="features.feat.1.desc">Fully custom card designs that greet new members and say goodbye — pick a layout, drop in your own background and font, Milo does the rest.</span>
               <div style="margin-top:14px;max-width:380px;">
-                <div class="try-label">Try it — type a name</div>
-                <input id="tryName" type="text" placeholder="e.g. Aiko" maxlength="24" />
+                <div class="try-label" data-i18n="features.tryLabel">Try it — type a name</div>
+                <input id="tryName" type="text" placeholder="e.g. Aiko" data-i18n-placeholder="features.tryPlaceholder" maxlength="24" />
               </div>
             </div>
           </div>
@@ -273,40 +284,40 @@
         <div id="row-2" class="feat-row" onclick="selectFeature(2)">
           <div id="num-2" class="feat-num">02</div>
           <div style="flex:1;">
-            <div class="feat-title-row"><div id="title-2" class="feat-title">Custom Server Fonts</div></div>
-            <div id="desc-2" class="feat-desc" hidden>Upload your own font files (.ttf/.otf) and use them across every card — welcome, goodbye, and role cards all keep your server's own look.</div>
+            <div class="feat-title-row"><div id="title-2" class="feat-title" data-i18n="features.feat.2.title">Custom Server Fonts</div></div>
+            <div id="desc-2" class="feat-desc" hidden data-i18n="features.feat.2.desc">Upload your own font files (.ttf/.otf) and use them across every card — welcome, goodbye, and role cards all keep your server's own look.</div>
           </div>
         </div>
 
         <div id="row-3" class="feat-row" onclick="selectFeature(3)">
           <div id="num-3" class="feat-num">03</div>
           <div style="flex:1;">
-            <div class="feat-title-row"><div id="title-3" class="feat-title">Auto Role Assignment</div></div>
-            <div id="desc-3" class="feat-desc" hidden>Set up self-serve roles your way — Reaction is free (up to 2 roles per panel), Menu and Button unlock on Premium with more roles and richer layouts.</div>
+            <div class="feat-title-row"><div id="title-3" class="feat-title" data-i18n="features.feat.3.title">Auto Role Assignment</div></div>
+            <div id="desc-3" class="feat-desc" hidden data-i18n="features.feat.3.desc">Set up self-serve roles your way — Reaction is free (up to 2 roles per panel), Menu and Button unlock on Premium with more roles and richer layouts.</div>
           </div>
         </div>
 
         <div id="row-4" class="feat-row" onclick="selectFeature(4)">
           <div id="num-4" class="feat-num">04</div>
           <div style="flex:1;">
-            <div class="feat-title-row"><div id="title-4" class="feat-title">Visual Message Builder</div></div>
-            <div id="desc-4" class="feat-desc" hidden>Design embeds and announcements by clicking, not coding. Free gives you 1 simple builder; Premium unlocks unlimited builders, multiple blocks, buttons, and @mentions.</div>
+            <div class="feat-title-row"><div id="title-4" class="feat-title" data-i18n="features.feat.4.title">Visual Message Builder</div></div>
+            <div id="desc-4" class="feat-desc" hidden data-i18n="features.feat.4.desc">Design embeds and announcements by clicking, not coding. Free gives you 1 simple builder; Premium unlocks unlimited builders, multiple blocks, buttons, and @mentions.</div>
           </div>
         </div>
 
         <div id="row-5" class="feat-row" onclick="selectFeature(5)">
           <div id="num-5" class="feat-num">05</div>
           <div style="flex:1;">
-            <div class="feat-title-row"><div id="title-5" class="feat-title">Animated GIF Cards</div> <span class="premium-tag">Premium</span></div>
-            <div id="desc-5" class="feat-desc" hidden>Free backgrounds are sharp PNG/JPG/WebP images. Premium adds animated GIF backgrounds — same layout, now in motion. Tap Free/Premium to compare.</div>
+            <div class="feat-title-row"><div id="title-5" class="feat-title" data-i18n="features.feat.5.title">Animated GIF Cards</div> <span class="premium-tag" data-i18n="features.premiumTag">Premium</span></div>
+            <div id="desc-5" class="feat-desc" hidden data-i18n="features.feat.5.desc">Free backgrounds are sharp PNG/JPG/WebP images. Premium adds animated GIF backgrounds — same layout, now in motion. Tap Free/Premium to compare.</div>
           </div>
         </div>
 
         <div id="row-6" class="feat-row" onclick="selectFeature(6)" style="border-bottom:none;">
           <div id="num-6" class="feat-num">06</div>
           <div style="flex:1;">
-            <div class="feat-title-row"><div id="title-6" class="feat-title">Multi-language Support</div></div>
-            <div id="desc-6" class="feat-desc" hidden>Set with <code>/language</code> (admins only) — Milo replies in Thai or English per server, switching instantly, no re-setup needed. Tap Thai/English to see it run.</div>
+            <div class="feat-title-row"><div id="title-6" class="feat-title" data-i18n="features.feat.6.title">Multi-language Support</div></div>
+            <div id="desc-6" class="feat-desc" hidden data-i18n="features.feat.6.desc" data-i18n-html="1">Set with <code>/language</code> (admins only) — Milo replies in Thai or English per server, switching instantly, no re-setup needed. Tap Thai/English to see it run.</div>
           </div>
         </div>
 
@@ -314,7 +325,7 @@
 
       <div class="preview-col">
         <div class="preview-panel">
-          <div class="preview-label">Live Preview</div>
+          <div class="preview-label" data-i18n="features.preview.label">Live Preview</div>
 
           <!-- panel 1: Welcome & Goodbye Cards -->
           <div id="panel-1">
@@ -328,7 +339,7 @@
               <div style="position:absolute;top:146px;left:0;width:100%;text-align:center;font-size:12px;color:#c3c8e6;">Member #482 · Milo Community</div>
               <div style="position:absolute;bottom:16px;left:0;width:100%;text-align:center;font-size:10.5px;letter-spacing:0.1em;color:rgba(255,255,255,0.4);text-transform:uppercase;">milo bot · welcome</div>
             </div>
-            <div class="preview-caption">This is what new members see the moment they join — fully customizable, no template lock-in.</div>
+            <div class="preview-caption" data-i18n="features.preview.panel1.caption">This is what new members see the moment they join — fully customizable, no template lock-in.</div>
           </div>
 
           <!-- panel 2: Custom Server Fonts -->
@@ -342,16 +353,16 @@
               <div style="position:absolute;top:158px;left:0;width:100%;text-align:center;font-size:17px;color:#f9f8ff;font-family:'Courier New',monospace;">Aa Bb Cc — Mono</div>
               <div style="position:absolute;bottom:16px;left:0;width:100%;text-align:center;font-size:10.5px;letter-spacing:0.1em;color:rgba(255,255,255,0.4);text-transform:uppercase;">milo bot · fonts</div>
             </div>
-            <div class="preview-caption">Upload once, apply everywhere — every card matches your server's own typography.</div>
+            <div class="preview-caption" data-i18n="features.preview.panel2.caption">Upload once, apply everywhere — every card matches your server's own typography.</div>
           </div>
 
           <!-- panel 3: Auto Role Assignment -->
           <div id="panel-3" hidden>
-            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">3 Ways To Assign Roles</div>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;" data-i18n="features.preview.panel3.heading">3 Ways To Assign Roles</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
-              <div id="tab-reaction" class="type-tab" onclick="selectRoleType('reaction')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-smile"/></svg> Reaction</div>
-              <div id="tab-menu" class="type-tab" onclick="selectRoleType('menu')"><svg width="13" height="13"><use href="#ic-list"/></svg> Menu</div>
-              <div id="tab-button" class="type-tab" onclick="selectRoleType('button')"><svg width="13" height="13"><use href="#ic-button"/></svg> Button</div>
+              <div id="tab-reaction" class="type-tab" onclick="selectRoleType('reaction')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-smile"/></svg> <span data-i18n="features.preview.panel3.tabs.reaction">Reaction</span></div>
+              <div id="tab-menu" class="type-tab" onclick="selectRoleType('menu')"><svg width="13" height="13"><use href="#ic-list"/></svg> <span data-i18n="features.preview.panel3.tabs.menu">Menu</span></div>
+              <div id="tab-button" class="type-tab" onclick="selectRoleType('button')"><svg width="13" height="13"><use href="#ic-button"/></svg> <span data-i18n="features.preview.panel3.tabs.button">Button</span></div>
             </div>
             <div class="discord-mock">
               <span id="typeBadge" class="badge-corner" style="color:#66a099;border-color:#4b8f87;">Free · up to 2</span>
@@ -359,7 +370,7 @@
                 <div style="width:34px;height:34px;border-radius:999px;overflow:hidden;flex:0 0 auto;"><img src="/images/avatar-icon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;" /></div>
                 <div style="flex:1;padding-right:70px;">
                   <div class="embed-author"><span style="font-size:12.5px;font-weight:700;color:#f2f3f5;">Milo Bot</span><span class="app-badge">APP</span><span style="font-size:10px;color:#949ba4;">Today at 3:14 PM</span></div>
-                  <div style="font-size:12.5px;color:#dbdee1;margin-top:3px;line-height:1.5;">Pick a role below to customize your server experience!</div>
+                  <div style="font-size:12.5px;color:#dbdee1;margin-top:3px;line-height:1.5;" data-i18n="features.preview.panel3.mockMessage">Pick a role below to customize your server experience!</div>
                   <div id="dmock-reaction">
                     <div style="display:flex;gap:6px;margin-top:10px;">
                       <div style="background:#2b2d31;border:1px solid #3f4147;border-radius:3px;padding:3px 9px;display:flex;align-items:center;gap:5px;font-size:12px;color:#dbdee1;">😀 <span>4</span></div>
@@ -385,10 +396,10 @@
 
           <!-- panel 4: Visual Message Builder -->
           <div id="panel-4" hidden>
-            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">Free Vs Premium Builder</div>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;" data-i18n="features.preview.panel4.heading">Free Vs Premium Builder</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
-              <div id="tab-builder-free" class="type-tab" onclick="selectBuilderTier('free')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-check"/></svg> Free</div>
-              <div id="tab-builder-premium" class="type-tab" onclick="selectBuilderTier('premium')"><svg width="13" height="13"><use href="#ic-star"/></svg> Premium</div>
+              <div id="tab-builder-free" class="type-tab" onclick="selectBuilderTier('free')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-check"/></svg> <span data-i18n="features.preview.tierTabs.free">Free</span></div>
+              <div id="tab-builder-premium" class="type-tab" onclick="selectBuilderTier('premium')"><svg width="13" height="13"><use href="#ic-star"/></svg> <span data-i18n="features.preview.tierTabs.premium">Premium</span></div>
             </div>
             <div class="discord-mock">
               <span id="typeBadge4" class="badge-corner" style="color:#66a099;border-color:#4b8f87;">Free · 1 builder</span>
@@ -397,18 +408,18 @@
                 <div style="flex:1;padding-right:70px;">
                   <div class="embed-author"><span style="font-size:12.5px;font-weight:700;color:#f2f3f5;">Milo Bot</span><span class="app-badge">APP</span><span style="font-size:10px;color:#949ba4;">Today at 3:14 PM</span></div>
                   <div id="dmock-builder-free" style="margin-top:8px;background:#2b2d31;border-left:4px solid #4a5aa8;border-radius:2px;padding:10px 12px;">
-                    <div style="font-size:12.5px;color:#dbdee1;line-height:1.6;">New event this weekend — drop by the announcements channel for details!</div>
+                    <div style="font-size:12.5px;color:#dbdee1;line-height:1.6;" data-i18n="features.preview.panel4.freeMock">New event this weekend — drop by the announcements channel for details!</div>
                   </div>
                   <div id="dmock-builder-premium" hidden style="margin-top:8px;border-radius:3px;overflow:hidden;border-left:4px solid #4a5aa8;">
                     <img src="/images/hero-crisp.jpg" alt="" style="width:100%;height:64px;object-fit:cover;object-position:70% 15%;display:block;" />
                     <div style="background:#2b2d31;padding:10px 12px;">
-                      <div style="font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-align:center;text-transform:uppercase;">Server Update</div>
+                      <div style="font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-align:center;text-transform:uppercase;" data-i18n="features.preview.panel4.serverUpdate">Server Update</div>
                       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;">
-                        <div style="font-size:11.5px;color:#dbdee1;line-height:1.6;min-width:0;">Use <span style="background:#1e1f22;color:#e3e5e8;border-radius:2px;padding:1px 5px;font-family:'Courier New',monospace;font-size:10.5px;white-space:nowrap;">/builder new</span> to create your own announcement</div>
+                        <div style="font-size:11.5px;color:#dbdee1;line-height:1.6;min-width:0;" data-i18n="features.preview.panel4.useBuilder" data-i18n-html="1">Use <span style="background:#1e1f22;color:#e3e5e8;border-radius:2px;padding:1px 5px;font-family:'Courier New',monospace;font-size:10.5px;white-space:nowrap;">/builder new</span> to create your own announcement</div>
                         <img src="/images/avatar-icon.jpg" alt="" style="width:30px;height:30px;border-radius:3px;object-fit:cover;flex:0 0 auto;" />
                       </div>
-                      <div style="font-size:11px;color:#c3c8e6;margin-top:6px;line-height:1.6;">New event channel now open for <span style="background:rgba(88,101,242,0.3);color:#c9cdfb;border-radius:2px;padding:0 3px;">@Members</span></div>
-                      <button style="margin-top:9px;height:26px;padding:0 10px;border-radius:3px;background:#5865f2;color:#fff;font-size:10.5px;font-weight:600;border:none;display:inline-flex;align-items:center;gap:5px;"><svg width="11" height="11"><use href="#ic-bell"/></svg> Get Notified</button>
+                      <div style="font-size:11px;color:#c3c8e6;margin-top:6px;line-height:1.6;" data-i18n="features.preview.panel4.newChannel" data-i18n-html="1">New event channel now open for <span style="background:rgba(88,101,242,0.3);color:#c9cdfb;border-radius:2px;padding:0 3px;">@Members</span></div>
+                      <button style="margin-top:9px;height:26px;padding:0 10px;border-radius:3px;background:#5865f2;color:#fff;font-size:10.5px;font-weight:600;border:none;display:inline-flex;align-items:center;gap:5px;"><svg width="11" height="11"><use href="#ic-bell"/></svg> <span data-i18n="features.preview.panel4.getNotified">Get Notified</span></button>
                     </div>
                   </div>
                 </div>
@@ -419,10 +430,10 @@
 
           <!-- panel 5: Animated GIF Cards -->
           <div id="panel-5" hidden>
-            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">Free Vs Premium Backgrounds</div>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;" data-i18n="features.preview.panel5.heading">Free Vs Premium Backgrounds</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
-              <div id="tab-gif-free" class="type-tab" onclick="selectGifTier('free')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-check"/></svg> Free</div>
-              <div id="tab-gif-premium" class="type-tab" onclick="selectGifTier('premium')"><svg width="13" height="13"><use href="#ic-star"/></svg> Premium</div>
+              <div id="tab-gif-free" class="type-tab" onclick="selectGifTier('free')" style="background:rgba(75,143,135,0.15);border-color:#4b8f87;color:#f3f1fb;"><svg width="13" height="13"><use href="#ic-check"/></svg> <span data-i18n="features.preview.tierTabs.free">Free</span></div>
+              <div id="tab-gif-premium" class="type-tab" onclick="selectGifTier('premium')"><svg width="13" height="13"><use href="#ic-star"/></svg> <span data-i18n="features.preview.tierTabs.premium">Premium</span></div>
             </div>
             <div style="margin-top:12px;width:100%;height:200px;border-radius:5px;position:relative;overflow:hidden;background:linear-gradient(135deg, #171c38 0%, #262c58 55%, #3a3570 100%);">
               <div style="position:absolute;top:-40px;right:-30px;width:160px;height:160px;border-radius:999px;background:radial-gradient(circle, rgba(75,143,135,0.4), transparent 70%);filter:blur(6px);"></div>
@@ -443,20 +454,20 @@
 
           <!-- panel 6: Multi-language Support -->
           <div id="panel-6" hidden>
-            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;">Switch Server Language</div>
+            <div style="margin-top:14px;font-size:10px;letter-spacing:0.14em;color:#9aa2c4;text-transform:uppercase;text-align:center;" data-i18n="features.preview.panel6.heading">Switch Server Language</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
-              <div id="tab-lang-th" class="type-tab" onclick="selectLangTier('th')" style="background:rgba(74,90,168,0.15);border-color:#4a5aa8;color:#f3f1fb;"><span style="font-size:9px;font-weight:800;letter-spacing:0.04em;opacity:0.7;">TH</span> Thai</div>
-              <div id="tab-lang-en" class="type-tab" onclick="selectLangTier('en')"><span style="font-size:9px;font-weight:800;letter-spacing:0.04em;opacity:0.7;">EN</span> English</div>
+              <div id="tab-lang-th" class="type-tab" onclick="selectLangTier('th')" style="background:rgba(74,90,168,0.15);border-color:#4a5aa8;color:#f3f1fb;"><span style="font-size:9px;font-weight:800;letter-spacing:0.04em;opacity:0.7;">TH</span> <span data-i18n="features.preview.panel6.tabThai">Thai</span></div>
+              <div id="tab-lang-en" class="type-tab" onclick="selectLangTier('en')"><span style="font-size:9px;font-weight:800;letter-spacing:0.04em;opacity:0.7;">EN</span> <span data-i18n="features.preview.panel6.tabEnglish">English</span></div>
             </div>
             <div class="discord-mock">
-              <span style="position:absolute;top:12px;right:14px;font-size:8.5px;font-weight:700;letter-spacing:0.05em;color:#9aa2c4;border:1px solid rgba(154,162,196,0.4);border-radius:999px;padding:2px 8px;text-transform:uppercase;">Admin only</span>
+              <span style="position:absolute;top:12px;right:14px;font-size:8.5px;font-weight:700;letter-spacing:0.05em;color:#9aa2c4;border:1px solid rgba(154,162,196,0.4);border-radius:999px;padding:2px 8px;text-transform:uppercase;" data-i18n="features.preview.panel6.adminOnly">Admin only</span>
               <div style="display:flex;gap:10px;">
                 <div style="width:34px;height:34px;border-radius:999px;overflow:hidden;flex:0 0 auto;"><img src="/images/avatar-icon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;" /></div>
                 <div style="flex:1;padding-right:70px;">
                   <div class="embed-author"><span style="font-size:12.5px;font-weight:700;color:#f2f3f5;">Milo Bot</span><span class="app-badge">APP</span><span style="font-size:10px;color:#949ba4;">Today at 3:14 PM</span></div>
-                  <div style="font-size:11px;color:#949ba4;margin-top:4px;">used <span id="langCmdPill" style="background:rgba(88,101,242,0.18);color:#c9cdfb;border-radius:2px;padding:1px 6px;font-family:'Courier New',monospace;">/language lang: Thai</span></div>
+                  <div style="font-size:11px;color:#949ba4;margin-top:4px;"><span data-i18n="features.preview.panel6.used">used</span> <span id="langCmdPill" style="background:rgba(88,101,242,0.18);color:#c9cdfb;border-radius:2px;padding:1px 6px;font-family:'Courier New',monospace;">/language lang: Thai</span></div>
                   <div id="langReplyText" style="font-size:12.5px;color:#dbdee1;margin-top:8px;line-height:1.6;">✅ เปลี่ยนภาษาบอทเป็น ไทย แล้ว</div>
-                  <div style="font-size:10px;color:#6d7079;margin-top:6px;font-style:italic;display:flex;align-items:center;gap:4px;"><svg width="10" height="10"><use href="#ic-lock"/></svg> Only you can see this</div>
+                  <div style="font-size:10px;color:#6d7079;margin-top:6px;font-style:italic;display:flex;align-items:center;gap:4px;"><svg width="10" height="10"><use href="#ic-lock"/></svg> <span data-i18n="features.preview.panel6.onlyYou">Only you can see this</span></div>
                 </div>
               </div>
             </div>
@@ -469,82 +480,127 @@
   </div>
 
   <div class="cta-band">
-    <h2>Ready to set this up on your server?</h2>
+    <h2 data-i18n="features.cta.heading">Ready to set this up on your server?</h2>
     <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
        class="add-bot-btn-lg pill-btn primary plain" target="_blank" rel="noopener">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path fill="#0a0e1a" d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
-      Add Milo Bot to Server
+      <span data-i18n="home.cta.addBot">Add Milo Bot to Server</span>
     </a>
   </div>
 
   <div class="showcase">
-    <div class="eyebrow">Premium Showcase</div>
-    <h2>See how far decoration can go</h2>
-    <p>Not a single feature — one flagship message built entirely from real Layout Builder blocks, dressed up to the max.</p>
+    <div class="eyebrow" data-i18n="features.showcase.eyebrow">Premium Showcase</div>
+    <h2 data-i18n="features.showcase.heading">See how far decoration can go</h2>
+    <p data-i18n="features.showcase.desc">Not a single feature — one flagship message built entirely from real Layout Builder blocks, dressed up to the max.</p>
 
     <!-- รอบ 7 (14 ก.ย. 2569): น้องหนาวขอให้ใช้สกรีนช็อตจริงที่ถ่ายมาเองตรงๆ
          เลย ไม่ต้องจำลองใหม่ด้วยโค้ด — รูปนี้คือสกรีนช็อตจริงที่ครอปขอบขาว
          บางๆ ออกแล้ว ไม่มีการแต่งเติม/เปลี่ยนแปลงเนื้อหาใดๆ ในรูปเลย -->
     <div class="showcase-card-wrap">
       <img class="showcase-shot" src="/images/premium-showcase-real.png" alt="ตัวอย่างข้อความ Premium ที่ตกแต่งด้วย Layout Builder จริงในดิสคอร์ด" />
-      <div class="powered-by">Powered by Milo Bot Premium</div>
+      <div class="powered-by" data-i18n="features.showcase.poweredBy">Powered by Milo Bot Premium</div>
     </div>
 
     <div class="legend">
-      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-pencil"/></svg> Text</span>
-      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-image"/></svg> Image</span>
-      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-divider"/></svg> Divider</span>
-      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-image"/></svg> Text + Small Image</span>
-      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-button"/></svg> Text + Link Button</span>
-      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-star"/></svg> Text + Role Button</span>
-      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-megaphone"/></svg> Text + Channel Button</span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-pencil"/></svg> <span data-i18n="features.legend.text">Text</span></span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-image"/></svg> <span data-i18n="features.legend.image">Image</span></span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-divider"/></svg> <span data-i18n="features.legend.divider">Divider</span></span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-image"/></svg> <span data-i18n="features.legend.textSmallImage">Text + Small Image</span></span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-button"/></svg> <span data-i18n="features.legend.textLinkButton">Text + Link Button</span></span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-star"/></svg> <span data-i18n="features.legend.textRoleButton">Text + Role Button</span></span>
+      <span class="legend-chip"><svg width="12" height="12"><use href="#ic-megaphone"/></svg> <span data-i18n="features.legend.textChannelButton">Text + Channel Button</span></span>
     </div>
-    <div class="legend-note">These are the 7 real block types the Layout Builder supports — mix and match them yourself.</div>
+    <div class="legend-note" data-i18n="features.legend.note">These are the 7 real block types the Layout Builder supports — mix and match them yourself.</div>
   </div>
 
   <script>
-    var ROLE_TYPE_STYLE = {
-      reaction: { bg: 'rgba(75,143,135,0.15)', border: '#4b8f87', badge: 'Free · up to 2', caption: 'Free forever — up to 2 reaction roles per panel.' },
-      menu:     { bg: 'rgba(244,184,96,0.15)', border: '#f4b860', badge: 'Premium', caption: 'Premium unlocks the dropdown style — tidy for long role lists.' },
-      button:   { bg: 'rgba(244,184,96,0.15)', border: '#f4b860', badge: 'Premium', caption: 'Premium unlocks button-style roles — the most tap-friendly layout.' }
+    // 🆕 [23 ก.ย. 2569 รอบ 8] FEAT_I18N — คำแปล 2 ภาษาของ "ข้อความที่ถูกเปลี่ยนโดย
+    // JavaScript เอง" (ไม่ใช่ data-i18n ธรรมดา) ในแผง Live Preview — จุดพวกนี้คือ
+    // badge/caption ที่ฟังก์ชัน selectRoleType/selectBuilderTier/selectGifTier
+    // ด้านล่างเขียนทับข้อความใหม่ทุกครั้งที่กดแท็บ (สีกับ HTML โครงสร้างยังคงอยู่
+    // ในไฟล์นี้เหมือนเดิม เปลี่ยนแค่ตัวหนังสือให้ตรงกับภาษาที่เลือกบนเว็บ) — ดึง
+    // ภาษาปัจจุบันผ่าน window.SiteLang.getLang() (มาจาก public/js/site-lang.js)
+    // และ "ฟัง" ทุกครั้งที่มีคนกดปุ่มสลับภาษา EN/TH มุมขวาบนผ่าน
+    // window.SiteLang.onChange(...) ด้านล่างสุดของสคริปต์นี้ — พอภาษาเปลี่ยน จะ
+    // เรียก refreshFeaturesLang() ใหม่ทั้งหมด ให้แท็บที่เลือกอยู่ตอนนั้นโชว์คำแปล
+    // ที่ถูกต้องทันที ไม่ต้องกดแท็บใหม่เอง
+    var FEAT_I18N = {
+      en: {
+        roleType: {
+          reaction: { badge: 'Free · up to 2', caption: 'Free forever — up to 2 reaction roles per panel.' },
+          menu:     { badge: 'Premium', caption: 'Premium unlocks the dropdown style — tidy for long role lists.' },
+          button:   { badge: 'Premium', caption: 'Premium unlocks button-style roles — the most tap-friendly layout.' }
+        },
+        builderTier: {
+          free:    { badge: 'Free · 1 builder', caption: 'Free gives you 1 builder with a text + image block — enough for a simple announcement.' },
+          premium: { badge: 'Premium', caption: 'Premium unlocks unlimited builders, multiple blocks, buttons, and @mentions for the full layout.' }
+        },
+        gifTier: {
+          free:    { caption: 'Free backgrounds support PNG, JPG, and WebP — sharp, lightweight, and always free.' },
+          premium: { caption: 'Premium unlocks animated GIF backgrounds — same layout, now in motion.' }
+        }
+      },
+      th: {
+        roleType: {
+          reaction: { badge: 'ฟรี · สูงสุด 2 ยศ', caption: 'ใช้ฟรีตลอดไป — ยศจากรีแอคชันได้สูงสุด 2 ยศต่อแผง' },
+          menu:     { badge: 'พรีเมียม', caption: 'พรีเมียมปลดล็อกสไตล์เมนูดรอปดาวน์ — เหมาะกับลิสต์ยศยาวๆ' },
+          button:   { badge: 'พรีเมียม', caption: 'พรีเมียมปลดล็อกยศแบบปุ่มกด — กดง่ายที่สุดในสามแบบ' }
+        },
+        builderTier: {
+          free:    { badge: 'ฟรี · 1 บิลเดอร์', caption: 'ฟรีให้บิลเดอร์ 1 อัน มีบล็อกข้อความ + รูปภาพ — พอสำหรับประกาศทั่วไป' },
+          premium: { badge: 'พรีเมียม', caption: 'พรีเมียมปลดล็อกบิลเดอร์ไม่จำกัด หลายบล็อก ปุ่มกด และ @mentions ครบทุกลูกเล่น' }
+        },
+        gifTier: {
+          free:    { caption: 'พื้นหลังฟรีรองรับ PNG, JPG, WebP — คมชัด ไฟล์เล็ก และฟรีตลอดไป' },
+          premium: { caption: 'พรีเมียมปลดล็อกพื้นหลัง GIF แบบเคลื่อนไหว — เลย์เอาต์เดิม แต่มีชีวิตชีวาขึ้น' }
+        }
+      }
     };
+    function featLang() { return (window.SiteLang && window.SiteLang.getLang()) || 'en'; }
+
+    var currentRoleType = 'reaction', currentBuilderTier = 'free', currentGifTier = 'free';
+
+    var ROLE_TYPE_COLOR = { reaction: { bg: 'rgba(75,143,135,0.15)', border: '#4b8f87' }, menu: { bg: 'rgba(244,184,96,0.15)', border: '#f4b860' }, button: { bg: 'rgba(244,184,96,0.15)', border: '#f4b860' } };
     function selectRoleType(type) {
+      currentRoleType = type;
+      var i18n = FEAT_I18N[featLang()].roleType;
       ['reaction', 'menu', 'button'].forEach(function (t) {
         var tab = document.getElementById('tab-' + t);
         var mock = document.getElementById('dmock-' + t);
         var active = (t === type);
-        var s = ROLE_TYPE_STYLE[t];
-        if (tab) { tab.style.background = active ? s.bg : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? s.border : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
+        var c = ROLE_TYPE_COLOR[t];
+        if (tab) { tab.style.background = active ? c.bg : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? c.border : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
         if (mock) mock.hidden = !active;
       });
-      var badge = document.getElementById('typeBadge'); var s2 = ROLE_TYPE_STYLE[type];
-      if (badge) { badge.textContent = s2.badge; badge.style.color = s2.border; badge.style.borderColor = s2.border; }
+      var badge = document.getElementById('typeBadge'); var c2 = ROLE_TYPE_COLOR[type]; var s2 = i18n[type];
+      if (badge) { badge.textContent = s2.badge; badge.style.color = c2.border; badge.style.borderColor = c2.border; }
       var cap = document.getElementById('typeCaption'); if (cap) cap.textContent = s2.caption;
     }
 
-    var BUILDER_TIER_STYLE = {
-      free:    { bg: 'rgba(75,143,135,0.15)', border: '#4b8f87', badge: 'Free · 1 builder', caption: 'Free gives you 1 builder with a text + image block — enough for a simple announcement.' },
-      premium: { bg: 'rgba(244,184,96,0.15)', border: '#f4b860', badge: 'Premium', caption: 'Premium unlocks unlimited builders, multiple blocks, buttons, and @mentions for the full layout.' }
-    };
+    var BUILDER_TIER_COLOR = { free: { bg: 'rgba(75,143,135,0.15)', border: '#4b8f87' }, premium: { bg: 'rgba(244,184,96,0.15)', border: '#f4b860' } };
     function selectBuilderTier(tier) {
+      currentBuilderTier = tier;
+      var i18n = FEAT_I18N[featLang()].builderTier;
       ['free', 'premium'].forEach(function (t) {
         var tab = document.getElementById('tab-builder-' + t);
         var mock = document.getElementById('dmock-builder-' + t);
         var active = (t === tier);
-        var s = BUILDER_TIER_STYLE[t];
-        if (tab) { tab.style.background = active ? s.bg : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? s.border : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
+        var c = BUILDER_TIER_COLOR[t];
+        if (tab) { tab.style.background = active ? c.bg : 'rgba(255,255,255,0.05)'; tab.style.borderColor = active ? c.border : 'rgba(255,255,255,0.14)'; tab.style.color = active ? '#f3f1fb' : '#c3c8e6'; }
         if (mock) mock.hidden = !active;
       });
-      var badge = document.getElementById('typeBadge4'); var s2 = BUILDER_TIER_STYLE[tier];
-      if (badge) { badge.textContent = s2.badge; badge.style.color = s2.border; badge.style.borderColor = s2.border; }
+      var badge = document.getElementById('typeBadge4'); var c2 = BUILDER_TIER_COLOR[tier]; var s2 = i18n[tier];
+      if (badge) { badge.textContent = s2.badge; badge.style.color = c2.border; badge.style.borderColor = c2.border; }
       var cap = document.getElementById('typeCaption4'); if (cap) cap.textContent = s2.caption;
     }
 
     var GIF_TIER_STYLE = {
-      free:    { color: '#4b8f87', tabBg: 'rgba(75,143,135,0.15)', badge: 'PNG', footer: 'milo bot · static background', caption: 'Free backgrounds support PNG, JPG, and WebP — sharp, lightweight, and always free.', overlay: false },
-      premium: { color: '#f4b860', tabBg: 'rgba(244,184,96,0.15)', badge: 'GIF', footer: 'milo bot · gif · premium', caption: 'Premium unlocks animated GIF backgrounds — same layout, now in motion.', overlay: true }
+      free:    { color: '#4b8f87', tabBg: 'rgba(75,143,135,0.15)', badge: 'PNG', footer: 'milo bot · static background', overlay: false },
+      premium: { color: '#f4b860', tabBg: 'rgba(244,184,96,0.15)', badge: 'GIF', footer: 'milo bot · gif · premium', overlay: true }
     };
     function selectGifTier(tier) {
+      currentGifTier = tier;
+      var i18n = FEAT_I18N[featLang()].gifTier;
       ['free', 'premium'].forEach(function (t) {
         var tab = document.getElementById('tab-gif-' + t);
         var active = (t === tier);
@@ -556,7 +612,18 @@
       var wrap = document.getElementById('gifAvatarWrap'); if (wrap) { wrap.style.borderColor = s2.color; wrap.style.boxShadow = '0 0 24px ' + s2.color + '80'; }
       var overlay = document.getElementById('gifPlayOverlay'); if (overlay) overlay.style.display = s2.overlay ? 'flex' : 'none';
       var footer = document.getElementById('gifFooterLabel'); if (footer) { footer.textContent = s2.footer; footer.style.color = tier === 'premium' ? '#f4b860' : 'rgba(255,255,255,0.4)'; }
-      var cap = document.getElementById('gifCaption'); if (cap) cap.textContent = s2.caption;
+      var cap = document.getElementById('gifCaption'); if (cap) cap.textContent = i18n[tier].caption;
+    }
+
+    // เรียกทุกครั้งที่ภาษาเว็บเปลี่ยน (ปุ่ม EN/TH มุมขวาบน) — วาดใหม่เฉพาะ 3 แผงที่มี
+    // ข้อความ dynamic (badge/caption) ตามแท็บที่เลือกอยู่ตอนนั้น ไม่กระทบแท็บ/แผงอื่น
+    function refreshFeaturesLang() {
+      selectRoleType(currentRoleType);
+      selectBuilderTier(currentBuilderTier);
+      selectGifTier(currentGifTier);
+    }
+    if (window.SiteLang) {
+      window.SiteLang.onChange(refreshFeaturesLang);
     }
 
     var LANG_STYLE = {
