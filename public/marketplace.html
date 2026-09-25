@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Milo Bot — Marketplace</title>
-  <meta name="description" content="ตัวอย่างพรีวิวหน้า Marketplace ของ Milo Bot — เลือกซื้อของตกแต่งเซิร์ฟจากครีเอเตอร์คนอื่น หรือเปิดร้านขายเองได้ (ฟีเจอร์นี้ยังไม่เปิดใช้งานจริง)" />
+  <meta name="description" content="Marketplace ของ Milo Bot — เลือกซื้อของตกแต่งเซิร์ฟจากครีเอเตอร์คนอื่น หรือเปิดร้านขายเองได้จริงผ่านคำสั่ง /marketplace บนดิสคอร์ด" />
 
   <!--
     ═══════════════════════════════════════════════════════════════════════
@@ -12,25 +12,45 @@
     ไฟล์ดีไซน์อ้างอิงจริง Marketplace.dc.html (จาก Marketplace-html.zip ที่
     น้องหนาวส่งมา) แทบทั้งหมด
 
-    สิ่งสำคัญที่ต้องรู้ก่อนอ่านโค้ดต่อ (อธิบายละเอียดเพราะเป็นเรื่องใหญ่):
-      ตอนนี้ฟีเจอร์ Marketplace "ยังไม่มีจริง" ในตัวบอทเลยครับ — เช็คจาก
-      claude/roadmap-marketplace-idea.md แล้วมันเป็นแค่ไอเดียในโรดแมป ยังไม่ได้
-      เริ่มสร้างระบบหลังบ้านอะไรทั้งสิ้น (ไม่มีฐานข้อมูลสินค้า ไม่มีระบบร้านค้า
-      ไม่มี Stripe Connect ฯลฯ) เพราะงั้นหน้านี้จึงเป็น "ตัวอย่างพรีวิว" ล้วนๆ
-      สินค้าทั้ง 9 ชิ้น (PRODUCTS ในสคริปต์ด้านล่าง) เป็นข้อมูลสมมติที่ก็อปปี้
-      มาจากไฟล์ดีไซน์ตรงๆ เพื่อโชว์ว่าหน้าตาจะเป็นยังไง ไม่ใช่สินค้าจริง
+    🆕 อัปเดต 25 ก.ย. 2569 — ต่อกับระบบจริงแล้วครับ! (เดิมหน้านี้เป็นแค่พรีวิว
+    ข้อมูลสมมติ ตอนนี้ไม่ใช่แล้ว):
+      - ผู้ขายลงประกาศขายผ่านคำสั่ง /marketplace sell บนดิสคอร์ด (ดู
+        commands/marketplace.js) ข้อมูลเก็บที่ data/marketplace.json (ดู
+        utils/marketplaceStorage.js)
+      - หน้านี้ดึงประกาศจริงมาโชว์ผ่าน GET /api/marketplace/listings แทนกริด
+        สินค้า 9 ชิ้นแบบ hardcode เดิม (ฟังก์ชัน loadMarketplaceListings() ใน
+        สคริปต์ด้านล่าง) — กริดจะว่างเปล่าจนกว่าจะมีคนลงขายจริงครับ ไม่ใช่บั๊ก
+      - เพิ่มปุ่ม "ซื้อเลย" ใหม่ในหน้ารายละเอียดสินค้า (ของเดิมไม่มีปุ่มซื้อเลย
+        ตามที่ไฟล์ดีไซน์ตั้งใจไว้ — ดูคอมเมนต์เก่าด้านล่างที่ยังเก็บไว้อธิบาย
+        เจตนาเดิม) เพราะน้องหนาวตัดสินใจแล้วว่าอยากได้ระบบจ่ายเงินกึ่งอัตโนมัติ
+        แบบ PromptPay QR เหมือน /referral เป๊ะๆ (กดซื้อ → เรียก POST
+        /api/marketplace/listings/:id/buy → ได้ QR มาสแกนจ่ายตรงเข้าบัญชีผู้ขาย
+        บอทไม่แตะเงินเลย → ผู้ขายกดยืนยันรับเงินใน DM → บอทส่งไฟล์/แจ้งผู้ซื้อ
+        อัตโนมัติต่อ) ดูรายละเอียดเต็มๆ ที่คอมเมนต์หัวไฟล์ marketplaceStorage.js
+      - ระบบยังไม่มี rating/review จริง เลยซ่อนแถวดาวคะแนนไปตอนโชว์สินค้าจริง
+        (ของเดิมที่เป็นมอคอัพมีเลข rating/reviews ปลอมๆ ไว้โชว์ดีไซน์เท่านั้น)
+      - แถบทอง "ตัวอย่างพรีวิว" (.preview-strip) เปลี่ยนข้อความเป็นอธิบายวิธี
+        จ่ายเงินแทน (ไม่ใช่บอกว่าเป็นของปลอมแล้ว เพราะตอนนี้เป็นของจริง)
+      - สิ่งที่ "ยังไม่ได้แตะ" ตั้งใจเก็บไว้เป็นของสมมติต่อ (ยังไม่ใช่ scope ของ
+        รอบนี้): carousel "ร้านค้าแนะนำ"/"ร้านมาใหม่" ฝั่ง sidebar ทั้งสองอัน,
+        และปุ่มรายงานเนื้อหา (submitReport) ยังเป็น client-side เฉยๆ ไม่มี
+        backend รองรับเหมือนเดิม — บอกพี่ได้ถ้าอยากต่อจุดพวกนี้ด้วยครับ
 
-      พี่เลยใส่แถบเล็กๆ สีทองบางๆ ใต้ Nav ไว้บอกคนที่เข้ามาดูเว็บตรงๆ ว่านี่คือ
-      ตัวอย่าง ยังไม่เปิดขายจริง (ดูใน .preview-strip ด้านล่าง) — เป็นการตัดสินใจ
-      เองของพี่นะครับ เพราะหน้านี้มีปุ่ม "ทักแชทผู้ขาย" และมีราคาสินค้าจริงๆ โชว์
-      อยู่ ถ้าไม่บอกไว้เลยคนอาจเข้าใจผิดว่าซื้อขายได้จริงแล้ว ถ้าน้องหนาวดูแล้ว
-      ไม่ชอบ อยากเอาแถบนี้ออก หรืออยากเปลี่ยนข้อความ บอกพี่ได้เลยครับ แก้ได้ไว
+    สิ่งที่ยังคงเดิม/ประวัติของหน้านี้ (เก็บคอมเมนต์เก่าไว้ให้เห็นเจตนาดีไซน์
+    ต้นฉบับ):
+      ตอนแรกฟีเจอร์ Marketplace "ยังไม่มีจริง" ในตัวบอทเลยครับ — เช็คจาก
+      claude/roadmap-marketplace-idea.md ตอนนั้นมันเป็นแค่ไอเดียในโรดแมป
+      หน้านี้เลยเริ่มจากเป็น "ตัวอย่างพรีวิว" ล้วนๆ ก่อน สินค้าทั้ง 9 ชิ้นตอนนั้น
+      (PRODUCTS mock เดิม) เป็นข้อมูลสมมติที่ก็อปปี้มาจากไฟล์ดีไซน์ตรงๆ เพื่อโชว์
+      ว่าหน้าตาจะเป็นยังไง — ตอนนี้ถูกแทนที่ด้วยข้อมูลจริงหมดแล้วตามที่อธิบายไว้
+      ด้านบน
 
       ส่วนตัว interaction อื่นๆ ในหน้า (ทักแชทผู้ขาย, รายงานเนื้อหา) พี่ทำตามที่
       ไฟล์ดีไซน์ตั้งใจไว้เป๊ะๆ คือ "ทำงานได้จริงแบบ client-side" แต่ไม่มี backend
       จริงรองรับ — กดแล้วมี toast ยืนยันให้เห็นผล ไม่ใช่กดแล้วเงียบเฉย (คอมเมนต์
       ในไฟล์ดีไซน์เรียกแนวทางนี้ว่า "honesty over fakery" — ทำให้เห็นว่า flow
-      มันทำงานยังไง แต่ก็ไม่หลอกว่ามันต่อกับระบบจริงแล้ว)
+      มันทำงานยังไง แต่ก็ไม่หลอกว่ามันต่อกับระบบจริงแล้ว) — ปุ่ม "ซื้อเลย" ใหม่
+      ที่เพิ่มเข้ามาก็ยึดหลักเดียวกันนี้ครับ คือทำงานจริง ไม่ใช่ตัวอย่าง
 
     โครงสร้างหน้า (แปลงจาก canvas ตายตัว 1440×828px ของเครื่องมือออกแบบ ให้เป็น
     responsive จริง):
@@ -39,9 +59,11 @@
          แอพเข้าไปดูร้านค้าจริงๆ" มากกว่าหน้าโฆษณาทั่วไป — เมนู Marketplace ขีด
          เส้นใต้บอกว่าอยู่หน้านี้ ส่วน Feed พี่ซ่อนไว้ก่อนเพราะยังไม่มีไฟล์ดีไซน์
          ของหน้านั้นเลยครับ (เหมือนที่เคยซ่อน Dashboard บางเมนูไว้ก่อนหน้านี้)
-      2. แถบ "ตัวอย่างพรีวิว" (preview-strip) — พี่ใส่เพิ่มเอง อธิบายไว้ข้างบนแล้ว
+      2. แถบทอง (.preview-strip) — เดิมบอกว่า "ตัวอย่างพรีวิว" ตอนนี้เปลี่ยนมา
+         อธิบายวิธีจ่ายเงิน PromptPay QR แทน (อธิบายไว้ข้างบนแล้ว)
       3. โครงหลัก 3 คอลัมน์: sidebar ซ้าย (หมวดหมู่ + แท็ก + ร้านมาใหม่) /
-         คอลัมน์กลาง (แบนเนอร์โปรโม + ค้นหา/เรียง/กรองราคา + กริดสินค้า 9 ชิ้น) /
+         คอลัมน์กลาง (แบนเนอร์โปรโม + ค้นหา/เรียง/กรองราคา + กริดสินค้าจริง
+         ดึงจาก /api/marketplace/listings — เดิมเป็นกริดสินค้าสมมติ 9 ชิ้น) /
          sidebar ขวา (โปรโมท Premium + อันดับยอดนิยม + ร้านค้าแนะนำ)
          [ปรับจากดีไซน์] ไฟล์ต้นฉบับล็อกความสูงทั้งหน้าไว้ 828px แล้วให้สกรอลล์
          เฉพาะคอลัมน์กลางข้างใน (แบบหน้าจอแอพ) — พี่เปลี่ยนเป็นให้ทั้งหน้าสกรอลล์
@@ -51,9 +73,11 @@
          คอลัมน์กลาง(สินค้า) → sidebar ซ้าย(หมวดหมู่) → sidebar ขวา ตามลำดับ
          เพื่อให้เห็นสินค้าก่อนเป็นอันดับแรก
       4. Modal รายละเอียดสินค้า (คลิกการ์ดสินค้าแล้วเปิด) — ทำสไตล์ "glow" ขอบ
-         ไล่สีตามดีไซน์ มีปุ่มเดียวคือ "ทักแชทผู้ขายใน Discord" (ไม่มีปุ่มซื้อ/
-         ตะกร้า เพราะระบบนี้เป็นแบบคุยตกลงราคากันเองกับผู้ขายโดยตรง ไม่มีการ
-         หักค่าคอมมิชชั่น — ตามที่ไฟล์ดีไซน์อธิบายไว้ในตัวหน้าเลย)
+         ไล่สีตามดีไซน์ 🆕 ตอนนี้มี 2 ปุ่ม: "ซื้อเลย" (ปุ่มใหม่ กดแล้วเรียก
+         API จริงสร้าง QR PromptPay ให้จ่าย) เป็นปุ่มหลัก กับ "ทักแชทผู้ขายใน
+         Discord" เป็นปุ่มรอง (ของเดิมตั้งแต่ตอนพรีวิว ไม่มี backend จริง ใช้
+         คุยรายละเอียดก่อน/หลังซื้อได้) — ไม่มีการหักค่าคอมมิชชั่นจากผู้ขาย
+         ตามที่ตัดสินใจไว้ (ดูคอมเมนต์อัปเดต 25 ก.ย. 2569 ด้านบน)
       5. Modal รายงานเนื้อหา (เปิดจากเมนู ⋮ ในหน้ารายละเอียดสินค้า) — เลือกเหตุผล
          จากลิสต์ แนบรูป/วิดีโอเป็นหลักฐานได้สูงสุด 4 ไฟล์ กดส่งแล้วมี toast
          ยืนยัน (ยังไม่มีระบบตรวจสอบจริงรองรับหลังบ้าน เหมือนปุ่มรายงานอื่นๆ)
@@ -278,9 +302,11 @@
     <div id="auth-widget"></div>
   </div>
 
-  <!-- ═══════════ แถบตัวอย่างพรีวิว (พี่เพิ่มเอง) ═══════════ -->
+  <!-- ═══════════ แถบอธิบายวิธีจ่ายเงิน (พี่เพิ่มเอง — เดิมเป็นแถบ "ตัวอย่างพรีวิว" ═══════════ -->
+  <!-- ก่อนที่ระบบจะต่อของจริงแล้ว ตอนนี้เปลี่ยนมาอธิบายวิธีจ่ายเงินแทน เพราะราคา/ปุ่มซื้อ
+       ในหน้านี้เป็นของจริงหมดแล้ว ไม่ใช่ตัวอย่างอีกต่อไป -->
   <div class="preview-strip">
-    <span data-i18n="marketplace.previewStrip" data-i18n-html="1">🔍 <strong>ตัวอย่างพรีวิว</strong> — ฟีเจอร์ Marketplace ยังไม่เปิดใช้งานจริง สินค้าที่เห็นในหน้านี้เป็นข้อมูลตัวอย่างเพื่อโชว์ดีไซน์เท่านั้นครับ</span>
+    <span data-i18n="marketplace.previewStrip" data-i18n-html="1">💳 <strong>จ่ายเงินแบบ PromptPay QR</strong> — สแกนจ่ายตรงเข้าบัญชีผู้ขาย บอทไม่แตะเงินเลย รอผู้ขายกดยืนยันรับเงินแล้วจะได้รับของ/ข้อความติดต่อกลับอัตโนมัติครับ</span>
   </div>
 
   <div class="mkt-shell">
@@ -487,134 +513,11 @@
           </div>
         </div>
 
+        <!-- 🆕 [25 ก.ย. 2569] เดิม 9 การ์ดตรงนี้ hardcode ไว้ในไฟล์ HTML เลย ตอนนี้ตัด
+             ออกหมดแล้ว — loadMarketplaceListings() ในสคริปต์ด้านล่างจะดึงประกาศขายจริง
+             จาก GET /api/marketplace/listings มาสร้างการ์ดใส่ตรงนี้แทนตอนโหลดหน้า -->
         <div id="productGrid">
-
-          <div class="listing-card" data-id="p1" data-cat="servers" onclick="openProductDetail('p1')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#4a3420,#f4b860 70%);">
-            <svg width="110" height="110" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-18px;right:-14px;opacity:0.16;"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#0f1424" stroke-width="1.4"/><path d="M4 10h16M10 10v10" stroke="#0f1424" stroke-width="1.4"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#9a6a1f;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Servers</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">ธีมเซิร์ฟ Cozy Cafe</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@cafe.dev &middot; &#9733; 4.9 (128)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;450</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p2" data-cat="media" data-subcat="wallpaper" onclick="openProductDetail('p2')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#332a55,#5865f2 75%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="#fff" stroke-width="1.4"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#3d4ed6;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Image &amp; Media &middot; Wallpaper</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">พื้นหลัง Cyber City</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@studio.pixel &middot; &#9733; 4.8 (93)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;150</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p3" data-cat="media" data-subcat="banner" onclick="openProductDetail('p3')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#4a2340,#fb7185 75%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8L12 3z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#c23458;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Image &amp; Media &middot; Banner</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">แบนเนอร์ Sakura Dream</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@studio.pixel &middot; &#9733; 4.9 (61)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;150</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p4" data-cat="emoji-sticker" onclick="openProductDetail('p4')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#3a2e5c,#4a5aa8 75%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.4"/><path d="M8.5 14c1 1.2 2 1.7 3.5 1.7s2.5-.5 3.5-1.7" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#6b52d6;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Emoji &amp; Sticker</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">Pastel Cat (24 ตัว)</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@nadia.designs &middot; &#9733; 4.8 (86)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;120</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p5" data-cat="emoji-sticker" onclick="openProductDetail('p5')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#1c4a48,#4b8f87 75%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M4 14V6a2 2 0 0 1 2-2h8l6 6v4" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M4 14l6 6h6a2 2 0 0 0 2-2v-4" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#6b52d6;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Emoji &amp; Sticker</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(5,7,15,0.92) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">Neon Wave (12 แบบ)</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@kittyarts &middot; &#9733; 4.7 (102)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;89</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p6" data-cat="builder" onclick="openProductDetail('p6')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#2c2450,#4a5aa8 75%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M4 8l8-5 8 5-8 5-8-5z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#1f8f86;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Builder</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">แพ็ก Builder เมนูร้านค้า</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@shopkit.th &middot; &#9733; 4.7 (45)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;200</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p7" data-cat="role" data-subcat="menu" onclick="openProductDetail('p7')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#94a3b8 75%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#4b5563;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Role &middot; Menu</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">แผงยศ RPG Ranks</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@shopkit.th &middot; &#9733; 4.6 (38)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;180</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p8" data-cat="welcome-goodbye" onclick="openProductDetail('p8')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#3d1f3a,#f472b6 75%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="#fff" stroke-width="1.4"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#b23e91;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Welcome / Goodbye</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(5,7,15,0.92) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">การ์ดต้อนรับ Pastel Dreams</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@cardcraft.th &middot; &#9733; 4.8 (72)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;130</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="listing-card" data-id="p9" data-cat="package" onclick="openProductDetail('p9')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#4a3420,#4a5aa8 70%);">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" style="position:absolute;top:-10px;right:-8px;opacity:0.18;"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="#fff" stroke-width="1.4"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="#fff" stroke-width="1.4"/></svg>
-            <div style="position:absolute;top:10px;left:10px;background:#2f8f4e;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Package</div>
-            <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(5,7,15,0.92) 100%);"></div>
-            <div style="position:absolute;left:16px;right:16px;bottom:14px;">
-              <div style="font-size:14px;font-weight:700;color:#fff;">แพ็กครบเซ็ต Builder + ยศ</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                <span style="font-size:11px;color:rgba(255,255,255,0.75);">@shopkit.th &middot; &#9733; 4.9 (29)</span>
-                <span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;320</span>
-              </div>
-            </div>
-          </div>
-
+          <div id="productGridLoading" style="grid-column:1/-1;text-align:center;padding:48px 20px;font-size:13.5px;color:#9aa2c4;">กำลังโหลดสินค้า...</div>
         </div>
 
         <!-- empty state — โชว์ตอนกรองหมวด+ค้นหา+ราคารวมกันแล้วไม่เหลือการ์ดเลย -->
@@ -623,10 +526,25 @@
           <button type="button" onclick="clearMarketSearch()" style="margin-top:12px;height:36px;padding:0 18px;border-radius:999px;border:1px solid #262f4d;background:rgba(19,26,46,0.6);color:#c3c8e6;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;" data-i18n="marketplace.emptyState.clearSearch">ล้างคำค้นหา</button>
         </div>
 
+        <!-- 🆕 empty state อีกแบบ — โชว์ตอน "ยังไม่มีสินค้าในตลาดเลยสักชิ้นเดียว" (ต่างจาก
+             #marketEmpty ด้านบนที่ใช้ตอนค้นหา/กรองแล้วไม่เจอ) ปุ่ม "ล้างคำค้นหา" ไม่มีประโยชน์
+             ในเคสนี้ เลยแยกข้อความ+ไม่มีปุ่มไปเลย -->
+        <div id="marketNoListings" style="display:none;text-align:center;padding:48px 20px;">
+          <div style="font-size:13.5px;color:#9aa2c4;">ยังไม่มีใครลงขายของในตลาดตอนนี้เลยครับ</div>
+          <div style="font-size:12px;color:#6b7394;margin-top:6px;">เป็นคนแรกได้เลย — ลงขายผ่านคำสั่ง <code style="background:rgba(19,26,46,0.7);padding:2px 6px;border-radius:3px;">/marketplace sell</code> บนดิสคอร์ด</div>
+        </div>
+
+        <!-- 🆕 โชว์ตอนดึงข้อมูลจาก API ไม่สำเร็จ (เช่นเน็ตหลุด/เซิร์ฟเวอร์ล่ม) -->
+        <div id="marketLoadError" style="display:none;text-align:center;padding:48px 20px;">
+          <div style="font-size:13.5px;color:#e07a7a;">โหลดสินค้าไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้งครับ</div>
+        </div>
+
         <div style="margin-top:24px;display:flex;align-items:center;gap:12px;background:rgba(19,26,46,0.5);border:1px solid #262f4d;border-radius:4px;padding:18px 24px;flex-wrap:wrap;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/></svg>
-          <span style="font-size:13px;color:#c3c8e6;flex:1 1 240px;" data-i18n="marketplace.dashboardBanner.text" data-i18n-html="1">เข้าถึง Marketplace ได้จากเมนูใน Dashboard ของคุณเช่นกัน &mdash; จัดการร้านค้าและออเดอร์ได้ที่เดียวกับที่ตั้งค่าบอท</span>
-          <span style="font-size:12.5px;font-weight:600;color:#7783be;white-space:nowrap;" data-i18n="marketplace.dashboardBanner.link" data-i18n-html="1">ไปที่ Dashboard &rarr;</span>
+          <!-- 🆕 [25 ก.ย. 2569] แก้ข้อความ — ของเดิมบอกว่ามีเมนู Marketplace ใน Dashboard
+               ด้วย แต่น้องหนาวตัดสินใจแล้วว่าผู้ขายลงขายผ่านคำสั่ง /marketplace บนดิสคอร์ด
+               เท่านั้น ไม่มีหน้า Dashboard สำหรับจัดการร้านค้า เลยแก้ข้อความให้ตรงความจริง -->
+          <span style="font-size:13px;color:#c3c8e6;flex:1 1 240px;" data-i18n="marketplace.dashboardBanner.text" data-i18n-html="1">อยากเปิดร้านขายของตัวเอง? ใช้คำสั่ง <code style="background:rgba(10,14,26,0.6);padding:2px 6px;border-radius:3px;">/marketplace sell</code> บนดิสคอร์ดได้เลย &mdash; ไม่มีค่าคอมมิชชั่น</span>
         </div>
       </div>
 
@@ -805,12 +723,47 @@
           <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#9aa2c4;text-transform:uppercase;margin-bottom:8px;">รายละเอียดสินค้า</div>
           <div id="pdmDesc" style="font-size:13.5px;color:#c3c8e6;line-height:1.75;"></div>
           <div id="pdmTags" style="display:flex;flex-wrap:wrap;gap:9px;margin-top:16px;"></div>
-          <button type="button" id="pdmContactBtn" class="pdm-contact-btn" onclick="contactSeller()" style="width:100%;height:48px;margin-top:24px;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5.5c3.2-1.2 6.4-1.6 9.5-1.6M4 5.5C4 5.5 3 12 4 18c2.4 1.4 5 2 5 2l1-2.2M4 5.5C4 5.5 5 4.2 8 4M20 5.5c-3.2-1.2-6.4-1.6-9.5-1.6M20 5.5c0 0 1 6.5 0 12.5-2.4 1.4-5 2-5 2l-1-2.2M20 5.5c0 0-1-1.3-4-1.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="12.5" r="1.4" fill="#fff"/><circle cx="15" cy="12.5" r="1.4" fill="#fff"/></svg>
+
+          <!-- 🆕 [25 ก.ย. 2569] ปุ่ม "ซื้อเลย" — ปุ่มหลักใหม่ กดแล้วเรียก API จริง
+               (buyCurrentListing() ในสคริปต์ด้านล่าง) สร้าง QR PromptPay ให้จ่ายเงิน
+               ของเดิมมีแค่ปุ่มทักแชทอย่างเดียว (ดูคอมเมนต์อัปเดตที่ <head> ด้านบนสุด) -->
+          <button type="button" id="pdmBuyBtn" class="pdm-contact-btn" onclick="buyCurrentListing()" style="width:100%;height:48px;margin-top:24px;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 4h2l1.6 9.6a2 2 0 0 0 2 1.7h7.4a2 2 0 0 0 2-1.6l1-5.7H6.2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.3" fill="#fff"/><circle cx="16.5" cy="19.5" r="1.3" fill="#fff"/></svg>
+            <span id="pdmBuyBtnLabel">ซื้อเลย</span>
+          </button>
+
+          <!-- ปุ่มทักแชทเดิม — ลดเป็นปุ่มรอง (ของเดิมไม่มี backend จริง ยังคงเป็นแบบเดิม
+               ใช้คุยรายละเอียดเพิ่มเติมกับผู้ขายได้ ไม่ผูกกับการจ่ายเงิน) -->
+          <button type="button" id="pdmContactBtn" onclick="contactSeller()" style="width:100%;height:44px;margin-top:10px;border-radius:999px;border:1px solid #262f4d;background:rgba(19,26,46,0.6);color:#c3c8e6;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5.5c3.2-1.2 6.4-1.6 9.5-1.6M4 5.5C4 5.5 3 12 4 18c2.4 1.4 5 2 5 2l1-2.2M4 5.5C4 5.5 5 4.2 8 4M20 5.5c-3.2-1.2-6.4-1.6-9.5-1.6M20 5.5c0 0 1 6.5 0 12.5-2.4 1.4-5 2-5 2l-1-2.2M20 5.5c0 0-1-1.3-4-1.5" stroke="#c3c8e6" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="12.5" r="1.4" fill="#c3c8e6"/><circle cx="15" cy="12.5" r="1.4" fill="#c3c8e6"/></svg>
             ทักแชทผู้ขายใน Discord
           </button>
-          <div style="font-size:11px;color:#6b7394;text-align:center;margin-top:10px;">ตกลงราคา/รายละเอียดกับผู้ขายเองโดยตรง ไม่มีการหักค่าธรรมเนียมจากแพลตฟอร์ม</div>
+          <div style="font-size:11px;color:#6b7394;text-align:center;margin-top:10px;">จ่ายผ่าน PromptPay QR ตรงเข้าบัญชีผู้ขายเลย ไม่มีการหักค่าธรรมเนียมจากแพลตฟอร์ม</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ Modal จ่ายเงิน (ใหม่ — 25 ก.ย. 2569) ═══════════
+       เปิดหลังกด "ซื้อเลย" สำเร็จ โชว์ QR PromptPay ที่ POST /api/marketplace/listings/:id/buy
+       ส่งกลับมาให้สแกนจ่าย สไตล์ modal ทำตามโทนเดียวกับ reportModal ด้านล่าง (ไฟล์นี้ไม่มี
+       ดีไซน์ต้นฉบับสำหรับ modal จ่ายเงินมาก่อน เพราะของเดิมไม่มีปุ่มซื้อเลย — พี่เลยออกแบบให้
+       เข้าธีมเดิมของหน้านี้แทน ไม่ได้เดาดีไซน์ใหม่มั่วๆ) -->
+  <div id="payModal" onclick="payModalBackdropClick(event)" style="display:none;position:fixed;inset:0;background:rgba(5,7,15,0.72);backdrop-filter:blur(4px);z-index:80;align-items:center;justify-content:center;padding:16px;">
+    <div class="report-modal-outer" style="max-width:340px;">
+      <div style="padding:24px 22px 22px;position:relative;text-align:center;">
+        <button type="button" onclick="closePayModal()" aria-label="ปิด" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:999px;border:none;background:rgba(5,7,15,0.5);color:#f3f1fb;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div style="font-size:16.5px;font-weight:700;color:#f9f8ff;">สแกนจ่ายด้วย PromptPay</div>
+        <div id="payAmount" style="font-size:26px;font-weight:700;color:#f4b860;margin-top:6px;text-shadow:0 0 16px rgba(244,184,96,0.4);"></div>
+        <div id="payQrWrap" style="margin-top:16px;background:#fff;border-radius:8px;padding:14px;display:inline-block;">
+          <img id="payQrImg" src="" alt="PromptPay QR" style="width:200px;height:200px;display:block;" />
+        </div>
+        <div style="font-size:12px;color:#9aa2c4;margin-top:16px;line-height:1.7;">สแกนด้วยแอปธนาคารแล้วจ่ายได้เลยครับ ยอดเงินฝังอยู่ใน QR แล้ว พอผู้ขายกดยืนยันว่าได้รับเงินแล้วจริง ระบบจะส่งของ/ข้อความติดต่อกลับให้คุณทาง DM ในดิสคอร์ดอัตโนมัติ</div>
+        <div id="payOrderId" style="font-size:11px;color:#6b7394;margin-top:10px;"></div>
+        <div id="payNotifyWarning" style="display:none;font-size:11.5px;color:#e0b45a;margin-top:10px;line-height:1.6;">⚠️ แจ้งผู้ขายอัตโนมัติไม่สำเร็จ (อาจปิดรับ DM) ถ้ารอนานผิดปกติ ลองทักผู้ขายเองโดยตรงได้ครับ</div>
+        <button type="button" onclick="closePayModal()" style="width:100%;height:42px;margin-top:18px;border-radius:999px;border:1px solid #262f4d;background:rgba(19,26,46,0.6);color:#c3c8e6;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">ปิดหน้าต่างนี้</button>
       </div>
     </div>
   </div>
@@ -870,20 +823,152 @@
   var priceMax = 500;
   var SORT_LABELS = { popular: 'ยอดนิยม', 'price-asc': 'ราคา: ต่ำ → สูง', 'price-desc': 'ราคา: สูง → ต่ำ', rating: 'คะแนนสูงสุด' };
 
-  // ข้อมูลสินค้าทั้ง 9 ชิ้น — "จุดเดียว" ที่การ์ดในกริด, การค้นหา, และ modal รายละเอียด
-  // อ่านข้อมูลจากตรงนี้ทั้งหมด แทนที่จะแยกก็อปปี้กันไว้คนละที่จนข้อมูลเพี้ยนได้
-  // ⚠️ ย้ำอีกครั้ง: นี่คือข้อมูลสมมติทั้งหมด ไม่ใช่สินค้าจริง (ดูคอมเมนต์บนสุดของไฟล์)
-  var PRODUCTS = {
-    p1: { title: 'ธีมเซิร์ฟ Cozy Cafe', seller: '@cafe.dev', rating: 4.9, reviews: 128, price: 450, categoryLabel: 'Servers', gradient: 'linear-gradient(135deg,#4a3420,#f4b860 70%)', desc: 'ธีมตกแต่งเซิร์ฟสไตล์คาเฟ่อบอุ่น ครบชุดทั้งไอคอนยศ แบนเนอร์ และสีธีมที่เข้าคู่กัน ติดตั้งง่ายผ่าน Layout Builder ของบอทได้ทันที เหมาะกับเซิร์ฟแนวชิลๆ พูดคุยสบายๆ', tags: ['#เซิร์ฟ', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.28;"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#0f1424" stroke-width="1.2"/><path d="M4 10h16M10 10v10" stroke="#0f1424" stroke-width="1.2"/></svg>' },
-    p2: { title: 'พื้นหลัง Cyber City', seller: '@studio.pixel', rating: 4.8, reviews: 93, price: 150, categoryLabel: 'Image & Media · Wallpaper', gradient: 'linear-gradient(135deg,#332a55,#5865f2 75%)', desc: 'พื้นหลังธีมไซเบอร์พังก์เมืองยามค่ำคืน ความละเอียดสูงพร้อมใช้เป็นวอลเปเปอร์หรือแบนเนอร์เซิร์ฟ สีสันจัดจ้านเข้ากับธีมเซิร์ฟแนวเกม/ไซไฟ', tags: ['#วอลเปเปอร์', '#เกม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="#fff" stroke-width="1.2"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
-    p3: { title: 'แบนเนอร์ Sakura Dream', seller: '@studio.pixel', rating: 4.9, reviews: 61, price: 150, categoryLabel: 'Image & Media · Banner', gradient: 'linear-gradient(135deg,#4a2340,#fb7185 75%)', desc: 'แบนเนอร์ธีมซากุระโทนพาสเทล ให้ความรู้สึกอบอุ่นนุ่มนวล ใช้ตกแต่งหน้าประกาศกฎหรือหน้าต้อนรับก็สวยครับ', tags: ['#แบนเนอร์', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8L12 3z" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
-    p4: { title: 'Pastel Cat (24 ตัว)', seller: '@nadia.designs', rating: 4.8, reviews: 86, price: 120, categoryLabel: 'Emoji & Sticker', gradient: 'linear-gradient(135deg,#3a2e5c,#4a5aa8 75%)', desc: 'แพ็กอีโมจิแมวพาสเทล 24 ตัว วาดมือทั้งชุด ใช้แทนความรู้สึกในแชทได้หลากหลายอารมณ์ อัปโหลดเป็น custom emoji ได้เลย', tags: ['#อีโมจิ', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.2"/><path d="M8.5 14c1 1.2 2 1.7 3.5 1.7s2.5-.5 3.5-1.7" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>' },
-    p5: { title: 'Neon Wave (12 แบบ)', seller: '@kittyarts', rating: 4.7, reviews: 102, price: 89, categoryLabel: 'Emoji & Sticker', gradient: 'linear-gradient(135deg,#1c4a48,#4b8f87 75%)', desc: 'สติกเกอร์ไฟนีออนธีมไซเบอร์ 12 แบบ สีสดจัดจ้าน เหมาะกับเซิร์ฟแนวเกมหรือดนตรีอิเล็กทรอนิกส์', tags: ['#สติกเกอร์', '#เกม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M4 14V6a2 2 0 0 1 2-2h8l6 6v4" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/><path d="M4 14l6 6h6a2 2 0 0 0 2-2v-4" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
-    p6: { title: 'แพ็ก Builder เมนูร้านค้า', seller: '@shopkit.th', rating: 4.7, reviews: 45, price: 200, categoryLabel: 'Builder', gradient: 'linear-gradient(135deg,#2c2450,#4a5aa8 75%)', desc: 'แพ็กเทมเพลตสำหรับ Layout Builder ของบอท ออกแบบมาเฉพาะเมนูร้านค้า/ราคาสินค้า วางแล้วใช้ได้เลยไม่ต้องเริ่มจากศูนย์', tags: ['#Builder', '#ใหม่'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M4 8l8-5 8 5-8 5-8-5z" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
-    p7: { title: 'แผงยศ RPG Ranks', seller: '@shopkit.th', rating: 4.6, reviews: 38, price: 180, categoryLabel: 'Role · Menu', gradient: 'linear-gradient(135deg,#1f2937,#94a3b8 75%)', desc: 'แผงเมนูเลือกยศธีม RPG ใช้กับ /role-setup ของบอทได้ทันที มีไอคอนยศครบทุกระดับพร้อมสี', tags: ['#ยศ', '#เกม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
-    p8: { title: 'การ์ดต้อนรับ Pastel Dreams', seller: '@cardcraft.th', rating: 4.8, reviews: 72, price: 130, categoryLabel: 'Welcome / Goodbye', gradient: 'linear-gradient(135deg,#3d1f3a,#f472b6 75%)', desc: 'การ์ดต้อนรับสมาชิกใหม่โทนพาสเทล ออกแบบให้เข้ากับระบบการ์ดต้อนรับของบอท ใส่ชื่อ-รูปสมาชิกอัตโนมัติ', tags: ['#ต้อนรับ', '#ยอดนิยม'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="#fff" stroke-width="1.2"/></svg>' },
-    p9: { title: 'แพ็กครบเซ็ต Builder + ยศ', seller: '@shopkit.th', rating: 4.9, reviews: 29, price: 320, categoryLabel: 'Package', gradient: 'linear-gradient(135deg,#4a3420,#4a5aa8 70%)', desc: 'แพ็กครบชุดรวม Builder เทมเพลต + แผงยศ ซื้อคู่กันถูกกว่าซื้อแยก เหมาะกับคนอยากตกแต่งเซิร์ฟให้ครบในทีเดียว', tags: ['#แพ็กเกจ', '#คุ้มสุด'], heroIcon: '<svg width="72" height="72" viewBox="0 0 24 24" fill="none" style="opacity:0.32;"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="#fff" stroke-width="1.2"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="#fff" stroke-width="1.2"/></svg>' }
+  // 🆕 [25 ก.ย. 2569] เดิมตรงนี้เป็น PRODUCTS แบบเขียนตายตัว 9 ชิ้น (ข้อมูลสมมติ) — ตอนนี้
+  // เปลี่ยนมาเป็น "ที่พักข้อมูลจริง" แทน: เริ่มต้นว่างเปล่า แล้ว loadMarketplaceListings()
+  // (ด้านล่างของไฟล์นี้) จะไปดึงประกาศขายจริงจาก GET /api/marketplace/listings มาเติมให้
+  // ตอนโหลดหน้า — โค้ดที่เหลือทั้งหมด (render, applySortOrder, openProductDetail ฯลฯ) ยังใช้
+  // ตัวแปรนี้เหมือนเดิมทุกอย่าง เลยไม่ต้องแก้อะไรมาก แค่เปลี่ยน "แหล่งที่มา" ของข้อมูลเท่านั้น
+  var PRODUCTS = {};
+  var totalListingsLoaded = 0; // ใช้แยกเคส "ยังไม่มีสินค้าเลย" ออกจาก "กรอง/ค้นหาแล้วไม่เจอ"
+
+  // สไตล์ต่อหมวดหมู่ (สี/ไล่สี/ไอคอน) — ก็อปมาจาก 9 การ์ดตัวอย่างเดิมเป๊ะๆ (ไม่ได้คิดสีใหม่)
+  // เพราะของจริงไม่มีข้อมูล "ไล่สีการ์ด" ให้ผู้ขายเลือกเอง เลยใช้วิธีนี้แทน: จับคู่สีตามหมวดหมู่
+  // ที่ผู้ขายเลือกไว้ตอนลงขาย ให้หน้าตายังดูเป็นชุดเดียวกับดีไซน์ต้นฉบับ
+  var ICON_BOX = '<rect x="4" y="4" width="16" height="16" rx="3" stroke="{c}" stroke-width="{w}"/><path d="M4 10h16M10 10v10" stroke="{c}" stroke-width="{w}"/>';
+  var ICON_MOUNTAIN = '<rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="{c}" stroke-width="{w}"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="{c}" stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round"/>';
+  var ICON_STAR = '<path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8L12 3z" stroke="{c}" stroke-width="{w}" stroke-linejoin="round"/>';
+  var ICON_SMILEY = '<circle cx="12" cy="12" r="9" stroke="{c}" stroke-width="{w}"/><path d="M8.5 14c1 1.2 2 1.7 3.5 1.7s2.5-.5 3.5-1.7" stroke="{c}" stroke-width="{w}" stroke-linecap="round"/>';
+  var ICON_LAYERS = '<path d="M4 8l8-5 8 5-8 5-8-5z" stroke="{c}" stroke-width="{w}" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="{c}" stroke-width="{w}" stroke-linejoin="round"/>';
+  var ICON_SHIELD = '<path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="{c}" stroke-width="{w}" stroke-linejoin="round"/>';
+  var ICON_PERSON = '<path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="{c}" stroke-width="{w}" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="{c}" stroke-width="{w}"/>';
+  var ICON_BOXES = '<rect x="4" y="4" width="9" height="6" rx="1.5" stroke="{c}" stroke-width="{w}"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="{c}" stroke-width="{w}"/>';
+
+  var CATEGORY_STYLE = {
+    servers:            { label: 'Servers',             badge: '#9a6a1f', gradient: 'linear-gradient(135deg,#4a3420,#f4b860 70%)', icon: ICON_BOX, iconColor: '#0f1424' },
+    'media:banner':      { label: 'Image & Media · Banner', badge: '#c23458', gradient: 'linear-gradient(135deg,#4a2340,#fb7185 75%)', icon: ICON_STAR, iconColor: '#fff' },
+    media:               { label: 'Image & Media',       badge: '#3d4ed6', gradient: 'linear-gradient(135deg,#332a55,#5865f2 75%)', icon: ICON_MOUNTAIN, iconColor: '#fff' },
+    'emoji-sticker':      { label: 'Emoji & Sticker',      badge: '#6b52d6', gradient: 'linear-gradient(135deg,#3a2e5c,#4a5aa8 75%)', icon: ICON_SMILEY, iconColor: '#fff' },
+    builder:             { label: 'Builder',              badge: '#1f8f86', gradient: 'linear-gradient(135deg,#2c2450,#4a5aa8 75%)', icon: ICON_LAYERS, iconColor: '#fff' },
+    role:                { label: 'Role',                 badge: '#4b5563', gradient: 'linear-gradient(135deg,#1f2937,#94a3b8 75%)', icon: ICON_SHIELD, iconColor: '#fff' },
+    'welcome-goodbye':    { label: 'Welcome / Goodbye',    badge: '#b23e91', gradient: 'linear-gradient(135deg,#3d1f3a,#f472b6 75%)', icon: ICON_PERSON, iconColor: '#fff' },
+    package:             { label: 'Package',              badge: '#2f8f4e', gradient: 'linear-gradient(135deg,#4a3420,#4a5aa8 70%)', icon: ICON_BOXES, iconColor: '#fff' },
   };
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+  // หาสไตล์ + ป้ายหมวดหมู่ให้ตรงกับ category/subcategory จริงของประกาศ (ตรงกับ
+  // utils/marketplaceStorage.js CATEGORIES เป๊ะๆ)
+  function getCategoryStyle(category, subcategory) {
+    if (category === 'media' && subcategory === 'banner') {
+      return { style: CATEGORY_STYLE['media:banner'], label: CATEGORY_STYLE['media:banner'].label };
+    }
+    var base = CATEGORY_STYLE[category] || CATEGORY_STYLE.package; // เผื่อหมวดแปลกๆ ที่ไม่รู้จัก กันพัง
+    var label = base.label;
+    if (subcategory && (category === 'media' || category === 'role')) {
+      label = base.label + ' · ' + capitalize(subcategory);
+    }
+    return { style: base, label: label };
+  }
+
+  // ทำ SVG ไอคอนตกแต่งการ์ด/modal จาก template ข้างบน (แทน {c}=สี, {w}=ความหนาเส้น)
+  function buildIconSvg(pathTemplate, color, size, opacity, strokeWidth) {
+    var inner = pathTemplate.split('{c}').join(color).split('{w}').join(strokeWidth);
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" style="opacity:' + opacity + ';">' + inner + '</svg>';
+  }
+
+  // กันโค้ด/ชื่อที่ผู้ขาย-ผู้ซื้อพิมพ์เอง (title, description, ชื่อ Discord) หลุดไปเป็น HTML
+  // จริงตอนแทรกด้วย innerHTML — สำคัญมากเพราะข้อมูลพวกนี้มาจากคนอื่นพิมพ์ ไม่ใช่ข้อมูลของเราเอง
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // สร้าง HTML การ์ดสินค้า 1 ใบ — โครงสร้าง/สไตล์อินไลน์ก็อปมาจาก 9 การ์ดตัวอย่างเดิมเป๊ะๆ
+  // (ดูคอมเมนต์ด้านบนไฟล์) ต่างกันแค่ "ที่มาของข้อมูล" เป็นของจริงจาก API แทน
+  function buildListingCardHtml(id, item, catInfo) {
+    var iconSize = item.category === 'servers' ? 110 : 80;
+    var iconPos = item.category === 'servers' ? 'top:-18px;right:-14px;' : 'top:-10px;right:-8px;';
+    var iconSvg = buildIconSvg(catInfo.style.icon, catInfo.style.iconColor, iconSize, 0.17, 1.4);
+    // ถ้าผู้ขายอัปโหลดรูปปกไว้ (imageUrl) ใช้รูปจริงเป็นพื้นหลังการ์ดแทนไล่สี+ไอคอนตกแต่ง
+    var bgStyle = item.imageUrl
+      ? 'background-image:url(\'' + item.imageUrl.replace(/'/g, '') + '\');background-size:cover;background-position:center;'
+      : 'background:' + catInfo.style.gradient + ';';
+    var heroIconHtml = item.imageUrl ? '' : iconSvg;
+    var subcatAttr = item.subcategory ? ' data-subcat="' + escapeHtml(item.subcategory) + '"' : '';
+    return (
+      '<div class="listing-card" data-id="' + id + '" data-cat="' + escapeHtml(item.category) + '"' + subcatAttr + ' onclick="openProductDetail(\'' + id + '\')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;' + bgStyle + '">' +
+        heroIconHtml +
+        '<div style="position:absolute;top:10px;left:10px;background:' + catInfo.style.badge + ';border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">' + escapeHtml(catInfo.label) + '</div>' +
+        '<div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:999px;background:rgba(10,14,26,0.4);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>' +
+        '<div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>' +
+        '<div style="position:absolute;left:16px;right:16px;bottom:14px;">' +
+          '<div style="font-size:14px;font-weight:700;color:#fff;">' + escapeHtml(item.title) + '</div>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">' +
+            '<span style="font-size:11px;color:rgba(255,255,255,0.75);">' + escapeHtml(item.sellerName) + '</span>' +
+            '<span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;' + item.priceThb + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  // 🆕 ดึงประกาศขายจริงจาก API มาเติมกริดสินค้า — เรียกครั้งเดียวตอนโหลดหน้า (ดูจุดเรียก
+  // ท้ายไฟล์) ถ้าอยากได้ปุ่ม "รีเฟรช" ในอนาคตก็เรียกฟังก์ชันนี้ซ้ำได้เลย เขียนรองรับไว้แล้ว
+  function loadMarketplaceListings() {
+    var grid = document.getElementById('productGrid');
+    var noListingsEl = document.getElementById('marketNoListings');
+    var loadErrorEl = document.getElementById('marketLoadError');
+    if (noListingsEl) noListingsEl.style.display = 'none';
+    if (loadErrorEl) loadErrorEl.style.display = 'none';
+
+    fetch('/api/marketplace/listings')
+      .then(function (res) {
+        if (!res.ok) throw new Error('bad status ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        var listings = (data && data.listings) || [];
+        PRODUCTS = {};
+        totalListingsLoaded = listings.length;
+
+        if (listings.length === 0) {
+          grid.innerHTML = '';
+          if (noListingsEl) noListingsEl.style.display = 'block';
+          return;
+        }
+
+        var cardsHtml = listings.map(function (item) {
+          var catInfo = getCategoryStyle(item.category, item.subcategory);
+          // เก็บข้อมูลไว้ใน PRODUCTS ให้ครบตามที่ render()/openProductDetail() ต้องใช้
+          // (rating/reviews ไม่มีจริง ใส่ null ไว้ — openProductDetail() จะซ่อนแถวคะแนนเอง)
+          PRODUCTS[item.id] = {
+            title: item.title,
+            seller: item.sellerName,
+            rating: null,
+            reviews: null,
+            price: item.priceThb,
+            categoryLabel: catInfo.label,
+            gradient: catInfo.style.gradient,
+            desc: item.description,
+            tags: [item.type === 'digital' ? '#ไฟล์ดิจิทัล' : '#บริการ'],
+            heroIcon: item.imageUrl ? '' : buildIconSvg(catInfo.style.icon, catInfo.style.iconColor, 72, 0.3, 1.2),
+            imageUrl: item.imageUrl,
+            type: item.type,
+          };
+          return buildListingCardHtml(item.id, item, catInfo);
+        }).join('');
+
+        grid.innerHTML = cardsHtml;
+        ORIGINAL_CARD_ORDER = null; // การ์ดชุดใหม่ ต้องให้ applySortOrder() จับลำดับใหม่
+        render();
+      })
+      .catch(function (err) {
+        console.error('[marketplace] โหลดประกาศขายไม่สำเร็จ:', err);
+        grid.innerHTML = '';
+        if (loadErrorEl) loadErrorEl.style.display = 'block';
+      });
+  }
 
   // กด chevron ข้างหมวด "Image & Media" / "Role" แล้วกาง/หุบลิสต์หมวดย่อย
   function toggleExpand(key) {
@@ -937,8 +1022,11 @@
       card.style.display = show ? 'block' : 'none';
       if (show) visibleCount++;
     });
+    // 🆕 ถ้ายังไม่มีสินค้าในตลาดเลยสักชิ้น (totalListingsLoaded === 0) ให้ #marketNoListings
+    // โชว์แทน (จัดการเองใน loadMarketplaceListings() แล้ว) ไม่ต้องโชว์ #marketEmpty ซ้อนกัน
+    // เพราะข้อความ "ไม่พบสินค้าที่ตรงกับคำค้นหา" ใช้ไม่ได้กับเคสที่ไม่มีสินค้าเลยตั้งแต่แรก
     var emptyEl = document.getElementById('marketEmpty');
-    if (emptyEl) emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
+    if (emptyEl) emptyEl.style.display = (visibleCount === 0 && totalListingsLoaded > 0) ? 'block' : 'none';
   }
 
   // ---------- เรียงตาม / กรองช่วงราคา — กดแล้วมีผลกับกริดสินค้าจริง ----------
@@ -1072,14 +1160,31 @@
     if (!p) return;
     currentProductId = id;
     document.getElementById('pdmReportMenu').style.display = 'none'; // รีเซ็ตกันเมนูค้างจากสินค้าชิ้นก่อนหน้า
-    document.getElementById('pdmHero').style.background = p.gradient;
-    document.getElementById('pdmHeroIcon').innerHTML = p.heroIcon;
+    var heroEl = document.getElementById('pdmHero');
+    var heroIconEl = document.getElementById('pdmHeroIcon');
+    if (p.imageUrl) {
+      // มีรูปปกจริงจากผู้ขาย — โชว์รูปแทนไล่สี+ไอคอนตกแต่ง
+      heroEl.style.background = 'center / cover no-repeat url(\'' + p.imageUrl.replace(/'/g, '') + '\')';
+      heroIconEl.innerHTML = '';
+    } else {
+      heroEl.style.background = p.gradient;
+      heroIconEl.innerHTML = p.heroIcon;
+    }
     var badge = document.getElementById('pdmBadge');
     badge.textContent = p.categoryLabel;
     document.getElementById('pdmTitle').textContent = p.title;
     document.getElementById('pdmSellerAvatar').style.background = p.gradient;
     document.getElementById('pdmSeller').textContent = p.seller;
-    document.getElementById('pdmRating').textContent = '★ ' + p.rating.toFixed(1) + ' (' + p.reviews + ' รีวิว)';
+    // 🆕 ของจริงยังไม่มีระบบ rating/review เลย (ของ mock เดิมมีตัวเลขปลอมๆ ไว้โชว์ดีไซน์)
+    // เลยซ่อนแถวนี้ไปเฉยๆ ถ้าไม่มีข้อมูลจริง แทนที่จะโชว์ 0.0 (0 รีวิว) หลอกๆ
+    var ratingEl = document.getElementById('pdmRating');
+    if (p.rating == null) {
+      ratingEl.style.display = 'none';
+      ratingEl.textContent = '';
+    } else {
+      ratingEl.style.display = 'block';
+      ratingEl.textContent = '★ ' + p.rating.toFixed(1) + ' (' + p.reviews + ' รีวิว)';
+    }
     document.getElementById('pdmPrice').textContent = '฿' + p.price;
     document.getElementById('pdmDesc').textContent = p.desc;
     var tagsWrap = document.getElementById('pdmTags');
@@ -1091,6 +1196,13 @@
       span.textContent = t;
       tagsWrap.appendChild(span);
     });
+    // 🆕 รีเซ็ตปุ่ม "ซื้อเลย" กลับเป็นสถานะปกติทุกครั้งที่เปิดสินค้าใหม่ (กันเคสเพิ่งซื้อ
+    // สินค้าชิ้นก่อนหน้าแล้วปุ่มค้างเป็น disabled/กำลังโหลดอยู่)
+    var buyBtn = document.getElementById('pdmBuyBtn');
+    var buyBtnLabel = document.getElementById('pdmBuyBtnLabel');
+    buyBtn.disabled = false;
+    buyBtn.style.opacity = '1';
+    buyBtnLabel.textContent = 'ซื้อเลย · ฿' + p.price;
     document.getElementById('productDetailModal').style.display = 'flex';
   }
 
@@ -1275,6 +1387,96 @@
     }, 2200);
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // 🆕 [25 ก.ย. 2569] ปุ่ม "ซื้อเลย" — เรียก API จริง POST
+  // /api/marketplace/listings/:id/buy แล้วโชว์ QR ที่ได้กลับมาใน payModal
+  // ต่างจากปุ่มอื่นๆ ในหน้านี้ (contactSeller, submitReport) ที่เป็นแค่ตัวอย่าง
+  // client-side เฉยๆ — อันนี้ "ทำงานจริง" สร้างออร์เดอร์จริงในระบบ
+  // ═══════════════════════════════════════════════════════════════════
+  function buyCurrentListing() {
+    var id = currentProductId;
+    var p = PRODUCTS[id];
+    if (!p || !id) return;
+
+    var buyBtn = document.getElementById('pdmBuyBtn');
+    var buyBtnLabel = document.getElementById('pdmBuyBtnLabel');
+    if (buyBtn.disabled) return; // กันกดซ้ำรัวๆ ระหว่างรอ API ตอบ
+    buyBtn.disabled = true;
+    buyBtn.style.opacity = '0.6';
+    buyBtnLabel.textContent = 'กำลังสร้าง QR...';
+
+    fetch('/api/marketplace/listings/' + encodeURIComponent(id) + '/buy', { method: 'POST' })
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; });
+      })
+      .then(function (result) {
+        if (!result.ok) {
+          // แปล error code จาก server.js เป็นข้อความไทยอ่านง่าย (ดูรายการ error ทั้งหมด
+          // ที่คอมเมนต์ route POST /api/marketplace/listings/:id/buy ใน server.js)
+          if (result.status === 401 && result.data && result.data.loginUrl) {
+            window.location.href = result.data.loginUrl;
+            return;
+          }
+          var messages = {
+            listing_not_found: 'ประกาศนี้ไม่มีอยู่แล้ว หรือถูกปิดขายไปแล้วครับ',
+            cannot_buy_own_listing: 'นี่คือประกาศของคุณเอง ซื้อของตัวเองไม่ได้ครับ',
+            seller_not_ready: 'ผู้ขายยังไม่ได้ตั้งค่าพร้อมเพย์รับเงิน ลองใหม่ภายหลังครับ',
+            qr_generation_failed: 'สร้าง QR จ่ายเงินไม่สำเร็จ ลองใหม่อีกครั้งครับ',
+          };
+          showBuyErrorToast(messages[result.data && result.data.error] || 'ซื้อไม่สำเร็จ ลองใหม่อีกครั้งครับ');
+          return;
+        }
+        openPayModal(result.data, p);
+      })
+      .catch(function (err) {
+        console.error('[marketplace] ซื้อสินค้าไม่สำเร็จ:', err);
+        showBuyErrorToast('เชื่อมต่อไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วลองใหม่ครับ');
+      })
+      .finally(function () {
+        buyBtn.disabled = false;
+        buyBtn.style.opacity = '1';
+        buyBtnLabel.textContent = 'ซื้อเลย · ฿' + p.price;
+      });
+  }
+
+  // ใช้ pdmToast ตัวเดียวกับ contactSeller/submitReport แต่เปลี่ยนสี checkmark เป็นสีแดง
+  // ชั่วคราวตอน error (แล้วเปลี่ยนกลับตอนปิด กันไปกระทบ toast ปกติอันอื่น)
+  var buyToastTimer = null;
+  function showBuyErrorToast(message) {
+    var toast = document.getElementById('pdmToast');
+    document.getElementById('pdmToastText').textContent = message;
+    toast.style.display = 'flex';
+    requestAnimationFrame(function () {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    if (buyToastTimer) clearTimeout(buyToastTimer);
+    buyToastTimer = setTimeout(function () {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(10px)';
+      setTimeout(function () { toast.style.display = 'none'; }, 220);
+    }, 2800);
+  }
+
+  // เปิด payModal โชว์ QR ที่ POST /buy ส่งกลับมา (qrDataUri เป็น base64 data URI ใช้ใส่
+  // src ของ <img> ได้ตรงๆ เลย ไม่ต้องอัปโหลด/โฮสต์ไฟล์ไหนเพิ่ม)
+  function openPayModal(order, product) {
+    document.getElementById('payAmount').textContent = '฿' + order.priceThb;
+    document.getElementById('payQrImg').src = order.qrDataUri;
+    document.getElementById('payOrderId').textContent = 'รหัสออร์เดอร์: ' + order.orderId;
+    document.getElementById('payNotifyWarning').style.display = order.sellerNotified ? 'none' : 'block';
+    document.getElementById('payModal').style.display = 'flex';
+    closeProductDetail(); // ปิด modal รายละเอียดสินค้าไปก่อน กันซ้อนกัน 2 modal
+  }
+
+  function closePayModal() {
+    document.getElementById('payModal').style.display = 'none';
+  }
+
+  function payModalBackdropClick(e) {
+    if (e.target.id === 'payModal') closePayModal();
+  }
+
   // --- carousel เล็กๆ 2 อัน: "ร้านค้าแนะนำ" (ขวา) กับ "ร้านค้ามาใหม่" (ซ้าย) ---
   // แต่ละสไลด์เป็น HTML ธรรมดาซ้อนกันไว้แล้ว (display:none ยกเว้นตัวที่โชว์อยู่)
   // ฟังก์ชันแค่สลับว่าอันไหนโชว์ + จุดไหนสว่าง แต่ละอันมี setInterval ของตัวเอง
@@ -1300,6 +1502,12 @@
     newShopIndex = i;
   }
   setInterval(function () { showNewShop((newShopIndex + 1) % NEW_SHOP_COUNT); }, 4600);
+
+  // 🆕 [25 ก.ย. 2569] จุดเรียกดึงสินค้าจริง — ต้องเรียกท้ายสุดของสคริปต์ (หลังประกาศ
+  // ฟังก์ชัน/ตัวแปรทั้งหมดข้างบนแล้ว) เพราะ loadMarketplaceListings() เรียกใช้ render()
+  // และ getCategoryStyle() ที่ประกาศไว้ก่อนหน้านี้ — สคริปต์ทั้งก้อนอยู่ท้าย body อยู่แล้ว
+  // (หลัง <div id="productGrid">) เลย DOM พร้อมแล้วตอนบรรทัดนี้รัน ไม่ต้องรอ DOMContentLoaded
+  loadMarketplaceListings();
 </script>
 <script src="/nav.js" defer></script>
 </body>

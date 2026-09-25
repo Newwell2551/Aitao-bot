@@ -86,6 +86,14 @@ const {
   fetchUserGuilds,
   hasManageGuild,
 } = require('./utils/discordAuth');
+// 🆕 [25 ก.ย. 2569] ระบบ Marketplace — หน้าเว็บ public/marketplace.html เดิมโชว์แค่ของ
+// mock (ดูคอมเมนต์ในไฟล์นั้น) ตอนนี้ต่อกับข้อมูลจริงแล้ว: listActiveListings/getListing
+// ให้ข้อมูลประกาศขาย (ผู้ขายลงผ่านคำสั่ง /marketplace sell ในดิสคอร์ด ดู
+// commands/marketplace.js), createOrder สร้างคำสั่งซื้อตอนกด "ซื้อ" บนหน้าเว็บ, ส่วน
+// generatePromptPayQrBuffer สร้างรูป QR ให้ "ผู้ซื้อ" สแกนจ่ายตรงเข้าบัญชีผู้ขาย (บอทไม่
+// แตะเงินเลย — ดูหลักการเต็มๆ ในคอมเมนต์หัวไฟล์ utils/marketplaceStorage.js)
+const { listActiveListings, getListing, getSeller, createOrder } = require('./utils/marketplaceStorage');
+const { generatePromptPayQrBuffer } = require('./utils/promptpayQr');
 // 🆕 หน้า Server Picker (การ์ดกริดเลือกเซิร์ฟหลัง login) — แยกไว้คนละไฟล์เพราะเป็น
 // โค้ดสร้าง HTML ล้วนๆ ยาวๆ ไม่อยากให้ server.js (ที่จัดการ route) ยาวเทอะทะเกินไป
 // ดูคำอธิบายเต็มๆ ในไฟล์นั้นเลย
@@ -407,6 +415,117 @@ function createWebhookServer(client) {
       servers: computeManageableServers(req.session.guilds),
       inviteUrl: buildInviteUrl(),
       premiumStartUrl: '/premium/start',
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [25 ก.ย. 2569] Marketplace API — 3 เส้นทาง ให้หน้าเว็บ public/marketplace.html
+  // เรียกดึงของจริงมาโชว์แทน mock data เดิม + ให้กดซื้อได้จริง
+  //
+  // ทำไมแยกเป็น API endpoint แทนที่จะ render จาก server ทุกครั้งแบบหน้า /dashboard:
+  // เพราะ marketplace.html เป็น static HTML เสิร์ฟผ่าน express.static เหมือน index.html/
+  // features.html/pricing.html (ดูคอมเมนต์ที่ /api/me ด้านบน) — ต้องให้ JS ฝั่งเบราว์เซอร์
+  // ยิงมาดึงข้อมูลทีหลังจากโหลดหน้าเสร็จแทน ไม่ใช่ฝังข้อมูลมาตั้งแต่ตอนโหลดหน้า
+
+  // GET /api/marketplace/listings — รายการประกาศขายทั้งหมดที่ "active" (ให้ทุกคนดูได้
+  // ไม่ต้อง login) — จงใจไม่ส่ง sellerId (Discord user ID จริงของผู้ขาย) ออกไปในนี้เลย
+  // ส่งแค่ displayName พอ กันเผยข้อมูลระบุตัวตนที่ไม่จำเป็นออกสู่สาธารณะ
+  app.get('/api/marketplace/listings', (req, res) => {
+    const listings = listActiveListings().map((item) => {
+      const seller = getSeller(item.sellerId);
+      return {
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        priceThb: item.priceThb,
+        category: item.category,
+        subcategory: item.subcategory,
+        type: item.type,
+        imageUrl: item.imageUrl,
+        sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
+        createdAt: item.createdAt,
+      };
+    });
+    res.json({ listings });
+  });
+
+  // GET /api/marketplace/listings/:id — รายละเอียดประกาศ 1 ชิ้น (หน้า product detail)
+  app.get('/api/marketplace/listings/:id', (req, res) => {
+    const listing = getListing(String(req.params.id || '').toUpperCase());
+    if (!listing || listing.status !== 'active') {
+      return res.status(404).json({ error: 'listing_not_found' });
+    }
+    const seller = getSeller(listing.sellerId);
+    res.json({
+      id: listing.id,
+      title: listing.title,
+      description: listing.description,
+      priceThb: listing.priceThb,
+      category: listing.category,
+      subcategory: listing.subcategory,
+      type: listing.type,
+      imageUrl: listing.imageUrl,
+      sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
+    });
+  });
+
+  // POST /api/marketplace/listings/:id/buy — ผู้ซื้อกดปุ่ม "ซื้อ" บนหน้าเว็บ
+  //
+  // ⚠️ จงใจ "ไม่" ใช้ requireAuth ห่อ endpoint นี้ (เหมือน /api/me) เพราะ requireAuth จะ
+  // redirect ไปหน้า /auth/login ทันที ซึ่งใช้ไม่ได้กับ endpoint ที่ฝั่งเบราว์เซอร์เรียกด้วย
+  // fetch() (fetch จะได้ HTML หน้า login กลับมาแทน JSON ที่ต้องการ) — เช็ค
+  // req.session.user เองตรงๆ แล้วตอบ 401 กลับไปเป็น JSON แทน ให้ฝั่งหน้าเว็บเด้งไป
+  // /auth/login เองด้วย JavaScript ได้ตามที่ต้องการ
+  app.post('/api/marketplace/listings/:id/buy', async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/marketplace')}` });
+    }
+
+    const listing = getListing(String(req.params.id || '').toUpperCase());
+    if (!listing || listing.status !== 'active') {
+      return res.status(404).json({ error: 'listing_not_found' });
+    }
+
+    // ห้ามซื้อของตัวเอง — กันกดทดสอบ/ปั่นยอดมั่วๆ
+    if (listing.sellerId === req.session.user.id) {
+      return res.status(400).json({ error: 'cannot_buy_own_listing' });
+    }
+
+    const seller = getSeller(listing.sellerId);
+    if (!seller || !seller.promptpayId) {
+      // ไม่ควรเกิดจริง เพราะ /marketplace sell บังคับตั้งพร้อมเพย์ก่อนลงขายแล้ว — กันไว้เผื่อ
+      return res.status(409).json({ error: 'seller_not_ready' });
+    }
+
+    let qrBuffer;
+    try {
+      qrBuffer = await generatePromptPayQrBuffer(seller.promptpayId, listing.priceThb);
+    } catch (error) {
+      console.error('[marketplace buy] สร้าง QR ให้ผู้ซื้อไม่สำเร็จ:', error);
+      return res.status(500).json({ error: 'qr_generation_failed' });
+    }
+
+    const order = createOrder({
+      listingId: listing.id,
+      sellerId: listing.sellerId,
+      buyerId: req.session.user.id,
+      priceThb: listing.priceThb,
+    });
+
+    // แจ้งผู้ขายทาง DM แบบไม่บล็อกการตอบกลับผู้ซื้อ (ถ้า DM ผู้ขายไม่สำเร็จ ผู้ซื้อก็ยัง
+    // ต้องเห็น QR จ่ายเงินได้ปกติอยู่ดี — แค่ทำให้ sellerNotified เป็น false ในคำตอบ ให้
+    // หน้าเว็บเตือนผู้ซื้อว่า "ถ้ารอนานผิดปกติ ให้ลองติดต่อผู้ขายเองโดยตรง")
+    const marketplaceCommand = client.commands.get('marketplace');
+    const notifyResult = await marketplaceCommand.notifySellerNewOrder(client, order, listing, {
+      id: req.session.user.id,
+      username: req.session.user.username,
+    });
+
+    res.json({
+      orderId: order.id,
+      priceThb: order.priceThb,
+      qrDataUri: `data:image/png;base64,${qrBuffer.toString('base64')}`,
+      sellerNotified: notifyResult.notified,
     });
   });
 

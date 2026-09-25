@@ -314,9 +314,9 @@
       marketplace: {
         _meta: {
           title: 'Milo Bot — Marketplace',
-          description: "Preview of Milo Bot's Marketplace — buy server decorations from other creators, or open your own shop (this feature isn't live yet).",
+          description: "Milo Bot's Marketplace — buy server decorations from other creators, or open your own shop through the /marketplace command on Discord.",
         },
-        previewStrip: '🔍 <strong>Preview only</strong> — the Marketplace feature isn\'t live yet. The listings on this page are sample data just to show the design.',
+        previewStrip: '💳 <strong>Pay with a PromptPay QR</strong> — scan to pay the seller directly, the bot never touches your money. Once the seller confirms payment, you\'ll get your item or a follow-up message automatically.',
         sidebar: {
           categories: 'Categories',
           catAll: 'All Items',
@@ -492,9 +492,9 @@
       marketplace: {
         _meta: {
           title: 'Milo Bot — Marketplace',
-          description: 'ตัวอย่างพรีวิวหน้า Marketplace ของ Milo Bot — เลือกซื้อของตกแต่งเซิร์ฟจากครีเอเตอร์คนอื่น หรือเปิดร้านขายเองได้ (ฟีเจอร์นี้ยังไม่เปิดใช้งานจริง)',
+          description: 'Marketplace ของ Milo Bot — เลือกซื้อของตกแต่งเซิร์ฟจากครีเอเตอร์คนอื่น หรือเปิดร้านขายเองได้จริงผ่านคำสั่ง /marketplace บนดิสคอร์ด',
         },
-        previewStrip: '🔍 <strong>ตัวอย่างพรีวิว</strong> — ฟีเจอร์ Marketplace ยังไม่เปิดใช้งานจริง สินค้าที่เห็นในหน้านี้เป็นข้อมูลตัวอย่างเพื่อโชว์ดีไซน์เท่านั้นครับ',
+        previewStrip: '💳 <strong>จ่ายเงินแบบ PromptPay QR</strong> — สแกนจ่ายตรงเข้าบัญชีผู้ขาย บอทไม่แตะเงินเลย รอผู้ขายกดยืนยันรับเงินแล้วจะได้รับของ/ข้อความติดต่อกลับอัตโนมัติครับ',
         sidebar: {
           categories: 'หมวดหมู่',
           catAll: 'สินค้าทั้งหมด',

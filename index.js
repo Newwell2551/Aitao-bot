@@ -264,6 +264,20 @@ client.on('interactionCreate', async interaction => {
         }
       }
     }
+
+    // 🆕 mkt_ = ปุ่มของระบบ /marketplace (ตอนนี้มีแค่ mkt_confirm_<orderId> = ปุ่ม
+    // "ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — ดู commands/marketplace.js handleButton)
+    if (interaction.customId.startsWith('mkt_')) {
+      const marketplaceCommand = client.commands.get('marketplace');
+      try {
+        await marketplaceCommand.handleButton(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนกดปุ่มนี้', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
     return;
   }
 
@@ -660,4 +674,4 @@ client.login(process.env.DISCORD_TOKEN);
 const port = process.env.PORT || process.env.WEBHOOK_PORT || 3000;
 createWebhookServer(client).listen(port, () => {
   console.log(`[webhook] server พร้อมรับ webhook ที่ port ${port}`);
-});
+});
