@@ -102,7 +102,7 @@ function buildPremiumCard({ isPremium, subscriptionInfo, guild, t, actionButton 
   const buttons = actionButtons ?? (actionButton ? [actionButton] : []);
   if (buttons.length > 0) {
     container.addActionRowComponents(new ActionRowBuilder().addComponents(...buttons));
-  }
+  } 
 
   return container;
 }
