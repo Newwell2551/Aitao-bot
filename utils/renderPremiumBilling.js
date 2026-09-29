@@ -144,6 +144,7 @@ const PAYMENT_ROWS = [
     icon: ICON_PROMPTPAY,
     label: 'PromptPay QR',
     sub: `${PREMIUM_PRICE_THB_DISPLAY} / month · scan each month, doesn't auto-renew`,
+    requiresEmail: true, // 🆕 [29 ก.ย. 2569] ต้องกรอกอีเมลก่อนกดปุ่มนี้ (ดูเหตุผลที่ renderPaymentRow ด้านล่าง)
   },
 ];
 
@@ -155,8 +156,17 @@ const PAYMENT_ROWS = [
  * (ไม่ส่งของปุ่มอื่น) รวมกับ input อื่นๆ ในฟอร์มเดียวกัน (เช่นช่องโค้ดส่วนลด) โดยอัตโนมัติ —
  * ไม่ต้องพึ่ง JavaScript เลยแม้แต่บรรทัดเดียว เหมือนหลักการเดิมของไฟล์นี้
  */
-function renderPaymentRow({ method, icon, label, sub }) {
-  return `<button type="submit" name="method" value="${escapeHtml(method)}" class="pay-row">
+function renderPaymentRow({ method, icon, label, sub, requiresEmail }) {
+  // 🆕 [แก้บั๊ก 29 ก.ย. 2569] ฟอร์มนี้ใช้ปุ่ม submit หลายปุ่มร่วมฟอร์มเดียวกัน — ปกติ HTML
+  // จะบังคับให้ทุกช่อง required ในฟอร์มต้องกรอกครบก่อน submit ได้เสมอ ไม่ว่าจะกดปุ่มไหน แต่
+  // เราอยากให้ "อีเมลจำเป็นเฉพาะตอนกด PromptPay" เท่านั้น (ทางบัตร/Apple Pay/Google Pay ไม่
+  // ต้องกรอกอีเมลเอง เพราะ Stripe Checkout มีช่องให้กรอกเองอยู่แล้วในหน้าถัดไป) เลยใส่
+  // attribute "formnovalidate" ให้ทุกปุ่มที่ "ไม่ต้องการ" อีเมล (บอกเบราว์เซอร์ว่า "ข้ามการ
+  // เช็ค required ทั้งหมดของฟอร์มนี้ ถ้ากดปุ่มนี้") ส่วนปุ่ม PromptPay ไม่ใส่ attribute นี้
+  // เบราว์เซอร์เลยเช็ค required ตามปกติเฉพาะตอนกดปุ่มนี้เท่านั้น — ทำได้ด้วย HTML ล้วนๆ
+  // ไม่ต้องพึ่ง JavaScript เลยเหมือนหลักการเดิมของไฟล์นี้ครับ
+  const skipValidation = requiresEmail ? '' : ' formnovalidate';
+  return `<button type="submit" name="method" value="${escapeHtml(method)}" class="pay-row"${skipValidation}>
     <span class="pay-row-icon">${icon}</span>
     <span class="pay-row-text">
       <span class="pay-row-label">${escapeHtml(label)}</span>
@@ -184,6 +194,10 @@ function renderPaymentMethodsBox(guildId) {
     <label class="discount-field">
       <span>Discount code (optional)</span>
       <input type="text" name="discountCode" placeholder="e.g. KITTY10" maxlength="20" autocomplete="off" />
+    </label>
+    <label class="discount-field">
+      <span>Email (required for PromptPay invoices)</span>
+      <input type="email" name="email" placeholder="you@email.com" autocomplete="email" required />
     </label>
     <div class="pay-row-list">
       ${PAYMENT_ROWS.map(renderPaymentRow).join('\n      ')}
@@ -359,8 +373,11 @@ function renderPremiumBillingPage({ guild, user, botAvatarUrl, botName, tier, su
   .discount-field span { font-size: 11px; font-weight: 600; color: var(--text-muted); }
   .discount-field input {
     width: 100%; background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
-    font-size: 13px; padding: 10px 12px; border-radius: 8px; text-transform: uppercase;
+    font-size: 13px; padding: 10px 12px; border-radius: 8px;
   }
+  /* โค้ดส่วนลดอยากให้โชว์เป็นตัวพิมพ์ใหญ่เสมอ (แค่ภาพ ไม่กระทบค่าที่ส่งจริง) แต่อีเมลไม่ควร
+     เพราะดูแปลกตาเวลาเห็นอีเมลตัวเองกลายเป็นตัวพิมพ์ใหญ่หมด เลยแยก selector เฉพาะเจาะจง */
+  .discount-field input[name="discountCode"] { text-transform: uppercase; }
 
   /* แต่ละแถวช่องทางจ่ายเงิน — ทรงสี่เหลี่ยมผืนผ้ายาว บาง ตามที่ขอ */
   .pay-row-list { display: flex; flex-direction: column; gap: 8px; }

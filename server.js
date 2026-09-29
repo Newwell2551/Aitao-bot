@@ -1135,11 +1135,26 @@ function createWebhookServer(client) {
 
       // ── ทาง PromptPay: สร้าง Subscription ตรงๆ ผ่าน API (ไม่ผ่าน Checkout Session) ──
 
-      // หา/สร้าง Stripe Customer — ถ้าเซิร์ฟนี้เคยมีลูกค้า Stripe อยู่แล้ว (เช่นเคยสมัคร
-      // แล้วยกเลิกไปก่อน) ใช้ตัวเดิมต่อ ไม่สร้างซ้ำให้ประวัติลูกค้ากระจัดกระจาย
+      // 🆕 [แก้บั๊ก 29 ก.ย. 2569] Stripe บังคับว่าต้องมีอีเมลลูกค้า ถึงจะออกใบแจ้งหนี้ส่งไป
+      // ให้ได้ครับ (collection_method: 'send_invoice' ด้านล่าง = อีเมลลิงก์จ่ายเงินไปให้
+      // ทุกเดือน ไม่ใช่หักบัตรเงียบๆ) แต่ Discord OAuth ที่ใช้ login เว็บไม่ได้ขอสิทธิ์อีเมล
+      // มาด้วยเลย เลยต้องให้ลูกค้ากรอกเองตรงฟอร์มก่อนกดจ่ายทาง PromptPay แทนนะครับ (ดูช่อง
+      // อีเมลใหม่ใน utils/renderPremiumBilling.js)
+      const customerEmail = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+      // เช็ครูปแบบอีเมลแบบหยาบๆ พอครับ (Stripe เองจะเช็คเข้มอีกชั้นตอนสร้าง/แก้ไข Customer)
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+        return res.redirect(`/premium/${guildId}?error=${encodeURIComponent('Please enter a valid email address for PromptPay invoices.')}`);
+      }
+
+      // หา/สร้าง Stripe Customer เหมือนเดิม แต่เพิ่มขั้น update อีเมลให้ตรงกับที่กรอกมาเสมอ
+      // (เผื่อเป็นลูกค้าเก่าที่เคยสมัครไว้ตั้งแต่ก่อนแก้บั๊กนี้ ยังไม่มีอีเมลติดอยู่เลย)
       const existingInfo = getSubscriptionInfo(guildId);
-      const customerId = existingInfo?.stripeCustomerId
-        ?? (await stripe.customers.create({ metadata: { guildId, discordUserId } })).id;
+      let customerId = existingInfo?.stripeCustomerId;
+      if (customerId) {
+        await stripe.customers.update(customerId, { email: customerEmail });
+      } else {
+        customerId = (await stripe.customers.create({ email: customerEmail, metadata: { guildId, discordUserId } })).id;
+      }
 
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
