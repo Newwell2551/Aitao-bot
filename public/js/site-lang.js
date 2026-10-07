@@ -165,6 +165,16 @@
   window.SiteLang = {
     getLang: function () { return currentLang; },
     setLang: setLang,
+    // 🆕 [7 ต.ค. 2569 แก้บั๊ก Marketplace] ดึงคำแปลตรงๆ ด้วยคีย์ ไม่ต้องผ่าน data-i18n
+    // ให้สคริปต์เฉพาะหน้า (เช่น marketplace.html) เรียกใช้ตอนต้องอัปเดตข้อความด้วย
+    // JS เอง (เช่นป้าย "เรียงตาม: ...” ที่เปลี่ยนตามตัวเลือกที่ผู้ใช้กด) — กันไม่ให้
+    // ต้องก็อปคำแปลซ้ำไว้คนละที่ ซึ่งพลาดง่าย/ลืมอัปเดตพร้อมกัน (ต้นเหตุของบั๊กป้าย
+    // เรียงตามใน marketplace.html ที่ติดภาษาไทยค้างตลอด ไม่ว่าจะสลับเว็บเป็นอังกฤษแล้ว
+    // ก็ตาม — เพราะโค้ดเดิมเก็บคำแปลซ้ำไว้อีกชุดแยกจาก TRANSLATIONS ก้อนนี้)
+    t: function (dottedKey) {
+      var dict = TRANSLATIONS[currentLang] || TRANSLATIONS[DEFAULT_LANG];
+      return getNested(dict, dottedKey);
+    },
     // ลงทะเบียนฟังก์ชันที่จะถูกเรียกทุกครั้งที่ภาษาเปลี่ยน (เรียกทันที 1 ครั้งด้วย
     // ตอนลงทะเบียน กันพลาดกรณีภาษาถูกตั้งไปแล้วก่อนที่โค้ดหน้านั้นจะรันมาถึงบรรทัดนี้)
     onChange: function (fn) {
@@ -320,6 +330,23 @@
         sidebar: {
           categories: 'Categories',
           catAll: 'All Items',
+          // 🆕 [7 ต.ค. 2569 แก้บั๊ก] คีย์หมวดหมู่/หมวดย่อยด้านซ้ายที่เดิมไม่มี data-i18n
+          // เลย (เป็นข้อความแข็งผสมอังกฤษ/ไทยปนกันในตัว marketplace.html) เพิ่มมาให้ครบ
+          catServers: 'Servers',
+          catMedia: 'Image & Media',
+          catEmojiSticker: 'Emoji & Sticker',
+          catBuilder: 'Builder',
+          catRole: 'Role',
+          catWelcomeGoodbye: 'Welcome / Goodbye',
+          catPackage: 'Package',
+          subAll: 'All',
+          subBanner: 'Banner',
+          subThumbnail: 'Thumbnail',
+          subWallpaper: 'Wallpaper',
+          subDivider: 'Img Divider',
+          subRoleMenu: 'Menu (Dropdown)',
+          subRoleButton: 'Button',
+          subRoleReaction: 'Reaction',
           popularTags: 'Popular Tags',
           tagPopular: '#popular',
           tagNew: '#new',
@@ -498,6 +525,22 @@
         sidebar: {
           categories: 'หมวดหมู่',
           catAll: 'สินค้าทั้งหมด',
+          // 🆕 [7 ต.ค. 2569 แก้บั๊ก] คีย์หมวดหมู่/หมวดย่อยด้านซ้าย — คู่กับฝั่ง en ด้านบน
+          catServers: 'เซิร์ฟเวอร์',
+          catMedia: 'รูปภาพ & มีเดีย',
+          catEmojiSticker: 'อิโมจิ & สติกเกอร์',
+          catBuilder: 'บิลเดอร์',
+          catRole: 'ยศ',
+          catWelcomeGoodbye: 'ต้อนรับ / อำลา',
+          catPackage: 'แพ็กเกจ',
+          subAll: 'ทั้งหมด',
+          subBanner: 'แบนเนอร์',
+          subThumbnail: 'ภาพปก',
+          subWallpaper: 'วอลเปเปอร์',
+          subDivider: 'เส้นแบ่งรูป',
+          subRoleMenu: 'เมนู (Dropdown)',
+          subRoleButton: 'ปุ่มกด (Button)',
+          subRoleReaction: 'รีแอคชัน',
           popularTags: 'แท็กยอดนิยม',
           tagPopular: '#ยอดนิยม',
           tagNew: '#ใหม่',

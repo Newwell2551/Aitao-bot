@@ -341,62 +341,62 @@
         </div>
 
         <div id="side-cat-servers" class="side-cat-row" onclick="selectCat('servers')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
-          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M4 10h16M10 10v10" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;">Servers</span></div>
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M4 10h16M10 10v10" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;" data-i18n="marketplace.sidebar.catServers">Servers</span></div>
           <span id="cat-count-servers" style="font-size:12px;color:#6b7394;">0</span>
         </div>
 
         <!-- Image & Media — กางออกได้ -->
         <div style="margin-bottom:2px;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;">
-            <div id="side-cat-media" onclick="selectCat('media')" style="display:flex;align-items:center;gap:10px;flex:1 1 auto;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Image &amp; Media</span></div>
+            <div id="side-cat-media" onclick="selectCat('media')" style="display:flex;align-items:center;gap:10px;flex:1 1 auto;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 16.5l4.5-4.5 3 3 3.5-3.5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="font-size:13.5px;" data-i18n="marketplace.sidebar.catMedia">Image &amp; Media</span></div>
             <div style="display:flex;align-items:center;gap:8px;">
               <span id="cat-count-media" style="font-size:12px;color:#6b7394;">0</span>
               <svg id="chev-media" onclick="event.stopPropagation(); toggleExpand('media')" width="11" height="11" viewBox="0 0 24 24" fill="none" style="cursor:pointer;transition:transform .15s ease;color:#6b7394;"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </div>
           <div id="sub-media" class="thin-scroll" style="display:none;padding-left:16px;margin-top:2px;max-height:140px;overflow-y:auto;">
-            <div id="side-sub-media-all" class="side-cat-row" onclick="selectCat('media')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">ทั้งหมด</div>
-            <div id="side-sub-media-banner" class="side-cat-row" onclick="selectSubcat('media','banner')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Banner</div>
-            <div id="side-sub-media-thumbnail" class="side-cat-row" onclick="selectSubcat('media','thumbnail')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Thumbnail</div>
-            <div id="side-sub-media-wallpaper" class="side-cat-row" onclick="selectSubcat('media','wallpaper')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Wallpaper</div>
-            <div id="side-sub-media-divider" class="side-cat-row" onclick="selectSubcat('media','divider')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Img Divider</div>
+            <div id="side-sub-media-all" class="side-cat-row" onclick="selectCat('media')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subAll">ทั้งหมด</div>
+            <div id="side-sub-media-banner" class="side-cat-row" onclick="selectSubcat('media','banner')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subBanner">Banner</div>
+            <div id="side-sub-media-thumbnail" class="side-cat-row" onclick="selectSubcat('media','thumbnail')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subThumbnail">Thumbnail</div>
+            <div id="side-sub-media-wallpaper" class="side-cat-row" onclick="selectSubcat('media','wallpaper')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subWallpaper">Wallpaper</div>
+            <div id="side-sub-media-divider" class="side-cat-row" onclick="selectSubcat('media','divider')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subDivider">Img Divider</div>
           </div>
         </div>
 
         <div id="side-cat-emoji-sticker" class="side-cat-row" onclick="selectCat('emoji-sticker')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
-          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 14V6a2 2 0 0 1 2-2h8l6 6v4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 14l6 6h6a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Emoji &amp; Sticker</span></div>
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 14V6a2 2 0 0 1 2-2h8l6 6v4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 14l6 6h6a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;" data-i18n="marketplace.sidebar.catEmojiSticker">Emoji &amp; Sticker</span></div>
           <span id="cat-count-emoji-sticker" style="font-size:12px;color:#6b7394;">0</span>
         </div>
 
         <div id="side-cat-builder" class="side-cat-row" onclick="selectCat('builder')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
-          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 8l8-5 8 5-8 5-8-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Builder</span></div>
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 8l8-5 8 5-8 5-8-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 12l8 5 8-5M4 16l8 5 8-5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;" data-i18n="marketplace.sidebar.catBuilder">Builder</span></div>
           <span id="cat-count-builder" style="font-size:12px;color:#6b7394;">0</span>
         </div>
 
         <!-- Role — กางออกได้ (ชนิดย่อยตรงกับ /role-setup จริงของบอท: Menu / Button / Reaction) -->
         <div style="margin-bottom:2px;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;">
-            <div id="side-cat-role" onclick="selectCat('role')" style="display:flex;align-items:center;gap:10px;flex:1 1 auto;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;">Role</span></div>
+            <div id="side-cat-role" onclick="selectCat('role')" style="display:flex;align-items:center;gap:10px;flex:1 1 auto;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span style="font-size:13.5px;" data-i18n="marketplace.sidebar.catRole">Role</span></div>
             <div style="display:flex;align-items:center;gap:8px;">
               <span id="cat-count-role" style="font-size:12px;color:#6b7394;">0</span>
               <svg id="chev-role" onclick="event.stopPropagation(); toggleExpand('role')" width="11" height="11" viewBox="0 0 24 24" fill="none" style="cursor:pointer;transition:transform .15s ease;color:#6b7394;"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </div>
           <div id="sub-role" class="thin-scroll" style="display:none;padding-left:16px;margin-top:2px;max-height:120px;overflow-y:auto;">
-            <div id="side-sub-role-all" class="side-cat-row" onclick="selectCat('role')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">ทั้งหมด</div>
-            <div id="side-sub-role-menu" class="side-cat-row" onclick="selectSubcat('role','menu')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">เมนู (Dropdown)</div>
-            <div id="side-sub-role-button" class="side-cat-row" onclick="selectSubcat('role','button')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">ปุ่มกด (Button)</div>
-            <div id="side-sub-role-reaction" class="side-cat-row" onclick="selectSubcat('role','reaction')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;">Reaction</div>
+            <div id="side-sub-role-all" class="side-cat-row" onclick="selectCat('role')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subAll">ทั้งหมด</div>
+            <div id="side-sub-role-menu" class="side-cat-row" onclick="selectSubcat('role','menu')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subRoleMenu">เมนู (Dropdown)</div>
+            <div id="side-sub-role-button" class="side-cat-row" onclick="selectSubcat('role','button')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subRoleButton">ปุ่มกด (Button)</div>
+            <div id="side-sub-role-reaction" class="side-cat-row" onclick="selectSubcat('role','reaction')" style="padding:7px 12px;border-radius:3px;color:#9aa2c4;font-size:12.5px;" data-i18n="marketplace.sidebar.subRoleReaction">Reaction</div>
           </div>
         </div>
 
         <div id="side-cat-welcome-goodbye" class="side-cat-row" onclick="selectCat('welcome-goodbye')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;margin-bottom:2px;">
-          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;">Welcome / Goodbye</span></div>
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20v-1a8 8 0 0 1 16 0v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;" data-i18n="marketplace.sidebar.catWelcomeGoodbye">Welcome / Goodbye</span></div>
           <span id="cat-count-welcome-goodbye" style="font-size:12px;color:#6b7394;">0</span>
         </div>
 
         <div id="side-cat-package" class="side-cat-row" onclick="selectCat('package')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:3px;color:#c3c8e6;">
-          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;">Package</span></div>
+          <div style="display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg><span style="font-size:13.5px;" data-i18n="marketplace.sidebar.catPackage">Package</span></div>
           <span id="cat-count-package" style="font-size:12px;color:#6b7394;">0</span>
         </div>
 
@@ -663,7 +663,26 @@
   var currentSort = 'popular'; // popular = ลำดับเดิมในหน้า (การ์ดเรียงแบบ "ยอดนิยม" อยู่แล้วตั้งแต่แรก)
   var priceMin = 0;
   var priceMax = 500;
+  // 🆕 [7 ต.ค. 2569 แก้บั๊ก i18n] เดิม SORT_LABELS ก้อนนี้เป็นภาษาไทยล้วนๆ แล้ว setSort()
+  // ด้านล่างดึงมาใส่ป้าย "เรียงตาม: ..." ตรงๆ ทำให้ป้ายนี้เป็นไทยค้างตลอด ไม่ว่าจะสลับเว็บ
+  // เป็นอังกฤษแล้วก็ตาม (บั๊กที่น้องหนาวแจ้งมา) ตอนนี้แก้ให้ดึงคำแปลสดจาก
+  // window.SiteLang.t() ตามภาษาปัจจุบันเสมอแทน (ดู updateSortLabelText() ด้านล่าง) —
+  // เหลือก้อนนี้ไว้แค่เป็น fallback เผื่อ site-lang.js โหลดไม่ทันจริงๆ
   var SORT_LABELS = { popular: 'ยอดนิยม', 'price-asc': 'ราคา: ต่ำ → สูง', 'price-desc': 'ราคา: สูง → ต่ำ', rating: 'คะแนนสูงสุด' };
+  var SORT_LABEL_KEYS = {
+    popular: 'marketplace.toolbar.sortPopular',
+    'price-asc': 'marketplace.toolbar.sortPriceAsc',
+    'price-desc': 'marketplace.toolbar.sortPriceDesc',
+    rating: 'marketplace.toolbar.sortRating',
+  };
+  // อัปเดตข้อความป้าย "เรียงตาม: ..." ให้ตรงกับภาษาปัจจุบันเสมอ เรียกทั้งตอนผู้ใช้กด
+  // เลือก sort ใหม่ (ใน setSort) และตอนผู้ใช้สลับภาษาเว็บ (ลงทะเบียน onChange ไว้ด้านล่าง)
+  function updateSortLabelText() {
+    var key = SORT_LABEL_KEYS[currentSort] || SORT_LABEL_KEYS.popular;
+    var text = (window.SiteLang && window.SiteLang.t(key)) || SORT_LABELS[currentSort] || SORT_LABELS.popular;
+    var labelEl = document.getElementById('sortLabel');
+    if (labelEl) labelEl.textContent = text;
+  }
 
   // 🆕 [25 ก.ย. 2569] เดิมตรงนี้เป็น PRODUCTS แบบเขียนตายตัว 9 ชิ้น (ข้อมูลสมมติ) — ตอนนี้
   // เปลี่ยนมาเป็น "ที่พักข้อมูลจริง" แทน: เริ่มต้นว่างเปล่า แล้ว loadMarketplaceListings()
@@ -919,7 +938,7 @@
 
   function setSort(sort) {
     currentSort = sort;
-    document.getElementById('sortLabel').textContent = SORT_LABELS[sort] || SORT_LABELS.popular;
+    updateSortLabelText();
     updateSortMenuHighlight();
     closeMarketMenus();
     render();
@@ -1338,6 +1357,13 @@
   // 🆕 [26 ก.ย. 2569] เอาฟังก์ชัน carousel "ร้านค้าแนะนำ"/"ร้านค้ามาใหม่" ออกแล้ว
   // (showSpotlight/showNewShop + setInterval ของมัน) เพราะ HTML ของทั้งสองส่วน
   // ถูกลบไปแล้วด้านบน (เป็นข้อมูลสมมติ ไม่มีร้านค้า/ยอดขายจริงรองรับ)
+
+  // 🆕 [7 ต.ค. 2569 แก้บั๊ก i18n] ป้าย "เรียงตาม: ..." เป็นข้อความที่อัปเดตด้วย JS เอง
+  // (ไม่ใช่ data-i18n ธรรมดา เพราะข้อความเปลี่ยนตามตัวเลือกที่ผู้ใช้กด) เลยต้องลงทะเบียน
+  // ไว้กับ window.SiteLang.onChange() ด้วย ไม่งั้นพอผู้ใช้กดสลับภาษา ป้ายนี้จะไม่ขยับตาม
+  // (onChange จะเรียก fn ให้ทันที 1 ครั้งตอนลงทะเบียนนี้ด้วย เลยช่วยตั้งค่าป้ายให้ถูกภาษา
+  // ตั้งแต่โหลดหน้าแรกไปในตัวเลยครับ ไม่ต้องเรียก updateSortLabelText() ซ้ำเองอีกที)
+  if (window.SiteLang) window.SiteLang.onChange(updateSortLabelText);
 
   // 🆕 [25 ก.ย. 2569] จุดเรียกดึงสินค้าจริง — ต้องเรียกท้ายสุดของสคริปต์ (หลังประกาศ
   // ฟังก์ชัน/ตัวแปรทั้งหมดข้างบนแล้ว) เพราะ loadMarketplaceListings() เรียกใช้ render()
