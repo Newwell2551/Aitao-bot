@@ -476,7 +476,7 @@
              ออกหมดแล้ว — loadMarketplaceListings() ในสคริปต์ด้านล่างจะดึงประกาศขายจริง
              จาก GET /api/marketplace/listings มาสร้างการ์ดใส่ตรงนี้แทนตอนโหลดหน้า -->
         <div id="productGrid">
-          <div id="productGridLoading" style="grid-column:1/-1;text-align:center;padding:48px 20px;font-size:13.5px;color:#9aa2c4;">กำลังโหลดสินค้า...</div>
+          <div id="productGridLoading" style="grid-column:1/-1;text-align:center;padding:48px 20px;font-size:13.5px;color:#9aa2c4;" data-i18n="marketplace.loadingProducts">กำลังโหลดสินค้า...</div>
         </div>
 
         <!-- empty state — โชว์ตอนกรองหมวด+ค้นหา+ราคารวมกันแล้วไม่เหลือการ์ดเลย -->
@@ -489,13 +489,13 @@
              #marketEmpty ด้านบนที่ใช้ตอนค้นหา/กรองแล้วไม่เจอ) ปุ่ม "ล้างคำค้นหา" ไม่มีประโยชน์
              ในเคสนี้ เลยแยกข้อความ+ไม่มีปุ่มไปเลย -->
         <div id="marketNoListings" style="display:none;text-align:center;padding:48px 20px;">
-          <div style="font-size:13.5px;color:#9aa2c4;">ยังไม่มีใครลงขายของในตลาดตอนนี้เลยครับ</div>
-          <div style="font-size:12px;color:#6b7394;margin-top:6px;">เป็นคนแรกได้เลย — ลงขายผ่านคำสั่ง <code style="background:rgba(19,26,46,0.7);padding:2px 6px;border-radius:3px;">/marketplace sell</code> บนดิสคอร์ด</div>
+          <div style="font-size:13.5px;color:#9aa2c4;" data-i18n="marketplace.noListings.message">ยังไม่มีใครลงขายของในตลาดตอนนี้เลยครับ</div>
+          <div style="font-size:12px;color:#6b7394;margin-top:6px;" data-i18n="marketplace.noListings.sub" data-i18n-html="1">เป็นคนแรกได้เลย — ลงขายผ่านคำสั่ง <code style="background:rgba(19,26,46,0.7);padding:2px 6px;border-radius:3px;">/marketplace sell</code> บนดิสคอร์ด</div>
         </div>
 
         <!-- 🆕 โชว์ตอนดึงข้อมูลจาก API ไม่สำเร็จ (เช่นเน็ตหลุด/เซิร์ฟเวอร์ล่ม) -->
         <div id="marketLoadError" style="display:none;text-align:center;padding:48px 20px;">
-          <div style="font-size:13.5px;color:#e07a7a;">โหลดสินค้าไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้งครับ</div>
+          <div style="font-size:13.5px;color:#e07a7a;" data-i18n="marketplace.loadError">โหลดสินค้าไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้งครับ</div>
         </div>
 
         <div style="margin-top:24px;display:flex;align-items:center;gap:12px;background:rgba(19,26,46,0.5);border:1px solid #262f4d;border-radius:4px;padding:18px 24px;flex-wrap:wrap;">

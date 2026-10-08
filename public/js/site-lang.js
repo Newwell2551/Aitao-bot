@@ -378,6 +378,16 @@
           message: 'No items match your search.',
           clearSearch: 'Clear search',
         },
+        // 🆕 [7 ต.ค. 2569 แก้บั๊ก รอบ 2] 3 สถานะของกริดสินค้าที่น้องหนาวแจ้งมา — เดิม
+        // #productGridLoading / #marketNoListings / #marketLoadError ไม่มี data-i18n
+        // เลยสักอัน เลยค้างเป็นไทยตลอดไม่ว่าจะสลับเว็บเป็นอังกฤษแล้วก็ตาม (คนละเคสกับ
+        // emptyState ด้านบน ที่ใช้ตอน "ค้นหา/กรองแล้วไม่เจอ" เท่านั้น)
+        loadingProducts: 'Loading items...',
+        noListings: {
+          message: 'No one has listed anything in the marketplace yet.',
+          sub: 'Be the first — sell through the <code style="background:rgba(19,26,46,0.7);padding:2px 6px;border-radius:3px;">/marketplace sell</code> command on Discord.',
+        },
+        loadError: 'Failed to load items — try refreshing this page.',
         dashboardBanner: {
           text: 'You can also reach the Marketplace from your Dashboard menu &mdash; manage your shop and orders in the same place you configure the bot.',
           link: 'Go to Dashboard &rarr;',
@@ -572,6 +582,13 @@
           message: 'ไม่พบสินค้าที่ตรงกับคำค้นหา',
           clearSearch: 'ล้างคำค้นหา',
         },
+        // 🆕 [7 ต.ค. 2569 แก้บั๊ก รอบ 2] คู่กับฝั่ง en ด้านบน
+        loadingProducts: 'กำลังโหลดสินค้า...',
+        noListings: {
+          message: 'ยังไม่มีใครลงขายของในตลาดตอนนี้เลยครับ',
+          sub: 'เป็นคนแรกได้เลย — ลงขายผ่านคำสั่ง <code style="background:rgba(19,26,46,0.7);padding:2px 6px;border-radius:3px;">/marketplace sell</code> บนดิสคอร์ด',
+        },
+        loadError: 'โหลดสินค้าไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้งครับ',
         dashboardBanner: {
           text: 'เข้าถึง Marketplace ได้จากเมนูใน Dashboard ของคุณเช่นกัน &mdash; จัดการร้านค้าและออเดอร์ได้ที่เดียวกับที่ตั้งค่าบอท',
           link: 'ไปที่ Dashboard &rarr;',
