@@ -67,7 +67,7 @@ const { syncCodeReportMessage } = require('./utils/referralReportChannel');
 // จากข้อมูลจริงของเซิร์ฟ (ไม่มีตรงไหน hardcode) ดูรายละเอียดเหตุผลแต่ละจุดในคอมเมนต์หัวไฟล์
 // utils/renderOverview.js
 const { renderOverviewPage } = require('./utils/renderOverview');
-const { renderComingSoonPage } = require('./utils/dashboardShell');
+const { renderComingSoonPage, NAV_ITEMS } = require('./utils/dashboardShell');
 const { loadWelcomeConfig, saveWelcomeConfig } = require('./utils/welcomeStorage');
 const { loadGoodbyeConfig } = require('./utils/goodbyeStorage');
 const { getGuildFonts } = require('./utils/fontStorage');
@@ -397,8 +397,21 @@ function createWebhookServer(client) {
   }
 
   // GET /dashboard — หน้า Server Picker จริง (ขั้นที่ 2 จาก 10 ของแผน Dashboard)
+  //
+  // 🆕 [11 ต.ค. 2569] รองรับ query ?next=<hrefSuffix> เช่น ?next=/marketplace — ใช้ตอน
+  // มีปุ่มจากหน้าเว็บสาธารณะ (เช่นปุ่ม "ลงขายสินค้า" ใน public/marketplace.html) ที่อยาก
+  // พาผู้ใช้ไปหน้า Dashboard หน้าย่อยที่ต้องการทันทีหลังเลือกเซิร์ฟ โดยไม่ต้องกดเมนูซ้ำอีกที
+  //
+  // ⚠️ ต้องเช็ก whitelist ก่อนใช้เสมอ — ห้ามเอา req.query.next ไปต่อ URL ตรงๆ เด็ดขาด
+  // เพราะเป็นค่าที่ผู้ใช้ (หรือใครก็ได้ที่ปลอมลิงก์มา) กำหนดเองได้ ถ้าไม่กรองอาจเปิดช่องให้
+  // ยัดอะไรแปลกๆ ต่อท้าย URL ได้ เลยเทียบกับ hrefSuffix ของ NAV_ITEMS (รายการเมนู Dashboard
+  // จริงทั้งหมด จาก utils/dashboardShell.js) ตรงเป๊ะเท่านั้นถึงจะยอมผ่าน ไม่ตรงก็ตกไปที่ค่า
+  // เริ่มต้น '' (หน้า Overview) เหมือนเดิม ไม่ error ให้ผู้ใช้เห็นอะไรผิดปกติ
   app.get('/dashboard', requireAuth, (req, res) => {
     const servers = computeManageableServers(req.session.guilds);
+    const requestedNext = typeof req.query.next === 'string' ? req.query.next : '';
+    const allowedNextPaths = new Set(NAV_ITEMS.map((item) => item.hrefSuffix).filter(Boolean));
+    const nextPath = allowedNextPaths.has(requestedNext) ? requestedNext : '';
 
     res.send(renderServerPickerPage({
       user: req.session.user,
@@ -407,6 +420,7 @@ function createWebhookServer(client) {
       // รูป avatar จริงของบอทเอง (ไม่ใช่ภาพตัวละครสมมติแบบใน mockup) โชว์ตรงหัวข้อ
       // ทักทายกลางหน้า — client.user คือบอทตัวเอง มี .displayAvatarURL() ให้ใช้ตรงๆ
       botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      nextPath,
     }));
   });
 

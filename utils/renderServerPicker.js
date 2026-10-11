@@ -143,9 +143,13 @@ function serverIconHtml(server, size) {
  * การ์ดเด่นพิเศษสำหรับเซิร์ฟ Premium — โชว์แยกจากลิสต์ปกติ อยู่บนสุดของหน้า ตรงตาม
  * mockup (การ์ดกว้างเต็ม พื้นหลัง var(--bg-card) ป้ายทอง "★ เซิร์ฟ PREMIUM ของคุณ")
  * @param {object} server
+ * @param {string} [nextPath] 🆕 [11 ต.ค. 2569] hrefSuffix ของหน้า Dashboard ที่จะพาไป
+ *   ต่อทันทีหลังเลือกเซิร์ฟนี้ (เช่น '/marketplace') — มาจาก ?next= ตอนเข้าหน้า Server
+ *   Picker ใช้กรณีมีปุ่ม "ลงขายสินค้า" จากหน้า marketplace.html ที่อยากพาตรงไปหน้า
+ *   Marketplace ของเซิร์ฟที่เลือก ไม่ต้องกดเมนูซ้ำอีกที ค่าเริ่มต้นคือ '' (ไปหน้า Overview เหมือนเดิม)
  * @returns {string}
  */
-function featuredCardHtml(server) {
+function featuredCardHtml(server, nextPath = '') {
   // toLocaleString('en-US') แทน 'th-TH' เพราะข้อความหน้าแดชบอร์ดทั้งหมดเปลี่ยนเป็น
   // ภาษาอังกฤษแล้วตามที่น้องหนาวขอ (ตัวเลขคั่นหลักพันด้วย comma แบบอังกฤษให้เข้าชุดกัน)
   const memberCountText = server.memberCount != null ? server.memberCount.toLocaleString('en-US') : '-';
@@ -157,7 +161,7 @@ function featuredCardHtml(server) {
         <div style="font-size:16.5px;font-weight:700;color:var(--text);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(server.name)}</div>
         <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">${memberCountText} members</div>
       </div>
-      <a href="/dashboard/${server.id}" style="margin-left:auto;flex:0 0 auto;height:38px;padding:0 20px;border-radius:3px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;text-decoration:none;box-sizing:border-box;">Manage this server →</a>
+      <a href="/dashboard/${server.id}${nextPath}" style="margin-left:auto;flex:0 0 auto;height:38px;padding:0 20px;border-radius:3px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;text-decoration:none;box-sizing:border-box;">Manage this server →</a>
     </div>`;
 }
 
@@ -165,9 +169,11 @@ function featuredCardHtml(server) {
  * แถวเซิร์ฟปกติ 1 แถวในลิสต์ "เซิร์ฟเวอร์อื่นๆ ของคุณ" — แยก 2 แบบตาม hasBot เหมือนเดิม
  * @param {object} server
  * @param {string} inviteUrl ลิงก์เชิญบอทแบบ "ยังไม่ระบุเซิร์ฟ" (ใช้เฉพาะตอน !hasBot)
+ * @param {string} [nextPath] 🆕 [11 ต.ค. 2569] เหมือนกับใน featuredCardHtml() ด้านบนเลย —
+ *   ใช้ต่อท้ายลิงก์ "Manage →" เท่านั้น (เซิร์ฟที่ยังไม่มีบอทไปหน้า invite ตามปกติ ไม่เกี่ยว)
  * @returns {string}
  */
-function serverRowHtml(server, inviteUrl) {
+function serverRowHtml(server, inviteUrl, nextPath = '') {
   const nameHtml = escapeHtml(server.name);
 
   if (server.hasBot) {
@@ -184,7 +190,7 @@ function serverRowHtml(server, inviteUrl) {
           </div>
           <div style="font-size:11px;color:var(--text-muted-2);margin-top:2px;">${memberCountText} members</div>
         </div>
-        <div style="margin-left:auto;flex:0 0 auto;"><a href="/dashboard/${server.id}" class="sp-row-link" style="font-size:11.5px;font-weight:700;color:var(--accent);">Manage →</a></div>
+        <div style="margin-left:auto;flex:0 0 auto;"><a href="/dashboard/${server.id}${nextPath}" class="sp-row-link" style="font-size:11.5px;font-weight:700;color:var(--accent);">Manage →</a></div>
       </div>`;
   }
 
@@ -217,9 +223,13 @@ function serverRowHtml(server, inviteUrl) {
  * @param {string} params.inviteUrl ลิงก์เชิญบอทแบบ "ยังไม่ระบุเซิร์ฟ" (จาก buildInviteUrl())
  * @param {string} params.botAvatarUrl URL avatar จริงของบอทเอง (client.user.displayAvatarURL())
  *   ใช้โชว์ตรงหัวข้อทักทายกลางหน้า — ของจริง ไม่ใช่รูปตัวละครสมมติแบบใน mockup
+ * @param {string} [params.nextPath] 🆕 [11 ต.ค. 2569] hrefSuffix ของหน้า Dashboard ที่จะพาไปต่อ
+ *   ทันทีหลังเลือกเซิร์ฟ (เช่น '/marketplace') มาจาก query ?next= ตอนเข้าหน้านี้ (server.js
+ *   เป็นคนตรวจสอบ/กรองให้ปลอดภัยก่อนส่งมาแล้ว — ดูคอมเมนต์ที่ GET /dashboard) ค่าเริ่มต้น
+ *   คือ '' (พาไปหน้า Overview เหมือนเดิมทุกจุดที่ยังไม่ส่งมา)
  * @returns {string} HTML เต็มหน้า พร้อม res.send() ได้เลย
  */
-function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
+function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl, nextPath = '' }) {
   // แยกเซิร์ฟ Premium (ที่มีบอทอยู่แล้วเท่านั้น — premium ที่ยังไม่มีบอทไม่มีความหมาย
   // จะไปเด่นพิเศษ เพราะยังตั้งค่าอะไรไม่ได้เลย) ออกมาเป็นการ์ดเด่น ที่เหลือไปอยู่ลิสต์ปกติ
   const featuredServers = servers.filter((s) => s.hasBot && s.tier === 'premium');
@@ -231,7 +241,7 @@ function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
     return a.name.localeCompare(b.name, 'th');
   });
 
-  const featuredHtml = featuredServers.map(featuredCardHtml).join('');
+  const featuredHtml = featuredServers.map((s) => featuredCardHtml(s, nextPath)).join('');
 
   const restLabel = featuredServers.length > 0
     ? `Other Servers (${restServers.length})`
@@ -239,7 +249,7 @@ function renderServerPickerPage({ user, servers, inviteUrl, botAvatarUrl }) {
 
   const restListHtml = restServers.length > 0
     ? `<div style="width:100%;max-width:460px;border-top:1px solid var(--border);margin:0 auto;flex:0 0 auto;"></div>`
-      + restServers.map((s) => serverRowHtml(s, inviteUrl)).join('')
+      + restServers.map((s) => serverRowHtml(s, inviteUrl, nextPath)).join('')
     : `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">
          ${featuredServers.length > 0 ? 'No other servers.' : 'This account has no servers with "Manage Server" permission.'}
        </div>`;

@@ -326,10 +326,7 @@
           title: 'Milo Bot — Marketplace',
           description: "Milo Bot's Marketplace — buy server decorations from other creators, or open your own shop through the /marketplace command on Discord.",
         },
-        // 🆕 [10 ต.ค. 2569] previewStrip เคยอยู่ตรงนี้ (คำแปลแถบ "จ่ายเงินแบบ
-        // PromptPay QR" บนสุดของหน้า) ลบออกแล้วเพราะเอาแถบนี้ออกจาก
-        // marketplace.html ตามที่น้องหนาวขอ — ถ้าอยากเอากลับมา เพิ่มคีย์นี้คืน
-        // แล้วใส่ data-i18n="marketplace.previewStrip" กลับเข้าไปใน HTML ได้เลย
+        previewStrip: '💳 <strong>Pay with a PromptPay QR</strong> — scan to pay the seller directly, the bot never touches your money. Once the seller confirms payment, you\'ll get your item or a follow-up message automatically.',
         sidebar: {
           categories: 'Categories',
           catAll: 'All Items',
@@ -381,9 +378,21 @@
           message: 'No items match your search.',
           clearSearch: 'Clear search',
         },
+        // 🆕 [7 ต.ค. 2569 แก้บั๊ก รอบ 2] 3 สถานะของกริดสินค้าที่น้องหนาวแจ้งมา — เดิม
+        // #productGridLoading / #marketNoListings / #marketLoadError ไม่มี data-i18n
+        // เลยสักอัน เลยค้างเป็นไทยตลอดไม่ว่าจะสลับเว็บเป็นอังกฤษแล้วก็ตาม (คนละเคสกับ
+        // emptyState ด้านบน ที่ใช้ตอน "ค้นหา/กรองแล้วไม่เจอ" เท่านั้น)
+        loadingProducts: 'Loading items...',
+        noListings: {
+          message: 'No one has listed anything in the marketplace yet.',
+          sub: 'Be the first — click the "List an item" button below to get started.',
+        },
+        loadError: 'Failed to load items — try refreshing this page.',
+        // 🆕 [11 ต.ค. 2569] กลับมาใช้ปุ่มลิงก์ไป Dashboard แล้ว — ตอนนี้ลงขายของจากเว็บ
+        // ได้จริงแล้ว (ฟอร์มใน Dashboard > Marketplace) เลยแก้ข้อความ+เพิ่ม link ให้ตรงปุ่ม
         dashboardBanner: {
-          text: 'You can also reach the Marketplace from your Dashboard menu &mdash; manage your shop and orders in the same place you configure the bot.',
-          link: 'Go to Dashboard &rarr;',
+          text: 'Want to open your own shop? List items straight from your Dashboard — no extra commission.',
+          link: 'List an item &rarr;',
         },
         sideRight: {
           premiumBlurb: 'Already have Premium? Open your own decoration shop instantly — no extra commission.',
@@ -524,7 +533,7 @@
           title: 'Milo Bot — Marketplace',
           description: 'Marketplace ของ Milo Bot — เลือกซื้อของตกแต่งเซิร์ฟจากครีเอเตอร์คนอื่น หรือเปิดร้านขายเองได้จริงผ่านคำสั่ง /marketplace บนดิสคอร์ด',
         },
-        // 🆕 [10 ต.ค. 2569] ลบ previewStrip ออกแล้ว — คู่กับฝั่ง en ด้านบน
+        previewStrip: '💳 <strong>จ่ายเงินแบบ PromptPay QR</strong> — สแกนจ่ายตรงเข้าบัญชีผู้ขาย บอทไม่แตะเงินเลย รอผู้ขายกดยืนยันรับเงินแล้วจะได้รับของ/ข้อความติดต่อกลับอัตโนมัติครับ',
         sidebar: {
           categories: 'หมวดหมู่',
           catAll: 'สินค้าทั้งหมด',
@@ -575,9 +584,19 @@
           message: 'ไม่พบสินค้าที่ตรงกับคำค้นหา',
           clearSearch: 'ล้างคำค้นหา',
         },
+        // 🆕 [7 ต.ค. 2569 แก้บั๊ก รอบ 2] คู่กับฝั่ง en ด้านบน
+        loadingProducts: 'กำลังโหลดสินค้า...',
+        noListings: {
+          message: 'ยังไม่มีใครลงขายของในตลาดตอนนี้เลยครับ',
+          sub: 'เป็นคนแรกได้เลย — กดปุ่ม "ลงขายสินค้า" ด้านล่างเพื่อเริ่มได้เลยครับ',
+        },
+        loadError: 'โหลดสินค้าไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้งครับ',
+        // 🆕 [11 ต.ค. 2569] กลับมาใช้ปุ่มลิงก์ไป Dashboard แล้วครับ — ตอนนี้ลงขายของจาก
+        // หน้าเว็บได้จริงแล้ว (ฟอร์มใน Dashboard > Marketplace) เลยแก้ข้อความ+เพิ่ม
+        // link ให้ตรงกับปุ่มที่เพิ่มใน marketplace.html
         dashboardBanner: {
-          text: 'เข้าถึง Marketplace ได้จากเมนูใน Dashboard ของคุณเช่นกัน &mdash; จัดการร้านค้าและออเดอร์ได้ที่เดียวกับที่ตั้งค่าบอท',
-          link: 'ไปที่ Dashboard &rarr;',
+          text: 'อยากเปิดร้านขายของตัวเอง? ลงขายสินค้าได้เลยจากหน้า Dashboard ของคุณ — ไม่มีค่าคอมมิชชั่น',
+          link: 'ลงขายสินค้า &rarr;',
         },
         sideRight: {
           premiumBlurb: 'มี Premium อยู่แล้ว? เปิดร้านขายของตกแต่งของตัวเองได้ทันที ไม่มีค่าคอมมิชชั่นเพิ่ม',

@@ -495,7 +495,9 @@
              ในเคสนี้ เลยแยกข้อความ+ไม่มีปุ่มไปเลย -->
         <div id="marketNoListings" style="display:none;text-align:center;padding:48px 20px;">
           <div style="font-size:13.5px;color:#9aa2c4;" data-i18n="marketplace.noListings.message">ยังไม่มีใครลงขายของในตลาดตอนนี้เลยครับ</div>
-          <div style="font-size:12px;color:#6b7394;margin-top:6px;" data-i18n="marketplace.noListings.sub" data-i18n-html="1">เป็นคนแรกได้เลย — ลงขายผ่านคำสั่ง <code style="background:rgba(19,26,46,0.7);padding:2px 6px;border-radius:3px;">/marketplace sell</code> บนดิสคอร์ด</div>
+          <!-- 🆕 [11 ต.ค. 2569] เอาการอ้างคำสั่ง /marketplace sell บนดิสคอร์ดออก — ตอนนี้
+               ลงขายจากหน้าเว็บได้แล้ว ชี้ไปที่ปุ่ม "ลงขายสินค้า" ในแบนเนอร์ด้านล่างแทน -->
+          <div style="font-size:12px;color:#6b7394;margin-top:6px;" data-i18n="marketplace.noListings.sub">เป็นคนแรกได้เลย — กดปุ่ม "ลงขายสินค้า" ด้านล่างเพื่อเริ่มได้เลยครับ</div>
         </div>
 
         <!-- 🆕 โชว์ตอนดึงข้อมูลจาก API ไม่สำเร็จ (เช่นเน็ตหลุด/เซิร์ฟเวอร์ล่ม) -->
@@ -503,12 +505,16 @@
           <div style="font-size:13.5px;color:#e07a7a;" data-i18n="marketplace.loadError">โหลดสินค้าไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้งครับ</div>
         </div>
 
-        <div style="margin-top:24px;display:flex;align-items:center;gap:12px;background:rgba(19,26,46,0.5);border:1px solid #262f4d;border-radius:4px;padding:18px 24px;flex-wrap:wrap;">
+        <div style="margin-top:24px;display:flex;align-items:center;gap:14px;background:rgba(19,26,46,0.5);border:1px solid #262f4d;border-radius:4px;padding:18px 24px;flex-wrap:wrap;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="#4a5aa8" stroke-width="1.8"/></svg>
-          <!-- 🆕 [25 ก.ย. 2569] แก้ข้อความ — ของเดิมบอกว่ามีเมนู Marketplace ใน Dashboard
-               ด้วย แต่น้องหนาวตัดสินใจแล้วว่าผู้ขายลงขายผ่านคำสั่ง /marketplace บนดิสคอร์ด
-               เท่านั้น ไม่มีหน้า Dashboard สำหรับจัดการร้านค้า เลยแก้ข้อความให้ตรงความจริง -->
-          <span style="font-size:13px;color:#c3c8e6;flex:1 1 240px;" data-i18n="marketplace.dashboardBanner.text" data-i18n-html="1">อยากเปิดร้านขายของตัวเอง? ใช้คำสั่ง <code style="background:rgba(10,14,26,0.6);padding:2px 6px;border-radius:3px;">/marketplace sell</code> บนดิสคอร์ดได้เลย &mdash; ไม่มีค่าคอมมิชชั่น</span>
+          <!-- 🆕 [11 ต.ค. 2569] กลับมาใช้ปุ่มลิงก์ไป Dashboard ได้แล้วครับ — ตอนนี้มีฟอร์ม
+               "ลงขายของใหม่" อยู่ในหน้า Dashboard > Marketplace แล้ว (อัปโหลดรูป/ไฟล์
+               ได้จากเว็บเลย ไม่ต้องใช้คำสั่งดิสคอร์ด) เลยลบข้อความอ้าง /marketplace sell
+               ทิ้ง แล้วเปลี่ยนเป็นปุ่มจริงแทน ปุ่มนี้พาไปหน้า "เลือกเซิร์ฟเวอร์" ก่อน
+               (?next=/marketplace) จากนั้นพอเลือกเซิร์ฟแล้วจะเด้งตรงไปหน้า Marketplace
+               ของเซิร์ฟนั้นให้เลย ไม่ต้องกดเมนูซ้ำอีกที (ดู GET /dashboard ใน server.js) -->
+          <span style="font-size:13px;color:#c3c8e6;flex:1 1 240px;" data-i18n="marketplace.dashboardBanner.text">อยากเปิดร้านขายของตัวเอง? ลงขายสินค้าได้เลยจากหน้า Dashboard ของคุณ — ไม่มีค่าคอมมิชชั่น</span>
+          <a href="/dashboard?next=/marketplace" style="flex:0 0 auto;height:36px;padding:0 18px;border-radius:4px;background:#4a5aa8;color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;" data-i18n="marketplace.dashboardBanner.link" data-i18n-html="1">ลงขายสินค้า &rarr;</a>
         </div>
       </div>
 
