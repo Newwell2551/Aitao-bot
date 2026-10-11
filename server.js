@@ -31,6 +31,12 @@ const crypto = require('crypto');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
+// 🆕 [11 ต.ค. 2569] multer = ตัวช่วยอ่าน <form enctype="multipart/form-data"> (ฟอร์มที่มี
+// ไฟล์แนบ) — express เองอ่าน multipart ไม่ได้ ต้องพึ่ง library แยกเสมอ ใช้ memoryStorage()
+// (เก็บไฟล์ไว้ใน RAM ชั่วคราวเป็น Buffer ไม่เขียนลงดิสก์เลย) เพราะ Railway ไม่มีดิสก์ถาวร
+// (redeploy ทีไฟล์ที่เขียนไว้หายหมด) — ใช้แค่หน้า Marketplace ตอนนี้ (ฟอร์มลงขายสินค้า
+// ที่มีรูปปก/ไฟล์ดิจิทัลแนบมาด้วย) ดูคอมเมนต์เต็มๆ ที่จุดสร้าง marketplaceUpload ด้านล่าง
+const multer = require('multer');
 const { TextDisplayBuilder, MessageFlags, ChannelType } = require('discord.js');
 const stripe = require('./utils/stripeClient');
 const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo, isPremiumGuild } = require('./utils/tierManager');
@@ -92,8 +98,30 @@ const {
 // commands/marketplace.js), createOrder สร้างคำสั่งซื้อตอนกด "ซื้อ" บนหน้าเว็บ, ส่วน
 // generatePromptPayQrBuffer สร้างรูป QR ให้ "ผู้ซื้อ" สแกนจ่ายตรงเข้าบัญชีผู้ขาย (บอทไม่
 // แตะเงินเลย — ดูหลักการเต็มๆ ในคอมเมนต์หัวไฟล์ utils/marketplaceStorage.js)
-const { listActiveListings, getListing, getSeller, createOrder } = require('./utils/marketplaceStorage');
+// 🆕 [11 ต.ค. 2569] เพิ่ม saveSellerPromptPay/createListing/listSellerListings/
+// setListingStatus/resolveListingAssets/CATEGORIES/PROMPTPAY_ID_PATTERN/MAX_PRICE_THB —
+// ทั้งหมดนี้เดิมใช้ได้แค่ผ่านคำสั่ง /marketplace ในดิสคอร์ด (ดู commands/marketplace.js)
+// ตอนนี้หน้า Dashboard /dashboard/:guildId/marketplace เรียกใช้ตรงๆ เหมือนกัน ให้ลงขาย/
+// จัดการร้านจากเว็บได้เลยตามที่น้องหนาวขอ (ดู utils/renderMarketplaceDashboard.js)
+const {
+  listActiveListings,
+  getListing,
+  getSeller,
+  createOrder,
+  saveSellerPromptPay,
+  createListing,
+  listSellerListings,
+  setListingStatus,
+  resolveListingAssets,
+  CATEGORIES,
+  PROMPTPAY_ID_PATTERN,
+  MAX_PRICE_THB,
+} = require('./utils/marketplaceStorage');
 const { generatePromptPayQrBuffer } = require('./utils/promptpayQr');
+// เก็บรูปปก/ไฟล์ดิจิทัลที่อัปโหลดจากฟอร์มลงขายบนเว็บไว้ถาวรจริงๆ (ดูเหตุผลเต็มๆ ใน
+// คอมเมนต์หัวไฟล์ utils/assetStorage.js — สรุปสั้นๆ: URL ไฟล์แนบ Discord หมดอายุใน ~24 ชม.)
+const { storeBufferPermanently } = require('./utils/assetStorage');
+const { renderMarketplaceDashboardPage } = require('./utils/renderMarketplaceDashboard');
 // 🆕 หน้า Server Picker (การ์ดกริดเลือกเซิร์ฟหลัง login) — แยกไว้คนละไฟล์เพราะเป็น
 // โค้ดสร้าง HTML ล้วนๆ ยาวๆ ไม่อยากให้ server.js (ที่จัดการ route) ยาวเทอะทะเกินไป
 // ดูคำอธิบายเต็มๆ ในไฟล์นั้นเลย
@@ -430,32 +458,41 @@ function createWebhookServer(client) {
   // GET /api/marketplace/listings — รายการประกาศขายทั้งหมดที่ "active" (ให้ทุกคนดูได้
   // ไม่ต้อง login) — จงใจไม่ส่ง sellerId (Discord user ID จริงของผู้ขาย) ออกไปในนี้เลย
   // ส่งแค่ displayName พอ กันเผยข้อมูลระบุตัวตนที่ไม่จำเป็นออกสู่สาธารณะ
-  app.get('/api/marketplace/listings', (req, res) => {
-    const listings = listActiveListings().map((item) => {
-      const seller = getSeller(item.sellerId);
-      return {
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        priceThb: item.priceThb,
-        category: item.category,
-        subcategory: item.subcategory,
-        type: item.type,
-        imageUrl: item.imageUrl,
-        sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
-        createdAt: item.createdAt,
-      };
-    });
+  // 🆕 [11 ต.ค. 2569] ทั้ง 2 เส้นทางนี้ต้องเปลี่ยนเป็น async + resolveListingAssets()
+  // เพราะ item.imageUrl ตอนนี้เก็บเป็นพิกัดข้อความ {channelId, messageId} ไม่ใช่ URL ดิบๆ
+  // แล้ว (ดูคอมเมนต์หัวไฟล์ utils/marketplaceStorage.js) ต้อง resolve ให้เป็น URL สดใหม่
+  // ก่อนส่งให้ browser ใช้จริงเสมอ — ทำแบบ Promise.all ให้ resolve หลายชิ้นพร้อมกัน ไม่ใช่
+  // ทีละชิ้นทีละชิ้น (เร็วกว่าตอนมีหลายประกาศ)
+  app.get('/api/marketplace/listings', async (req, res) => {
+    const listings = await Promise.all(
+      listActiveListings().map(async (item) => {
+        const seller = getSeller(item.sellerId);
+        const { imageUrl } = await resolveListingAssets(client, item);
+        return {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          priceThb: item.priceThb,
+          category: item.category,
+          subcategory: item.subcategory,
+          type: item.type,
+          imageUrl,
+          sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
+          createdAt: item.createdAt,
+        };
+      })
+    );
     res.json({ listings });
   });
 
   // GET /api/marketplace/listings/:id — รายละเอียดประกาศ 1 ชิ้น (หน้า product detail)
-  app.get('/api/marketplace/listings/:id', (req, res) => {
+  app.get('/api/marketplace/listings/:id', async (req, res) => {
     const listing = getListing(String(req.params.id || '').toUpperCase());
     if (!listing || listing.status !== 'active') {
       return res.status(404).json({ error: 'listing_not_found' });
     }
     const seller = getSeller(listing.sellerId);
+    const { imageUrl } = await resolveListingAssets(client, listing);
     res.json({
       id: listing.id,
       title: listing.title,
@@ -464,7 +501,7 @@ function createWebhookServer(client) {
       category: listing.category,
       subcategory: listing.subcategory,
       type: listing.type,
-      imageUrl: listing.imageUrl,
+      imageUrl,
       sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
     });
   });
@@ -923,6 +960,172 @@ function createWebhookServer(client) {
     setGuildLanguage(guildId, lang);
     console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) เปลี่ยนภาษาบอทของเซิร์ฟ ${guildId} เป็น "${lang}" แล้ว`);
     res.redirect(`/dashboard/${guildId}/language?saved=1`);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [11 ต.ค. 2569] หน้า Marketplace จริงในแดชบอร์ด — ย้ายฟีเจอร์ของคำสั่ง /marketplace
+  // (sell / mylistings / remove / markselling / setpromptpay) มาทำบนเว็บทั้งหมด ตามที่
+  // น้องหนาวขอ ("เข้าหน้าเว็บอยู่แล้ว ยังต้องกลับมาทำอะไรที่ดิสคอร์ด มันไม่ใช่") คำสั่งเดิม
+  // ในดิสคอร์ดยังใช้ได้อยู่เหมือนกัน (ไม่ได้ลบ) — ข้อมูลที่เดียวกัน (data/marketplace.json)
+  // เปลี่ยนจากฝั่งไหนก็เห็นผลเหมือนกันหมด ดู utils/renderMarketplaceDashboard.js สำหรับ HTML
+  //
+  // 🆕 marketplaceUpload = ตัวอ่านฟอร์ม multipart เฉพาะฟอร์มลงขายสินค้า (รูปปก + ไฟล์ดิจิทัล)
+  // จำกัดไฟล์ละ 20MB (เผื่อไว้ให้พอกับลิมิตอัปโหลดไฟล์ของบอทบน Discord เอง ~25MB) — ใช้
+  // memoryStorage() เก็บเป็น Buffer ในหน่วยความจำชั่วคราวเท่านั้น ไม่เขียนลงดิสก์เลย (ดู
+  // เหตุผลที่ require('multer') ด้านบนสุดของไฟล์)
+  const marketplaceUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 },
+  });
+
+  // GET หน้า Marketplace — ดึงข้อมูลพร้อมเพย์ของตัวเอง + ประกาศขายทั้งหมดของตัวเอง (resolve
+  // รูปปกให้สดใหม่ด้วย เอาไว้โชว์เป็น thumbnail เล็กๆ ในตาราง "My listings")
+  app.get('/dashboard/:guildId/marketplace', requireAuth, requireGuildAccess, async (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const seller = getSeller(req.session.user.id);
+    const myListings = listSellerListings(req.session.user.id);
+    const listingsWithImages = await Promise.all(
+      myListings.map(async (item) => {
+        const { imageUrl } = await resolveListingAssets(client, item);
+        return { ...item, imageUrl };
+      })
+    );
+
+    res.send(renderMarketplaceDashboardPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      seller,
+      listings: listingsWithImages,
+      categories: CATEGORIES,
+      saved: req.query.saved === '1',
+      error: req.query.error || null,
+    }));
+  });
+
+  // POST ตั้ง/แก้เลขพร้อมเพย์ — ตัวเดียวกับ /marketplace setpromptpay ในดิสคอร์ด เป๊ะๆ
+  app.post('/dashboard/:guildId/marketplace/promptpay', requireAuth, requireGuildAccess, express.urlencoded({ extended: false }), (req, res) => {
+    const { guildId } = req.params;
+    const rawValue = String(req.body?.promptpay_id || '').trim();
+
+    if (!PROMPTPAY_ID_PATTERN.test(rawValue)) {
+      return res.redirect(`/dashboard/${guildId}/marketplace?error=${encodeURIComponent('Please enter a valid 10-digit PromptPay mobile number.')}`);
+    }
+
+    saveSellerPromptPay(req.session.user.id, rawValue, req.session.user.username);
+    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) ตั้ง/แก้เลขพร้อมเพย์ Marketplace แล้ว`);
+    res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
+  });
+
+  // POST ลงขายสินค้าใหม่ — ตัวเดียวกับ /marketplace sell ในดิสคอร์ด เป๊ะๆ (ตรรกะ validate
+  // เหมือนกันทุกจุด) ต่างแค่ "ที่มาของรูป/ไฟล์แนบ" เป็น multipart upload จากเว็บแทน Discord
+  // attachment — ทั้งคู่ใช้ storeImagePermanently/storeBufferPermanently เก็บแบบถาวรเหมือนกัน
+  app.post(
+    '/dashboard/:guildId/marketplace/listings',
+    requireAuth,
+    requireGuildAccess,
+    (req, res, next) => {
+      // 🆕 ห่อ marketplaceUpload เองอีกชั้น (ไม่ผูกเป็น middleware ตรงๆ ใน app.post ด้านล่าง)
+      // เพื่อจับ error จาก multer เองได้ (เช่นไฟล์ใหญ่เกิน 20MB) แล้ว redirect กลับไปพร้อม
+      // ข้อความอธิบายที่คนอ่านเข้าใจได้ — ถ้าไม่จับไว้แบบนี้ Express จะโชว์หน้า error ดิบๆ
+      // ของ multer ตรงๆ ให้ผู้ใช้เห็นเลย อ่านไม่รู้เรื่องแน่นอน
+      marketplaceUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'digitalFile', maxCount: 1 }])(req, res, (error) => {
+        if (error) {
+          console.warn('[dashboard marketplace] อัปโหลดไฟล์ไม่สำเร็จ:', error.message);
+          const message = error.code === 'LIMIT_FILE_SIZE' ? 'That file is larger than the 20MB limit.' : 'Could not read the uploaded file(s). Please try again.';
+          return res.redirect(`/dashboard/${req.params.guildId}/marketplace?error=${encodeURIComponent(message)}`);
+        }
+        next();
+      });
+    },
+    async (req, res) => {
+      const { guildId } = req.params;
+      const guild = client.guilds.cache.get(guildId);
+      const body = req.body || {};
+
+      const fail = (message) => res.redirect(`/dashboard/${guildId}/marketplace?error=${encodeURIComponent(message)}`);
+
+      const title = String(body.title || '').trim().slice(0, 80);
+      const description = String(body.description || '').trim().slice(0, 1000);
+      const priceThb = Number(body.price);
+      const category = String(body.category || '');
+      const subcategory = body.subcategory ? String(body.subcategory) : null;
+      const type = body.type === 'digital' ? 'digital' : 'service';
+      const categoryInfo = CATEGORIES[category];
+
+      if (!title) return fail('Please enter a title.');
+      if (!description) return fail('Please enter a description.');
+      if (!Number.isFinite(priceThb) || priceThb <= 0 || priceThb > MAX_PRICE_THB) {
+        return fail(`Price must be between 1 and ${MAX_PRICE_THB} THB.`);
+      }
+      if (!categoryInfo) return fail('Please choose a valid category.');
+      if (categoryInfo.subcategories) {
+        if (!subcategory || !categoryInfo.subcategories.includes(subcategory)) {
+          return fail(`Category "${categoryInfo.label}" requires a subcategory: ${categoryInfo.subcategories.join(', ')}`);
+        }
+      } else if (subcategory) {
+        return fail(`Category "${categoryInfo.label}" doesn't have subcategories.`);
+      }
+
+      // ต้องตั้งเลขพร้อมเพย์ไว้ก่อนแล้วเท่านั้นถึงจะลงขายได้ (เช็คซ้ำอีกชั้นฝั่ง server แม้
+      // ฟอร์มจะ disable ไว้แล้วถ้ายังไม่ตั้ง — เผื่อคนแก้ HTML เองจาก devtools)
+      const seller = getSeller(req.session.user.id);
+      if (!seller || !seller.promptpayId) {
+        return fail('Please set your PromptPay number first before creating a listing.');
+      }
+
+      const imageFile = req.files?.image?.[0];
+      const digitalFile = req.files?.digitalFile?.[0];
+
+      if (type === 'digital' && !digitalFile) {
+        return fail('Please attach the digital file customers will receive automatically.');
+      }
+
+      try {
+        const imageRef = imageFile ? await storeBufferPermanently(guild, imageFile.buffer, imageFile.originalname) : null;
+        const fileRef = digitalFile ? await storeBufferPermanently(guild, digitalFile.buffer, digitalFile.originalname) : null;
+
+        createListing({
+          sellerId: req.session.user.id,
+          title,
+          description,
+          priceThb,
+          category,
+          subcategory,
+          type,
+          digitalFileUrl: fileRef,
+          imageUrl: imageRef,
+        });
+      } catch (error) {
+        console.error('[dashboard marketplace] สร้างประกาศขายจากเว็บไม่สำเร็จ:', error);
+        return fail('Something went wrong while saving your listing. Please try again.');
+      }
+
+      console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) ลงขายสินค้าใหม่ผ่านเว็บแล้ว: "${title}"`);
+      res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
+    }
+  );
+
+  // POST ปิด/เปิดขายใหม่ — ตัวเดียวกับ /marketplace remove และ /marketplace markselling
+  // เช็คเจ้าของก่อนเสมอ (listing.sellerId ต้องตรงกับคนที่ login อยู่) กันแก้ประกาศของคนอื่น
+  app.post('/dashboard/:guildId/marketplace/listings/:listingId/close', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, listingId } = req.params;
+    const listing = getListing(String(listingId).toUpperCase());
+    if (listing && listing.sellerId === req.session.user.id) {
+      setListingStatus(listing.id, 'removed');
+    }
+    res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
+  });
+
+  app.post('/dashboard/:guildId/marketplace/listings/:listingId/reopen', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, listingId } = req.params;
+    const listing = getListing(String(listingId).toUpperCase());
+    if (listing && listing.sellerId === req.session.user.id) {
+      setListingStatus(listing.id, 'active');
+    }
+    res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
   });
 
   // ─────────────────────────────────────────────────────────────────────

@@ -34,10 +34,12 @@ const {
 const {
   PROMPTPAY_ID_PATTERN,
   CATEGORIES,
+  MAX_PRICE_THB,
   getSeller,
   saveSellerPromptPay,
   createListing,
   getListing,
+  resolveListingAssets,
   listSellerListings,
   setListingStatus,
   getOrder,
@@ -45,13 +47,14 @@ const {
   confirmOrder,
 } = require('../utils/marketplaceStorage');
 const { generatePromptPayQrBuffer } = require('../utils/promptpayQr');
+// 🆕 [11 ต.ค. 2569] เก็บรูป/ไฟล์แนบที่คนลงขายผ่านคำสั่งนี้ไว้ "ถาวรจริงๆ" แบบเดียวกับที่
+// หน้าเว็บ Dashboard ใหม่ใช้ (ดู utils/renderMarketplaceDashboard.js) แทนที่จะเก็บ
+// attachment.url ตรงๆ แบบเดิม (URL ของ Discord หมดอายุใน ~24 ชม. — ของเดิมเคยมีบั๊กนี้
+// แฝงอยู่โดยไม่รู้ตัว เพิ่งมาเจอตอนทำฟอร์มลงขายบนเว็บ เลยแก้พร้อมกันเลยทั้ง 2 ทาง)
+const { storeImagePermanently } = require('../utils/assetStorage');
 
 // ปุ่ม "ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — customId รูปแบบ mkt_confirm_<orderId>
 const CONFIRM_BUTTON_PREFIX = 'mkt_confirm_';
-
-// ราคาสูงสุดที่ยอมให้ตั้งได้ต่อชิ้น (กันพิมพ์เลข 0 เกินมาโดยไม่ตั้งใจ เช่น 99000 ทั้งที่ตั้งใจ
-// จะพิมพ์ 990 — ปรับตัวเลขนี้ได้ทีหลังถ้าน้องหนาวอยากขายของราคาสูงกว่านี้จริงๆ)
-const MAX_PRICE_THB = 20000;
 
 function formatThb(amount) {
   return `฿${Number(amount).toLocaleString('th-TH')}`;
@@ -230,6 +233,36 @@ async function handleSell(interaction) {
     return;
   }
 
+  // คำสั่งนี้ต้องรันในเซิร์ฟเวอร์เท่านั้น (ไม่ใช่ DM กับบอท) เพราะต้องมีเซิร์ฟให้เก็บรูป/ไฟล์
+  // ไว้ในห้อง asset-storage ถาวร (ดูคอมเมนต์ storeImagePermanently ด้านล่าง)
+  if (!interaction.guild) {
+    await interaction.reply({ content: '❌ คำสั่งนี้ใช้ได้แค่ในเซิร์ฟเวอร์เท่านั้นครับ (ไม่ใช่ทัก DM มาที่บอทตรงๆ)', flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  // 🆕 [11 ต.ค. 2569] defer ก่อนเริ่มอัปโหลดรูป/ไฟล์ — storeImagePermanently() ยิง Discord
+  // API 2 รอบต่อไฟล์ (ส่งเข้าห้อง asset-storage) รวมกันอาจเกิน 3 วิได้ถ้าแนบทั้งรูป+ไฟล์
+  // ถ้าไม่ defer ไว้ก่อน Discord จะตัดจบ interaction เป็น "This interaction failed" ทันที
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  // 🆕 เก็บรูปปก/ไฟล์ดิจิทัลไว้ "ถาวรจริงๆ" แทนที่จะเก็บ attachment.url ตรงๆ แบบเดิม (ดู
+  // เหตุผนเต็มๆ ในคอมเมนต์หัวไฟล์ utils/assetStorage.js — สรุปสั้นๆ: URL ของ Discord หมด
+  // อายุใน ~24 ชม. เก็บตรงๆ ไว้นานกว่านั้นรูปจะหายจากหน้าเว็บ/ไฟล์จะส่งลูกค้าไม่ได้)
+  let imageRef = null;
+  let fileRef = null;
+  try {
+    if (image) imageRef = await storeImagePermanently(interaction.guild, image);
+    if (file) fileRef = await storeImagePermanently(interaction.guild, file);
+  } catch (error) {
+    console.error('[marketplace sell] เก็บรูป/ไฟล์ถาวรไม่สำเร็จ:', error);
+    await interaction.editReply({
+      content:
+        '❌ อัปโหลดรูป/ไฟล์ไม่สำเร็จครับ (มักเกิดจากบอทไม่มีสิทธิ์สร้าง/โพสต์ในห้อง `asset-storage` ของเซิร์ฟนี้) ' +
+        'ลองเช็คสิทธิ์บอทในเซิร์ฟ หรือลองใหม่อีกครั้งครับ',
+    });
+    return;
+  }
+
   const listing = createListing({
     sellerId: interaction.user.id,
     title,
@@ -238,8 +271,8 @@ async function handleSell(interaction) {
     category,
     subcategory: subcategory || null,
     type,
-    digitalFileUrl: file ? file.url : null,
-    imageUrl: image ? image.url : null,
+    digitalFileUrl: fileRef,
+    imageUrl: imageRef,
   });
 
   const embed = new EmbedBuilder()
@@ -247,11 +280,13 @@ async function handleSell(interaction) {
     .setColor(0x4a5aa8)
     .setDescription(`**${listing.title}**\n${formatThb(listing.priceThb)} · ${categoryInfo.label}${subcategory ? ` / ${subcategory}` : ''}`)
     .addFields({ name: 'รหัสประกาศ', value: `\`${listing.id}\`` })
-    .setFooter({ text: 'ตอนนี้ขึ้นขายจริงบนหน้าเว็บ Marketplace แล้ว — ดูสถานะ/ปิดขายได้ด้วย /marketplace mylistings' });
+    .setFooter({ text: 'ตอนนี้ขึ้นขายจริงบนหน้าเว็บ Marketplace แล้ว — ดูสถานะ/ปิดขายได้ด้วย /marketplace mylistings (หรือหน้า Dashboard เว็บ)' });
 
+  // ตรงนี้ใช้ image.url ดิบๆ ได้ปลอดภัย (แค่โชว์ตอนตอบกลับทันที ยังไม่หมดอายุแน่นอน) ไม่ต้อง
+  // ไป resolve จาก imageRef ซ้ำให้เสียเวลา
   if (image) embed.setThumbnail(image.url);
 
-  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  await interaction.editReply({ embeds: [embed] });
 }
 
 /**
@@ -442,11 +477,15 @@ async function handleConfirmButton(interaction) {
   let buyerNotifyNote = '';
   try {
     const buyerUser = await interaction.client.users.fetch(order.buyerId);
-    if (listing && listing.type === 'digital' && listing.digitalFileUrl) {
+    // 🆕 [11 ต.ค. 2569] listing.digitalFileUrl เก็บเป็นพิกัดข้อความ {channelId, messageId}
+    // แล้ว (ไม่ใช่ URL ดิบๆ แบบเดิม) ต้อง resolve ให้เป็น URL สดใหม่ก่อนส่งให้ลูกค้าเสมอ —
+    // ถ้าไม่ resolve แล้วส่ง object ตรงๆ ให้ discord.js มันจะพังทันที (ไม่ใช่ไฟล์แนบที่ถูกต้อง)
+    const { digitalFileUrl } = listing ? await resolveListingAssets(interaction.client, listing) : { digitalFileUrl: null };
+    if (listing && listing.type === 'digital' && digitalFileUrl) {
       await buyerUser.send({
         content:
           `🎉 ผู้ขายยืนยันได้รับเงินแล้ว! นี่คือไฟล์ **${listing.title}** ที่คุณซื้อจาก Marketplace ของ Milo Bot ครับ`,
-        files: [listing.digitalFileUrl],
+        files: [digitalFileUrl],
       });
       buyerNotified = true;
       buyerNotifyNote = 'ระบบส่งไฟล์ให้ลูกค้าทาง DM อัตโนมัติแล้วครับ';

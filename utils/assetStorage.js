@@ -103,6 +103,30 @@ async function storeImagePermanently(guild, attachment) {
 }
 
 /**
+ * 🆕 [11 ต.ค. 2569] เหมือน storeImagePermanently() ด้านบนเป๊ะๆ ต่างกันแค่จุดเดียว: รับ
+ * "bytes ไฟล์ตรงๆ" (Buffer) + ชื่อไฟล์ แทนที่จะรับ Discord Attachment object ที่มี .url
+ * ให้ไปดึงมา — ใช้ตอนไฟล์มาจากการอัปโหลดบนหน้าเว็บ (ผ่าน multer) ซึ่งไม่มี attachment.url
+ * ของ Discord ให้อ้างถึงเลย มีแต่ตัวไฟล์ดิบๆ ในหน่วยความจำ
+ *
+ * discord.js รองรับส่ง Buffer ตรงๆ เป็นไฟล์แนบได้อยู่แล้ว (files: [{ attachment: buffer,
+ * name }]) เลยไม่ต้องเขียนไฟล์ชั่วคราวลงดิสก์ก่อนเลย — สำคัญเพราะ Railway ไม่มีดิสก์ถาวร
+ * (ไฟล์ที่เขียนไว้หายหมดตอน redeploy) ยืมห้อง asset-storage เดิมเก็บแทนเหมือนกันหมด
+ *
+ * @param {import('discord.js').Guild} guild
+ * @param {Buffer} buffer ไฟล์ดิบจาก multer (req.file.buffer / req.files.xxx[0].buffer)
+ * @param {string} filename ชื่อไฟล์ต้นฉบับ (เอาไว้โชว์เฉยๆ ไม่มีผลต่อการทำงาน)
+ * @returns {Promise<{ channelId: string, messageId: string }>}
+ */
+async function storeBufferPermanently(guild, buffer, filename) {
+  const assetChannel = await getOrCreateAssetChannel(guild);
+  const sentMessage = await assetChannel.send({
+    content: `เก็บถาวรโดยระบบอัตโนมัติ (อัปโหลดจากเว็บ) (${new Date().toISOString()})`,
+    files: [{ attachment: buffer, name: filename || 'file' }],
+  });
+  return { channelId: assetChannel.id, messageId: sentMessage.id };
+}
+
+/**
  * ดึง URL ของรูปที่เก็บไว้ "แบบสดใหม่" (ยังไม่หมดอายุ) จากตำแหน่งอ้างอิงที่เก็บไว้
  *
  * ⚠️ สำคัญ: เรียกฟังก์ชันนี้ทุกครั้งที่ต้องใช้รูปจริงๆ (ตอนวาดรูปต้อนรับจริง หรือตอน
@@ -129,5 +153,6 @@ async function resolveStoredImageUrl(client, ref) {
 module.exports = {
   getOrCreateAssetChannel,
   storeImagePermanently,
+  storeBufferPermanently,
   resolveStoredImageUrl,
 };

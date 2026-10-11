@@ -27,8 +27,14 @@
 //       "subcategory": "wallpaper",      ← ตรงกับ data-subcat ในหน้าเว็บ (null ได้ถ้าหมวดนั้นไม่มีหมวดย่อย)
 //       "type": "digital",               ← "digital" (ส่งไฟล์อัตโนมัติหลังจ่ายเงิน) หรือ "service"
 //                                            (ผู้ขายต้องติดต่อลูกค้าเองหลังจ่ายเงิน)
-//       "digitalFileUrl": "https://cdn.discordapp.com/...", ← URL ไฟล์แนบใน Discord (เฉพาะ type=digital)
-//       "imageUrl": "https://cdn.discordapp.com/...",       ← รูปปกสินค้า (โชว์บนการ์ด)
+//       "digitalFileUrl": { "channelId": "...", "messageId": "..." },  ← 🆕 [11 ต.ค. 2569]
+//       "imageUrl": { "channelId": "...", "messageId": "..." },       ← ไม่เก็บ URL ตรงๆ
+//                     แล้ว (URL ของ Discord หมดอายุใน ~24 ชม.!) เก็บแค่ "พิกัดข้อความ" ใน
+//                     ห้องเก็บไฟล์ถาวร asset-storage แทน (ดู utils/assetStorage.js) แล้วค่อย
+//                     resolve เป็น URL สดใหม่ตอนจะใช้จริงด้วย resolveListingAssets() ด้านล่าง
+//                     — ของเก่าก่อนวันที่ 11 ต.ค. 2569 อาจยังเป็น string URL ตรงๆ อยู่
+//                     (ลงขายผ่าน /marketplace sell ตอนยังไม่มีเว็บฟอร์ม) resolveListingAssets()
+//                     รองรับทั้ง 2 แบบ เลยไม่ต้อง migrate ข้อมูลเก่าเลย
 //       "status": "active",              ← "active" | "sold" | "removed"
 //       "createdAt": "2026-...",
 //       "updatedAt": "2026-..."
@@ -65,6 +71,10 @@
 
 const fs = require('fs');
 const path = require('path');
+// 🆕 [11 ต.ค. 2569] ใช้ resolveStoredImageUrl() จาก assetStorage.js (ของเดิมที่ใช้กับรูป
+// welcome card อยู่แล้ว) มา resolve พิกัดข้อความ {channelId, messageId} ที่เก็บไว้ในช่อง
+// imageUrl/digitalFileUrl ของ listing ให้เป็น URL สดใหม่ — ดู resolveListingAssets() ด้านล่าง
+const { resolveStoredImageUrl } = require('./assetStorage');
 
 const DATA_DIR  = path.join(__dirname, '..', 'data');
 const FILE_PATH = path.join(DATA_DIR, 'marketplace.json');
@@ -72,6 +82,12 @@ const FILE_PATH = path.join(DATA_DIR, 'marketplace.json');
 // เลขพร้อมเพย์ — ใช้กฎเดียวกับ referralStorage.js เป๊ะๆ (เบอร์มือถือ 10 หลักเท่านั้น
 // ไม่รับเลขบัตรประชาชน เพราะเป็นข้อมูลอ่อนไหวกว่าเยอะ ดูเหตุผลเต็มในไฟล์นั้น)
 const PROMPTPAY_ID_PATTERN = /^\d{10}$/;
+
+// 🆕 [11 ต.ค. 2569] ย้ายมาจาก commands/marketplace.js (ของเดิมประกาศซ้ำไว้คนละที่กับ
+// server.js ที่กำลังจะเพิ่มฟอร์มลงขายบนเว็บ) — ย้ายมาเป็น "แหล่งความจริงเดียว" ไว้ที่นี่
+// ที่เดียว กันลืมแก้พร้อมกัน 2 ที่ทีหลัง (ปรับราคาสูงสุดได้ — กันพิมพ์เลข 0 เกินมาโดยไม่
+// ตั้งใจ เช่น 99000 ทั้งที่ตั้งใจจะพิมพ์ 990)
+const MAX_PRICE_THB = 20000;
 
 // หมวดหมู่สินค้าที่อนุญาต — ต้องตรงกับ data-cat/data-subcat ใน public/marketplace.html
 // เป๊ะๆ ไม่งั้นตัวกรองหมวดหมู่บนหน้าเว็บจะหาสินค้าไม่เจอ (ดูส่วนที่ 5 ของ
@@ -333,13 +349,51 @@ function confirmOrder(orderId) {
   return order;
 }
 
+// ── resolve รูป/ไฟล์ของ listing ──────────────────────────────────────────
+
+/**
+ * 🆕 [11 ต.ค. 2569] แปลงค่า "ที่เก็บไว้" ของ listing.imageUrl/listing.digitalFileUrl
+ * (ซึ่งตอนนี้คือพิกัดข้อความ {channelId, messageId} ในห้อง asset-storage) ให้เป็น URL
+ * สดใหม่ที่ใช้งานได้จริงตอนนี้ — ต้องเรียกฟังก์ชันนี้ทุกครั้งก่อนจะส่ง URL ไปให้ใครใช้จริง
+ * (ตอบ API หน้าเว็บ, ส่งไฟล์ให้ลูกค้าทาง DM ฯลฯ) ห้ามเก็บผลลัพธ์ไว้ใช้ซ้ำนานๆ เพราะ URL ที่ได้
+ * ก็มีวันหมดอายุเหมือนกัน แค่สดใหม่ ณ ตอนเรียกเท่านั้น (หลักการเดียวกับ resolveStoredImageUrl)
+ *
+ * รองรับข้อมูลเก่าด้วย: ถ้าค่าที่เก็บไว้เป็น string ตรงๆ (ลงขายผ่าน /marketplace sell ก่อน
+ * วันที่ 11 ต.ค. 2569 ที่ยังเก็บ URL ดิบๆ) จะคืนค่า string นั้นกลับไปตรงๆ เลย (อาจหมดอายุไป
+ * แล้วถ้าลงขายไว้นานเกิน ~24 ชม. แล้ว — ไม่ใช่บั๊กใหม่ แค่ของเก่ายังไม่ได้ migrate เฉยๆ
+ * ผู้ขายแก้ได้ง่ายๆ โดยปิดประกาศเดิมแล้วลงใหม่ผ่านเว็บ)
+ *
+ * @param {import('discord.js').Client} client
+ * @param {{ imageUrl: any, digitalFileUrl: any }} listing
+ * @returns {Promise<{ imageUrl: string|null, digitalFileUrl: string|null }>}
+ */
+async function resolveListingAssets(client, listing) {
+  const resolveOne = async (stored) => {
+    if (!stored) return null;
+    if (typeof stored === 'string') return stored; // ของเก่า — URL ดิบ ส่งกลับตรงๆ
+    try {
+      return await resolveStoredImageUrl(client, stored);
+    } catch (error) {
+      console.warn('[marketplaceStorage] resolve ไฟล์/รูปของ listing ไม่สำเร็จ:', error.message);
+      return null;
+    }
+  };
+  const [imageUrl, digitalFileUrl] = await Promise.all([
+    resolveOne(listing.imageUrl),
+    resolveOne(listing.digitalFileUrl),
+  ]);
+  return { imageUrl, digitalFileUrl };
+}
+
 module.exports = {
   PROMPTPAY_ID_PATTERN,
   CATEGORIES,
+  MAX_PRICE_THB,
   getSeller,
   saveSellerPromptPay,
   createListing,
   getListing,
+  resolveListingAssets,
   listActiveListings,
   listSellerListings,
   setListingStatus,

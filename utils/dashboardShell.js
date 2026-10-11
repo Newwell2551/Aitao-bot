@@ -29,7 +29,9 @@
 // (กัน XSS แบบเดียวกัน + ไอคอนเซิร์ฟหน้าตาเหมือนกันทุกหน้า สีโมโนแกรมเซิร์ฟเดิมคงที่)
 const { escapeHtml, defaultAvatarUrl, serverIconHtml } = require('./renderServerPicker');
 
-// ── รายการเมนู 8 อัน (ไม่รวม Marketplace/ฟีดชุมชน — อยู่นอกสโคป) ──────────────────
+// ── รายการเมนู 9 อัน (เพิ่ม Marketplace เข้ามาแล้ว 11 ต.ค. 2569 — ของเดิมตัดออกเพราะยังไม่
+// อยู่ในสโคป ตอนนี้น้องหนาวขอให้ลงขาย/จัดการร้านทำบนเว็บได้เลย ไม่ต้องกลับไปพิมพ์คำสั่งใน
+// ดิสคอร์ด เลยเพิ่มกลับเข้ามา — ฟีดชุมชนยังไม่ทำ ยังอยู่นอกสโคปเหมือนเดิม) ────────────────
 // hrefSuffix ต่อท้าย "/dashboard/:guildId" เสมอ (ช่องว่าง = หน้า Overview เอง)
 // ไอคอน SVG ก๊อปมาจาก Main.dc.html/Overview.dc.html เป๊ะๆ แค่เปลี่ยน stroke/fill เป็นตัวแปรสี
 const NAV_ITEMS = [
@@ -68,6 +70,16 @@ const NAV_ITEMS = [
     label: 'Message Builder',
     hrefSuffix: '/builder',
     renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="${c}" stroke-width="1.7"/><rect x="4" y="14" width="6" height="6" rx="1.5" stroke="${c}" stroke-width="1.7"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="${c}" stroke-width="1.7"/></svg>`,
+  },
+  // 🆕 [11 ต.ค. 2569] Marketplace กลับมาแล้วครับ — หน้านี้พาไปตั้งเลขพร้อมเพย์ ลงขาย
+  // สินค้า/บริการ และดู-ปิด-เปิดประกาศของตัวเองทั้งหมดบนเว็บ (ดู utils/renderMarketplaceDashboard.js)
+  // ไม่ต้องสลับไปพิมพ์คำสั่ง /marketplace ในดิสคอร์ดอีกแล้ว (คำสั่งเดิมยังใช้ได้อยู่เหมือนกัน
+  // เผื่อสะดวกกว่าตอนอยู่ในดิสคอร์ดอยู่แล้ว — ข้อมูลที่เดียวกัน เปลี่ยนจากฝั่งไหนก็เห็นผลเหมือนกัน)
+  {
+    key: 'marketplace',
+    label: 'Marketplace',
+    hrefSuffix: '/marketplace',
+    renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9l1.2-4.5A1 1 0 0 1 6.16 3.7H17.84a1 1 0 0 1 .96.8L20 9" stroke="${c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9z" stroke="${c}" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 13.5a2.5 2.5 0 0 0 5 0" stroke="${c}" stroke-width="1.7" stroke-linecap="round"/></svg>`,
   },
   // 🆕 [19 ก.ย. 2569 ดึกมาก] เอาเมนู "Premium" ออกจาก sidebar แล้ว — น้องหนาวไม่อยากให้
   // หน้าจ่ายเงินอยู่ในแดชบอร์ด (รู้สึกซ้ำกับหน้า Pricing สาธารณะ) จุดเริ่มซื้อพรีเมียมย้ายไป
