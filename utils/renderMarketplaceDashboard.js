@@ -83,38 +83,94 @@ function bannerHtml({ saved, error }) {
 }
 
 /**
- * การ์ดตั้งค่าเลขพร้อมเพย์ — ถ้ายังไม่เคยตั้งเลย โชว์เตือนด้วยกรอบสีทอง ถ้าตั้งแล้วโชว์เลข
- * เดิม (เต็มเลขไปเลย ไม่ต้องซ่อนครึ่งเลข เพราะเป็นข้อมูลของตัวเองดูเองในแดชบอร์ดของตัวเอง)
- * @param {{ promptpayId: string }|null} seller
+ * 🆕 [12 ต.ค. 2569] การ์ดตั้งค่า "ช่องทางรับเงิน" — เดิมมีแค่ PromptPay ทางเดียว (ชื่อ
+ * promptPaySectionHtml) แต่คนต่างชาติใช้ PromptPay ไม่ได้เลย (เป็นระบบจ่ายเงินของไทย
+ * ล้วนๆ) ทั้งที่อยากขายของในตลาดนี้ได้ — เปลี่ยนเป็นให้เลือกได้ 2 ช่องทาง: PromptPay
+ * (ผู้ขายในไทย) หรือลิงก์รับเงินของตัวเอง เช่น PayPal.me/Stripe Payment Link (ผู้ขาย
+ * ต่างชาติ) บอทไม่รู้จัก/ไม่ยุ่งกับช่องทางที่เป็นลิงก์เลย แค่โชว์ให้ผู้ซื้อกดไปจ่ายตรงกับ
+ * ผู้ขายเอง — หลักการ "บอทไม่แตะเงิน" ยังเหมือนเดิมทุกอย่าง (ดูคอมเมนต์เต็มๆ ที่
+ * utils/marketplaceStorage.js หัวข้อ saveSellerPayment)
+ *
+ * สลับ 2 ช่องทางด้วย radio — ใช้ JS เล็กๆ โชว์/ซ่อนช่อง input ที่ตรงกับช่องทางที่เลือก
+ * (แพทเทิร์นเดียวกับ newListingFormHtml ด้านล่างที่โชว์/ซ่อน subcategory/digital file)
+ * จงใจ "ไม่" ใส่ required ที่ตัว input ทั้ง 2 ช่อง (ต่างจากฟอร์มเดิมที่มีแค่ช่องเดียว) เพราะ
+ * ถ้าใส่ required ไว้ทั้งคู่ ตอน submit เบราว์เซอร์จะ error ใส่ช่องที่ถูกซ่อนไว้ (display:none)
+ * ไม่ได้ — ไปเช็ค validate จริงจังฝั่ง server แทน (ดู server.js POST .../marketplace/payment)
+ * @param {{ paymentMethod?: string, promptpayId?: string, paymentLink?: string }|null} seller
  * @param {string} guildId
  */
-function promptPaySectionHtml(seller, guildId) {
+function paymentMethodSectionHtml(seller, guildId) {
   const hasPromptPay = Boolean(seller?.promptpayId);
-  const warningHtml = !hasPromptPay
+  const hasPaymentLink = Boolean(seller?.paymentLink);
+  // ของเก่าก่อน 12 ต.ค. 2569 ไม่มี field paymentMethod เลย — fallback เป็น 'promptpay'
+  // ถ้ามี promptpayId อยู่แล้ว (เหมือน getSellerPaymentMethod() ใน marketplaceStorage.js)
+  const isLink = seller?.paymentMethod === 'link';
+  const hasAnyMethod = hasPromptPay || hasPaymentLink;
+
+  const warningHtml = !hasAnyMethod
     ? `<div style="display:flex;align-items:flex-start;gap:10px;background:rgba(244,184,96,0.1);border:1px solid var(--gold);border-radius:6px;padding:12px 16px;margin-bottom:16px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex:0 0 auto;margin-top:1px;"><path d="M12 3l9 16H3l9-16z" stroke="#f4b860" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v3.5M12 17h.01" stroke="#f4b860" stroke-width="1.7" stroke-linecap="round"/></svg>
-        <span style="font-size:13px;color:var(--gold);line-height:1.6;">You need to set a PromptPay number before you can list anything — this is where buyers' QR payments get sent.</span>
+        <span style="font-size:13px;color:var(--gold);line-height:1.6;">You need to set up a payment method before you can list anything — this is how buyers pay you directly.</span>
       </div>`
     : '';
 
   return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:22px 24px;margin-bottom:28px;">
-    <div style="font-size:15px;font-weight:700;color:var(--text);">PromptPay number</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text);">Payment method</div>
     <div style="font-size:12.5px;color:var(--text-muted);margin-top:6px;line-height:1.6;">
-      Buyers scan a QR code generated from this number and pay you directly — Milo Bot never touches the money.
-      Mobile number only, 10 digits, must already be linked to PromptPay at your bank.
+      Buyers pay you directly — Milo Bot never touches the money. Choose PromptPay if you have a Thai
+      bank account, or use your own payment link (PayPal.me, Stripe Payment Link, etc.) if you're outside Thailand.
     </div>
     ${warningHtml}
-    <form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/promptpay" style="margin-top:14px;display:flex;gap:10px;max-width:360px;">
-      <input
-        type="text" name="promptpay_id" placeholder="0812345678" pattern="\\d{10}" maxlength="10" required
-        value="${hasPromptPay ? escapeHtml(seller.promptpayId) : ''}"
-        style="flex:1 1 auto;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;"
-      />
-      <button type="submit" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0 20px;font-size:13px;font-weight:700;cursor:pointer;">
-        ${hasPromptPay ? 'Update' : 'Save'}
+
+    <div style="margin-top:16px;display:flex;gap:20px;">
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text);cursor:pointer;">
+        <input type="radio" name="mkt-pm-picker" value="promptpay" id="mkt-pm-promptpay-radio" ${isLink ? '' : 'checked'} />
+        PromptPay (Thailand)
+      </label>
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text);cursor:pointer;">
+        <input type="radio" name="mkt-pm-picker" value="link" id="mkt-pm-link-radio" ${isLink ? 'checked' : ''} />
+        Payment link (international)
+      </label>
+    </div>
+
+    <form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/payment" style="margin-top:14px;max-width:420px;">
+      <input type="hidden" name="payment_method" id="mkt-pm-hidden-input" value="${isLink ? 'link' : 'promptpay'}" />
+
+      <div id="mkt-pm-promptpay-field" style="display:${isLink ? 'none' : 'flex'};gap:10px;">
+        <input
+          type="text" name="promptpay_id" placeholder="0812345678" pattern="\\d{10}" maxlength="10"
+          value="${hasPromptPay ? escapeHtml(seller.promptpayId) : ''}"
+          style="flex:1 1 auto;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;"
+        />
+      </div>
+      <div id="mkt-pm-link-field" style="display:${isLink ? 'flex' : 'none'};gap:10px;">
+        <input
+          type="url" name="payment_link" placeholder="https://paypal.me/yourname" maxlength="300"
+          value="${hasPaymentLink ? escapeHtml(seller.paymentLink) : ''}"
+          style="flex:1 1 auto;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;"
+        />
+      </div>
+
+      <button type="submit" style="margin-top:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+        ${hasAnyMethod ? 'Update' : 'Save'}
       </button>
     </form>
-  </div>`;
+  </div>
+
+  <script>
+    (function () {
+      var hidden = document.getElementById('mkt-pm-hidden-input');
+      var ppField = document.getElementById('mkt-pm-promptpay-field');
+      var linkField = document.getElementById('mkt-pm-link-field');
+      [document.getElementById('mkt-pm-promptpay-radio'), document.getElementById('mkt-pm-link-radio')].forEach(function (radio) {
+        radio.addEventListener('change', function () {
+          hidden.value = radio.value;
+          ppField.style.display = radio.value === 'promptpay' ? 'flex' : 'none';
+          linkField.style.display = radio.value === 'link' ? 'flex' : 'none';
+        });
+      });
+    })();
+  </script>`;
 }
 
 /**
@@ -137,7 +193,7 @@ function newListingFormHtml(categories, canSell, guildId) {
   const disabledAttr = canSell ? '' : 'disabled';
   const disabledNoteHtml = canSell
     ? ''
-    : `<div style="font-size:12.5px;color:var(--text-muted);margin-top:10px;">Set your PromptPay number above first to unlock this form.</div>`;
+    : `<div style="font-size:12.5px;color:var(--text-muted);margin-top:10px;">Set up a payment method above first to unlock this form.</div>`;
 
   return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:22px 24px;margin-bottom:28px;${canSell ? '' : 'opacity:0.6;'}">
     <div style="font-size:15px;font-weight:700;color:var(--text);">List a new item</div>
@@ -324,14 +380,16 @@ function myListingsSectionHtml(listings, categories, guildId) {
  * @param {{id:string,username:string,avatar:string|null}} opts.user
  * @param {string} opts.botAvatarUrl
  * @param {string} opts.botName
- * @param {{promptpayId:string}|null} opts.seller
+ * @param {{paymentMethod?:string,promptpayId?:string,paymentLink?:string}|null} opts.seller
  * @param {object[]} opts.listings  listSellerListings() + imageUrl resolved แล้ว
  * @param {object} opts.categories CATEGORIES จาก marketplaceStorage.js
  * @param {boolean} opts.saved
  * @param {string|null} opts.error
  */
 function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, seller, listings, categories, saved, error }) {
-  const canSell = Boolean(seller?.promptpayId);
+  // 🆕 [12 ต.ค. 2569] เช็คทั้ง 2 ช่องทาง (promptpayId หรือ paymentLink) แทนที่จะเช็คแค่
+  // promptpayId ตรงๆ แบบเดิม — ดูเหตุผลเต็มๆ ที่คอมเมนต์ paymentMethodSectionHtml ด้านบน
+  const canSell = Boolean(seller?.promptpayId) || Boolean(seller?.paymentLink);
 
   const bodyHtml = `<div style="padding:44px 56px;max-width:720px;">
     <div style="font-size:24px;font-weight:700;color:var(--text);">Marketplace</div>
@@ -344,7 +402,7 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
 
     ${bannerHtml({ saved, error })}
     ${disclosureHtml()}
-    ${promptPaySectionHtml(seller, guild.id)}
+    ${paymentMethodSectionHtml(seller, guild.id)}
     ${newListingFormHtml(categories, canSell, guild.id)}
     ${myListingsSectionHtml(listings, categories, guild.id)}
   </div>`;

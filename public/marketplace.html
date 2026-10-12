@@ -632,12 +632,19 @@
         <button type="button" onclick="closePayModal()" aria-label="ปิด" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:999px;border:none;background:rgba(5,7,15,0.5);color:#f3f1fb;display:flex;align-items:center;justify-content:center;cursor:pointer;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
-        <div style="font-size:16.5px;font-weight:700;color:#f9f8ff;">สแกนจ่ายด้วย PromptPay</div>
+        <!-- 🆕 [12 ต.ค. 2569] payTitle เปลี่ยนข้อความได้ตาม method (openPayModal เซ็ตให้) -->
+        <div id="payTitle" style="font-size:16.5px;font-weight:700;color:#f9f8ff;">สแกนจ่ายด้วย PromptPay</div>
         <div id="payAmount" style="font-size:26px;font-weight:700;color:#f4b860;margin-top:6px;text-shadow:0 0 16px rgba(244,184,96,0.4);"></div>
         <div id="payQrWrap" style="margin-top:16px;background:#fff;border-radius:8px;padding:14px;display:inline-block;">
           <img id="payQrImg" src="" alt="PromptPay QR" style="width:200px;height:200px;display:block;" />
         </div>
-        <div style="font-size:12px;color:#9aa2c4;margin-top:16px;line-height:1.7;">สแกนด้วยแอปธนาคารแล้วจ่ายได้เลยครับ ยอดเงินฝังอยู่ใน QR แล้ว พอผู้ขายกดยืนยันว่าได้รับเงินแล้วจริง ระบบจะส่งของ/ข้อความติดต่อกลับให้คุณทาง DM ในดิสคอร์ดอัตโนมัติ</div>
+        <!-- 🆕 [12 ต.ค. 2569] payLinkWrap — โชว์แทน QR ตอนผู้ขายเป็นแบบ "ลิงก์รับเงิน"
+             (international) ไม่มี QR เพราะลิงก์พวกนี้ (PayPal.me ฯลฯ) ไม่รองรับฝังยอดเงินแบบ
+             PromptPay เลยต้องให้ผู้ซื้อกดไปจ่ายเองแล้วพิมพ์ยอดให้ตรงด้วยตัวเอง -->
+        <div id="payLinkWrap" style="display:none;margin-top:16px;">
+          <a id="payLinkBtn" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;background:#4a5aa8;color:#fff;text-decoration:none;border-radius:999px;padding:12px 22px;font-size:13px;font-weight:700;">ไปจ่ายที่ลิงก์ผู้ขาย ↗</a>
+        </div>
+        <div id="payInstructions" style="font-size:12px;color:#9aa2c4;margin-top:16px;line-height:1.7;">สแกนด้วยแอปธนาคารแล้วจ่ายได้เลยครับ ยอดเงินฝังอยู่ใน QR แล้ว พอผู้ขายกดยืนยันว่าได้รับเงินแล้วจริง ระบบจะส่งของ/ข้อความติดต่อกลับให้คุณทาง DM ในดิสคอร์ดอัตโนมัติ</div>
         <div id="payOrderId" style="font-size:11px;color:#6b7394;margin-top:10px;"></div>
         <div id="payNotifyWarning" style="display:none;font-size:11.5px;color:#e0b45a;margin-top:10px;line-height:1.6;">⚠️ แจ้งผู้ขายอัตโนมัติไม่สำเร็จ (อาจปิดรับ DM) ถ้ารอนานผิดปกติ ลองทักผู้ขายเองโดยตรงได้ครับ</div>
         <!-- 🆕 [12 ต.ค. 2569] ปุ่ม "ฉันจ่ายแล้ว" — ไม่ใช่การยืนยันว่าเงินเข้าผู้ขายจริงนะ
@@ -1366,7 +1373,8 @@
 
   // ═══════════════════════════════════════════════════════════════════
   // 🆕 [25 ก.ย. 2569] ปุ่ม "ซื้อเลย" — เรียก API จริง POST
-  // /api/marketplace/listings/:id/buy แล้วโชว์ QR ที่ได้กลับมาใน payModal
+  // /api/marketplace/listings/:id/buy แล้วโชว์วิธีจ่ายเงินที่ได้กลับมาใน payModal
+  // (QR ถ้าผู้ขายใช้ PromptPay หรือปุ่มลิงก์ถ้าผู้ขายใช้ Payment link — ดู openPayModal)
   // ต่างจากปุ่มอื่นๆ ในหน้านี้ (contactSeller, submitReport) ที่เป็นแค่ตัวอย่าง
   // client-side เฉยๆ — อันนี้ "ทำงานจริง" สร้างออร์เดอร์จริงในระบบ
   // ═══════════════════════════════════════════════════════════════════
@@ -1380,7 +1388,7 @@
     if (buyBtn.disabled) return; // กันกดซ้ำรัวๆ ระหว่างรอ API ตอบ
     buyBtn.disabled = true;
     buyBtn.style.opacity = '0.6';
-    buyBtnLabel.textContent = 'กำลังสร้าง QR...';
+    buyBtnLabel.textContent = 'กำลังเตรียมการจ่ายเงิน...';
 
     fetch('/api/marketplace/listings/' + encodeURIComponent(id) + '/buy', { method: 'POST' })
       .then(function (res) {
@@ -1397,7 +1405,7 @@
           var messages = {
             listing_not_found: 'ประกาศนี้ไม่มีอยู่แล้ว หรือถูกปิดขายไปแล้วครับ',
             cannot_buy_own_listing: 'นี่คือประกาศของคุณเอง ซื้อของตัวเองไม่ได้ครับ',
-            seller_not_ready: 'ผู้ขายยังไม่ได้ตั้งค่าพร้อมเพย์รับเงิน ลองใหม่ภายหลังครับ',
+            seller_not_ready: 'ผู้ขายยังไม่ได้ตั้งค่าช่องทางรับเงิน ลองใหม่ภายหลังครับ',
             qr_generation_failed: 'สร้าง QR จ่ายเงินไม่สำเร็จ ลองใหม่อีกครั้งครับ',
           };
           showBuyErrorToast(messages[result.data && result.data.error] || 'ซื้อไม่สำเร็จ ลองใหม่อีกครั้งครับ');
@@ -1435,21 +1443,44 @@
     }, 2800);
   }
 
-  // เปิด payModal โชว์ QR ที่ POST /buy ส่งกลับมา (qrDataUri เป็น base64 data URI ใช้ใส่
-  // src ของ <img> ได้ตรงๆ เลย ไม่ต้องอัปโหลด/โฮสต์ไฟล์ไหนเพิ่ม)
+  // เปิด payModal โชว์วิธีจ่ายเงินที่ POST /buy ส่งกลับมา
   //
-  // 🆕 [12 ต.ค. 2569] เก็บ order.orderId ไว้ใน currentOrderId ด้วย — ปุ่ม "ฉันจ่ายแล้ว"
-  // ต้องรู้ว่าออร์เดอร์ไหนกำลังเปิดอยู่ตอนกด (ดู markCurrentOrderPaid ด้านล่าง) และรีเซ็ต
-  // สถานะปุ่มนั้นกลับเป็นปกติทุกครั้งที่เปิด modal ใหม่ (เผื่อ modal เดิมค้างสถานะ "กดแล้ว"
-  // จากออร์เดอร์ก่อนหน้า)
+  // 🆕 [12 ต.ค. 2569] ตอนนี้แยก 2 แบบตาม order.paymentMethod ที่ backend ส่งมา:
+  //   - 'promptpay' → โชว์ QR เหมือนเดิม (qrDataUri เป็น base64 data URI ใส่ src ของ <img> ได้ตรงๆ)
+  //   - 'link'      → ไม่มี QR (ลิงก์แบบ PayPal.me/Stripe Payment Link ฝังยอดเงินไม่ได้)
+  //                   โชว์ปุ่มลิงก์ให้กดไปจ่ายเอง แล้วเตือนให้พิมพ์ยอดให้ตรงด้วยตัวเอง
+  // ดูเหตุผลเต็มๆ ว่าทำไมต้องมี 2 แบบที่คอมเมนต์บนสุดของ utils/marketplaceStorage.js
+  //
+  // เก็บ order.orderId ไว้ใน currentOrderId ด้วย — ปุ่ม "ฉันจ่ายแล้ว" ต้องรู้ว่าออร์เดอร์ไหน
+  // กำลังเปิดอยู่ตอนกด (ดู markCurrentOrderPaid ด้านล่าง) และรีเซ็ตสถานะปุ่มนั้นกลับเป็นปกติ
+  // ทุกครั้งที่เปิด modal ใหม่ (เผื่อ modal เดิมค้างสถานะ "กดแล้ว" จากออร์เดอร์ก่อนหน้า)
   var currentOrderId = null;
 
   function openPayModal(order, product) {
     currentOrderId = order.orderId;
     document.getElementById('payAmount').textContent = '฿' + order.priceThb;
-    document.getElementById('payQrImg').src = order.qrDataUri;
     document.getElementById('payOrderId').textContent = 'รหัสออร์เดอร์: ' + order.orderId;
     document.getElementById('payNotifyWarning').style.display = order.sellerNotified ? 'none' : 'block';
+
+    var titleEl = document.getElementById('payTitle');
+    var instructionsEl = document.getElementById('payInstructions');
+    var qrWrap = document.getElementById('payQrWrap');
+    var linkWrap = document.getElementById('payLinkWrap');
+
+    if (order.paymentMethod === 'link') {
+      titleEl.textContent = 'จ่ายผ่านลิงก์ของผู้ขาย';
+      qrWrap.style.display = 'none';
+      linkWrap.style.display = 'block';
+      document.getElementById('payLinkBtn').href = order.paymentLink;
+      instructionsEl.textContent = 'กดปุ่มด้านบนเพื่อไปจ่ายที่ลิงก์ของผู้ขาย (เปิดแท็บใหม่) แล้วจ่ายให้ตรงยอด ฿' + order.priceThb + ' ตามนี้เลยครับ พอจ่ายเสร็จกลับมากดปุ่ม "ฉันจ่ายแล้ว" ด้านล่างด้วยนะครับ';
+    } else {
+      titleEl.textContent = 'สแกนจ่ายด้วย PromptPay';
+      qrWrap.style.display = 'inline-block';
+      linkWrap.style.display = 'none';
+      document.getElementById('payQrImg').src = order.qrDataUri;
+      instructionsEl.textContent = 'สแกนด้วยแอปธนาคารแล้วจ่ายได้เลยครับ ยอดเงินฝังอยู่ใน QR แล้ว พอผู้ขายกดยืนยันว่าได้รับเงินแล้วจริง ระบบจะส่งของ/ข้อความติดต่อกลับให้คุณทาง DM ในดิสคอร์ดอัตโนมัติ';
+    }
+
     var markPaidBtn = document.getElementById('payMarkPaidBtn');
     markPaidBtn.disabled = false;
     markPaidBtn.style.opacity = '1';

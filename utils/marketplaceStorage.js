@@ -8,9 +8,24 @@
 // {
 //   "sellers": {
 //     "<discordUserId>": {
+//       "paymentMethod": "promptpay",  ← 🆕 [12 ต.ค. 2569] "promptpay" | "link" — ช่องทาง
+//                                          ที่ใช้งานอยู่ตอนนี้ (ก่อนหน้านี้มีแค่ PromptPay
+//                                          ทางเดียว น้องหนาวสังเกตว่าคนต่างชาติใช้ PromptPay
+//                                          ไม่ได้เลย เพราะเป็นระบบจ่ายเงินของไทยล้วนๆ เลย
+//                                          เปิดให้เลือกได้ว่าจะใช้ PromptPay (ในไทย) หรือ
+//                                          ลิงก์รับเงินของตัวเอง เช่น PayPal.me/Stripe Payment
+//                                          Link (สากล) — ข้อมูลเก่าก่อนหน้านี้ที่ไม่มี field
+//                                          นี้ (มีแต่ promptpayId ตรงๆ) ยัง fallback เป็น
+//                                          "promptpay" ได้อัตโนมัติ ดู getSellerPaymentMethod()
 //       "promptpayId": "0812345678",   ← เลขพร้อมเพย์รับเงินของผู้ขาย (เบอร์มือถือเท่านั้น
 //                                          กฎเดียวกับ referralStorage.js — ดู PROMPTPAY_ID_PATTERN)
+//                                          เก็บไว้เฉยๆ แม้สลับไปใช้ "link" แล้ว เผื่อสลับกลับมา
 //       "promptpayUpdatedAt": "2026-...",
+//       "paymentLink": "https://paypal.me/kittyarts",  ← 🆕 ลิงก์รับเงินสากลของผู้ขายเอง
+//                                          (บอทไม่รู้จัก ไม่ตรวจสอบช่องทางข้างในเลย แค่โชว์
+//                                          ลิงก์นี้ให้ผู้ซื้อกดไปจ่ายตรงกับผู้ขายเอง) ต้องเป็น
+//                                          https:// เท่านั้น — ดู PAYMENT_LINK_PATTERN
+//       "paymentLinkUpdatedAt": "2026-...",
 //       "displayName": "kittyarts"     ← แคชชื่อ Discord ไว้เฉยๆ ไว้โชว์ไม่ต้อง fetch ใหม่ทุกครั้ง
 //     }
 //   },
@@ -108,6 +123,14 @@ const FILE_PATH = path.join(DATA_DIR, 'marketplace.json');
 // เลขพร้อมเพย์ — ใช้กฎเดียวกับ referralStorage.js เป๊ะๆ (เบอร์มือถือ 10 หลักเท่านั้น
 // ไม่รับเลขบัตรประชาชน เพราะเป็นข้อมูลอ่อนไหวกว่าเยอะ ดูเหตุผลเต็มในไฟล์นั้น)
 const PROMPTPAY_ID_PATTERN = /^\d{10}$/;
+
+// 🆕 [12 ต.ค. 2569] ลิงก์รับเงินสากล (สำหรับผู้ขายที่ไม่มี PromptPay ไทย เช่น PayPal.me,
+// Stripe Payment Link ของตัวเอง) — บังคับ "https://" เท่านั้น กัน javascript:/data: URI
+// หลุดเข้ามาแสดงเป็นลิงก์ได้ (ความปลอดภัย ไม่ใช่แค่ validate รูปแบบ) จำกัดความยาวไม่เกิน
+// 300 ตัวอักษรกันค่าแปลกๆ ยาวผิดปกติ — ไม่ได้เช็คว่าโดเมนปลายทางเป็นผู้ให้บริการจ่ายเงินจริง
+// หรือเปล่า เพราะบอทไม่รู้จัก/ไม่ยุ่งกับช่องทางจ่ายเงินนี้เลย แค่โชว์ลิงก์ให้ผู้ซื้อกดเอง
+const PAYMENT_LINK_PATTERN = /^https:\/\/\S{1,290}$/i;
+const MAX_PAYMENT_LINK_LENGTH = 300;
 
 // 🆕 [11 ต.ค. 2569] ย้ายมาจาก commands/marketplace.js (ของเดิมประกาศซ้ำไว้คนละที่กับ
 // server.js ที่กำลังจะเพิ่มฟอร์มลงขายบนเว็บ) — ย้ายมาเป็น "แหล่งความจริงเดียว" ไว้ที่นี่
@@ -211,23 +234,72 @@ function getSeller(discordUserId) {
 }
 
 /**
- * ตั้ง/แก้เลขพร้อมเพย์ของผู้ขาย — เรียกจาก /marketplace setpromptpay หรือตอนลงขาย
- * ครั้งแรกแล้วยังไม่เคยตั้งไว้เลย
+ * 🆕 [12 ต.ค. 2569] ตั้ง/แก้ "ช่องทางรับเงิน" ของผู้ขาย — เวอร์ชันทั่วไปที่รองรับทั้ง
+ * PromptPay (ไทย) และลิงก์รับเงินสากล (เช่น PayPal.me/Stripe Payment Link ของผู้ขายเอง)
+ * แทนที่ saveSellerPromptPay เดิมที่รองรับแค่ PromptPay ทางเดียว (เหตุผล: คนต่างชาติใช้
+ * PromptPay ไม่ได้เลย ทั้งที่อยากขายของในตลาดนี้ได้ — ดูคอมเมนต์ schema ด้านบนไฟล์)
+ *
+ * เก็บค่าทั้ง 2 ช่องทางไว้เสมอแม้สลับไปใช้อีกช่องทาง (ไม่ล้างของเดิมทิ้ง) เผื่อผู้ขาย
+ * สลับกลับมาใช้ช่องทางเดิมทีหลัง ไม่ต้องกรอกใหม่
  * @param {string} discordUserId
- * @param {string} promptpayId ต้องผ่าน PROMPTPAY_ID_PATTERN มาก่อนแล้ว (เช็คที่ชั้นคำสั่ง)
+ * @param {{ method: 'promptpay'|'link', promptpayId?: string, paymentLink?: string }} payment
+ *   ต้อง validate ผ่าน PROMPTPAY_ID_PATTERN/PAYMENT_LINK_PATTERN มาก่อนแล้ว (เช็คที่ชั้นคำสั่ง/route)
  * @param {string} displayName ชื่อ Discord ปัจจุบันของผู้ขาย (แคชไว้โชว์)
  */
-function saveSellerPromptPay(discordUserId, promptpayId, displayName) {
+function saveSellerPayment(discordUserId, payment, displayName) {
   const data = readAll();
   const existing = data.sellers[discordUserId] || {};
-  data.sellers[discordUserId] = {
+  const next = {
     ...existing,
-    promptpayId,
-    promptpayUpdatedAt: new Date().toISOString(),
+    paymentMethod: payment.method,
     displayName: displayName || existing.displayName || null,
   };
+  if (payment.method === 'promptpay') {
+    next.promptpayId = payment.promptpayId;
+    next.promptpayUpdatedAt = new Date().toISOString();
+  } else if (payment.method === 'link') {
+    next.paymentLink = payment.paymentLink;
+    next.paymentLinkUpdatedAt = new Date().toISOString();
+  }
+  data.sellers[discordUserId] = next;
   writeAll(data);
   return data.sellers[discordUserId];
+}
+
+/**
+ * ตัวช่วยอ่าน (backward compat) — ดูว่าผู้ขายคนนี้ใช้ช่องทางรับเงินไหนอยู่จริงๆ ตอนนี้
+ * ข้อมูลเก่าก่อน 12 ต.ค. 2569 ไม่มี field `paymentMethod` เลย (ตั้ง PromptPay มาตรงๆ) —
+ * fallback เป็น "promptpay" ให้อัตโนมัติถ้ามี promptpayId อยู่ กันของเก่าใช้งานไม่ได้
+ * @param {object|null} seller
+ * @returns {'promptpay'|'link'|null}
+ */
+function getSellerPaymentMethod(seller) {
+  if (!seller) return null;
+  if (seller.paymentMethod === 'promptpay' || seller.paymentMethod === 'link') return seller.paymentMethod;
+  if (seller.promptpayId) return 'promptpay'; // ของเก่าก่อนมี field นี้
+  return null;
+}
+
+/**
+ * ตัวช่วยอ่าน — เช็คว่าผู้ขายคนนี้ "พร้อมขายได้แล้ว" หรือยัง (มีช่องทางรับเงินที่ใช้งาน
+ * ได้จริงตั้งไว้แล้ว) ใช้แทนที่การเช็ค `seller?.promptpayId` ตรงๆ แบบเดิมทุกจุด เพราะตอนนี้
+ * มี 2 ช่องทางให้เลือกแล้ว เช็คแค่ promptpayId อย่างเดียวจะพลาดผู้ขายที่ใช้ "link"
+ * @param {object|null} seller
+ */
+function hasPaymentMethodSet(seller) {
+  const method = getSellerPaymentMethod(seller);
+  if (method === 'promptpay') return Boolean(seller.promptpayId);
+  if (method === 'link') return Boolean(seller.paymentLink);
+  return false;
+}
+
+/**
+ * @deprecated ใช้ saveSellerPayment(discordUserId, { method: 'promptpay', promptpayId }, displayName) แทน
+ * เก็บไว้เป็น wrapper บางๆ กันโค้ดเก่าที่ยังเรียกชื่อนี้อยู่พัง (ไม่มีจุดไหนเรียกแล้วตอนนี้
+ * แต่เก็บไว้เผื่อ เพราะเป็นฟังก์ชัน public ที่ export ออกไปมานานแล้ว)
+ */
+function saveSellerPromptPay(discordUserId, promptpayId, displayName) {
+  return saveSellerPayment(discordUserId, { method: 'promptpay', promptpayId }, displayName);
 }
 
 // ── ประกาศขาย (listings) ──────────────────────────────────────────────
@@ -478,10 +550,15 @@ function createReport(info) {
 
 module.exports = {
   PROMPTPAY_ID_PATTERN,
+  PAYMENT_LINK_PATTERN,
+  MAX_PAYMENT_LINK_LENGTH,
   CATEGORIES,
   MAX_PRICE_THB,
   getSeller,
   saveSellerPromptPay,
+  saveSellerPayment,
+  getSellerPaymentMethod,
+  hasPaymentMethodSet,
   createListing,
   getListing,
   resolveListingAssets,

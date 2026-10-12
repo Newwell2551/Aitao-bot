@@ -6,19 +6,23 @@
  * public/marketplace.html (ผู้ซื้อกดซื้อจากหน้าเว็บ ไม่ใช่จากดิสคอร์ด — ดู server.js
  * เส้นทาง /api/marketplace/*)
  *
- *   /marketplace sell         → ลงประกาศขายใหม่ 1 ชิ้น (กรอกทุกอย่างในคำสั่งเดียวจบ รวมรูป/ไฟล์)
- *   /marketplace mylistings   → ดูประกาศทั้งหมดของตัวเอง (ทุกสถานะ)
- *   /marketplace remove       → ปิดประกาศ (ขายหมดแล้ว/ไม่ขายแล้ว)
- *   /marketplace markselling  → เปิดประกาศที่เคยปิดไว้กลับมาขายอีกครั้ง
- *   /marketplace setpromptpay → ตั้ง/แก้เลขพร้อมเพย์รับเงิน (ต้องตั้งก่อนถึงจะลงขายได้)
+ *   /marketplace sell          → ลงประกาศขายใหม่ 1 ชิ้น (กรอกทุกอย่างในคำสั่งเดียวจบ รวมรูป/ไฟล์)
+ *   /marketplace mylistings    → ดูประกาศทั้งหมดของตัวเอง (ทุกสถานะ)
+ *   /marketplace remove        → ปิดประกาศ (ขายหมดแล้ว/ไม่ขายแล้ว)
+ *   /marketplace markselling   → เปิดประกาศที่เคยปิดไว้กลับมาขายอีกครั้ง
+ *   /marketplace setpromptpay  → ตั้ง/แก้เลขพร้อมเพย์รับเงิน (ผู้ขายในไทย)
+ *   /marketplace setpaymentlink → 🆕 [12 ต.ค. 2569] ตั้ง/แก้ลิงก์รับเงินสากล (ผู้ขายต่างชาติ
+ *                                  ที่ไม่มี PromptPay — ดูเหตุผลเต็มๆ ใน utils/marketplaceStorage.js)
+ *   ต้องตั้งช่องทางรับเงินอย่างใดอย่างหนึ่งก่อน ถึงจะลงขายได้
  *
  * 💡 ทำไมใช้ "ตัวเลือกในคำสั่งเดียวจบ" (slash command options) แทน modal สำหรับ /sell:
  * เพราะ modal ของ Discord "แนบไฟล์ไม่ได้เลย" (รับได้แค่ข้อความ) แต่ /sell ต้องให้แนบรูปสินค้า
  * และไฟล์ดิจิทัลได้ด้วย เลยต้องใช้ตัวเลือกแบบ attachment ในคำสั่งตรงๆ แทน
  *
  * 🔑 การจ่ายเงินเป็นแบบ "กึ่งอัตโนมัติ" เหมือนระบบ /referral เป๊ะๆ (ดูคำอธิบายเต็มใน
- * utils/marketplaceStorage.js หัวข้อ "หลักการสำคัญ") — บอทไม่แตะเงินเลย แค่สร้าง QR
- * PromptPay ของผู้ขายให้ผู้ซื้อสแกนจ่ายตรง แล้วรอผู้ขายกดยืนยันว่าได้รับเงินแล้วจริง
+ * utils/marketplaceStorage.js หัวข้อ "หลักการสำคัญ") — บอทไม่แตะเงินเลย แค่โชว์ช่องทางรับเงิน
+ * ของผู้ขายให้ผู้ซื้อจ่ายตรง (QR PromptPay ถ้าเป็นผู้ขายไทย หรือลิงก์รับเงินของผู้ขายเอง
+ * ถ้าเป็นผู้ขายต่างชาติ — 🆕 [12 ต.ค. 2569]) แล้วรอผู้ขายกดยืนยันว่าได้รับเงินแล้วจริง
  * (ปุ่ม "✅ ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — ดู handleButton ด้านล่าง)
  */
 
@@ -35,10 +39,15 @@ const {
 } = require('discord.js');
 const {
   PROMPTPAY_ID_PATTERN,
+  PAYMENT_LINK_PATTERN,
+  MAX_PAYMENT_LINK_LENGTH,
   CATEGORIES,
   MAX_PRICE_THB,
   getSeller,
   saveSellerPromptPay,
+  saveSellerPayment,
+  getSellerPaymentMethod,
+  hasPaymentMethodSet,
   createListing,
   getListing,
   resolveListingAssets,
@@ -150,9 +159,21 @@ module.exports = {
     .addSubcommand((sub) =>
       sub
         .setName('setpromptpay')
-        .setDescription('ตั้ง/แก้เลขพร้อมเพย์รับเงินค่าขายของ (ต้องตั้งก่อนถึงจะลงขายได้)')
+        .setDescription('ตั้ง/แก้เลขพร้อมเพย์รับเงินค่าขายของ (สำหรับผู้ขายในไทย)')
         .addStringOption((opt) =>
           opt.setName('promptpay_id').setDescription('เบอร์มือถือพร้อมเพย์ 10 หลัก เช่น 0812345678').setRequired(true)
+        )
+    )
+    // 🆕 [12 ต.ค. 2569] สำหรับผู้ขายต่างชาติที่ไม่มี PromptPay ไทย — ใส่ลิงก์รับเงินของ
+    // ตัวเองมาเลย (PayPal.me/Stripe Payment Link/ฯลฯ) บอทไม่รู้จัก ไม่ยุ่งกับช่องทางข้างใน
+    // แค่โชว์ลิงก์นี้ให้ผู้ซื้อกดไปจ่ายตรงกับผู้ขายเอง (ดูคอมเมนต์ยาวๆ ใน
+    // utils/marketplaceStorage.js หัวข้อ saveSellerPayment)
+    .addSubcommand((sub) =>
+      sub
+        .setName('setpaymentlink')
+        .setDescription('ตั้ง/แก้ลิงก์รับเงินสากล (PayPal.me/Stripe Payment Link) สำหรับผู้ขายต่างชาติ')
+        .addStringOption((opt) =>
+          opt.setName('link').setDescription('ลิงก์ https:// ที่ผู้ซื้อจะไปจ่ายเงิน เช่น https://paypal.me/yourname').setRequired(true)
         )
     ),
 
@@ -163,6 +184,7 @@ module.exports = {
     if (sub === 'remove') return handleSetStatus(interaction, 'removed');
     if (sub === 'markselling') return handleSetStatus(interaction, 'active');
     if (sub === 'setpromptpay') return handleSetPromptPay(interaction);
+    if (sub === 'setpaymentlink') return handleSetPaymentLink(interaction);
   },
 
   // เรียกจาก index.js ตอนมีคนกดปุ่มที่ customId ขึ้นต้นด้วย mkt_
@@ -230,12 +252,13 @@ async function handleSell(interaction) {
     return;
   }
 
-  // ต้องตั้งเลขพร้อมเพย์ไว้ก่อนแล้วเท่านั้นถึงจะลงขายได้ — กันเคสลงขายเสร็จแล้วมีคนกดซื้อ
-  // แต่บอทสร้าง QR ให้ไม่ได้เพราะไม่รู้จะสร้างจ่ายเข้าบัญชีไหน
+  // 🆕 [12 ต.ค. 2569] ต้องตั้งช่องทางรับเงินไว้ก่อนแล้วเท่านั้นถึงจะลงขายได้ (เดิมเช็คแค่
+  // seller.promptpayId ตรงๆ — ตอนนี้ใช้ hasPaymentMethodSet() แทน เพราะรองรับ "link" ด้วย)
+  // กันเคสลงขายเสร็จแล้วมีคนกดซื้อ แต่บอทไม่รู้จะโชว์ช่องทางจ่ายเงินไหนให้ผู้ซื้อ
   const seller = getSeller(interaction.user.id);
-  if (!seller || !seller.promptpayId) {
+  if (!hasPaymentMethodSet(seller)) {
     await interaction.reply({
-      content: '❌ ต้องตั้งเลขพร้อมเพย์รับเงินก่อนถึงจะลงขายได้ครับ ใช้คำสั่ง `/marketplace setpromptpay` ตั้งค่าก่อน แล้วค่อยกลับมาลงขายใหม่',
+      content: '❌ ต้องตั้งช่องทางรับเงินก่อนถึงจะลงขายได้ครับ ใช้คำสั่ง `/marketplace setpromptpay` (ถ้าอยู่ไทย) หรือ `/marketplace setpaymentlink` (ถ้าเป็นผู้ขายต่างชาติ) ตั้งค่าก่อน แล้วค่อยกลับมาลงขายใหม่',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -370,7 +393,32 @@ async function handleSetPromptPay(interaction) {
   saveSellerPromptPay(interaction.user.id, rawValue, interaction.user.username);
 
   await interaction.reply({
-    content: `✅ บันทึกเลขพร้อมเพย์ \`${rawValue}\` เรียบร้อยครับ — ใช้เลขนี้สร้าง QR ให้ลูกค้าสแกนจ่ายตรงเข้าบัญชีนี้ทุกครั้งที่มีคนซื้อของจากคุณ`,
+    content: `✅ บันทึกเลขพร้อมเพย์ \`${rawValue}\` เรียบร้อยครับ — ใช้เลขนี้สร้าง QR ให้ลูกค้าสแกนจ่ายตรงเข้าบัญชีนี้ทุกครั้งที่มีคนซื้อของจากคุณ (ตั้งเป็นช่องทางรับเงินหลักแล้ว ถ้าก่อนหน้านี้ใช้ลิงก์รับเงินสากลอยู่ จะสลับมาใช้ PromptPay แทน)`,
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
+/**
+ * 🆕 [12 ต.ค. 2569] /marketplace setpaymentlink — ตั้ง/แก้ลิงก์รับเงินสากลของผู้ขาย
+ * (สำหรับผู้ขายต่างชาติที่ไม่มี PromptPay ไทย) — ดูเหตุผลเต็มๆ ที่คอมเมนต์หัวไฟล์
+ * utils/marketplaceStorage.js
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ */
+async function handleSetPaymentLink(interaction) {
+  const rawValue = interaction.options.getString('link').trim();
+
+  if (!PAYMENT_LINK_PATTERN.test(rawValue) || rawValue.length > MAX_PAYMENT_LINK_LENGTH) {
+    await interaction.reply({
+      content: `❌ ลิงก์ "${rawValue}" ไม่ถูกต้อง — ต้องเป็นลิงก์ที่ขึ้นต้นด้วย https:// เท่านั้น เช่น https://paypal.me/yourname (ยาวไม่เกิน ${MAX_PAYMENT_LINK_LENGTH} ตัวอักษร)`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  saveSellerPayment(interaction.user.id, { method: 'link', paymentLink: rawValue }, interaction.user.username);
+
+  await interaction.reply({
+    content: `✅ บันทึกลิงก์รับเงิน ${rawValue} เรียบร้อยครับ — ใช้ลิงก์นี้ให้ผู้ซื้อกดไปจ่ายตรงทุกครั้งที่มีคนซื้อของจากคุณ (ตั้งเป็นช่องทางรับเงินหลักแล้ว ถ้าก่อนหน้านี้ใช้ PromptPay อยู่ จะสลับมาใช้ลิงก์นี้แทน — บอทไม่รู้จัก/ไม่ตรวจสอบช่องทางข้างในลิงก์นี้เลย แค่โชว์ให้ผู้ซื้อกดไปเองนะครับ)`,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -391,33 +439,49 @@ async function handleSetPromptPay(interaction) {
  */
 async function notifySellerNewOrder(client, order, listing, buyerInfo) {
   const seller = getSeller(order.sellerId);
-  if (!seller || !seller.promptpayId) {
-    // ไม่ควรเกิดขึ้นจริง เพราะ /marketplace sell บังคับตั้งพร้อมเพย์ไว้ก่อนลงขายแล้ว
+  if (!hasPaymentMethodSet(seller)) {
+    // ไม่ควรเกิดขึ้นจริง เพราะ /marketplace sell บังคับตั้งช่องทางรับเงินไว้ก่อนลงขายแล้ว
     // แต่เผื่อกรณีข้อมูลเพี้ยน กันไว้ก่อนดีกว่า
-    return { notified: false, reason: 'no_promptpay_id' };
+    return { notified: false, reason: 'no_payment_method' };
   }
 
-  let qrBuffer;
-  try {
-    qrBuffer = await generatePromptPayQrBuffer(seller.promptpayId, order.priceThb);
-  } catch (error) {
-    console.warn(`[marketplace] สร้าง QR รับเงินให้ออร์เดอร์ ${order.id} ไม่สำเร็จ:`, error);
-    return { notified: false, reason: 'qr_generation_failed' };
+  // 🆕 [12 ต.ค. 2569] แยก 2 เส้นทางตามช่องทางรับเงินของผู้ขาย — "promptpay" สร้าง QR
+  // เหมือนเดิมทุกอย่าง ส่วน "link" ไม่มี QR ให้สร้าง (ลิงก์รับเงินของผู้ขายเองไม่มียอดเงิน
+  // ฝังอยู่ในตัวแบบ QR ได้ — ผู้ขายต้องดูยอดจากในข้อความนี้เอง) ดู hasPaymentMethodSet/
+  // getSellerPaymentMethod ใน utils/marketplaceStorage.js
+  const method = getSellerPaymentMethod(seller);
+  let qrBuffer = null;
+  if (method === 'promptpay') {
+    try {
+      qrBuffer = await generatePromptPayQrBuffer(seller.promptpayId, order.priceThb);
+    } catch (error) {
+      console.warn(`[marketplace] สร้าง QR รับเงินให้ออร์เดอร์ ${order.id} ไม่สำเร็จ:`, error);
+      return { notified: false, reason: 'qr_generation_failed' };
+    }
   }
+
+  const descriptionLines =
+    `**${listing.title}**\n` +
+    `ราคา: **${formatThb(order.priceThb)}**\n` +
+    `ผู้ซื้อ: ${buyerInfo?.username || 'ไม่ทราบชื่อ'}\n\n` +
+    (method === 'promptpay'
+      ? 'ระบบโชว์ QR อันเดียวกันนี้ให้ผู้ซื้อเห็นบนหน้าเว็บแล้ว (แนบมาให้ดูอ้างอิงด้วยเฉยๆ ' +
+        'ไม่ต้องส่งต่อให้ใคร) รอเงินเข้าบัญชีพร้อมเพย์ของคุณจริง แล้วกด ' +
+        '**"✅ ยืนยันได้รับเงินแล้ว"** ด้านล่างทันทีที่เห็นเงินเข้าครับ'
+      : `ผู้ซื้อเห็นลิงก์รับเงินของคุณ (${seller.paymentLink}) บนหน้าเว็บแล้ว และต้องจ่ายเอง ` +
+        `ให้ตรงยอด **${formatThb(order.priceThb)}** ตามช่องทางนั้น — รอเงินเข้าจริงก่อน แล้วกด ` +
+        '**"✅ ยืนยันได้รับเงินแล้ว"** ด้านล่างทันทีที่เห็นเงินเข้าครับ (ลิงก์นี้ไม่มียอดเงิน ' +
+        'ฝังอยู่ในตัวแบบ QR นะครับ ต้องเช็คยอดเองว่าตรงกับที่นี่)');
 
   const embed = new EmbedBuilder()
     .setTitle('🛒 มีคนซื้อสินค้าของคุณ!')
     .setColor(0x4b8f87)
-    .setDescription(
-      `**${listing.title}**\n` +
-      `ราคา: **${formatThb(order.priceThb)}**\n` +
-      `ผู้ซื้อ: ${buyerInfo?.username || 'ไม่ทราบชื่อ'}\n\n` +
-      'ระบบโชว์ QR อันเดียวกันนี้ให้ผู้ซื้อเห็นบนหน้าเว็บแล้ว (แนบมาให้ดูอ้างอิงด้วยเฉยๆ ' +
-      'ไม่ต้องส่งต่อให้ใคร) รอเงินเข้าบัญชีพร้อมเพย์ของคุณจริง แล้วกด ' +
-      '**"✅ ยืนยันได้รับเงินแล้ว"** ด้านล่างทันทีที่เห็นเงินเข้าครับ'
-    )
-    .setImage(`attachment://promptpay-${order.id}.png`)
+    .setDescription(descriptionLines)
     .setFooter({ text: `รหัสออร์เดอร์ ${order.id}` });
+
+  if (method === 'promptpay') {
+    embed.setImage(`attachment://promptpay-${order.id}.png`);
+  }
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -430,7 +494,7 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     const sellerUser = await client.users.fetch(order.sellerId);
     const message = await sellerUser.send({
       embeds: [embed],
-      files: [new AttachmentBuilder(qrBuffer, { name: `promptpay-${order.id}.png` })],
+      files: method === 'promptpay' ? [new AttachmentBuilder(qrBuffer, { name: `promptpay-${order.id}.png` })] : [],
       components: [row],
     });
     saveOrderNotifyMessage(order.id, message.channelId, message.id);

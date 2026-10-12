@@ -113,12 +113,17 @@ const {
   markOrderBuyerPaid,
   createReport,
   saveSellerPromptPay,
+  saveSellerPayment,
+  getSellerPaymentMethod,
+  hasPaymentMethodSet,
   createListing,
   listSellerListings,
   setListingStatus,
   resolveListingAssets,
   CATEGORIES,
   PROMPTPAY_ID_PATTERN,
+  PAYMENT_LINK_PATTERN,
+  MAX_PAYMENT_LINK_LENGTH,
   MAX_PRICE_THB,
 } = require('./utils/marketplaceStorage');
 const { generatePromptPayQrBuffer } = require('./utils/promptpayQr');
@@ -556,17 +561,26 @@ function createWebhookServer(client) {
     }
 
     const seller = getSeller(listing.sellerId);
-    if (!seller || !seller.promptpayId) {
-      // ไม่ควรเกิดจริง เพราะ /marketplace sell บังคับตั้งพร้อมเพย์ก่อนลงขายแล้ว — กันไว้เผื่อ
+    if (!hasPaymentMethodSet(seller)) {
+      // ไม่ควรเกิดจริง เพราะ /marketplace sell บังคับตั้งช่องทางรับเงินก่อนลงขายแล้ว — กันไว้เผื่อ
       return res.status(409).json({ error: 'seller_not_ready' });
     }
 
-    let qrBuffer;
-    try {
-      qrBuffer = await generatePromptPayQrBuffer(seller.promptpayId, listing.priceThb);
-    } catch (error) {
-      console.error('[marketplace buy] สร้าง QR ให้ผู้ซื้อไม่สำเร็จ:', error);
-      return res.status(500).json({ error: 'qr_generation_failed' });
+    // 🆕 [12 ต.ค. 2569] แยก 2 เส้นทางตามช่องทางรับเงินของผู้ขาย — เดิมมีแค่ PromptPay
+    // ทางเดียว (คนต่างชาติใช้ไม่ได้เลย เพราะเป็นระบบจ่ายเงินของไทยล้วนๆ) ตอนนี้ผู้ขายเลือก
+    // ได้ว่าจะใช้ PromptPay หรือลิงก์รับเงินสากลของตัวเอง (PayPal.me/Stripe Payment Link
+    // ฯลฯ) — บอทไม่รู้จัก/ไม่ยุ่งกับช่องทางที่เป็นลิงก์เลย แค่ส่งลิงก์นั้นกลับไปให้หน้าเว็บ
+    // โชว์ให้ผู้ซื้อกดเอง ไม่มี QR ให้สร้างในเคสนี้ (ลิงก์ทั่วไปไม่มียอดเงินฝังอยู่ในตัวได้
+    // แบบ Thai QR Payment)
+    const method = getSellerPaymentMethod(seller);
+    let qrBuffer = null;
+    if (method === 'promptpay') {
+      try {
+        qrBuffer = await generatePromptPayQrBuffer(seller.promptpayId, listing.priceThb);
+      } catch (error) {
+        console.error('[marketplace buy] สร้าง QR ให้ผู้ซื้อไม่สำเร็จ:', error);
+        return res.status(500).json({ error: 'qr_generation_failed' });
+      }
     }
 
     const order = createOrder({
@@ -577,7 +591,7 @@ function createWebhookServer(client) {
     });
 
     // แจ้งผู้ขายทาง DM แบบไม่บล็อกการตอบกลับผู้ซื้อ (ถ้า DM ผู้ขายไม่สำเร็จ ผู้ซื้อก็ยัง
-    // ต้องเห็น QR จ่ายเงินได้ปกติอยู่ดี — แค่ทำให้ sellerNotified เป็น false ในคำตอบ ให้
+    // ต้องเห็นช่องทางจ่ายเงินได้ปกติอยู่ดี — แค่ทำให้ sellerNotified เป็น false ในคำตอบ ให้
     // หน้าเว็บเตือนผู้ซื้อว่า "ถ้ารอนานผิดปกติ ให้ลองติดต่อผู้ขายเองโดยตรง")
     const marketplaceCommand = client.commands.get('marketplace');
     const notifyResult = await marketplaceCommand.notifySellerNewOrder(client, order, listing, {
@@ -585,12 +599,19 @@ function createWebhookServer(client) {
       username: req.session.user.username,
     });
 
-    res.json({
+    const responseBody = {
       orderId: order.id,
       priceThb: order.priceThb,
-      qrDataUri: `data:image/png;base64,${qrBuffer.toString('base64')}`,
+      paymentMethod: method,
       sellerNotified: notifyResult.notified,
-    });
+    };
+    if (method === 'promptpay') {
+      responseBody.qrDataUri = `data:image/png;base64,${qrBuffer.toString('base64')}`;
+    } else {
+      responseBody.paymentLink = seller.paymentLink;
+    }
+
+    res.json(responseBody);
   });
 
   // 🆕 [12 ต.ค. 2569] POST /api/marketplace/orders/:id/mark-paid — ผู้ซื้อกดปุ่ม
@@ -1134,17 +1155,30 @@ function createWebhookServer(client) {
     }));
   });
 
-  // POST ตั้ง/แก้เลขพร้อมเพย์ — ตัวเดียวกับ /marketplace setpromptpay ในดิสคอร์ด เป๊ะๆ
-  app.post('/dashboard/:guildId/marketplace/promptpay', requireAuth, requireGuildAccess, express.urlencoded({ extended: false }), (req, res) => {
+  // 🆕 [12 ต.ค. 2569] POST ตั้ง/แก้ "ช่องทางรับเงิน" — เดิมชื่อ route /promptpay รับแค่
+  // เลขพร้อมเพย์อย่างเดียว (คนต่างชาติใช้ไม่ได้เลย) ตอนนี้เปลี่ยนเป็น /payment รับได้ทั้ง 2
+  // ช่องทาง (payment_method = 'promptpay' | 'link') ตามที่ผู้ขายเลือกจากฟอร์มใน
+  // utils/renderMarketplaceDashboard.js — ดูเหตุผลเต็มๆ ที่คอมเมนต์หัวไฟล์
+  // utils/marketplaceStorage.js หัวข้อ saveSellerPayment
+  app.post('/dashboard/:guildId/marketplace/payment', requireAuth, requireGuildAccess, express.urlencoded({ extended: false }), (req, res) => {
     const { guildId } = req.params;
-    const rawValue = String(req.body?.promptpay_id || '').trim();
+    const method = req.body?.payment_method === 'link' ? 'link' : 'promptpay';
 
-    if (!PROMPTPAY_ID_PATTERN.test(rawValue)) {
-      return res.redirect(`/dashboard/${guildId}/marketplace?error=${encodeURIComponent('Please enter a valid 10-digit PromptPay mobile number.')}`);
+    if (method === 'promptpay') {
+      const rawValue = String(req.body?.promptpay_id || '').trim();
+      if (!PROMPTPAY_ID_PATTERN.test(rawValue)) {
+        return res.redirect(`/dashboard/${guildId}/marketplace?error=${encodeURIComponent('Please enter a valid 10-digit PromptPay mobile number.')}`);
+      }
+      saveSellerPayment(req.session.user.id, { method: 'promptpay', promptpayId: rawValue }, req.session.user.username);
+    } else {
+      const rawLink = String(req.body?.payment_link || '').trim();
+      if (!PAYMENT_LINK_PATTERN.test(rawLink) || rawLink.length > MAX_PAYMENT_LINK_LENGTH) {
+        return res.redirect(`/dashboard/${guildId}/marketplace?error=${encodeURIComponent('Please enter a valid https:// payment link (e.g. your PayPal.me or Stripe Payment Link).')}`);
+      }
+      saveSellerPayment(req.session.user.id, { method: 'link', paymentLink: rawLink }, req.session.user.username);
     }
 
-    saveSellerPromptPay(req.session.user.id, rawValue, req.session.user.username);
-    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) ตั้ง/แก้เลขพร้อมเพย์ Marketplace แล้ว`);
+    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) ตั้ง/แก้ช่องทางรับเงิน Marketplace แล้ว (${method})`);
     res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
   });
 
@@ -1198,11 +1232,13 @@ function createWebhookServer(client) {
         return fail(`Category "${categoryInfo.label}" doesn't have subcategories.`);
       }
 
-      // ต้องตั้งเลขพร้อมเพย์ไว้ก่อนแล้วเท่านั้นถึงจะลงขายได้ (เช็คซ้ำอีกชั้นฝั่ง server แม้
-      // ฟอร์มจะ disable ไว้แล้วถ้ายังไม่ตั้ง — เผื่อคนแก้ HTML เองจาก devtools)
+      // 🆕 [12 ต.ค. 2569] ต้องตั้งช่องทางรับเงิน (PromptPay หรือลิงก์สากล) ไว้ก่อนแล้ว
+      // เท่านั้นถึงจะลงขายได้ (เช็คซ้ำอีกชั้นฝั่ง server แม้ฟอร์มจะ disable ไว้แล้วถ้ายังไม่
+      // ตั้ง — เผื่อคนแก้ HTML เองจาก devtools) — ใช้ hasPaymentMethodSet() แทนการเช็ค
+      // seller.promptpayId ตรงๆ เพราะตอนนี้รองรับ "link" ด้วย
       const seller = getSeller(req.session.user.id);
-      if (!seller || !seller.promptpayId) {
-        return fail('Please set your PromptPay number first before creating a listing.');
+      if (!hasPaymentMethodSet(seller)) {
+        return fail('Please set up a payment method first before creating a listing.');
       }
 
       const imageFile = req.files?.image?.[0];
