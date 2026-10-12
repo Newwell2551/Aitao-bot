@@ -51,6 +51,12 @@
 //                                            "confirmed" (ยืนยันแล้ว) | "cancelled"
 //       "createdAt": "2026-...",
 //       "confirmedAt": null,
+//       "buyerMarkedPaidAt": null,        ← 🆕 [12 ต.ค. 2569] เวลาที่ผู้ซื้อกดปุ่ม "ฉันจ่าย
+//                                            แล้ว" บนหน้าเว็บ (ไม่ใช่การยืนยันว่าเงินเข้าจริง
+//                                            นะ — แค่ "ผู้ซื้อบอกว่าโอนไปแล้ว" เอาไว้สร้าง
+//                                            audit trail 2 ฝั่ง เผื่อมีข้อพิพาททีหลัง เช่น
+//                                            ผู้ซื้อบอกว่าโอนแล้วนานแล้วแต่ผู้ขายไม่กดยืนยัน
+//                                            สักที — ไม่กระทบ status/การส่งของเลย)
 //       "notifyChannelId": null,          ← ห้อง DM/แชแนลที่โพสต์การ์ด "รอยืนยันรับเงิน" ไว้
 //       "notifyMessageId": null           ← พิกัดข้อความการ์ดนั้น (ไว้แก้ข้อความตอนกดยืนยันแล้ว)
 //     }
@@ -300,6 +306,7 @@ function createOrder(info) {
     status: 'pending',
     createdAt: new Date().toISOString(),
     confirmedAt: null,
+    buyerMarkedPaidAt: null,
     notifyChannelId: null,
     notifyMessageId: null,
   };
@@ -346,6 +353,26 @@ function confirmOrder(orderId) {
   order.status = 'confirmed';
   order.confirmedAt = new Date().toISOString();
   writeAll(data);
+  return order;
+}
+
+/**
+ * 🆕 [12 ต.ค. 2569] ผู้ซื้อกดปุ่ม "✅ ฉันจ่ายแล้ว" บนหน้าเว็บ (ใน payModal หลังสแกน QR) —
+ * แค่บันทึกเวลาไว้เฉยๆ "ไม่ใช่" การยืนยันว่าเงินเข้าบัญชีผู้ขายจริง (บอทไม่มีทางรู้ได้เอง
+ * เหมือนเดิม) จุดประสงค์คือสร้าง "audit trail 2 ฝั่ง" ไว้เทียบกัน เผื่อมีข้อพิพาททีหลัง —
+ * ไม่แก้ status ของออร์เดอร์เลย (ยังเป็น pending จนกว่าผู้ขายจะกดยืนยันแยกต่างหาก)
+ *
+ * Idempotent — กดซ้ำได้ ไม่ error แค่ไม่ทับเวลาเดิมถ้ากดมาแล้วครั้งหนึ่ง (เก็บเวลาแรกสุดไว้)
+ * @param {string} orderId
+ */
+function markOrderBuyerPaid(orderId) {
+  const data = readAll();
+  const order = data.orders[orderId];
+  if (!order) return null;
+  if (!order.buyerMarkedPaidAt) {
+    order.buyerMarkedPaidAt = new Date().toISOString();
+    writeAll(data);
+  }
   return order;
 }
 
@@ -401,4 +428,5 @@ module.exports = {
   getOrder,
   saveOrderNotifyMessage,
   confirmOrder,
+  markOrderBuyerPaid,
 };

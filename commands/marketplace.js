@@ -172,6 +172,9 @@ module.exports = {
 
   // 🆕 ให้ server.js เรียกใช้ตอนผู้ซื้อกด "ซื้อ" บนหน้าเว็บ — สร้าง QR + DM แจ้งผู้ขาย
   notifySellerNewOrder,
+  // 🆕 [12 ต.ค. 2569] ให้ server.js เรียกใช้ตอนผู้ซื้อกด "ฉันจ่ายแล้ว" บนหน้าเว็บ — แก้ DM
+  // เดิมที่แจ้งผู้ขายให้โชว์ว่าผู้ซื้อแจ้งมาแล้ว (ไม่ใช่การยืนยันเงินเข้าจริง แค่แจ้งเฉยๆ)
+  notifyBuyerMarkedPaid,
 };
 
 /**
@@ -431,6 +434,43 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     // เกิดได้บ่อยถ้าผู้ขายปิดรับ DM จากสมาชิกนอกเซิร์ฟ/ปิดรับ DM บอททั้งหมด — ไม่ใช่บั๊ก
     console.warn(`[marketplace] DM แจ้งผู้ขาย ${order.sellerId} ไม่สำเร็จ (อาจปิดรับ DM):`, error.message);
     return { notified: false, reason: 'dm_failed' };
+  }
+}
+
+/**
+ * 🆕 [12 ต.ค. 2569] รันตอนผู้ซื้อกดปุ่ม "✅ ฉันจ่ายแล้ว" ในหน้าเว็บ (payModal หลังสแกน QR) —
+ * ไปแก้ DM เดิมที่แจ้งผู้ขาย (ที่เก็บพิกัดไว้ใน order.notifyChannelId/notifyMessageId
+ * ตอน notifySellerNewOrder ด้านบน) ให้โชว์เพิ่มว่า "ผู้ซื้อแจ้งว่าโอนแล้ว" เพื่อช่วยผู้ขาย
+ * ตัดสินใจเช็คเงินได้ไวขึ้น — ปุ่ม "ยืนยันได้รับเงินแล้ว" เดิมยังอยู่เหมือนเดิมทุกอย่าง
+ * (ไม่แก้ components เลย แก้แค่ embed) เพราะการยืนยันจริงยังต้องรอผู้ขายกดเองอยู่ดี
+ *
+ * จงใจทำให้ "ไม่ throw" แม้แก้ DM ไม่สำเร็จ (เช่นผู้ขายลบ DM ไปแล้ว/บอทไม่มีสิทธิ์เข้าถึง
+ * แชแนลนั้นแล้ว) เพราะฝั่งเว็บที่เรียกฟังก์ชันนี้ไม่ควรเด้ง error ให้ผู้ซื้อเห็นจากเหตุผลที่
+ * ไม่เกี่ยวกับผู้ซื้อเลย — แค่ log ไว้เฉยๆ
+ * @param {import('discord.js').Client} client
+ * @param {object} order ออบเจกต์ order (ต้องมี notifyChannelId/notifyMessageId/buyerMarkedPaidAt แล้ว)
+ */
+async function notifyBuyerMarkedPaid(client, order) {
+  if (!order.notifyChannelId || !order.notifyMessageId) return;
+
+  try {
+    const channel = await client.channels.fetch(order.notifyChannelId);
+    const message = await channel.messages.fetch(order.notifyMessageId);
+    const existingEmbed = message.embeds[0];
+    if (!existingEmbed) return;
+
+    const updatedEmbed = EmbedBuilder.from(existingEmbed).addFields({
+      name: '🟡 ผู้ซื้อแจ้งว่าโอนเงินแล้ว',
+      value:
+        'ยังไม่ใช่การยืนยันว่าเงินเข้าจริงนะครับ — เช็คยอดเข้าบัญชีพร้อมเพย์ของคุณก่อน ' +
+        'แล้วค่อยกดปุ่ม "✅ ยืนยันได้รับเงินแล้ว" ด้านล่างทันทีที่เห็นเงินเข้าจริงครับ',
+    });
+
+    // ไม่ส่ง components ในนี้เลย — discord.js edit() แบบไม่ส่ง field ไหนมา จะ "คงค่าเดิม"
+    // ของ field นั้นไว้ (ปุ่มยืนยันเดิมเลยยังอยู่ ไม่หายไปไหน)
+    await message.edit({ embeds: [updatedEmbed] });
+  } catch (error) {
+    console.warn(`[marketplace] แก้ DM แจ้งผู้ขายว่าผู้ซื้อโอนแล้วไม่สำเร็จ (orderId: ${order.id}):`, error.message);
   }
 }
 

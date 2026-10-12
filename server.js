@@ -108,6 +108,8 @@ const {
   getListing,
   getSeller,
   createOrder,
+  getOrder,
+  markOrderBuyerPaid,
   saveSellerPromptPay,
   createListing,
   listSellerListings,
@@ -578,6 +580,42 @@ function createWebhookServer(client) {
       qrDataUri: `data:image/png;base64,${qrBuffer.toString('base64')}`,
       sellerNotified: notifyResult.notified,
     });
+  });
+
+  // 🆕 [12 ต.ค. 2569] POST /api/marketplace/orders/:id/mark-paid — ผู้ซื้อกดปุ่ม
+  // "✅ ฉันจ่ายแล้ว" ใน payModal หลังสแกน QR จ่ายเงิน
+  //
+  // ⚠️ นี่ "ไม่ใช่" การยืนยันว่าเงินเข้าบัญชีผู้ขายจริง — บอทไม่มีทางรู้เองอยู่ดี (ไม่ได้ต่อ
+  // API ธนาคาร) การยืนยันจริงยังต้องรอผู้ขายกด "ยืนยันได้รับเงินแล้ว" ใน DM เหมือนเดิมทุก
+  // อย่าง จุดประสงค์ของปุ่มนี้คือสร้าง "audit trail 2 ฝั่ง" (ผู้ซื้อบอกว่าโอนแล้วเมื่อไหร่ vs
+  // ผู้ขายกดยืนยันเมื่อไหร่) เผื่อมีข้อพิพาททีหลัง เช่นผู้ซื้อบอกว่าโอนไปตั้งนานแล้วแต่ผู้ขาย
+  // ไม่กดยืนยันสักที — สภา LLM Council แนะนำให้ทำจุดนี้ก่อนเรื่องช่องทางจ่ายเงินอื่นๆ
+  //
+  // ไม่ใช้ requireAuth ห่อ (เหมือน /buy ด้านบน) เพราะ endpoint นี้ก็ถูกเรียกด้วย fetch()
+  // จากฝั่งเบราว์เซอร์เหมือนกัน เช็ค req.session.user ตรงๆ แล้วตอบ 401 เป็น JSON แทน
+  app.post('/api/marketplace/orders/:id/mark-paid', async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'not_logged_in' });
+    }
+
+    const order = getOrder(String(req.params.id || '').toUpperCase());
+    if (!order) {
+      return res.status(404).json({ error: 'order_not_found' });
+    }
+
+    // ต้องเป็นผู้ซื้อของออร์เดอร์นี้เท่านั้น — กันคนอื่นมากดแทน/ปั่นข้อมูลมั่วๆ
+    if (order.buyerId !== req.session.user.id) {
+      return res.status(403).json({ error: 'not_your_order' });
+    }
+
+    const updatedOrder = markOrderBuyerPaid(order.id);
+
+    // แก้ DM เดิมที่แจ้งผู้ขายให้โชว์เพิ่มว่าผู้ซื้อแจ้งว่าโอนแล้ว — ไม่บล็อกการตอบกลับ
+    // ผู้ซื้อถ้าแก้ DM ไม่สำเร็จ (ดูเหตุผลเต็มๆ ในคอมเมนต์ของฟังก์ชันนี้ใน commands/marketplace.js)
+    const marketplaceCommand = client.commands.get('marketplace');
+    await marketplaceCommand.notifyBuyerMarkedPaid(client, updatedOrder);
+
+    res.json({ ok: true, buyerMarkedPaidAt: updatedOrder.buyerMarkedPaidAt });
   });
 
   // ─────────────────────────────────────────────────────────────────────

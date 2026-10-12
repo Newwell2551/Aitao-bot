@@ -616,7 +616,13 @@
         <div style="font-size:12px;color:#9aa2c4;margin-top:16px;line-height:1.7;">สแกนด้วยแอปธนาคารแล้วจ่ายได้เลยครับ ยอดเงินฝังอยู่ใน QR แล้ว พอผู้ขายกดยืนยันว่าได้รับเงินแล้วจริง ระบบจะส่งของ/ข้อความติดต่อกลับให้คุณทาง DM ในดิสคอร์ดอัตโนมัติ</div>
         <div id="payOrderId" style="font-size:11px;color:#6b7394;margin-top:10px;"></div>
         <div id="payNotifyWarning" style="display:none;font-size:11.5px;color:#e0b45a;margin-top:10px;line-height:1.6;">⚠️ แจ้งผู้ขายอัตโนมัติไม่สำเร็จ (อาจปิดรับ DM) ถ้ารอนานผิดปกติ ลองทักผู้ขายเองโดยตรงได้ครับ</div>
-        <button type="button" onclick="closePayModal()" style="width:100%;height:42px;margin-top:18px;border-radius:999px;border:1px solid #262f4d;background:rgba(19,26,46,0.6);color:#c3c8e6;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">ปิดหน้าต่างนี้</button>
+        <!-- 🆕 [12 ต.ค. 2569] ปุ่ม "ฉันจ่ายแล้ว" — ไม่ใช่การยืนยันว่าเงินเข้าผู้ขายจริงนะ
+             (บอทไม่มีทางรู้ได้เอง) แค่ "แจ้งผู้ขาย" ว่าโอนไปแล้ว ช่วยให้ผู้ขายเช็คไวขึ้น
+             และสร้าง audit trail 2 ฝั่งไว้เผื่อมีข้อพิพาท (ดู markOrderBuyerPaid ใน
+             utils/marketplaceStorage.js) — การส่งของจริงยังรอผู้ขายกดยืนยันแยกเหมือนเดิม -->
+        <button type="button" id="payMarkPaidBtn" onclick="markCurrentOrderPaid()" style="width:100%;height:42px;margin-top:16px;border-radius:999px;border:none;background:#4b8f87;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✅ ฉันจ่ายแล้ว</button>
+        <div id="payMarkPaidNote" style="display:none;font-size:11.5px;color:#7fc9c0;margin-top:10px;line-height:1.6;">✅ แจ้งผู้ขายแล้วว่าคุณโอนเงินแล้วครับ รอผู้ขายกดยืนยันรับเงิน แล้วจะได้รับของ/ข้อความติดต่อกลับทาง DM อัตโนมัติ</div>
+        <button type="button" onclick="closePayModal()" style="width:100%;height:42px;margin-top:10px;border-radius:999px;border:1px solid #262f4d;background:rgba(19,26,46,0.6);color:#c3c8e6;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">ปิดหน้าต่างนี้</button>
       </div>
     </div>
   </div>
@@ -1348,11 +1354,24 @@
 
   // เปิด payModal โชว์ QR ที่ POST /buy ส่งกลับมา (qrDataUri เป็น base64 data URI ใช้ใส่
   // src ของ <img> ได้ตรงๆ เลย ไม่ต้องอัปโหลด/โฮสต์ไฟล์ไหนเพิ่ม)
+  //
+  // 🆕 [12 ต.ค. 2569] เก็บ order.orderId ไว้ใน currentOrderId ด้วย — ปุ่ม "ฉันจ่ายแล้ว"
+  // ต้องรู้ว่าออร์เดอร์ไหนกำลังเปิดอยู่ตอนกด (ดู markCurrentOrderPaid ด้านล่าง) และรีเซ็ต
+  // สถานะปุ่มนั้นกลับเป็นปกติทุกครั้งที่เปิด modal ใหม่ (เผื่อ modal เดิมค้างสถานะ "กดแล้ว"
+  // จากออร์เดอร์ก่อนหน้า)
+  var currentOrderId = null;
+
   function openPayModal(order, product) {
+    currentOrderId = order.orderId;
     document.getElementById('payAmount').textContent = '฿' + order.priceThb;
     document.getElementById('payQrImg').src = order.qrDataUri;
     document.getElementById('payOrderId').textContent = 'รหัสออร์เดอร์: ' + order.orderId;
     document.getElementById('payNotifyWarning').style.display = order.sellerNotified ? 'none' : 'block';
+    var markPaidBtn = document.getElementById('payMarkPaidBtn');
+    markPaidBtn.disabled = false;
+    markPaidBtn.style.opacity = '1';
+    markPaidBtn.textContent = '✅ ฉันจ่ายแล้ว';
+    document.getElementById('payMarkPaidNote').style.display = 'none';
     document.getElementById('payModal').style.display = 'flex';
     closeProductDetail(); // ปิด modal รายละเอียดสินค้าไปก่อน กันซ้อนกัน 2 modal
   }
@@ -1363,6 +1382,39 @@
 
   function payModalBackdropClick(e) {
     if (e.target.id === 'payModal') closePayModal();
+  }
+
+  // 🆕 [12 ต.ค. 2569] ปุ่ม "ฉันจ่ายแล้ว" — เรียก POST /api/marketplace/orders/:id/mark-paid
+  // จริง (ไม่ใช่แค่ UI mockup แบบ submitReport/contactSeller) ไปแจ้งผู้ขายว่าผู้ซื้อบอกว่า
+  // โอนแล้ว สร้าง audit trail ไว้เผื่อมีข้อพิพาท — กดได้ครั้งเดียวต่อ modal (กันกดรัวๆ)
+  function markCurrentOrderPaid() {
+    if (!currentOrderId) return;
+    var btn = document.getElementById('payMarkPaidBtn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.textContent = 'กำลังแจ้ง...';
+
+    fetch('/api/marketplace/orders/' + encodeURIComponent(currentOrderId) + '/mark-paid', { method: 'POST' })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok) {
+          showBuyErrorToast('แจ้งผู้ขายไม่สำเร็จ ลองใหม่อีกครั้งครับ');
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.textContent = '✅ ฉันจ่ายแล้ว';
+          return;
+        }
+        btn.textContent = '✅ แจ้งแล้ว';
+        document.getElementById('payMarkPaidNote').style.display = 'block';
+      })
+      .catch(function (err) {
+        console.error('[marketplace] แจ้งผู้ขายว่าจ่ายแล้วไม่สำเร็จ:', err);
+        showBuyErrorToast('เชื่อมต่อไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วลองใหม่ครับ');
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.textContent = '✅ ฉันจ่ายแล้ว';
+      });
   }
 
   // 🆕 [26 ก.ย. 2569] เอาฟังก์ชัน carousel "ร้านค้าแนะนำ"/"ร้านค้ามาใหม่" ออกแล้ว
