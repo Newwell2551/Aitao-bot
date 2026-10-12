@@ -109,7 +109,9 @@ const {
   getSeller,
   createOrder,
   getOrder,
+  getSellerStats,
   markOrderBuyerPaid,
+  createReport,
   saveSellerPromptPay,
   createListing,
   listSellerListings,
@@ -484,6 +486,10 @@ function createWebhookServer(client) {
       listActiveListings().map(async (item) => {
         const seller = getSeller(item.sellerId);
         const { imageUrl } = await resolveListingAssets(client, item);
+        // 🆕 [12 ต.ค. 2569] ส่งจำนวนออเดอร์ที่ร้านนี้ขายสำเร็จแล้ว (ยืนยันรับเงินจริง)
+        // ออกไปด้วย — เอาไปแทนที่ rating/reviews ปลอมๆ เดิมบนหน้าเว็บ เป็นคะแนนความ
+        // น่าเชื่อถือร้านแบบข้อมูลจริง (ดู getSellerStats ใน utils/marketplaceStorage.js)
+        const { completedSales } = getSellerStats(item.sellerId);
         return {
           id: item.id,
           title: item.title,
@@ -494,6 +500,7 @@ function createWebhookServer(client) {
           type: item.type,
           imageUrl,
           sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
+          sellerCompletedSales: completedSales,
           createdAt: item.createdAt,
         };
       })
@@ -509,6 +516,9 @@ function createWebhookServer(client) {
     }
     const seller = getSeller(listing.sellerId);
     const { imageUrl } = await resolveListingAssets(client, listing);
+    // 🆕 [12 ต.ค. 2569] เหมือนกับ endpoint รายการด้านบน — แนบจำนวนขายสำเร็จของร้านนี้
+    // ไปด้วย ให้หน้า product detail โชว์เป็นคะแนนความน่าเชื่อถือร้านแทนของเดิมได้
+    const { completedSales } = getSellerStats(listing.sellerId);
     res.json({
       id: listing.id,
       title: listing.title,
@@ -519,6 +529,7 @@ function createWebhookServer(client) {
       type: listing.type,
       imageUrl,
       sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
+      sellerCompletedSales: completedSales,
     });
   });
 
@@ -616,6 +627,72 @@ function createWebhookServer(client) {
     await marketplaceCommand.notifyBuyerMarkedPaid(client, updatedOrder);
 
     res.json({ ok: true, buyerMarkedPaidAt: updatedOrder.buyerMarkedPaidAt });
+  });
+
+  // 🆕 [12 ต.ค. 2569] POST /api/marketplace/reports — ผู้ซื้อกดส่งรายงานผู้ขาย/ประกาศ
+  // จากปุ่ม 🚩 บนหน้า product detail (ของเดิม submitReport() ในหน้าเว็บเป็น UI mockup
+  // client-side เฉยๆ ไม่มี backend จริงรองรับ — ฟีเจอร์ความปลอดภัย #4 จาก 4 ข้อที่คุยกัน
+  // ไว้ตอนเข้าสภา LLM Council เรื่องช่องทางจ่ายเงิน)
+  //
+  // ใช้ express.json({ limit: '15mb' }) เฉพาะ route นี้ (ไม่ใช่ global) เพราะผู้ซื้อแนบ
+  // รูป/วิดีโอหลักฐานมาเป็น base64 data URL ในตัว JSON ได้สูงสุด 4 ไฟล์ (ดู
+  // REPORT_EVIDENCE_MAX ใน public/marketplace.html) — 15mb กันพอสำหรับรูปสกรีนช็อตปกติ
+  // (จำกัดต่อไฟล์อีกชั้นด้านล่างด้วยที่ 8MB กันไฟล์เดี่ยวใหญ่ผิดปกติ)
+  //
+  // ไม่ใช้ requireAuth ห่อ (เหตุผลเดียวกับ /buy และ /mark-paid ด้านบน) เช็ค
+  // req.session.user ตรงๆ แล้วตอบ 401 เป็น JSON แทน
+  app.post('/api/marketplace/reports', express.json({ limit: '15mb' }), async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/marketplace')}` });
+    }
+
+    const { listingId, reasonId, reasonLabel, detail, evidence } = req.body || {};
+    if (!listingId || !reasonId || !reasonLabel) {
+      return res.status(400).json({ error: 'missing_fields' });
+    }
+
+    // ยังสร้างรายงานได้แม้หาประกาศเดิมไม่เจอแล้ว (เผื่อผู้ขายปิด/ลบประกาศไปก่อนที่จะมีคน
+    // มารายงานทัน) — แค่ไม่มี sellerId แน่ชัดให้แนบไปกับการ์ดแจ้งเตือนเท่านั้น
+    const listing = getListing(String(listingId).toUpperCase());
+    const sellerId = listing ? listing.sellerId : null;
+
+    // แปลง evidence (base64 data URL จากฝั่งเบราว์เซอร์) เป็น Buffer จริง เตรียมส่งแนบไปกับ
+    // การ์ดแจ้งเตือนในห้องรายงานของเซิร์ฟควบคุม — เช็คให้แน่ใจว่าเป็น data URL รูป/วิดีโอจริง
+    // และจำกัดไม่เกิน 8MB ต่อไฟล์ กันไฟล์แปลกๆ/ใหญ่ผิดปกติหลุดเข้ามา
+    const evidenceList = Array.isArray(evidence) ? evidence.slice(0, 4) : [];
+    const attachments = [];
+    for (const item of evidenceList) {
+      if (!item || typeof item.dataUrl !== 'string') continue;
+      const match = /^data:(image|video)\/[a-zA-Z0-9.+-]+;base64,(.+)$/.exec(item.dataUrl);
+      if (!match) continue;
+      const buffer = Buffer.from(match[2], 'base64');
+      if (buffer.length > 8 * 1024 * 1024) continue;
+      attachments.push({ attachment: buffer, name: typeof item.name === 'string' ? item.name.slice(0, 100) : 'evidence' });
+    }
+
+    const report = createReport({
+      listingId: String(listingId).toUpperCase(),
+      sellerId,
+      reporterId: req.session.user.id,
+      reasonId: String(reasonId).slice(0, 40),
+      reasonLabel: String(reasonLabel).slice(0, 200),
+      detail: typeof detail === 'string' ? detail.slice(0, 1000) : '',
+      evidenceCount: attachments.length,
+    });
+
+    // โพสต์เข้าเซิร์ฟควบคุมแบบไม่บล็อกการตอบกลับผู้รายงาน — รายงานถูกบันทึกลงไฟล์แล้วแน่ๆ
+    // ต่อให้โพสต์เข้าดิสคอร์ดไม่สำเร็จ (ดูเหตุผลเต็มๆ ในคอมเมนต์ notifyMarketplaceReport
+    // ใน commands/marketplace.js) ก็ไม่ควรทำให้ผู้รายงานเห็น error ไปด้วย
+    const marketplaceCommand = client.commands.get('marketplace');
+    const notifyResult = await marketplaceCommand.notifyMarketplaceReport(
+      client,
+      report,
+      listing,
+      { id: req.session.user.id, username: req.session.user.username },
+      attachments
+    );
+
+    res.json({ ok: true, reportId: report.id, notified: notifyResult.posted });
   });
 
   // ─────────────────────────────────────────────────────────────────────

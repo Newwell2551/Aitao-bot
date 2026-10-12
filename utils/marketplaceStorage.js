@@ -60,6 +60,26 @@
 //       "notifyChannelId": null,          ← ห้อง DM/แชแนลที่โพสต์การ์ด "รอยืนยันรับเงิน" ไว้
 //       "notifyMessageId": null           ← พิกัดข้อความการ์ดนั้น (ไว้แก้ข้อความตอนกดยืนยันแล้ว)
 //     }
+//   },
+//   "reports": {                          ← 🆕 [12 ต.ค. 2569] ฟีเจอร์ความปลอดภัย #4 — ผู้ซื้อ
+//                                            กดรายงานประกาศ/ผู้ขายจากหน้าเว็บ (ของเดิมเป็น UI
+//                                            mockup เฉยๆ ไม่มี backend — ตอนนี้บันทึกจริงแล้ว)
+//     "<reportId>": {
+//       "id": "R5K2P1",
+//       "listingId": "L1A2B3",
+//       "sellerId": "123456789012345",     ← null ได้ถ้าหาประกาศเดิมไม่เจอแล้วตอนรายงาน (ถูกลบไปก่อน)
+//       "reporterId": "987654321098765",   ← Discord user ID ของคนกดรายงาน (ต้อง login ก่อนถึงรายงานได้)
+//       "reasonId": "r2",                  ← ตรงกับ REPORT_REASONS ใน public/marketplace.html
+//       "reasonLabel": "โอนเงินแล้วไม่ได้รับสินค้า (โดนโกง)",
+//       "detail": "...",                   ← ข้อความเพิ่มเติมที่ผู้รายงานกรอกเอง (ไม่บังคับ)
+//       "evidenceCount": 2,                ← จำนวนไฟล์หลักฐานที่แนบมา (ตัวไฟล์จริงส่งแนบไปกับ
+//                                            ข้อความแจ้งเตือนในห้องรายงานของเซิร์ฟควบคุมเลย ไม่ได้
+//                                            เก็บ URL ไว้ที่นี่ เพราะดูได้จากห้องนั้นอยู่แล้ว)
+//       "status": "open",                  ← "open" (ยังไม่ตรวจสอบ) | "resolved" (จัดการแล้ว) —
+//                                            ตอนนี้ยังไม่มีปุ่มเปลี่ยนสถานะจากเว็บ ต้องแก้ไฟล์ตรงๆ
+//                                            ถ้าจะปิดเคสในระบบ (เอาไว้ทำปุ่มในแดชบอร์ดทีหลังได้)
+//       "createdAt": "2026-..."
+//     }
 //   }
 // }
 //
@@ -121,6 +141,7 @@ function emptyData() {
     sellers: {},
     listings: {},
     orders: {},
+    reports: {},
   };
 }
 
@@ -324,6 +345,20 @@ function getOrder(orderId) {
 }
 
 /**
+ * ดึงสถิติความน่าเชื่อถือของร้านค้า (ผู้ขาย) — ใช้โชว์เป็นคะแนนความน่าเชื่อถือ
+ * บนหน้าเว็บ Marketplace แทนระบบ rating ปลอมๆ เดิม (ของเดิมไม่มีข้อมูลจริง)
+ * นับจากจำนวนคำสั่งซื้อที่ผู้ขายกดยืนยันรับเงินแล้วจริง (status === 'confirmed')
+ * @param {string} sellerId
+ * @returns {{ completedSales: number }}
+ */
+function getSellerStats(sellerId) {
+  const data = readAll();
+  const sellerOrders = Object.values(data.orders).filter((order) => order.sellerId === sellerId);
+  const completedSales = sellerOrders.filter((order) => order.status === 'confirmed').length;
+  return { completedSales };
+}
+
+/**
  * บันทึกพิกัดข้อความ "รอยืนยันรับเงิน" ที่โพสต์แจ้งผู้ขาย — ไว้แก้ข้อความเดิมตอนกด
  * ยืนยันแล้ว (เหมือน syncCodeReportMessage ของระบบ referral)
  * @param {string} orderId
@@ -412,6 +447,35 @@ async function resolveListingAssets(client, listing) {
   return { imageUrl, digitalFileUrl };
 }
 
+// ── รายงานผู้ขาย/ประกาศ (reports) ──────────────────────────────────────
+
+/**
+ * 🆕 [12 ต.ค. 2569] บันทึกรายงานใหม่ — เรียกจาก POST /api/marketplace/reports ใน
+ * server.js ตอนผู้ซื้อกดปุ่ม "ส่งรายงาน" จากหน้าเว็บจริง (ของเดิมเป็น mockup client-side
+ * เฉยๆ) ไม่ได้เก็บไฟล์หลักฐานไว้ที่นี่ (เก็บแค่จำนวน) เพราะตัวไฟล์จริงถูกส่งแนบไปกับ
+ * ข้อความแจ้งเตือนในห้องรายงานของเซิร์ฟควบคุมเลย (ดู notifyMarketplaceReport ใน
+ * commands/marketplace.js) — เปิดดูได้ตรงนั้น ไม่ต้องมาเก็บ URL ซ้ำที่นี่อีกชั้น
+ * @param {{ listingId: string, sellerId: string|null, reporterId: string, reasonId: string, reasonLabel: string, detail: string, evidenceCount: number }} info
+ */
+function createReport(info) {
+  const data = readAll();
+  const id = generateId(data.reports);
+  data.reports[id] = {
+    id,
+    listingId: info.listingId,
+    sellerId: info.sellerId || null,
+    reporterId: info.reporterId,
+    reasonId: info.reasonId,
+    reasonLabel: info.reasonLabel,
+    detail: info.detail || '',
+    evidenceCount: info.evidenceCount || 0,
+    status: 'open',
+    createdAt: new Date().toISOString(),
+  };
+  writeAll(data);
+  return data.reports[id];
+}
+
 module.exports = {
   PROMPTPAY_ID_PATTERN,
   CATEGORIES,
@@ -426,7 +490,9 @@ module.exports = {
   setListingStatus,
   createOrder,
   getOrder,
+  getSellerStats,
   saveOrderNotifyMessage,
   confirmOrder,
   markOrderBuyerPaid,
+  createReport,
 };

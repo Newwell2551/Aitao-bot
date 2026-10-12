@@ -30,6 +30,8 @@ const {
   ButtonBuilder,
   ButtonStyle,
   AttachmentBuilder,
+  ChannelType,
+  PermissionsBitField,
 } = require('discord.js');
 const {
   PROMPTPAY_ID_PATTERN,
@@ -175,6 +177,9 @@ module.exports = {
   // 🆕 [12 ต.ค. 2569] ให้ server.js เรียกใช้ตอนผู้ซื้อกด "ฉันจ่ายแล้ว" บนหน้าเว็บ — แก้ DM
   // เดิมที่แจ้งผู้ขายให้โชว์ว่าผู้ซื้อแจ้งมาแล้ว (ไม่ใช่การยืนยันเงินเข้าจริง แค่แจ้งเฉยๆ)
   notifyBuyerMarkedPaid,
+  // 🆕 [12 ต.ค. 2569] ให้ server.js เรียกใช้ตอนผู้ซื้อกดส่งรายงานผู้ขาย/ประกาศจากหน้าเว็บ —
+  // โพสต์การ์ดแจ้งเข้าห้อง #marketplace-reports ของเซิร์ฟควบคุม (ดูคอมเมนต์เต็มๆ ด้านล่าง)
+  notifyMarketplaceReport,
 };
 
 /**
@@ -471,6 +476,84 @@ async function notifyBuyerMarkedPaid(client, order) {
     await message.edit({ embeds: [updatedEmbed] });
   } catch (error) {
     console.warn(`[marketplace] แก้ DM แจ้งผู้ขายว่าผู้ซื้อโอนแล้วไม่สำเร็จ (orderId: ${order.id}):`, error.message);
+  }
+}
+
+/**
+ * 🆕 [12 ต.ค. 2569] หาห้อง #marketplace-reports ในเซิร์ฟควบคุม (GUILD_ID ใน .env — ดู
+ * claude/owner-command-security-hardening.md) ถ้ายังไม่มีให้สร้างใหม่ ปิดไม่ให้ @everyone
+ * มองเห็น (น้องหนาวเห็นได้เองอัตโนมัติเพราะมีสิทธิ์ Administrator ของเซิร์ฟนั้น ซึ่ง bypass
+ * permission overwrite ได้เสมอ — หลักการเดียวกับห้อง #referral-earnings ของระบบ /referral)
+ * ผู้ขายที่ถูกรายงาน "ไม่เห็น" ห้องนี้เลย เพราะไม่ได้อยู่ในเซิร์ฟควบคุมนี้ด้วยซ้ำ
+ * @param {import('discord.js').Guild} guild เซิร์ฟควบคุม
+ */
+async function getOrCreateMarketplaceReportChannel(guild) {
+  const CHANNEL_NAME = 'marketplace-reports';
+  const existing = guild.channels.cache.find(
+    (c) => c.name === CHANNEL_NAME && c.type === ChannelType.GuildText
+  );
+  if (existing) return existing;
+  return guild.channels.create({
+    name: CHANNEL_NAME,
+    type: ChannelType.GuildText,
+    topic: 'รายงานปัญหา/ผู้ขายจาก Marketplace ของ Aitao Bot — ห้องนี้แอดมินเห็นได้เองเท่านั้น',
+    permissionOverwrites: [
+      { id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+    ],
+  });
+}
+
+/**
+ * 🆕 [12 ต.ค. 2569] รันตอนผู้ซื้อกดส่งรายงานจากหน้าเว็บ (ของเดิมเป็น UI mockup client-side
+ * เฉยๆ — ดู submitReport() ใน public/marketplace.html, ตอนนี้ยิง API จริงที่ server.js
+ * แล้วเรียกฟังก์ชันนี้ต่อ) — โพสต์การ์ดแจ้งรายงานเข้าห้อง #marketplace-reports ของ
+ * เซิร์ฟควบคุม พร้อมไฟล์หลักฐาน (ถ้ามี) แนบไปกับข้อความนี้ตรงๆ เลย ไม่ได้เก็บผ่าน
+ * asset-storage แบบรูปสินค้า เพราะแค่ให้แอดมินเปิดดูในห้องนี้ครั้งเดียวพอ ไม่ต้อง resolve
+ * URL สดใหม่ซ้ำทีหลังแบบที่ต้องโชว์ซ้ำๆบนหน้าเว็บ
+ *
+ * จงใจทำให้ "ไม่ throw" แม้โพสต์เข้าเซิร์ฟควบคุมไม่สำเร็จ (เช่นยังไม่ตั้ง GUILD_ID ใน .env,
+ * บอทไม่มีสิทธิ์สร้างห้อง) เพราะรายงานถูกบันทึกลง data/marketplace.json แล้วอยู่ดี (ดู
+ * createReport ใน utils/marketplaceStorage.js) แค่ไม่มีการ์ดเด้งแจ้งทันทีเฉยๆ — ไม่ควร
+ * ทำให้ผู้รายงานเห็น error ทั้งที่รายงานของเขาถูกบันทึกสำเร็จแล้วจริงๆ
+ * @param {import('discord.js').Client} client
+ * @param {object} report ออบเจกต์รายงานจาก createReport()
+ * @param {object|null} listing listing ที่ถูกรายงาน (null ได้ถ้าถูกลบไปก่อนแล้ว)
+ * @param {{ id: string, username: string }} reporterInfo ข้อมูลผู้รายงาน (จาก req.session.user)
+ * @param {Array<{ attachment: Buffer, name: string }>} attachments ไฟล์หลักฐาน (สูงสุด 4 ไฟล์ กรองขนาด/ชนิดแล้วจาก server.js)
+ * @returns {Promise<{ posted: boolean }>}
+ */
+async function notifyMarketplaceReport(client, report, listing, reporterInfo, attachments) {
+  const guildId = process.env.GUILD_ID;
+  if (!guildId) {
+    console.warn('[marketplace report] ไม่มี GUILD_ID ใน .env เลยส่งรายงานเข้าเซิร์ฟควบคุมไม่ได้ (รายงานถูกบันทึกไว้แล้วนะครับ เช็คย้อนหลังได้จาก data/marketplace.json)');
+    return { posted: false };
+  }
+
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const channel = await getOrCreateMarketplaceReportChannel(guild);
+
+    const embed = new EmbedBuilder()
+      .setColor(0xe07a7a)
+      .setTitle('🚩 มีคนรายงานประกาศขายใน Marketplace')
+      .addFields(
+        { name: 'สินค้า', value: listing ? `${listing.title} (รหัส ${listing.id})` : `(หาประกาศไม่เจอแล้ว — รหัสเดิม: ${report.listingId})` },
+        { name: 'ผู้ขาย', value: report.sellerId ? `<@${report.sellerId}> (${report.sellerId})` : 'ไม่ทราบ (ประกาศถูกลบไปแล้ว)' },
+        { name: 'ผู้รายงาน', value: `${reporterInfo.username} (${reporterInfo.id})` },
+        { name: 'เหตุผล', value: report.reasonLabel },
+        { name: 'รายละเอียดเพิ่มเติม', value: report.detail || '(ไม่ได้ระบุ)' },
+        { name: 'รหัสรายงาน', value: report.id }
+      )
+      .setTimestamp(new Date(report.createdAt));
+
+    await channel.send({
+      embeds: [embed],
+      files: attachments && attachments.length ? attachments : undefined,
+    });
+    return { posted: true };
+  } catch (error) {
+    console.error(`[marketplace report] โพสต์รายงาน ${report.id} เข้าเซิร์ฟควบคุมไม่สำเร็จ:`, error);
+    return { posted: false };
   }
 }
 

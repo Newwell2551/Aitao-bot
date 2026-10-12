@@ -38,6 +38,31 @@ function statusBadgeHtml(status) {
 }
 
 /**
+ * 🆕 [12 ต.ค. 2569] ข้อความ disclosure — Feature ความปลอดภัย #3 จาก 4 ข้อที่คุยกันไว้
+ * ตอนเข้าสภา LLM Council เรื่องช่องทางจ่ายเงิน (ดูรายละเอียดเต็มๆ ใน claude project doc
+ * "marketplace-web-dashboard-build-notes.md") บอกผู้ขายให้ชัดเจนตั้งแต่ก่อนลงขายว่า:
+ *   1. นี่คือตลาดซื้อขายกันเอง (peer-to-peer) บอทไม่ได้ถือเงินแทนใคร ไม่ได้ตรวจสอบตัวตน
+ *      ผู้ซื้อ-ผู้ขาย และไม่ได้เป็นคู่สัญญาในการซื้อขายนี้เลย
+ *   2. ผู้ขายต้องส่งของ/บริการตามที่ตกลงไว้จริง ถ้าไม่ส่งถือว่าผิดเงื่อนไขการใช้งาน
+ *      Marketplace นี้ (อาจถูกระงับสิทธิ์การขายได้ — ดูฟีเจอร์ #4 ปุ่มรายงานผู้ขาย)
+ *   3. ปัดความรับผิดของทีมงาน/บอทจากข้อพิพาทระหว่างผู้ใช้ — ไม่ใช่คำแนะนำทางกฎหมาย
+ *      แค่ข้อความแจ้งเงื่อนไขการใช้งานตรงๆ ให้ผู้ขายเข้าใจก่อนเริ่มขายเท่านั้น
+ * โชว์แบบ "ถาวร" ไม่ใช่ปิดได้แล้วจบ (ต่างจาก bannerHtml ที่หายไปเองตาม query string)
+ * เพราะอยากให้เห็นทุกครั้งที่เข้าหน้านี้ ไม่ใช่เห็นครั้งเดียวแล้วลืม
+ */
+function disclosureHtml() {
+  return `<div style="display:flex;align-items:flex-start;gap:10px;background:rgba(154,162,196,0.08);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:28px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex:0 0 auto;margin-top:2px;"><circle cx="12" cy="12" r="10" stroke="#9aa2c4" stroke-width="1.6"/><path d="M12 8h.01M11 11h1v6h1" stroke="#9aa2c4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.7;">
+      <strong style="color:var(--text);">Before you sell:</strong> this Marketplace is peer-to-peer — buyers pay your PromptPay directly and
+      Milo Bot never holds or sees the money, verifies anyone's identity, or acts as a party to the sale.
+      You're responsible for actually delivering what you list. Not delivering, or misrepresenting an item,
+      can get your listings removed or your seller access suspended. Buyers can also report sellers directly.
+    </div>
+  </div>`;
+}
+
+/**
  * แบนเนอร์แจ้งผล (สำเร็จ/ผิดพลาด) — pattern เดียวกับหน้า Language/Premium (query string
  * ?saved=1 / ?error=...) ชั่วคราว หายไปทันทีที่โหลดหน้าใหม่แบบไม่มี query พวกนี้
  */
@@ -318,6 +343,7 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
     </div>
 
     ${bannerHtml({ saved, error })}
+    ${disclosureHtml()}
     ${promptPaySectionHtml(seller, guild.id)}
     ${newListingFormHtml(categories, canSell, guild.id)}
     ${myListingsSectionHtml(listings, categories, guild.id)}

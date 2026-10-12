@@ -31,8 +31,32 @@
         (ของเดิมที่เป็นมอคอัพมีเลข rating/reviews ปลอมๆ ไว้โชว์ดีไซน์เท่านั้น)
       - แถบทอง "ตัวอย่างพรีวิว" (.preview-strip) เปลี่ยนข้อความเป็นอธิบายวิธี
         จ่ายเงินแทน (ไม่ใช่บอกว่าเป็นของปลอมแล้ว เพราะตอนนี้เป็นของจริง)
-      - ปุ่มรายงานเนื้อหา (submitReport) ยังเป็น client-side เฉยๆ ไม่มี
-        backend รองรับเหมือนเดิม — บอกพี่ได้ถ้าอยากต่อจุดนี้ด้วยครับ
+      - ปุ่มรายงานเนื้อหา (submitReport) ตอนอัปเดตนี้ยังเป็น client-side เฉยๆ
+        ไม่มี backend รองรับ — ดูอัปเดต 12 ต.ค. 2569 ด้านล่าง ตอนนี้ต่อ backend
+        จริงแล้วครับ
+
+    🆕 อัปเดต 12 ต.ค. 2569 (ฟีเจอร์ #4) — ปุ่มรายงานผู้ขาย/ประกาศ (submitReport)
+    ต่อ backend จริงแล้ว (ของเดิมด้านบนเป็น client-side mockup เฉยๆ):
+      - กดส่งรายงาน → POST /api/marketplace/reports จริง (ต้อง login ก่อน ไม่งั้น
+        เด้งไปหน้า login) → บันทึกลง data/marketplace.json (ดู createReport ใน
+        utils/marketplaceStorage.js) → โพสต์การ์ดแจ้งเข้าห้อง #marketplace-reports
+        ในเซิร์ฟควบคุมของน้องหนาว (ดู notifyMarketplaceReport ใน
+        commands/marketplace.js) พร้อมไฟล์หลักฐานที่แนบมา (ถ้ามี)
+      - ห้องรายงานเห็นได้แค่แอดมินเซิร์ฟควบคุมเท่านั้น ผู้ขายที่ถูกรายงานไม่เห็นเลย
+
+    🆕 อัปเดต 12 ต.ค. 2569 — เพิ่ม "คะแนนความน่าเชื่อถือร้าน" ของจริง (Feature #2
+    จากแผนที่คุยกันไว้ตอนทำ /llm-council เรื่องช่องทางจ่ายเงิน) แทนที่ช่อง
+    rating/review ที่ไม่มีข้อมูลจริงด้านบน:
+      - API /api/marketplace/listings และ /api/marketplace/listings/:id ส่ง
+        field ใหม่ sellerCompletedSales มาด้วย (นับจากจำนวนออเดอร์ที่ร้านนั้น
+        ขายสำเร็จแล้วจริง — ผู้ขายกดยืนยันรับเงินแล้ว ดู getSellerStats() ใน
+        utils/marketplaceStorage.js)
+      - หน้า product detail (#pdmRating) โชว์ "✅ ร้านนี้ขายสำเร็จแล้ว N ครั้ง"
+        ถ้า N > 0 หรือ "🆕 ร้านใหม่ ยังไม่มีประวัติการขาย" ถ้ายังไม่เคยขาย —
+        เป็นข้อมูลจริงทั้งหมด ไม่มีตัวเลขปั้นแต่งแล้วครับ
+      - การ์ดสินค้าบนกริดก็โชว์ "· ขายแล้ว N" เล็กๆ ข้างชื่อร้านด้วย (ถ้า N > 0)
+      - ปุ่มเรียง "คะแนนสูงสุด" ที่ toolbar (เดิมไม่มีผลอะไรเพราะ rating เป็น
+        null ตลอด) ตอนนี้เรียงตาม sellerCompletedSales แทน ใช้งานได้จริงแล้ว
 
     🆕 อัปเดต 26 ก.ย. 2569 — เอาข้อมูลสมมติ/ตั้งเล่นๆ ที่เหลือใน sidebar ออก
     ทั้งหมดแล้วครับ (น้องหนาวแจ้งมาว่ากังวลเรื่องกรรมการเข้ามาดูเว็บจริงแล้วเจอ
@@ -774,6 +798,12 @@
       : 'background:' + catInfo.style.gradient + ';';
     var heroIconHtml = item.imageUrl ? '' : iconSvg;
     var subcatAttr = item.subcategory ? ' data-subcat="' + escapeHtml(item.subcategory) + '"' : '';
+    // 🆕 [12 ต.ค. 2569] ชื่อร้าน + badge ขายสำเร็จ X ครั้ง (ถ้ามี) — ร้านใหม่ (0 ครั้ง) ไม่โชว์
+    // badge ให้รกเปล่าๆ โชว์แค่ชื่อร้านเฉยๆ พอ
+    var sellerLineHtml = escapeHtml(item.sellerName) +
+      (item.sellerCompletedSales > 0
+        ? ' <span style="color:#7fc9c0;">· ขายแล้ว ' + item.sellerCompletedSales + '</span>'
+        : '');
     return (
       '<div class="listing-card" data-id="' + id + '" data-cat="' + escapeHtml(item.category) + '"' + subcatAttr + ' onclick="openProductDetail(\'' + id + '\')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;' + bgStyle + '">' +
         heroIconHtml +
@@ -783,7 +813,7 @@
         '<div style="position:absolute;left:16px;right:16px;bottom:14px;">' +
           '<div style="font-size:14px;font-weight:700;color:#fff;">' + escapeHtml(item.title) + '</div>' +
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">' +
-            '<span style="font-size:11px;color:rgba(255,255,255,0.75);">' + escapeHtml(item.sellerName) + '</span>' +
+            '<span style="font-size:11px;color:rgba(255,255,255,0.75);">' + sellerLineHtml + '</span>' +
             '<span style="font-size:14px;font-weight:700;color:#f4b860;">&#3647;' + item.priceThb + '</span>' +
           '</div>' +
         '</div>' +
@@ -820,12 +850,13 @@
         var cardsHtml = listings.map(function (item) {
           var catInfo = getCategoryStyle(item.category, item.subcategory);
           // เก็บข้อมูลไว้ใน PRODUCTS ให้ครบตามที่ render()/openProductDetail() ต้องใช้
-          // (rating/reviews ไม่มีจริง ใส่ null ไว้ — openProductDetail() จะซ่อนแถวคะแนนเอง)
+          // 🆕 [12 ต.ค. 2569] เปลี่ยนจาก rating/reviews ปลอมๆ (ของเดิมเป็น null เสมอ ไม่มี
+          // ข้อมูลจริง) มาใช้ sellerCompletedSales แทน — นับจำนวนออเดอร์ที่ร้านนี้ขายสำเร็จ
+          // แล้วจริงๆ (ยืนยันรับเงินแล้ว) ใช้โชว์เป็นคะแนนความน่าเชื่อถือร้านที่ไม่โกหกใคร
           PRODUCTS[item.id] = {
             title: item.title,
             seller: item.sellerName,
-            rating: null,
-            reviews: null,
+            sellerCompletedSales: item.sellerCompletedSales || 0,
             price: item.priceThb,
             categoryLabel: catInfo.label,
             gradient: catInfo.style.gradient,
@@ -940,7 +971,9 @@
         if (!pa || !pb) return 0;
         if (currentSort === 'price-asc') return pa.price - pb.price;
         if (currentSort === 'price-desc') return pb.price - pa.price;
-        if (currentSort === 'rating') return (pb.rating - pa.rating) || (pb.reviews - pa.reviews);
+        // 🆕 เดิม sort 'rating' เทียบ p.rating/p.reviews ที่เป็น null เสมอ (ไม่มีผลอะไรเลย)
+        // เปลี่ยนมาเรียงตามจำนวนขายสำเร็จจริงแทน ให้ปุ่ม "คะแนนสูงสุด" มีผลจริงบนกริด
+        if (currentSort === 'rating') return (pb.sellerCompletedSales || 0) - (pa.sellerCompletedSales || 0);
         return 0;
       });
     }
@@ -1069,15 +1102,18 @@
     document.getElementById('pdmTitle').textContent = p.title;
     document.getElementById('pdmSellerAvatar').style.background = p.gradient;
     document.getElementById('pdmSeller').textContent = p.seller;
-    // 🆕 ของจริงยังไม่มีระบบ rating/review เลย (ของ mock เดิมมีตัวเลขปลอมๆ ไว้โชว์ดีไซน์)
-    // เลยซ่อนแถวนี้ไปเฉยๆ ถ้าไม่มีข้อมูลจริง แทนที่จะโชว์ 0.0 (0 รีวิว) หลอกๆ
+    // 🆕 [12 ต.ค. 2569] ของเดิมเป็นระบบ rating/review ปลอมๆ (mock) ที่ไม่มีข้อมูลจริง —
+    // ตอนนี้เปลี่ยนมาโชว์ "คะแนนความน่าเชื่อถือร้าน" จากข้อมูลจริง นับจากจำนวนออเดอร์ที่
+    // ร้านนี้เคยขายสำเร็จแล้ว (ผู้ขายกดยืนยันรับเงินจริง) ร้านใหม่ที่ยังไม่มีประวัติก็โชว์
+    // ข้อความบอกตรงๆ ว่าใหม่ ไม่ใช่ซ่อนแถวนี้ไปเฉยๆ แบบของเดิม
     var ratingEl = document.getElementById('pdmRating');
-    if (p.rating == null) {
-      ratingEl.style.display = 'none';
-      ratingEl.textContent = '';
+    ratingEl.style.display = 'block';
+    if (p.sellerCompletedSales > 0) {
+      ratingEl.textContent = '✅ ร้านนี้ขายสำเร็จแล้ว ' + p.sellerCompletedSales + ' ครั้ง';
+      ratingEl.style.color = '#7fc9c0';
     } else {
-      ratingEl.style.display = 'block';
-      ratingEl.textContent = '★ ' + p.rating.toFixed(1) + ' (' + p.reviews + ' รีวิว)';
+      ratingEl.textContent = '🆕 ร้านใหม่ ยังไม่มีประวัติการขาย — ระวังนิดนึงนะครับ';
+      ratingEl.style.color = '#9aa2c4';
     }
     document.getElementById('pdmPrice').textContent = '฿' + p.price;
     document.getElementById('pdmDesc').textContent = p.desc;
@@ -1242,24 +1278,71 @@
     }
   }
 
+  // 🆕 [12 ต.ค. 2569] เชื่อมกับ backend จริงแล้ว — POST /api/marketplace/reports (ของเดิม
+  // เป็น UI mockup client-side เฉยๆ ไม่มี backend รองรับ — ฟีเจอร์ความปลอดภัย #4 จาก 4 ข้อ
+  // ที่คุยกันไว้ตอนเข้าสภา LLM Council เรื่องช่องทางจ่ายเงิน) ปิด modal ก่อนยิง fetch เหมือน
+  // ของเดิม (toast #pdmToast มี z-index ต่ำกว่า reportModal ถ้าไม่ปิด modal ก่อน toast จะ
+  // โผล่ไปอยู่หลัง modal มองไม่เห็น) ต้อง login ก่อนถึงรายงานได้ (เช็คที่ server.js)
+  var reportSubmitting = false;
   function submitReport() {
-    if (!selectedReportReason) return;
-    var evidenceCount = reportEvidenceFiles.length;
-    closeReportForm();
-    var toast = document.getElementById('pdmToast');
-    var evidenceSuffix = evidenceCount === 0 ? '' : (evidenceCount === 1 ? ' พร้อมไฟล์แนบ' : ' พร้อมไฟล์แนบ ' + evidenceCount + ' ไฟล์');
-    document.getElementById('pdmToastText').textContent = 'ส่งรายงานเรียบร้อยแล้วครับ' + evidenceSuffix + ' ทีมงานจะตรวจสอบต่อไป (ตัวอย่าง)';
-    toast.style.display = 'flex';
-    requestAnimationFrame(function () {
-      toast.style.opacity = '1';
-      toast.style.transform = 'translateX(-50%) translateY(0)';
+    if (!selectedReportReason || reportSubmitting) return;
+    var listingId = currentProductId;
+    if (!listingId) return;
+    reportSubmitting = true;
+
+    var reasonInfo = REPORT_REASONS.filter(function (r) { return r.id === selectedReportReason; })[0];
+    var detail = document.getElementById('reportDetailInput').value.trim();
+    var evidencePayload = reportEvidenceFiles.slice(0, REPORT_EVIDENCE_MAX).map(function (f) {
+      return { dataUrl: f.dataUrl, name: f.name, isVideo: f.isVideo };
     });
-    if (contactToastTimer) clearTimeout(contactToastTimer);
-    contactToastTimer = setTimeout(function () {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(-50%) translateY(10px)';
-      setTimeout(function () { toast.style.display = 'none'; }, 220);
-    }, 2200);
+    var evidenceCount = evidencePayload.length;
+    closeReportForm();
+
+    fetch('/api/marketplace/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        listingId: listingId,
+        reasonId: selectedReportReason,
+        reasonLabel: reasonInfo ? reasonInfo.label : selectedReportReason,
+        detail: detail,
+        evidence: evidencePayload,
+      }),
+    })
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; });
+      })
+      .then(function (result) {
+        if (!result.ok) {
+          if (result.status === 401 && result.data && result.data.loginUrl) {
+            window.location.href = result.data.loginUrl;
+            return;
+          }
+          showBuyErrorToast('ส่งรายงานไม่สำเร็จ ลองใหม่อีกครั้งครับ');
+          return;
+        }
+        var toast = document.getElementById('pdmToast');
+        var evidenceSuffix = evidenceCount === 0 ? '' : (evidenceCount === 1 ? ' พร้อมไฟล์แนบ' : ' พร้อมไฟล์แนบ ' + evidenceCount + ' ไฟล์');
+        document.getElementById('pdmToastText').textContent = 'ส่งรายงานเรียบร้อยแล้วครับ' + evidenceSuffix + ' ทีมงานจะตรวจสอบต่อไปครับ';
+        toast.style.display = 'flex';
+        requestAnimationFrame(function () {
+          toast.style.opacity = '1';
+          toast.style.transform = 'translateX(-50%) translateY(0)';
+        });
+        if (contactToastTimer) clearTimeout(contactToastTimer);
+        contactToastTimer = setTimeout(function () {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateX(-50%) translateY(10px)';
+          setTimeout(function () { toast.style.display = 'none'; }, 220);
+        }, 2200);
+      })
+      .catch(function (err) {
+        console.error('[marketplace] ส่งรายงานไม่สำเร็จ:', err);
+        showBuyErrorToast('เชื่อมต่อไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วลองใหม่ครับ');
+      })
+      .finally(function () {
+        reportSubmitting = false;
+      });
   }
 
   var contactToastTimer = null;
