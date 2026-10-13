@@ -11,9 +11,11 @@
 //   1. ตั้งค่าเลขพร้อมเพย์รับเงิน (บังคับต้องตั้งก่อน ถึงจะลงขายได้ — เตือนด้วยแบนเนอร์
 //      สีทองถ้ายังไม่ตั้ง)
 //   2. ฟอร์ม "ลงขายสินค้าใหม่" — multipart/form-data เพราะมีไฟล์แนบ (รูปปก + ไฟล์ดิจิทัล)
-//      ใช้ JS เล็กๆ แค่โชว์/ซ่อนช่อง subcategory ตามหมวดที่เลือก และโชว์/ซ่อนช่องไฟล์ดิจิทัล
-//      ตาม type ที่เลือก (ไม่ทำแบบ 100% zero-JS เหมือนหน้า Language/Premium เพราะฟอร์มนี้
-//      มีเงื่อนไขเปลี่ยนหน้าตาตามตัวเลือกจริงๆ ต่างจากหน้าอื่นที่เป็นแค่เลือก 1 ใน 2 เฉยๆ)
+//      🆕 [12 ต.ค. 2569] น้องหนาวบอกว่าฟอร์มเดิม (กรอกยาวเป็นลิสต์เดียว) น่าเบื่อ/อ่านยาก
+//      แล้วตอนกรอกก็งงว่าแต่ละช่องจะไปโผล่ตรงไหนบนหน้าเว็บจริง — เปลี่ยนเป็น "wizard" 2
+//      สเต็ป ฝั่งซ้ายโชว์พรีวิวสด (ก็อปสไตล์มาจาก public/marketplace.html เป๊ะๆ) อัปเดต
+//      ทันทีที่พิมพ์/เลือก ฝั่งขวาเป็นฟอร์มของสเต็ปนั้นๆ ดูฟังก์ชัน sellWizardHtml() ด้านล่าง
+//      มีคอมเมนต์อธิบายละเอียดอีกทีว่าทำไมแยกสเต็ปแบบนี้ และทำไมห้ามใส่ required ตรงๆ
 //   3. ตาราง "ประกาศขายของฉัน" — ทุกสถานะ มีปุ่มปิด/เปิดขายใหม่ต่อแถว
 //
 // ⚠️ ไฟล์แนบ (รูปปก/ไฟล์ดิจิทัล) ที่อัปโหลดจากฟอร์มนี้ จะถูกเก็บแบบ "ถาวรจริงๆ" ผ่าน
@@ -24,6 +26,26 @@
 
 const { escapeHtml } = require('./renderServerPicker');
 const { renderDashboardLayout } = require('./dashboardShell');
+
+/**
+ * 🆕 [12 ต.ค. 2569] สี/ไล่สีของแต่ละหมวดหมู่ สำหรับ "พรีวิวสด" ในฟอร์มลงขายของ (ดู
+ * sellWizardHtml ด้านล่าง) — ก๊อปค่ามาจาก CATEGORY_STYLE ใน public/marketplace.html
+ * เป๊ะๆ (ตัดส่วน icon ออก เพราะพรีวิวในแดชบอร์ดไม่จำเป็นต้องมีไอคอนตกแต่งแบบหน้าจริง 100%
+ * แค่ให้เห็นสี/ชื่อหมวดถูกต้องก็พอแล้ว) ⚠️ ถ้าน้องหนาวแก้สีหมวดหมู่ที่
+ * public/marketplace.html ในอนาคต ต้องมาแก้ตรงนี้ให้ตรงกันด้วยนะครับ ไม่ได้ผูกกันอัตโนมัติ
+ * (คนละไฟล์ คนละ runtime กัน — ไฟล์นี้รันบน Node ฝั่ง server ส่วนอันนั้นรันในเบราว์เซอร์
+ * ของผู้ขาย ดึงมา import กันตรงๆ ไม่ได้)
+ */
+const CATEGORY_PREVIEW_STYLES = {
+  servers: { label: 'Servers', badge: '#9a6a1f', gradient: 'linear-gradient(135deg,#4a3420,#f4b860 70%)' },
+  'media:banner': { label: 'Image & Media · Banner', badge: '#c23458', gradient: 'linear-gradient(135deg,#4a2340,#fb7185 75%)' },
+  media: { label: 'Image & Media', badge: '#3d4ed6', gradient: 'linear-gradient(135deg,#332a55,#5865f2 75%)' },
+  'emoji-sticker': { label: 'Emoji & Sticker', badge: '#6b52d6', gradient: 'linear-gradient(135deg,#3a2e5c,#4a5aa8 75%)' },
+  builder: { label: 'Builder', badge: '#1f8f86', gradient: 'linear-gradient(135deg,#2c2450,#4a5aa8 75%)' },
+  role: { label: 'Role', badge: '#4b5563', gradient: 'linear-gradient(135deg,#1f2937,#94a3b8 75%)' },
+  'welcome-goodbye': { label: 'Welcome / Goodbye', badge: '#b23e91', gradient: 'linear-gradient(135deg,#3d1f3a,#f472b6 75%)' },
+  package: { label: 'Package', badge: '#2f8f4e', gradient: 'linear-gradient(135deg,#4a3420,#4a5aa8 70%)' },
+};
 
 /** ป้ายสถานะประกาศ — คู่กับ statusLabel() ใน commands/marketplace.js (ข้อความอังกฤษเพราะ
  * แดชบอร์ดทั้งหมด default เป็นอังกฤษตามที่น้องหนาวขอ ต่างจากฝั่งดิสคอร์ดที่เป็นไทย) */
@@ -174,12 +196,32 @@ function paymentMethodSectionHtml(seller, guildId) {
 }
 
 /**
- * ฟอร์ม "ลงขายสินค้าใหม่" — multipart/form-data (มีไฟล์แนบ) disabled ทั้งฟอร์มถ้ายังไม่ตั้ง
- * พร้อมเพย์ (กันกดลงขายไปแล้วเจอ error กลับมาเฉยๆ บอกเหตุผลตรงๆ ให้ไปตั้งพร้อมเพย์ก่อนดีกว่า)
+ * 🆕 [12 ต.ค. 2569] ฟอร์ม "ลงขายสินค้าใหม่" เวอร์ชัน wizard 2 สเต็ป + พรีวิวสด
+ * (แทนที่ newListingFormHtml เดิมที่เป็นลิสต์ฟอร์มยาวๆ หน้าเดียว — น้องหนาวบอกว่าอ่านยาก/
+ * น่าเบื่อ แล้วตอนกรอกก็ไม่รู้ว่าจะไปโผล่ตรงไหนหน้าตายังไงบนหน้าเว็บจริง)
+ *
+ * แนวคิด: เลียนแบบการทำงานในแคนวา — ฝั่งซ้ายเห็นพรีวิวจริงอัปเดตสดๆ ทุกครั้งที่พิมพ์/เลือก
+ * ฝั่งขวาเป็นฟอร์มของสเต็ปที่กำลังทำอยู่ แบ่ง 2 สเต็ปตามที่น้องหนาวขอ:
+ *   สเต็ป 1/2 — "การ์ดในหน้า Marketplace" (ก่อนคลิกเข้าไปดู) ใช้ข้อมูล: ชื่อสินค้า, ราคา,
+ *               หมวดหมู่/หมวดย่อย, รูปปก → พรีวิวฝั่งซ้ายโชว์เป็นการ์ดเล็กๆ ขนาด/สไตล์
+ *               ตรงกับการ์ดจริงในกริดหน้า public/marketplace.html เป๊ะๆ (ก๊อปสไตล์มาเลย)
+ *   สเต็ป 2/2 — "หน้ารายละเอียดเต็ม" (หลังคลิกเข้าไปดู) ใช้ข้อมูล: คำอธิบาย, ประเภทสินค้า,
+ *               ไฟล์ดิจิทัล → พรีวิวฝั่งซ้ายสลับเป็นหน้าดีเทลเต็ม (ก๊อปสไตล์จาก modal
+ *               รายละเอียดสินค้าในหน้าเดียวกัน)
+ * กดปุ่ม "Next" ย้ายไปสเต็ป 2 ได้ก็ต่อเมื่อกรอกสเต็ป 1 ครบ (เช็คด้วย JS ก่อนย้าย ไม่ใช่
+ * native required ของ browser — อ่านว่าทำไมในคอมเมนต์เหนือฟังก์ชัน validateStep1/2 ด้านล่าง)
+ *
+ * ⚠️ ฟอร์มจริงๆ แล้วเป็น <form> เดียวกันทั้ง 2 สเต็ป (ไม่ใช่ 2 ฟอร์มแยกกัน) แค่ "ซ่อน/โชว์"
+ * ด้วย display:none สลับกันไปมา ข้อมูลที่กรอกไว้ในสเต็ป 1 จะไม่หายตอนกด Back/Next เพราะ
+ * input พวกนั้นยังอยู่ใน DOM ตลอด ไม่ได้ลบ-สร้างใหม่ — พอกด submit จริง (ปุ่ม "List item"
+ * ที่อยู่สเต็ป 2) จะส่งค่าทุกช่องของทั้ง 2 สเต็ปไปพร้อมกันทีเดียว (name attribute เหมือน
+ * ของเดิม 100% → server.js ฝั่งรับไม่ต้องแก้อะไรเลย)
  * @param {object} categories CATEGORIES object จาก marketplaceStorage.js
- * @param {boolean} canSell seller ตั้งพร้อมเพย์ไว้แล้วหรือยัง
+ * @param {boolean} canSell seller ตั้งช่องทางรับเงินไว้แล้วหรือยัง
+ * @param {string} guildId
+ * @param {string} sellerDisplayName ชื่อผู้ขาย (ชื่อ Discord ของคนที่ล็อกอินอยู่) โชว์ในพรีวิวเฉยๆ
  */
-function newListingFormHtml(categories, canSell, guildId) {
+function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
   const categoryOptionsHtml = Object.entries(categories)
     .map(([value, info]) => `<option value="${escapeHtml(value)}">${escapeHtml(info.label)}</option>`)
     .join('');
@@ -190,6 +232,10 @@ function newListingFormHtml(categories, canSell, guildId) {
     Object.fromEntries(Object.entries(categories).map(([value, info]) => [value, info.subcategories || null]))
   ).replace(/</g, '\\u003c'); // กัน </script> หลุดโผล่กลางหน้าถ้ามีใครตั้งชื่อหมวดแปลกๆ ในอนาคต
 
+  // สี/ไล่สีของแต่ละหมวด ส่งให้ JS ฝั่ง client ไว้ใช้วาดพรีวิวสด (ดูคอมเมนต์เต็มๆ ที่
+  // CATEGORY_PREVIEW_STYLES ด้านบนไฟล์ว่าทำไมต้องก๊อปข้อมูลนี้มาไว้ที่นี่ด้วย)
+  const categoryStylesJson = JSON.stringify(CATEGORY_PREVIEW_STYLES).replace(/</g, '\\u003c');
+
   const disabledAttr = canSell ? '' : 'disabled';
   const disabledNoteHtml = canSell
     ? ''
@@ -198,116 +244,387 @@ function newListingFormHtml(categories, canSell, guildId) {
   return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:22px 24px;margin-bottom:28px;${canSell ? '' : 'opacity:0.6;'}">
     <div style="font-size:15px;font-weight:700;color:var(--text);">List a new item</div>
     <div style="font-size:12.5px;color:var(--text-muted);margin-top:6px;line-height:1.6;">
-      Fill this in once and it shows up on the public Marketplace page right away.
+      Fill this in once and it shows up on the public Marketplace page right away. The preview on the left updates live
+      as you type, so you can see exactly what buyers will see.
     </div>
 
-    <form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings" enctype="multipart/form-data" style="margin-top:18px;display:flex;flex-direction:column;gap:16px;max-width:560px;">
-      <label style="display:flex;flex-direction:column;gap:6px;">
-        <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Title</span>
-        <input type="text" name="title" maxlength="80" required ${disabledAttr}
-          style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;" />
-      </label>
+    <!-- ตัวบอกสเต็ปปัจจุบัน 1/2 หรือ 2/2 -->
+    <div style="display:flex;align-items:center;gap:9px;margin-top:20px;">
+      <span id="mkt-wiz-dot1" style="width:7px;height:7px;border-radius:999px;background:var(--accent);transition:background 0.15s;"></span>
+      <span id="mkt-wiz-dot2" style="width:7px;height:7px;border-radius:999px;background:var(--border);transition:background 0.15s;"></span>
+      <span style="font-size:11.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;">
+        Step <span id="mkt-wiz-step-label">1</span> of 2
+      </span>
+      <span id="mkt-wiz-step-title" style="font-size:12px;color:var(--text-muted);">— the card buyers see in the Marketplace grid</span>
+    </div>
 
-      <label style="display:flex;flex-direction:column;gap:6px;">
-        <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Description</span>
-        <textarea name="description" maxlength="1000" rows="4" required ${disabledAttr}
-          style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;font-family:inherit;resize:vertical;"></textarea>
-      </label>
+    <form id="mkt-wiz-form" method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings" enctype="multipart/form-data"
+      style="margin-top:18px;display:flex;gap:30px;align-items:flex-start;">
 
-      <div style="display:flex;gap:14px;">
-        <label style="display:flex;flex-direction:column;gap:6px;flex:1 1 auto;">
-          <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Price (THB)</span>
-          <input type="number" name="price" min="1" max="20000" step="1" required ${disabledAttr}
-            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;" />
-        </label>
-        <label style="display:flex;flex-direction:column;gap:6px;flex:1 1 auto;">
-          <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Type</span>
-          <select name="type" id="mkt-type-select" required ${disabledAttr}
-            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;">
-            <option value="service">Service (you contact the buyer yourself)</option>
-            <option value="digital">Digital file (sent automatically after payment)</option>
-          </select>
-        </label>
+      <!-- ═══ ฝั่งซ้าย: พรีวิวสด ═══ สีพวกนี้ตั้งใจ hardcode ไม่ใช้ var(--xxx) ของแดชบอร์ด
+           เพราะพรีวิวต้องเลียนแบบหน้า public/marketplace.html (ธีมมืดของมันเอง) ให้ตรงเป๊ะๆ
+           ไม่ใช่ให้ตรงกับธีมแดชบอร์ด (ถึงจะบังเอิญคล้ายกันตอนนี้ก็ตาม) -->
+      <div style="flex:0 0 240px;">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:0.08em;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;">
+          Live preview — <span id="mkt-wiz-preview-mode-label">grid card</span>
+        </div>
+
+        <!-- พรีวิวสเต็ป 1: การ์ดในกริด (สไตล์ก๊อปจาก buildListingCardHtml() ใน public/marketplace.html) -->
+        <div id="mkt-wiz-preview-card" style="position:relative;height:165px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
+          <div id="mkt-wiz-pc-badge" style="position:absolute;top:10px;left:10px;background:#4b5563;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:700;color:#fff;">Choose a category</div>
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+          <div style="position:absolute;left:16px;right:16px;bottom:14px;">
+            <div id="mkt-wiz-pc-title" style="font-size:14px;font-weight:700;color:#fff;">Your item title</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+              <span style="font-size:11px;color:rgba(255,255,255,0.75);">${escapeHtml(sellerDisplayName || 'You')}</span>
+              <span id="mkt-wiz-pc-price" style="font-size:14px;font-weight:700;color:#f4b860;">฿0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- พรีวิวสเต็ป 2: หน้ารายละเอียดเต็ม (สไตล์ก๊อปจาก modal #productDetailModal ในหน้าเดียวกัน) -->
+        <div id="mkt-wiz-preview-detail" style="display:none;background:#131a2e;border:1px solid #262f4d;border-radius:6px;overflow:hidden;">
+          <div id="mkt-wiz-pd-hero" style="height:100px;position:relative;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
+            <div id="mkt-wiz-pd-badge" style="position:absolute;top:10px;left:10px;border-radius:999px;padding:4px 10px;font-size:9px;font-weight:700;color:#fff;background:#4b5563;">Choose a category</div>
+          </div>
+          <div style="padding:14px 16px 16px;">
+            <div id="mkt-wiz-pd-title" style="font-size:14px;font-weight:700;color:#f9f8ff;">Your item title</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px;">
+              <span style="font-size:11.5px;color:#9aa2c4;">${escapeHtml(sellerDisplayName || 'You')}</span>
+              <span id="mkt-wiz-pd-price" style="font-size:16px;font-weight:700;color:#f4b860;">฿0</span>
+            </div>
+            <div style="height:1px;background:#262f4d;margin:12px 0;"></div>
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:0.08em;color:#9aa2c4;text-transform:uppercase;margin-bottom:6px;">Description</div>
+            <div id="mkt-wiz-pd-desc" style="font-size:12px;color:#c3c8e6;line-height:1.65;">Your description will show up here.</div>
+            <div id="mkt-wiz-pd-filebadge" style="display:none;margin-top:10px;font-size:11px;color:#7fc9c0;"></div>
+          </div>
+        </div>
+
+        <div style="font-size:10.5px;color:var(--text-muted-2);margin-top:10px;line-height:1.6;">
+          Mirrors the real Marketplace page. Decorative icons are simplified here but colors/layout match.
+        </div>
       </div>
 
-      <div style="display:flex;gap:14px;">
-        <label style="display:flex;flex-direction:column;gap:6px;flex:1 1 auto;">
-          <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Category</span>
-          <select name="category" id="mkt-category-select" required ${disabledAttr}
-            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;">
-            <option value="" disabled selected>Choose a category&hellip;</option>
-            ${categoryOptionsHtml}
-          </select>
-        </label>
-        <label id="mkt-subcategory-label" style="display:none;flex-direction:column;gap:6px;flex:1 1 auto;">
-          <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Subcategory</span>
-          <select name="subcategory" id="mkt-subcategory-select" ${disabledAttr}
-            style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;"></select>
-        </label>
+      <!-- ═══ ฝั่งขวา: ฟอร์มของสเต็ปที่กำลังทำอยู่ ═══ -->
+      <div style="flex:1 1 380px;max-width:420px;">
+
+        <!-- สเต็ป 1/2: ข้อมูลสำหรับการ์ด -->
+        <div id="mkt-wiz-step1" style="display:flex;flex-direction:column;gap:16px;">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Title</span>
+            <input type="text" name="title" id="mkt-wiz-title-input" maxlength="80" ${disabledAttr}
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;" />
+          </label>
+
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Price (THB)</span>
+            <input type="number" name="price" id="mkt-wiz-price-input" min="1" max="20000" step="1" ${disabledAttr}
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;" />
+          </label>
+
+          <div style="display:flex;gap:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;flex:1 1 auto;">
+              <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Category</span>
+              <select name="category" id="mkt-category-select" ${disabledAttr}
+                style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;">
+                <option value="" disabled selected>Choose a category&hellip;</option>
+                ${categoryOptionsHtml}
+              </select>
+            </label>
+            <label id="mkt-subcategory-label" style="display:none;flex-direction:column;gap:6px;flex:1 1 auto;">
+              <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Subcategory</span>
+              <select name="subcategory" id="mkt-subcategory-select" ${disabledAttr}
+                style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;"></select>
+            </label>
+          </div>
+
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Cover image <span style="color:var(--text-muted);font-weight:400;">(shown on the card — optional, up to 20MB)</span></span>
+            <input type="file" name="image" id="mkt-wiz-image-input" accept="image/png,image/jpeg,image/webp,image/gif" ${disabledAttr}
+              style="color:var(--text-muted);font-size:12.5px;" />
+          </label>
+        </div>
+
+        <!-- สเต็ป 2/2: ข้อมูลสำหรับหน้ารายละเอียด — ซ่อนไว้ก่อน เริ่มที่สเต็ป 1 -->
+        <div id="mkt-wiz-step2" style="display:none;flex-direction:column;gap:16px;">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Description</span>
+            <textarea name="description" id="mkt-wiz-desc-input" maxlength="1000" rows="5" ${disabledAttr}
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;font-family:inherit;resize:vertical;"></textarea>
+          </label>
+
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Type</span>
+            <select name="type" id="mkt-type-select" ${disabledAttr}
+              style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px 12px;border-radius:6px;">
+              <option value="service">Service (you contact the buyer yourself)</option>
+              <option value="digital">Digital file (sent automatically after payment)</option>
+            </select>
+          </label>
+
+          <label id="mkt-digitalfile-label" style="display:none;flex-direction:column;gap:6px;">
+            <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Digital file <span style="color:var(--text-muted);font-weight:400;">(sent to the buyer automatically — required for digital items, up to 20MB)</span></span>
+            <input type="file" name="digitalFile" id="mkt-digitalfile-input" ${disabledAttr}
+              style="color:var(--text-muted);font-size:12.5px;" />
+          </label>
+        </div>
+
+        <!-- ข้อความ error ของสเต็ปปัจจุบัน (เช็คด้วย JS ก่อนย้าย/ก่อน submit ไม่ใช่ native required) -->
+        <div id="mkt-wiz-step-error" style="display:none;font-size:12px;color:#e07a7a;margin-top:14px;"></div>
+
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button type="button" id="mkt-wiz-back-btn" ${disabledAttr}
+            style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;padding:11px 20px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;">
+            &larr; Back
+          </button>
+          <button type="button" id="mkt-wiz-next-btn" ${disabledAttr}
+            style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:11px 24px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;">
+            Next: item details &rarr;
+          </button>
+          <button type="submit" id="mkt-wiz-submit-btn" ${disabledAttr}
+            style="display:none;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:11px 24px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;">
+            List item
+          </button>
+        </div>
       </div>
-
-      <label style="display:flex;flex-direction:column;gap:6px;">
-        <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Cover image <span style="color:var(--text-muted);font-weight:400;">(shown on the card — optional, up to 20MB)</span></span>
-        <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" ${disabledAttr}
-          style="color:var(--text-muted);font-size:12.5px;" />
-      </label>
-
-      <label id="mkt-digitalfile-label" style="display:none;flex-direction:column;gap:6px;">
-        <span style="font-size:12.5px;font-weight:600;color:var(--text-muted);">Digital file <span style="color:var(--text-muted);font-weight:400;">(sent to the buyer automatically — required for digital items, up to 20MB)</span></span>
-        <input type="file" name="digitalFile" id="mkt-digitalfile-input" ${disabledAttr}
-          style="color:var(--text-muted);font-size:12.5px;" />
-      </label>
-
-      <button type="submit" ${disabledAttr}
-        style="align-self:flex-start;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:11px 24px;font-size:13.5px;font-weight:700;cursor:pointer;">
-        List item
-      </button>
     </form>
     ${disabledNoteHtml}
   </div>
 
   <script>
-    // 🆕 JS เล็กๆ แค่ 2 อย่าง: (1) โชว์/ซ่อนช่อง "Subcategory" + เติม option ให้ตรงหมวดที่
-    // เลือก (2) โชว์/ซ่อนช่อง "Digital file" ตาม type ที่เลือก — ไม่มีอะไรซับซ้อนไปกว่านี้
-    // ฟอร์มยังทำงานได้แบบ submit ตรงๆ เหมือนฟอร์มอื่นในแดชบอร์ด ไม่มี AJAX/fetch เลย
     (function () {
       var SUBCATS = ${subcategoryMapJson};
+      var CATSTYLES = ${categoryStylesJson};
+
+      // ── องค์ประกอบของฟอร์ม/ปุ่มควบคุมสเต็ป ──
+      var form = document.getElementById('mkt-wiz-form');
+      var step1El = document.getElementById('mkt-wiz-step1');
+      var step2El = document.getElementById('mkt-wiz-step2');
+      var nextBtn = document.getElementById('mkt-wiz-next-btn');
+      var backBtn = document.getElementById('mkt-wiz-back-btn');
+      var submitBtn = document.getElementById('mkt-wiz-submit-btn');
+      var stepErrorEl = document.getElementById('mkt-wiz-step-error');
+      var stepLabelEl = document.getElementById('mkt-wiz-step-label');
+      var stepTitleEl = document.getElementById('mkt-wiz-step-title');
+      var dot1 = document.getElementById('mkt-wiz-dot1');
+      var dot2 = document.getElementById('mkt-wiz-dot2');
+      var previewModeLabelEl = document.getElementById('mkt-wiz-preview-mode-label');
+      var previewCardEl = document.getElementById('mkt-wiz-preview-card');
+      var previewDetailEl = document.getElementById('mkt-wiz-preview-detail');
+
+      // ── ช่องกรอกสเต็ป 1 ──
+      var titleInput = document.getElementById('mkt-wiz-title-input');
+      var priceInput = document.getElementById('mkt-wiz-price-input');
       var categorySelect = document.getElementById('mkt-category-select');
       var subcatLabel = document.getElementById('mkt-subcategory-label');
       var subcatSelect = document.getElementById('mkt-subcategory-select');
+      var imageInput = document.getElementById('mkt-wiz-image-input');
+
+      // ── ช่องกรอกสเต็ป 2 ──
+      var descInput = document.getElementById('mkt-wiz-desc-input');
       var typeSelect = document.getElementById('mkt-type-select');
       var fileLabel = document.getElementById('mkt-digitalfile-label');
       var fileInput = document.getElementById('mkt-digitalfile-input');
 
+      // ── ส่วนต่างๆ ของพรีวิว (สเต็ป 1 = การ์ด, สเต็ป 2 = ดีเทล) ──
+      var pcBadge = document.getElementById('mkt-wiz-pc-badge');
+      var pcTitle = document.getElementById('mkt-wiz-pc-title');
+      var pcPrice = document.getElementById('mkt-wiz-pc-price');
+      var pdHero = document.getElementById('mkt-wiz-pd-hero');
+      var pdBadge = document.getElementById('mkt-wiz-pd-badge');
+      var pdTitle = document.getElementById('mkt-wiz-pd-title');
+      var pdPrice = document.getElementById('mkt-wiz-pd-price');
+      var pdDesc = document.getElementById('mkt-wiz-pd-desc');
+      var pdFileBadge = document.getElementById('mkt-wiz-pd-filebadge');
+
+      var currentImageDataUrl = null; // รูปปกที่เลือกไว้ (ยังไม่อัปโหลดจริง แค่โชว์พรีวิวในเบราว์เซอร์)
+
+      // หาสี/ชื่อหมวดให้ตรงกับ getCategoryStyle() ของ public/marketplace.html เป๊ะๆ (รวมเคส
+      // พิเศษ media+banner ที่มีสีของตัวเอง และหมวด media/role ที่ต่อชื่อหมวดย่อยเข้าไปในป้าย)
+      function currentCategoryStyle() {
+        var category = categorySelect.value;
+        var subcategory = subcatSelect.value;
+        if (!category) return { label: 'Choose a category\\u2026', badge: '#4b5563', gradient: 'linear-gradient(135deg,#1f2937,#2c3559 75%)' };
+        if (category === 'media' && subcategory === 'banner') return CATSTYLES['media:banner'];
+        var base = CATSTYLES[category] || CATSTYLES.package;
+        var label = base.label;
+        if (subcategory && (category === 'media' || category === 'role')) {
+          label = base.label + ' \\u00b7 ' + subcategory.charAt(0).toUpperCase() + subcategory.slice(1);
+        }
+        return { label: label, badge: base.badge, gradient: base.gradient };
+      }
+
+      function applyPreviewBackground(el, style) {
+        if (currentImageDataUrl) {
+          el.style.background = "center / cover no-repeat url('" + currentImageDataUrl + "')";
+        } else {
+          el.style.background = style.gradient;
+        }
+      }
+
+      function formattedPrice() {
+        var price = parseInt(priceInput.value, 10);
+        return '\\u0e3f' + (price > 0 ? price.toLocaleString('en-US') : '0');
+      }
+
+      // อัปเดตพรีวิวการ์ด (สเต็ป 1) — เรียกทุกครั้งที่พิมพ์ชื่อ/ราคา/เปลี่ยนหมวด/เปลี่ยนรูป
+      function updateCardPreview() {
+        var style = currentCategoryStyle();
+        pcBadge.textContent = style.label;
+        pcBadge.style.background = style.badge;
+        applyPreviewBackground(previewCardEl, style);
+        pcTitle.textContent = titleInput.value.trim() || 'Your item title';
+        pcPrice.textContent = formattedPrice();
+      }
+
+      // อัปเดตพรีวิวดีเทล (สเต็ป 2) — เรียกทุกครั้งที่พิมพ์คำอธิบาย/เปลี่ยน type/เลือกไฟล์ด้วย
+      // (เรียกพร้อมกับ updateCardPreview เสมอ เพราะ title/price/category ใช้ร่วมกันทั้ง 2 พรีวิว)
+      function updateDetailPreview() {
+        var style = currentCategoryStyle();
+        pdBadge.textContent = style.label;
+        pdBadge.style.background = style.badge;
+        applyPreviewBackground(pdHero, style);
+        pdTitle.textContent = titleInput.value.trim() || 'Your item title';
+        pdPrice.textContent = formattedPrice();
+        pdDesc.textContent = descInput.value.trim() || 'Your description will show up here.';
+        if (typeSelect.value === 'digital' && fileInput.files && fileInput.files[0]) {
+          pdFileBadge.textContent = '\\ud83d\\udcce ' + fileInput.files[0].name;
+          pdFileBadge.style.display = 'block';
+        } else {
+          pdFileBadge.style.display = 'none';
+        }
+      }
+
+      function updateBothPreviews() {
+        updateCardPreview();
+        updateDetailPreview();
+      }
+
+      titleInput.addEventListener('input', updateBothPreviews);
+      priceInput.addEventListener('input', updateBothPreviews);
+      descInput.addEventListener('input', updateDetailPreview);
+      fileInput.addEventListener('change', updateDetailPreview);
+
+      imageInput.addEventListener('change', function () {
+        var file = imageInput.files && imageInput.files[0];
+        if (!file) {
+          currentImageDataUrl = null;
+          updateBothPreviews();
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          currentImageDataUrl = e.target.result;
+          updateBothPreviews();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // ── ของเดิมจาก newListingFormHtml: โชว์/ซ่อน subcategory ตามหมวดที่เลือก ──
       function updateSubcategory() {
         var subs = SUBCATS[categorySelect.value] || null;
         if (subs && subs.length) {
           subcatSelect.innerHTML = subs.map(function (s) {
             return '<option value="' + s + '">' + s + '</option>';
           }).join('');
-          subcatSelect.required = true;
           subcatLabel.style.display = 'flex';
         } else {
           subcatSelect.innerHTML = '';
-          subcatSelect.required = false;
           subcatLabel.style.display = 'none';
         }
+        updateBothPreviews();
       }
 
+      // ── ของเดิมจาก newListingFormHtml: โชว์/ซ่อน digital file ตาม type ที่เลือก ──
       function updateDigitalFile() {
         var isDigital = typeSelect.value === 'digital';
         fileLabel.style.display = isDigital ? 'flex' : 'none';
-        fileInput.required = isDigital;
+        if (!isDigital) fileInput.value = ''; // เผื่อเคยเลือกไฟล์ไว้แล้วเปลี่ยนใจเป็น service ล้างออกกันค้าง
+        updateDetailPreview();
       }
 
-      if (categorySelect) {
-        categorySelect.addEventListener('change', updateSubcategory);
-        updateSubcategory();
+      categorySelect.addEventListener('change', updateSubcategory);
+      typeSelect.addEventListener('change', updateDigitalFile);
+      updateSubcategory();
+      updateDigitalFile();
+      updateBothPreviews();
+
+      // ── สลับสเต็ป 1 ↔ 2 ──
+      // 🆕 ตัว input ของทั้ง 2 สเต็ปไม่มี attribute "required" ติดอยู่เลยนะครับ (ต่างจาก
+      // ฟอร์มเดิมที่ใส่ required ตรงๆ) เพราะพอแยกเป็น 2 สเต็ปแล้วซ่อนอีกสเต็ปด้วย
+      // display:none ถ้ายังมี required ค้างอยู่ในสเต็ปที่ซ่อนไว้ ตอน submit จริง browser
+      // จะ error "An invalid form control is not focusable" ทันที (เจอปัญหานี้มาแล้วตอน
+      // ทำตัวเลือกช่องทางจ่ายเงินด้านบนในไฟล์นี้) เลยเช็ค validate เองด้วย JS ทั้งหมดแทน
+      function showStepError(msg) {
+        stepErrorEl.textContent = msg;
+        stepErrorEl.style.display = 'block';
       }
-      if (typeSelect) {
-        typeSelect.addEventListener('change', updateDigitalFile);
-        updateDigitalFile();
+      function clearStepError() {
+        stepErrorEl.style.display = 'none';
       }
+
+      function validateStep1() {
+        if (!titleInput.value.trim()) return 'Please enter a title.';
+        var price = Number(priceInput.value);
+        if (!price || price < 1 || price > 20000) return 'Please enter a price between 1 and 20,000 THB.';
+        if (!categorySelect.value) return 'Please choose a category.';
+        if (subcatLabel.style.display !== 'none' && !subcatSelect.value) return 'Please choose a subcategory.';
+        return null;
+      }
+
+      function validateStep2() {
+        if (!descInput.value.trim()) return 'Please write a description.';
+        if (typeSelect.value === 'digital' && (!fileInput.files || !fileInput.files[0])) {
+          return 'Please attach the digital file buyers will receive.';
+        }
+        return null;
+      }
+
+      nextBtn.addEventListener('click', function () {
+        var err = validateStep1();
+        if (err) {
+          showStepError(err);
+          return;
+        }
+        clearStepError();
+        step1El.style.display = 'none';
+        step2El.style.display = 'flex';
+        nextBtn.style.display = 'none';
+        backBtn.style.display = 'inline-flex';
+        submitBtn.style.display = 'inline-flex';
+        stepLabelEl.textContent = '2';
+        stepTitleEl.textContent = '— the full item page buyers see after they click in';
+        previewModeLabelEl.textContent = 'item page';
+        previewCardEl.style.display = 'none';
+        previewDetailEl.style.display = 'block';
+        dot1.style.background = 'var(--border)';
+        dot2.style.background = 'var(--accent)';
+      });
+
+      backBtn.addEventListener('click', function () {
+        clearStepError();
+        step2El.style.display = 'none';
+        step1El.style.display = 'flex';
+        backBtn.style.display = 'none';
+        submitBtn.style.display = 'none';
+        nextBtn.style.display = 'inline-flex';
+        stepLabelEl.textContent = '1';
+        stepTitleEl.textContent = '— the card buyers see in the Marketplace grid';
+        previewModeLabelEl.textContent = 'grid card';
+        previewDetailEl.style.display = 'none';
+        previewCardEl.style.display = 'block';
+        dot1.style.background = 'var(--accent)';
+        dot2.style.background = 'var(--border)';
+      });
+
+      // เช็คสเต็ป 2 อีกรอบตอน submit จริง (เผื่อแก้อะไรหลังกด Next ไปแล้วจนข้อมูลไม่ครบ)
+      form.addEventListener('submit', function (e) {
+        var err = validateStep2();
+        if (err) {
+          e.preventDefault();
+          showStepError(err);
+        }
+      });
     })();
   </script>`;
 }
@@ -391,7 +708,11 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
   // promptpayId ตรงๆ แบบเดิม — ดูเหตุผลเต็มๆ ที่คอมเมนต์ paymentMethodSectionHtml ด้านบน
   const canSell = Boolean(seller?.promptpayId) || Boolean(seller?.paymentLink);
 
-  const bodyHtml = `<div style="padding:44px 56px;max-width:720px;">
+  // 🆕 [12 ต.ค. 2569] ขยาย max-width ของหน้าทั้งหน้าจาก 720px เป็น 980px เพื่อให้ sellWizardHtml()
+  // มีที่พอสำหรับ 2 คอลัมน์ (พรีวิว + ฟอร์ม) วางคู่กันแบบสบายๆ — ส่วนอื่น (payment section,
+  // ตาราง my listings) ยังจำกัดความกว้างตัวเองด้วย max-width ภายในอยู่แล้ว (420px/560px) เลย
+  // ไม่ยืดจนดูแปลกตาม ได้แค่ขอบขวามีที่เหลือเยอะขึ้นเฉยๆ ไม่กระทบอะไร
+  const bodyHtml = `<div style="padding:44px 56px;max-width:980px;">
     <div style="font-size:24px;font-weight:700;color:var(--text);">Marketplace</div>
     <div style="font-size:13.5px;color:var(--text-muted);margin-top:10px;line-height:1.7;">
       Sell decorations or services to other Discord server owners — set up everything right here,
@@ -403,7 +724,7 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
     ${bannerHtml({ saved, error })}
     ${disclosureHtml()}
     ${paymentMethodSectionHtml(seller, guild.id)}
-    ${newListingFormHtml(categories, canSell, guild.id)}
+    ${sellWizardHtml(categories, canSell, guild.id, user.username)}
     ${myListingsSectionHtml(listings, categories, guild.id)}
   </div>`;
 
