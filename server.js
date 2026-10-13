@@ -1141,6 +1141,10 @@ function createWebhookServer(client) {
         return { ...item, imageUrl };
       })
     );
+    // 🆕 [13 ต.ค. 2569 — รอบ 6 ดีไซน์ใหม่] ยอดขายสำเร็จรวมทั้งร้าน เอาไปโชว์ที่หัวหน้า
+    // ของหน้า Marketplace ("sales completed") — ฟังก์ชันนี้มีอยู่แล้ว (ใช้กับ endpoint
+    // สาธารณะ /api/marketplace/listings อยู่ก่อนแล้ว) แค่ route แดชบอร์ดนี้ยังไม่เคยเรียกใช้
+    const { completedSales } = getSellerStats(req.session.user.id);
 
     res.send(renderMarketplaceDashboardPage({
       guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
@@ -1152,6 +1156,7 @@ function createWebhookServer(client) {
       categories: CATEGORIES,
       saved: req.query.saved === '1',
       error: req.query.error || null,
+      completedSales,
     }));
   });
 
