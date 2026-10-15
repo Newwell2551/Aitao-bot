@@ -34,6 +34,29 @@
 //     กรองด้วย JS ฝั่ง client เฉยๆ ไม่ยิง request ใหม่ ไม่กระทบ backend เลย
 // โครงหน้ายังเหมือนเดิม 3 ส่วน (payment method / sell wizard / my listings) — เปลี่ยนแค่
 // หน้าตา ไม่เปลี่ยน logic/validation/route ไหนเลยนอกจาก completedSales ที่เพิ่มมา
+//
+// 🆕 [13 ต.ค. 2569 — "รอบ 6c"] น้องหนาวลองเข้าหน้าจริงแล้วถามว่า "สลับภาษาไม่ได้" — เช็คแล้ว
+// หน้านี้ (และหน้า Dashboard อื่นๆ ทั้งหมด) ไม่เคยมีปุ่มสลับภาษาอยู่เลยจริงๆ ตั้งใจให้เป็น
+// อังกฤษล้วนมาตั้งแต่ต้น (คนละระบบกับปุ่ม EN/TH ของหน้าเว็บสาธารณะที่ใช้ site-lang.js และ
+// คนละระบบกับหน้า Dashboard "Language" ที่ตั้งภาษาที่บอทตอบในดิสคอร์ด) — น้องหนาวยืนยันว่า
+// อยากได้ตัวสลับ EN/TH จริงๆ บนหน้านี้ เลยทำเป็นฟีเจอร์ใหม่ (ขอบเขตแค่หน้า Marketplace
+// Dashboard หน้าเดียวก่อน ตามที่น้องหนาวบอกไว้ว่า "เอาทีละหน้าก่อนก็ได้"):
+//   - ปุ่ม EN/TH เล็กๆ มุมบนขวา (ข้าง eyebrow "Seller dashboard") หน้าตาเหมือนแท็บอื่นในหน้านี้
+//   - ข้อความ UI หลักๆ ของหน้า (หัวข้อ, คำอธิบาย, disclosure, ชื่อช่อง, ปุ่ม, ข้อความ validate,
+//     สถานะ Active/Closed, แท็บกรอง ฯลฯ) สลับไทย/อังกฤษได้จริง ผ่าน data-i18n attribute + ตัว
+//     แปล MKT_I18N ด้านล่างสุดของ bodyHtml (สลับด้วย JS ฝั่ง client ล้วนๆ ไม่มีการโหลดหน้าใหม่)
+//   - จำภาษาที่เลือกไว้ใน localStorage (key "aitaoDashboardLang") แยกจาก "aitaoLang" ของ
+//     หน้าเว็บสาธารณะ เพราะเป็นหน้าคนละ context กัน ไม่อยากให้สลับหน้านี้แล้วหน้าเว็บสาธารณะ
+//     เปลี่ยนไปด้วยโดยไม่ตั้งใจ (หรือกลับกัน)
+//   - ⚠️ "ไม่" แปล: ชื่อหมวดหมู่สินค้า (Servers/Media/ฯลฯ มาจาก categories ที่ marketplaceStorage.js
+//     ส่งมา เป็นชุดข้อมูลคนละไฟล์ ถ้าจะแปลต้องลงรายละเอียดเพิ่มอีกรอบ), ข้อความ error จาก
+//     server (banner แจ้งผิดพลาด ?error=... เป็นข้อความที่ server สร้างไว้แล้ว), และข้อมูลที่
+//     ผู้ขาย/ผู้ซื้อพิมพ์เอง (ชื่อสินค้า คำอธิบาย ชื่อ Discord) — เหมือนหน้าเว็บสาธารณะที่ไม่
+//     แปลเนื้อหาที่ผู้ใช้พิมพ์เองเหมือนกัน
+//   - เพราะปุ่มสลับอยู่ในหน้านี้เอง (ไม่ได้แก้ dashboardShell.js ที่ทุกหน้าใช้ร่วมกัน) ตอนโหลด
+//     หน้าครั้งแรกอาจมีกระพริบเป็นอังกฤษแว้บนึงก่อนสลับเป็นไทยอัตโนมัติ (ถ้าเคยเลือกไทยไว้ก่อน)
+//     เพราะต้องรอ JS รันหลัง HTML โหลดเสร็จก่อน — เป็น trade-off ที่ตั้งใจเพื่อไม่ไปแก้ชิ้นส่วน
+//     ที่ใช้ร่วมกับหน้าอื่น ถ้าอยากให้เนียนขึ้นค่อยทำเป็นรอบถัดไปได้
 // ─────────────────────────────────────────────────────────────────────────
 
 const { escapeHtml, defaultAvatarUrl } = require('./renderServerPicker');
@@ -65,7 +88,7 @@ const CATEGORY_PREVIEW_STYLES = {
 // ด้วย "mkt-" (หรือ ".mkt-xxx .dot/.cat-dot" ที่ซ้อนอยู่ข้างใน) กันชนกับ CSS กลางของ
 // dashboardShell.js หรือหน้าอื่นๆ ที่ใช้ extraStyle ของตัวเอง
 const MARKETPLACE_STYLE = `
-  .mkt-page { position: relative; max-width: 980px; }
+  .mkt-page { position: relative; max-width: 1100px; }
   /* เกรนจางๆ แค่ในกรอบเนื้อหาของหน้านี้ (ไม่ทำเป็น fixed เต็มจอ เพราะจะทับ sidebar ด้วย) */
   .mkt-grain {
     position: absolute; inset: 0; pointer-events: none; z-index: 0;
@@ -90,15 +113,15 @@ const MARKETPLACE_STYLE = `
     width: 3px; height: 11px; border-radius: 2px; background: linear-gradient(180deg, #f472b6, var(--accent));
   }
 
-  .mkt-header-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
-  .mkt-h1 { font-weight: 800; font-size: 30px; margin: 0; color: var(--text); line-height: 1; position: relative; }
-  .mkt-squiggle { position: absolute; left: 2px; bottom: -10px; }
-  .mkt-stat-pair { display: flex; gap: 26px; }
+  .mkt-header-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
+  .mkt-h1 { font-weight: 800; font-size: 35px; margin: 0; color: var(--text); line-height: 1; position: relative; }
+  .mkt-squiggle { position: absolute; left: 2px; bottom: -11px; }
+  .mkt-stat-pair { display: flex; gap: 32px; }
   .mkt-stat { text-align: right; }
-  .mkt-stat b { display: block; font-size: 22px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
-  .mkt-stat span { font-size: 11px; color: var(--text-muted-2); white-space: nowrap; }
-  .mkt-subtitle { margin: 16px 0 0; max-width: 62ch; font-size: 13.5px; line-height: 1.7; color: var(--text-muted); position: relative; z-index: 1; }
-  .mkt-subtitle code { background: rgba(124,131,253,0.12); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
+  .mkt-stat b { display: block; font-size: 26px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+  .mkt-stat span { font-size: 12px; color: var(--text-muted-2); white-space: nowrap; }
+  .mkt-subtitle { margin: 18px 0 0; max-width: 68ch; font-size: 14.5px; line-height: 1.75; color: var(--text-muted); position: relative; z-index: 1; }
+  .mkt-subtitle code { background: rgba(124,131,253,0.12); color: var(--accent); padding: 2px 7px; border-radius: 4px; font-size: 13.5px; }
 
   .mkt-banner { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); margin: 22px 0 -4px; font-size: 13px; font-weight: 600; position: relative; z-index: 1; }
   .mkt-banner .dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; }
@@ -139,35 +162,39 @@ const MARKETPLACE_STYLE = `
   .mkt-pm-help { font-size: 11.5px; color: var(--text-muted-2); margin-top: 8px; line-height: 1.6; max-width: 420px; }
   .mkt-pm-warning { font-size: 12.5px; color: var(--gold); margin-top: 10px; line-height: 1.6; max-width: 420px; }
 
-  .mkt-wizard h2 { font-weight: 800; font-size: 19px; margin: 0; color: var(--text); }
-  .mkt-progress-rule { display: flex; align-items: center; gap: 10px; margin: 16px 0 26px; max-width: 320px; position: relative; z-index: 1; }
-  .mkt-p-node { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-  .mkt-p-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--border); transition: background 0.2s; flex: 0 0 auto; }
+  .mkt-wizard h2 { font-weight: 800; font-size: 23px; margin: 0; color: var(--text); }
+  .mkt-progress-rule { display: flex; align-items: center; gap: 12px; margin: 18px 0 30px; max-width: 360px; position: relative; z-index: 1; }
+  .mkt-p-node { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+  .mkt-p-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--border); transition: background 0.2s; flex: 0 0 auto; }
   .mkt-p-node.is-done .mkt-p-dot, .mkt-p-node.is-active .mkt-p-dot { background: var(--accent); }
-  .mkt-p-text { font-size: 11.5px; font-weight: 600; color: var(--text-muted-2); white-space: nowrap; transition: color 0.2s; }
+  .mkt-p-text { font-size: 12.5px; font-weight: 600; color: var(--text-muted-2); white-space: nowrap; transition: color 0.2s; }
   .mkt-p-node.is-active .mkt-p-text { color: var(--text); }
   .mkt-p-node.is-done .mkt-p-text { color: var(--text-muted); }
   .mkt-p-fill { flex: 1 1 auto; height: 1.5px; background: var(--border); }
   .mkt-p-fill.is-done { background: var(--accent); }
 
-  .mkt-wizard-body { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; position: relative; z-index: 1; }
+  /* 🆕 รอบ 6b: น้องหนาวบอกว่า "ฝั่งขวาโล่ง เล็กอยู่" — ของเดิม mkt-form-col จำกัด max-width
+     ไว้แค่ 420px ทำให้เหลือพื้นที่ว่างฝั่งขวาเยอะเกินไป (container กว้างกว่านั้นตั้งแต่แรก)
+     ขยาย max-width ให้ฟอร์มยืดเต็มพื้นที่ที่มีจริง + ขยายกรอบพรีวิว/ฟอนต์ทุกจุดให้ใหญ่ขึ้น
+     ตามที่ขอ ("ขยายทั้งหมดให้ใหญ่ขึ้น") ไม่ใช่แค่แก้จุดเดียว */
+  .mkt-wizard-body { display: flex; gap: 36px; align-items: flex-start; flex-wrap: wrap; position: relative; z-index: 1; }
   .mkt-preview-col { flex: 0 0 auto; position: relative; }
-  .mkt-form-col { flex: 1 1 300px; min-width: 260px; max-width: 420px; }
+  .mkt-form-col { flex: 1 1 380px; min-width: 300px; max-width: 600px; }
   .mkt-flow-connector { align-self: center; flex: 0 0 auto; opacity: 0.6; }
   .mkt-flow-dash { animation: mktFlowDash 1s linear infinite; }
   @keyframes mktFlowDash { to { stroke-dashoffset: -16; } }
   @media (max-width: 820px) { .mkt-flow-connector { display: none; } }
 
   .mkt-frame-halo {
-    position: absolute; top: 4%; left: 2%; width: 180px; height: 180px; z-index: 0;
-    border-radius: 999px; filter: blur(44px); opacity: 0.4; pointer-events: none;
+    position: absolute; top: 4%; left: 2%; width: 220px; height: 220px; z-index: 0;
+    border-radius: 999px; filter: blur(50px); opacity: 0.42; pointer-events: none;
     background: radial-gradient(circle, #f472b6 0%, transparent 70%); transition: background 0.5s ease;
   }
-  .mkt-frame-wrap { position: relative; z-index: 1; transform: rotate(-1.4deg); width: 216px; }
+  .mkt-frame-wrap { position: relative; z-index: 1; transform: rotate(-1.4deg); width: 266px; }
   .mkt-live-tag {
-    position: absolute; top: -11px; left: 14px; z-index: 2; transform: rotate(-3deg);
-    background: var(--accent); color: #fff; font-weight: 700; font-size: 9.5px; letter-spacing: 0.06em;
-    text-transform: uppercase; padding: 4px 10px; border-radius: 999px; box-shadow: 0 4px 10px -2px rgba(124,131,253,0.5);
+    position: absolute; top: -12px; left: 16px; z-index: 2; transform: rotate(-3deg);
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 10.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 5px 12px; border-radius: 999px; box-shadow: 0 4px 10px -2px rgba(124,131,253,0.5);
     animation: mktTagPop 0.5s cubic-bezier(.34,1.56,.64,1) 0.2s backwards;
   }
   @keyframes mktTagPop {
@@ -185,29 +212,30 @@ const MARKETPLACE_STYLE = `
     transform: skewX(-20deg); animation: mktShine 1.3s ease-in-out 0.5s 1; pointer-events: none;
   }
   @keyframes mktShine { to { left: 130%; } }
-  .mkt-device-bar { display: flex; align-items: center; gap: 5px; padding: 8px 9px; background: #0d1120; }
-  .mkt-device-dot { width: 6px; height: 6px; border-radius: 999px; background: #2c3559; }
-  .mkt-device-url { flex: 1 1 auto; text-align: center; font-size: 8.5px; color: #5e6688; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; }
-  .mkt-preview-note { font-size: 10px; color: var(--text-muted-2); margin-top: 11px; line-height: 1.6; max-width: 216px; transform: rotate(-1.4deg); }
+  .mkt-device-bar { display: flex; align-items: center; gap: 6px; padding: 9px 11px; background: #0d1120; }
+  .mkt-device-dot { width: 7px; height: 7px; border-radius: 999px; background: #2c3559; }
+  .mkt-device-url { flex: 1 1 auto; text-align: center; font-size: 9.5px; color: #5e6688; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; }
+  .mkt-preview-note { font-size: 11px; color: var(--text-muted-2); margin-top: 12px; line-height: 1.6; max-width: 266px; transform: rotate(-1.4deg); }
 
-  .mkt-form-step { display: flex; flex-direction: column; gap: 15px; }
-  .mkt-field-label { font-size: 11.5px; font-weight: 600; color: var(--text-muted-2); display: block; margin-bottom: 6px; }
+  .mkt-form-step { display: flex; flex-direction: column; gap: 20px; }
+  .mkt-field-label { font-size: 12.5px; font-weight: 600; color: var(--text-muted-2); display: block; margin-bottom: 7px; }
   .mkt-field { display: flex; flex-direction: column; }
-  .mkt-field-pair { display: flex; gap: 20px; }
+  .mkt-field-pair { display: flex; gap: 24px; }
   .mkt-field-pair > .mkt-field { flex: 1 1 auto; min-width: 0; }
-  textarea.mkt-line-input { resize: vertical; font-family: inherit; min-height: 70px; padding-top: 0; }
+  textarea.mkt-line-input { resize: vertical; font-family: inherit; min-height: 92px; padding-top: 0; }
   select.mkt-line-input { cursor: pointer; }
   select.mkt-line-input option { background: #0d1120; }
-  input[type="file"].mkt-line-input { font-size: 12px; cursor: pointer; padding: 4px 0; color: var(--text-muted-2); }
+  input[type="file"].mkt-line-input { font-size: 13px; cursor: pointer; padding: 5px 0; color: var(--text-muted-2); }
   input[type="file"].mkt-line-input::file-selector-button {
-    background: none; border: none; color: var(--accent); font-weight: 700; font-size: 12px; cursor: pointer; padding: 0; margin-right: 10px; font-family: inherit;
+    background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; margin-right: 10px; font-family: inherit;
   }
+  .mkt-line-input { font-size: 15px; padding: 9px 2px; }
 
-  .mkt-wizard-nav { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+  .mkt-wizard-nav { display: flex; align-items: center; gap: 20px; margin-top: 22px; }
   .mkt-btn-primary {
-    font-family: inherit; font-size: 13px; font-weight: 700; border-radius: 999px; border: none;
-    padding: 10px 20px; cursor: pointer; background: var(--accent); color: #fff; display: inline-flex;
-    align-items: center; gap: 7px; transition: background 0.15s, transform 0.08s, box-shadow 0.15s;
+    font-family: inherit; font-size: 14.5px; font-weight: 700; border-radius: 999px; border: none;
+    padding: 12px 26px; cursor: pointer; background: var(--accent); color: #fff; display: inline-flex;
+    align-items: center; gap: 8px; transition: background 0.15s, transform 0.08s, box-shadow 0.15s;
   }
   .mkt-btn-primary:hover { background: var(--accent-hover); box-shadow: 0 10px 22px -8px rgba(124,131,253,0.5); }
   .mkt-btn-primary:active { transform: scale(0.97); }
@@ -218,20 +246,20 @@ const MARKETPLACE_STYLE = `
   .mkt-wiz-error { font-size: 12px; color: #e8828a; margin-top: 12px; }
 
   .mkt-listings-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 14px; position: relative; z-index: 1; }
-  .mkt-listings-head h2 { font-weight: 800; font-size: 17px; margin: 0; color: var(--text); }
+  .mkt-listings-head h2 { font-weight: 800; font-size: 19px; margin: 0; color: var(--text); }
   .mkt-listings-head .count { color: var(--text-muted-2); font-weight: 500; }
-  .mkt-listing-list { margin-top: 16px; position: relative; z-index: 1; }
-  .mkt-listing-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid rgba(154,162,196,0.12); }
+  .mkt-listing-list { margin-top: 18px; position: relative; z-index: 1; }
+  .mkt-listing-row { display: flex; align-items: center; gap: 16px; padding: 15px 0; border-bottom: 1px solid rgba(154,162,196,0.12); }
   .mkt-listing-row:first-child { border-top: 1px solid rgba(154,162,196,0.12); }
-  .mkt-listing-thumb { width: 36px; height: 36px; border-radius: 7px; flex: 0 0 auto; position: relative; background-size: cover; background-position: center; }
-  .mkt-listing-thumb .cat-dot { position: absolute; bottom: -2px; right: -2px; width: 8px; height: 8px; border-radius: 999px; border: 2px solid var(--bg); }
+  .mkt-listing-thumb { width: 42px; height: 42px; border-radius: 8px; flex: 0 0 auto; position: relative; background-size: cover; background-position: center; }
+  .mkt-listing-thumb .cat-dot { position: absolute; bottom: -2px; right: -2px; width: 9px; height: 9px; border-radius: 999px; border: 2px solid var(--bg); }
   .mkt-listing-main { flex: 1 1 auto; min-width: 0; }
-  .mkt-listing-title { font-size: 13.5px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.12s; }
+  .mkt-listing-title { font-size: 14.5px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.12s; }
   .mkt-listing-row:hover .mkt-listing-title { color: var(--accent); }
-  .mkt-listing-sub { font-size: 11.5px; color: var(--text-muted-2); margin-top: 2px; }
-  .mkt-listing-meta { font-size: 11px; color: var(--text-muted-2); flex: 0 0 auto; width: 84px; text-align: right; }
-  .mkt-listing-price { font-size: 13.5px; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; flex: 0 0 auto; width: 62px; text-align: right; }
-  .mkt-listing-status { flex: 0 0 auto; width: 70px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; }
+  .mkt-listing-sub { font-size: 12.5px; color: var(--text-muted-2); margin-top: 3px; }
+  .mkt-listing-meta { font-size: 12px; color: var(--text-muted-2); flex: 0 0 auto; width: 90px; text-align: right; }
+  .mkt-listing-price { font-size: 14.5px; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; flex: 0 0 auto; width: 68px; text-align: right; }
+  .mkt-listing-status { flex: 0 0 auto; width: 76px; display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }
   .mkt-listing-status .dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; }
   .mkt-listing-status.is-active { color: var(--teal); } .mkt-listing-status.is-active .dot { background: var(--teal); animation: mktPulseTeal 2.2s ease-in-out infinite; }
   .mkt-listing-status.is-closed { color: var(--text-muted-2); } .mkt-listing-status.is-closed .dot { background: var(--text-muted-2); }
@@ -243,11 +271,12 @@ const MARKETPLACE_STYLE = `
   .mkt-btn-row-action.is-reopen:hover { text-decoration-color: var(--accent); }
 
   @media (max-width: 759px) {
-    .mkt-h1 { font-size: 25px; }
+    .mkt-h1 { font-size: 27px; }
     .mkt-header-row { flex-direction: column; align-items: flex-start; }
     .mkt-shop-strip { flex-direction: column; align-items: flex-start; gap: 18px; }
-    .mkt-wizard-body { flex-direction: column; gap: 22px; }
-    .mkt-frame-wrap { width: 100%; max-width: 230px; }
+    .mkt-wizard-body { flex-direction: column; gap: 26px; }
+    .mkt-frame-wrap { width: 100%; max-width: 270px; }
+    .mkt-form-col { max-width: none; }
     .mkt-listing-meta { display: none; }
     .mkt-glow { width: 220px; height: 220px; top: -40px; right: -40px; }
   }
@@ -274,9 +303,9 @@ function relativeTimeLabel(isoString) {
  * จังหวะเบาๆ (เฉพาะ "Active" ที่เต้น — ให้ความรู้สึกว่าร้านกำลังเปิดขายอยู่จริง) ตามแนว
  * "ไม่มีกล่อง" ของดีไซน์รอบนี้ */
 function statusIndicatorHtml(status) {
-  if (status === 'active') return `<span class="mkt-listing-status is-active"><span class="dot"></span>Active</span>`;
-  if (status === 'sold') return `<span class="mkt-listing-status is-closed"><span class="dot"></span>Sold</span>`;
-  return `<span class="mkt-listing-status is-closed"><span class="dot"></span>Closed</span>`;
+  if (status === 'active') return `<span class="mkt-listing-status is-active"><span class="dot"></span><span data-i18n="statusActive">Active</span></span>`;
+  if (status === 'sold') return `<span class="mkt-listing-status is-closed"><span class="dot"></span><span data-i18n="statusSold">Sold</span></span>`;
+  return `<span class="mkt-listing-status is-closed"><span class="dot"></span><span data-i18n="statusClosed">Closed</span></span>`;
 }
 
 /**
@@ -285,8 +314,10 @@ function statusIndicatorHtml(status) {
  * 🆕 รอบ 6: เปลี่ยนจากกล่องสีพื้นหลัง+ขอบ เป็นเส้นบางๆ+จุดสี ตามแนว "ไม่มีกล่อง"
  */
 function bannerHtml({ saved, error }) {
+  // หมายเหตุ: ข้อความ error มาจาก server ตรงๆ (query string ?error=...) ไม่ได้อยู่ใน
+  // MKT_I18N เลย เพราะ server สร้างข้อความนี้ไว้เป็นภาษาอังกฤษตายตัวอยู่แล้ว — ยังไม่แปล
   if (error) return `<div class="mkt-banner is-error"><span class="dot"></span>${escapeHtml(error)}</div>`;
-  if (saved) return `<div class="mkt-banner is-ok"><span class="dot"></span>Saved!</div>`;
+  if (saved) return `<div class="mkt-banner is-ok"><span class="dot"></span><span data-i18n="bannerSaved">Saved!</span></div>`;
   return '';
 }
 
@@ -306,14 +337,14 @@ function bannerHtml({ saved, error }) {
  */
 function disclosureHtml() {
   return `<div class="mkt-disclosure-line">
-    <span>This marketplace is peer-to-peer — Milo Bot never touches the money.</span>
-    <button type="button" onclick="mktToggleDisclosure()" id="mkt-disclosure-toggle">what this means</button>
+    <span data-i18n="disclosureLine">This marketplace is peer-to-peer — Milo Bot never touches the money.</span>
+    <button type="button" onclick="mktToggleDisclosure()" id="mkt-disclosure-toggle" data-i18n="disclosureShow">what this means</button>
   </div>
   <div class="mkt-disclosure-detail" id="mkt-disclosure-detail" hidden>
     <ul>
-      <li>Buyers pay your PromptPay (or your payment link) directly — Milo Bot never holds or sees the money, verifies anyone's identity, or acts as a party to the sale.</li>
-      <li>You're responsible for actually delivering what you list. Not delivering, or misrepresenting an item, can get your listings removed or your seller access suspended.</li>
-      <li>Buyers can also report sellers directly from the Marketplace page. This isn't legal advice — just the terms of using this marketplace.</li>
+      <li data-i18n="disclosureItem1">Buyers pay your PromptPay (or your payment link) directly — Milo Bot never holds or sees the money, verifies anyone's identity, or acts as a party to the sale.</li>
+      <li data-i18n="disclosureItem2">You're responsible for actually delivering what you list. Not delivering, or misrepresenting an item, can get your listings removed or your seller access suspended.</li>
+      <li data-i18n="disclosureItem3">Buyers can also report sellers directly from the Marketplace page. This isn't legal advice — just the terms of using this marketplace.</li>
     </ul>
   </div>
   <script>
@@ -322,7 +353,11 @@ function disclosureHtml() {
       var btn = document.getElementById('mkt-disclosure-toggle');
       var open = !detail.hidden;
       detail.hidden = open;
-      btn.textContent = open ? 'what this means' : 'hide';
+      // 🆕 รอบ 6c: ข้อความปุ่มนี้ต้องสลับภาษาตามที่เลือกไว้ด้วย ใช้ mktT() (นิยามไว้ใน
+      // script ของ MKT_I18N ด้านบนสุดของหน้า) แทนการ hardcode ข้อความอังกฤษตรงๆ
+      var key = open ? 'disclosureShow' : 'disclosureHide';
+      btn.setAttribute('data-i18n', key);
+      btn.textContent = mktT(key);
     }
   </script>`;
 }
@@ -359,24 +394,30 @@ function paymentMethodSectionHtml(seller, user, guildId) {
   const avatarUrl = user.avatar || defaultAvatarUrl(user.id);
 
   const warningHtml = !hasAnyMethod
-    ? `<div class="mkt-pm-warning">You need to set up a payment method before you can list anything — this is how buyers pay you directly.</div>`
+    ? `<div class="mkt-pm-warning" data-i18n="pmWarning">You need to set up a payment method before you can list anything — this is how buyers pay you directly.</div>`
     : '';
+  const pmBtnKey = hasAnyMethod ? 'pmBtnUpdate' : 'pmBtnSave';
+  const pmBtnLabel = hasAnyMethod ? 'Update' : 'Save';
+  const pmHelpKey = isLink ? 'pmHelpLink' : 'pmHelpPromptpay';
+  const pmHelpText = isLink
+    ? "Buyers get sent to this link to pay you directly. Milo Bot never sees what's behind it."
+    : 'Buyers scan a QR for this number and pay you directly — no fees, no middle step.';
 
   return `<div class="mkt-shop-strip">
     <div class="mkt-shop-id" style="display:flex;align-items:center;gap:12px;flex:0 0 auto;">
       <img src="${escapeHtml(avatarUrl)}" alt="" class="mkt-shop-avatar" style="width:40px;height:40px;border-radius:999px;object-fit:cover;" />
       <div>
-        <div style="font-size:14px;font-weight:700;color:var(--text);">Selling as ${escapeHtml(user.username)}</div>
-        <div style="font-size:11.5px;color:${hasAnyMethod ? 'var(--teal)' : 'var(--text-muted-2)'};margin-top:1px;">${hasAnyMethod ? 'Payment method set up' : 'Payment method not set up yet'}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);"><span data-i18n="sellingAsPrefix">Selling as</span> ${escapeHtml(user.username)}</div>
+        <div style="font-size:11.5px;color:${hasAnyMethod ? 'var(--teal)' : 'var(--text-muted-2)'};margin-top:1px;" data-i18n="${hasAnyMethod ? 'pmSetUp' : 'pmNotSetUp'}">${hasAnyMethod ? 'Payment method set up' : 'Payment method not set up yet'}</div>
       </div>
     </div>
 
     <div style="flex:1 1 320px;min-width:280px;">
       <div class="mkt-pm-top">
-        <span class="mkt-pm-label">Get paid with</span>
+        <span class="mkt-pm-label" data-i18n="pmGetPaidWith">Get paid with</span>
         <div class="mkt-tab-row" role="tablist" aria-label="Payment method">
-          <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'false' : 'true'}" id="mkt-pm-tab-promptpay" onclick="mktSelectPaymentMethod('promptpay')">PromptPay</button>
-          <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'true' : 'false'}" id="mkt-pm-tab-link" onclick="mktSelectPaymentMethod('link')">Payment link</button>
+          <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'false' : 'true'}" id="mkt-pm-tab-promptpay" onclick="mktSelectPaymentMethod('promptpay')"><span data-i18n="pmTabPromptpay">PromptPay</span></button>
+          <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'true' : 'false'}" id="mkt-pm-tab-link" onclick="mktSelectPaymentMethod('link')"><span data-i18n="pmTabLink">Payment link</span></button>
         </div>
       </div>
 
@@ -388,20 +429,18 @@ function paymentMethodSectionHtml(seller, user, guildId) {
             class="mkt-line-input" type="text" name="promptpay_id" placeholder="0812345678" pattern="\\d{10}" maxlength="10"
             value="${hasPromptPay ? escapeHtml(seller.promptpayId) : ''}"
           />
-          <button type="submit" class="mkt-btn-text">${hasAnyMethod ? 'Update' : 'Save'}</button>
+          <button type="submit" class="mkt-btn-text"><span data-i18n="${pmBtnKey}">${pmBtnLabel}</span></button>
         </div>
         <div class="mkt-pm-field-row" id="mkt-pm-link-field" style="display:${isLink ? 'flex' : 'none'};">
           <input
             class="mkt-line-input" type="url" name="payment_link" placeholder="https://paypal.me/yourname" maxlength="300"
             value="${hasPaymentLink ? escapeHtml(seller.paymentLink) : ''}"
           />
-          <button type="submit" class="mkt-btn-text">${hasAnyMethod ? 'Update' : 'Save'}</button>
+          <button type="submit" class="mkt-btn-text"><span data-i18n="${pmBtnKey}">${pmBtnLabel}</span></button>
         </div>
       </form>
       ${warningHtml}
-      <p class="mkt-pm-help" id="mkt-pm-help">${isLink
-        ? "Buyers get sent to this link to pay you directly. Milo Bot never sees what's behind it."
-        : 'Buyers scan a QR for this number and pay you directly — no fees, no middle step.'}</p>
+      <p class="mkt-pm-help" id="mkt-pm-help" data-i18n="${pmHelpKey}">${pmHelpText}</p>
     </div>
   </div>
 
@@ -413,9 +452,11 @@ function paymentMethodSectionHtml(seller, user, guildId) {
       document.getElementById('mkt-pm-hidden-input').value = method;
       document.getElementById('mkt-pm-promptpay-field').style.display = isLinkMethod ? 'none' : 'flex';
       document.getElementById('mkt-pm-link-field').style.display = isLinkMethod ? 'flex' : 'none';
-      document.getElementById('mkt-pm-help').textContent = isLinkMethod
-        ? "Buyers get sent to this link to pay you directly. Milo Bot never sees what's behind it."
-        : 'Buyers scan a QR for this number and pay you directly — no fees, no middle step.';
+      // 🆕 รอบ 6c: อัปเดตทั้ง data-i18n (เผื่อสลับภาษาอีกทีหลังสลับช่องทางแล้ว) และข้อความจริง
+      var helpEl = document.getElementById('mkt-pm-help');
+      var helpKey = isLinkMethod ? 'pmHelpLink' : 'pmHelpPromptpay';
+      helpEl.setAttribute('data-i18n', helpKey);
+      helpEl.textContent = mktT(helpKey);
     }
   </script>`;
 }
@@ -455,16 +496,16 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
   const disabledAttr = canSell ? '' : 'disabled';
   const disabledNoteHtml = canSell
     ? ''
-    : `<div style="font-size:12.5px;color:var(--text-muted-2);margin-top:14px;">Set up a payment method above first to unlock this form.</div>`;
+    : `<div style="font-size:12.5px;color:var(--text-muted-2);margin-top:14px;" data-i18n="disabledNote">Set up a payment method above first to unlock this form.</div>`;
 
   return `<div class="mkt-wizard" style="${canSell ? '' : 'opacity:0.55;'}">
-    <div class="mkt-section-eyebrow">New listing</div>
-    <h2>What are you selling today?</h2>
+    <div class="mkt-section-eyebrow" data-i18n="wizEyebrow">New listing</div>
+    <h2 data-i18n="wizHeading">What are you selling today?</h2>
 
     <div class="mkt-progress-rule">
-      <div class="mkt-p-node is-active" id="mkt-wiz-node1"><span class="mkt-p-dot"></span><span class="mkt-p-text">Grid card</span></div>
+      <div class="mkt-p-node is-active" id="mkt-wiz-node1"><span class="mkt-p-dot"></span><span class="mkt-p-text" data-i18n="progressCard">Grid card</span></div>
       <span class="mkt-p-fill" id="mkt-wiz-line1"></span>
-      <div class="mkt-p-node" id="mkt-wiz-node2"><span class="mkt-p-dot"></span><span class="mkt-p-text">Full details</span></div>
+      <div class="mkt-p-node" id="mkt-wiz-node2"><span class="mkt-p-dot"></span><span class="mkt-p-text" data-i18n="progressDetail">Full details</span></div>
     </div>
 
     <form id="mkt-wiz-form" method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings" enctype="multipart/form-data">
@@ -475,46 +516,48 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         <div class="mkt-preview-col">
           <div class="mkt-frame-halo" id="mkt-wiz-frame-halo"></div>
           <div class="mkt-frame-wrap">
-            <span class="mkt-live-tag">Live preview</span>
+            <span class="mkt-live-tag" data-i18n="livePreview">Live preview</span>
             <div class="mkt-device-frame">
               <div class="mkt-device-bar">
                 <span class="mkt-device-dot"></span><span class="mkt-device-dot"></span><span class="mkt-device-dot"></span>
-                <span class="mkt-device-url">Marketplace preview</span>
+                <span class="mkt-device-url" data-i18n="devicePreviewLabel">Marketplace preview</span>
               </div>
 
-              <!-- พรีวิวสเต็ป 1: การ์ดในกริด (สไตล์ก๊อปจาก buildListingCardHtml() ใน public/marketplace.html) -->
-              <div id="mkt-wiz-preview-card" style="position:relative;height:150px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
-                <div id="mkt-wiz-pc-badge" style="position:absolute;top:9px;left:9px;background:#4b5563;border-radius:999px;padding:3px 8px;font-size:8.5px;font-weight:700;color:#fff;">Choose a category</div>
+              <!-- พรีวิวสเต็ป 1: การ์ดในกริด (สไตล์ก๊อปจาก buildListingCardHtml() ใน public/marketplace.html)
+                   🆕 รอบ 6b: ขยายขนาดตามกรอบที่ใหญ่ขึ้น (216px → 266px, ~1.23x) ตัวเลขพิกเซลด้านล่าง
+                   คูณ 1.2 แบบคร่าวๆจากของเดิมทั้งหมด -->
+              <div id="mkt-wiz-preview-card" style="position:relative;height:182px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
+                <div id="mkt-wiz-pc-badge" style="position:absolute;top:11px;left:11px;background:#4b5563;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;" data-i18n="chooseCategory">Choose a category&hellip;</div>
                 <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-                <div style="position:absolute;left:13px;right:13px;bottom:11px;">
-                  <div id="mkt-wiz-pc-title" style="font-size:12.5px;font-weight:700;color:#fff;line-height:1.3;">Your item title</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
-                    <span style="font-size:10px;color:rgba(255,255,255,0.75);">${escapeHtml(sellerDisplayName || 'You')}</span>
-                    <span id="mkt-wiz-pc-price" style="font-size:12.5px;font-weight:700;color:#f4b860;">&#3647;0</span>
+                <div style="position:absolute;left:16px;right:16px;bottom:13px;">
+                  <div id="mkt-wiz-pc-title" style="font-size:15px;font-weight:700;color:#fff;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                    <span style="font-size:12px;color:rgba(255,255,255,0.75);">${escapeHtml(sellerDisplayName || 'You')}</span>
+                    <span id="mkt-wiz-pc-price" style="font-size:15px;font-weight:700;color:#f4b860;">&#3647;0</span>
                   </div>
                 </div>
               </div>
 
               <!-- พรีวิวสเต็ป 2: หน้ารายละเอียดเต็ม (สไตล์ก๊อปจาก modal #productDetailModal ในหน้าเดียวกัน) -->
               <div id="mkt-wiz-preview-detail" style="display:none;">
-                <div id="mkt-wiz-pd-hero" style="height:80px;position:relative;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
-                  <div id="mkt-wiz-pd-badge" style="position:absolute;top:9px;left:9px;border-radius:999px;padding:3px 9px;font-size:8.5px;font-weight:700;color:#fff;background:#4b5563;">Choose a category</div>
+                <div id="mkt-wiz-pd-hero" style="height:98px;position:relative;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
+                  <div id="mkt-wiz-pd-badge" style="position:absolute;top:11px;left:11px;border-radius:999px;padding:4px 11px;font-size:10px;font-weight:700;color:#fff;background:#4b5563;" data-i18n="chooseCategory">Choose a category&hellip;</div>
                 </div>
-                <div style="padding:12px 13px 13px;">
-                  <div id="mkt-wiz-pd-title" style="font-size:12.5px;font-weight:700;color:#f3f1fb;line-height:1.3;">Your item title</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px;">
-                    <span style="font-size:10px;color:#9aa2c4;">${escapeHtml(sellerDisplayName || 'You')}</span>
-                    <span id="mkt-wiz-pd-price" style="font-size:13.5px;font-weight:700;color:#f4b860;">&#3647;0</span>
+                <div style="padding:14px 16px 16px;">
+                  <div id="mkt-wiz-pd-title" style="font-size:15px;font-weight:700;color:#f3f1fb;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+                    <span style="font-size:12px;color:#9aa2c4;">${escapeHtml(sellerDisplayName || 'You')}</span>
+                    <span id="mkt-wiz-pd-price" style="font-size:16px;font-weight:700;color:#f4b860;">&#3647;0</span>
                   </div>
-                  <div style="height:1px;background:#262f4d;margin:10px 0;"></div>
-                  <div style="font-size:8.5px;font-weight:700;letter-spacing:0.08em;color:#9aa2c4;text-transform:uppercase;margin-bottom:4px;">Description</div>
-                  <div id="mkt-wiz-pd-desc" style="font-size:10.5px;color:#c3c8e6;line-height:1.6;">Your description will show up here.</div>
-                  <div id="mkt-wiz-pd-filebadge" style="display:none;margin-top:8px;font-size:10px;color:#7fc9c0;"></div>
+                  <div style="height:1px;background:#262f4d;margin:12px 0;"></div>
+                  <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#9aa2c4;text-transform:uppercase;margin-bottom:5px;" data-i18n="fieldDescription">Description</div>
+                  <div id="mkt-wiz-pd-desc" style="font-size:12.5px;color:#c3c8e6;line-height:1.6;" data-i18n="previewDefaultDesc">Your description will show up here.</div>
+                  <div id="mkt-wiz-pd-filebadge" style="display:none;margin-top:9px;font-size:12px;color:#7fc9c0;"></div>
                 </div>
               </div>
             </div>
           </div>
-          <p class="mkt-preview-note">Mirrors the real Marketplace page — this is what buyers actually see.</p>
+          <p class="mkt-preview-note" data-i18n="previewNote">Mirrors the real Marketplace page — this is what buyers actually see.</p>
         </div>
 
         <div class="mkt-flow-connector" aria-hidden="true">
@@ -526,40 +569,40 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
 
         <!-- ═══ ฝั่งขวา: ฟอร์มของสเต็ปที่กำลังทำอยู่ ═══ -->
         <div class="mkt-form-col">
-          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
-            <span id="mkt-wiz-dot1" style="width:6px;height:6px;border-radius:999px;background:var(--accent);"></span>
-            <span id="mkt-wiz-dot2" style="width:6px;height:6px;border-radius:999px;background:var(--border);"></span>
-            <span style="font-size:11px;font-weight:700;color:var(--text-muted-2);text-transform:uppercase;letter-spacing:0.06em;">
-              Step <span id="mkt-wiz-step-label">1</span> of 2
+          <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:4px;">
+            <span id="mkt-wiz-dot1" style="width:7px;height:7px;border-radius:999px;background:var(--accent);"></span>
+            <span id="mkt-wiz-dot2" style="width:7px;height:7px;border-radius:999px;background:var(--border);"></span>
+            <span style="font-size:12px;font-weight:700;color:var(--text-muted-2);text-transform:uppercase;letter-spacing:0.06em;">
+              <span data-i18n="stepWord">Step</span> <span id="mkt-wiz-step-label">1</span> <span data-i18n="stepOf2">of 2</span>
             </span>
-            <span id="mkt-wiz-step-title" style="font-size:11.5px;color:var(--text-muted-2);">— the card buyers see in the grid</span>
+            <span id="mkt-wiz-step-title" style="font-size:12.5px;color:var(--text-muted-2);" data-i18n="stepTitleStep1">— the card buyers see in the grid</span>
           </div>
 
           <!-- สเต็ป 1/2: ข้อมูลสำหรับการ์ด -->
-          <div class="mkt-form-step" id="mkt-wiz-step1" style="margin-top:14px;">
+          <div class="mkt-form-step" id="mkt-wiz-step1" style="margin-top:18px;">
             <div class="mkt-field">
-              <label class="mkt-field-label">Title</label>
+              <label class="mkt-field-label" data-i18n="fieldTitle">Title</label>
               <input class="mkt-line-input" type="text" name="title" id="mkt-wiz-title-input" maxlength="80" ${disabledAttr} />
             </div>
             <div class="mkt-field">
-              <label class="mkt-field-label">Price (THB)</label>
+              <label class="mkt-field-label" data-i18n="fieldPrice">Price (THB)</label>
               <input class="mkt-line-input" type="number" name="price" id="mkt-wiz-price-input" min="1" max="20000" step="1" ${disabledAttr} />
             </div>
             <div class="mkt-field-pair">
               <div class="mkt-field">
-                <label class="mkt-field-label">Category</label>
+                <label class="mkt-field-label" data-i18n="fieldCategory">Category</label>
                 <select class="mkt-line-input" name="category" id="mkt-category-select" ${disabledAttr}>
-                  <option value="" disabled selected>Choose a category&hellip;</option>
+                  <option value="" disabled selected data-i18n="chooseCategory">Choose a category&hellip;</option>
                   ${categoryOptionsHtml}
                 </select>
               </div>
               <div class="mkt-field" id="mkt-subcategory-label" style="display:none;">
-                <label class="mkt-field-label">Subcategory</label>
+                <label class="mkt-field-label" data-i18n="fieldSubcategory">Subcategory</label>
                 <select class="mkt-line-input" name="subcategory" id="mkt-subcategory-select" ${disabledAttr}></select>
               </div>
             </div>
             <div class="mkt-field">
-              <label class="mkt-field-label">Cover image <span style="font-weight:400;">(shown on the card — optional, up to 20MB)</span></label>
+              <label class="mkt-field-label"><span data-i18n="fieldCoverImage">Cover image</span> <span style="font-weight:400;" data-i18n="fieldCoverImageNote">(shown on the card — optional, up to 20MB)</span></label>
               <input class="mkt-line-input" type="file" name="image" id="mkt-wiz-image-input" accept="image/png,image/jpeg,image/webp,image/gif" ${disabledAttr} />
             </div>
           </div>
@@ -567,18 +610,18 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
           <!-- สเต็ป 2/2: ข้อมูลสำหรับหน้ารายละเอียด — ซ่อนไว้ก่อน เริ่มที่สเต็ป 1 -->
           <div class="mkt-form-step" id="mkt-wiz-step2" style="display:none;">
             <div class="mkt-field">
-              <label class="mkt-field-label">Description</label>
+              <label class="mkt-field-label" data-i18n="fieldDescription">Description</label>
               <textarea class="mkt-line-input" name="description" id="mkt-wiz-desc-input" maxlength="1000" rows="4" ${disabledAttr}></textarea>
             </div>
             <div class="mkt-field">
-              <label class="mkt-field-label">Type</label>
+              <label class="mkt-field-label" data-i18n="fieldType">Type</label>
               <select class="mkt-line-input" name="type" id="mkt-type-select" ${disabledAttr}>
-                <option value="service">Service (you contact the buyer yourself)</option>
-                <option value="digital">Digital file (sent automatically after payment)</option>
+                <option value="service" data-i18n="typeService">Service (you contact the buyer yourself)</option>
+                <option value="digital" data-i18n="typeDigital">Digital file (sent automatically after payment)</option>
               </select>
             </div>
             <div class="mkt-field" id="mkt-digitalfile-label" style="display:none;">
-              <label class="mkt-field-label">Digital file <span style="font-weight:400;">(sent to the buyer automatically — required for digital items, up to 20MB)</span></label>
+              <label class="mkt-field-label"><span data-i18n="fieldDigitalFile">Digital file</span> <span style="font-weight:400;" data-i18n="fieldDigitalFileNote">(sent to the buyer automatically — required for digital items, up to 20MB)</span></label>
               <input class="mkt-line-input" type="file" name="digitalFile" id="mkt-digitalfile-input" ${disabledAttr} />
             </div>
           </div>
@@ -589,13 +632,13 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
           <div class="mkt-wizard-nav">
             <button type="button" class="mkt-btn-link" id="mkt-wiz-back-btn" style="display:none;" ${disabledAttr}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Back
+              <span data-i18n="btnBack">Back</span>
             </button>
             <button type="button" class="mkt-btn-primary" id="mkt-wiz-next-btn" ${disabledAttr}>
-              Next: item details
+              <span data-i18n="btnNext">Next: item details</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <button type="submit" class="mkt-btn-primary" id="mkt-wiz-submit-btn" style="display:none;" ${disabledAttr}>List item</button>
+            <button type="submit" class="mkt-btn-primary" id="mkt-wiz-submit-btn" style="display:none;" ${disabledAttr}><span data-i18n="btnSubmit">List item</span></button>
           </div>
         </div>
       </div>
@@ -659,7 +702,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       function currentCategoryStyle() {
         var category = categorySelect.value;
         var subcategory = subcatSelect.value;
-        if (!category) return { label: 'Choose a category\\u2026', badge: '#4b5563', gradient: 'linear-gradient(135deg,#1f2937,#2c3559 75%)' };
+        if (!category) return { label: mktT('chooseCategory'), badge: '#4b5563', gradient: 'linear-gradient(135deg,#1f2937,#2c3559 75%)' };
         if (category === 'media' && subcategory === 'banner') return CATSTYLES['media:banner'];
         var base = CATSTYLES[category] || CATSTYLES.package;
         var label = base.label;
@@ -688,7 +731,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         pcBadge.textContent = style.label;
         pcBadge.style.background = style.badge;
         applyPreviewBackground(previewCardEl, style);
-        pcTitle.textContent = titleInput.value.trim() || 'Your item title';
+        pcTitle.textContent = titleInput.value.trim() || mktT('previewDefaultTitle');
         pcPrice.textContent = formattedPrice();
         // 🆕 รอบ 6: แสงฟุ้งหลังกรอบพรีวิวเปลี่ยนสีตามหมวดหมู่ที่เลือกแบบเรียลไทม์
         frameHalo.style.background = 'radial-gradient(circle, ' + style.badge + ' 0%, transparent 70%)';
@@ -701,9 +744,9 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         pdBadge.textContent = style.label;
         pdBadge.style.background = style.badge;
         applyPreviewBackground(pdHero, style);
-        pdTitle.textContent = titleInput.value.trim() || 'Your item title';
+        pdTitle.textContent = titleInput.value.trim() || mktT('previewDefaultTitle');
         pdPrice.textContent = formattedPrice();
-        pdDesc.textContent = descInput.value.trim() || 'Your description will show up here.';
+        pdDesc.textContent = descInput.value.trim() || mktT('previewDefaultDesc');
         if (typeSelect.value === 'digital' && fileInput.files && fileInput.files[0]) {
           pdFileBadge.textContent = '\\ud83d\\udcce ' + fileInput.files[0].name;
           pdFileBadge.style.display = 'block';
@@ -780,18 +823,18 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       }
 
       function validateStep1() {
-        if (!titleInput.value.trim()) return 'Please enter a title.';
+        if (!titleInput.value.trim()) return mktT('errTitle');
         var price = Number(priceInput.value);
-        if (!price || price < 1 || price > 20000) return 'Please enter a price between 1 and 20,000 THB.';
-        if (!categorySelect.value) return 'Please choose a category.';
-        if (subcatLabel.style.display !== 'none' && !subcatSelect.value) return 'Please choose a subcategory.';
+        if (!price || price < 1 || price > 20000) return mktT('errPrice');
+        if (!categorySelect.value) return mktT('errCategory');
+        if (subcatLabel.style.display !== 'none' && !subcatSelect.value) return mktT('errSubcategory');
         return null;
       }
 
       function validateStep2() {
-        if (!descInput.value.trim()) return 'Please write a description.';
+        if (!descInput.value.trim()) return mktT('errDescription');
         if (typeSelect.value === 'digital' && (!fileInput.files || !fileInput.files[0])) {
-          return 'Please attach the digital file buyers will receive.';
+          return mktT('errDigitalFile');
         }
         return null;
       }
@@ -809,7 +852,8 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         backBtn.style.display = 'inline-flex';
         submitBtn.style.display = 'inline-flex';
         stepLabelEl.textContent = '2';
-        stepTitleEl.textContent = '— the full item page buyers see after they click in';
+        stepTitleEl.setAttribute('data-i18n', 'stepTitleStep2');
+        stepTitleEl.textContent = mktT('stepTitleStep2');
         previewCardEl.style.display = 'none';
         previewDetailEl.style.display = 'block';
         node1.classList.remove('is-active'); node1.classList.add('is-done');
@@ -825,7 +869,8 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         submitBtn.style.display = 'none';
         nextBtn.style.display = 'inline-flex';
         stepLabelEl.textContent = '1';
-        stepTitleEl.textContent = '— the card buyers see in the grid';
+        stepTitleEl.setAttribute('data-i18n', 'stepTitleStep1');
+        stepTitleEl.textContent = mktT('stepTitleStep1');
         previewDetailEl.style.display = 'none';
         previewCardEl.style.display = 'block';
         node2.classList.remove('is-active'); node2.classList.remove('is-done');
@@ -865,19 +910,22 @@ function listingRowHtml(listing, categories, guildId) {
 
   const actionHtml = isActive
     ? `<form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings/${encodeURIComponent(listing.id)}/close">
-        <button type="submit" class="mkt-btn-row-action">Close</button>
+        <button type="submit" class="mkt-btn-row-action"><span data-i18n="actionClose">Close</span></button>
       </form>`
     : `<form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings/${encodeURIComponent(listing.id)}/reopen">
-        <button type="submit" class="mkt-btn-row-action is-reopen">Reopen</button>
+        <button type="submit" class="mkt-btn-row-action is-reopen"><span data-i18n="actionReopen">Reopen</span></button>
       </form>`;
 
+  // 🆕 รอบ 6c: เก็บ createdAt ดิบไว้ใน data-created (หน่วย ms) ไว้ให้ mktApplyLang() เอาไป
+  // คำนวณ "Xd ago"/"Xวันที่แล้ว" ใหม่ตอนสลับภาษา (relativeTimeLabel() นี้รันแค่ตอน render
+  // ครั้งแรกบน server เป็นอังกฤษเสมอ ไม่รู้จักภาษาที่เลือกไว้ใน localStorage)
   return `<div class="mkt-listing-row" data-status="${isActive ? 'active' : 'closed'}">
     <div class="mkt-listing-thumb" style="${thumbStyle}"><span class="cat-dot" style="background:${catStyle.badge};"></span></div>
     <div class="mkt-listing-main">
       <div class="mkt-listing-title">${escapeHtml(listing.title)}</div>
       <div class="mkt-listing-sub">${escapeHtml(categoryLabel)}</div>
     </div>
-    <div class="mkt-listing-meta">${escapeHtml(relativeTimeLabel(listing.createdAt))}</div>
+    <div class="mkt-listing-meta" data-created="${new Date(listing.createdAt).getTime()}">${escapeHtml(relativeTimeLabel(listing.createdAt))}</div>
     <div class="mkt-listing-price">&#3647;${Number(listing.priceThb).toLocaleString('en-US')}</div>
     ${statusIndicatorHtml(listing.status)}
     <div class="mkt-listing-action">${actionHtml}</div>
@@ -892,8 +940,8 @@ function listingRowHtml(listing, categories, guildId) {
 function myListingsSectionHtml(listings, categories, guildId) {
   if (listings.length === 0) {
     return `<div class="mkt-listings">
-      <div class="mkt-listings-head"><h2>Your listings</h2></div>
-      <div style="font-size:12.5px;color:var(--text-muted-2);margin-top:10px;">You haven't listed anything yet — use the form above to list your first item.</div>
+      <div class="mkt-listings-head"><h2 data-i18n="listingsHeading">Your listings</h2></div>
+      <div style="font-size:12.5px;color:var(--text-muted-2);margin-top:10px;" data-i18n="emptyListings">You haven't listed anything yet — use the form above to list your first item.</div>
     </div>`;
   }
 
@@ -901,11 +949,11 @@ function myListingsSectionHtml(listings, categories, guildId) {
 
   return `<div class="mkt-listings">
     <div class="mkt-listings-head">
-      <h2>Your listings <span class="count">(${listings.length})</span></h2>
+      <h2><span data-i18n="listingsHeading">Your listings</span> <span class="count">(${listings.length})</span></h2>
       <div class="mkt-tab-row" role="tablist" aria-label="Filter listings">
-        <button type="button" class="mkt-text-tab" role="tab" aria-selected="true" onclick="mktFilterListings(this,'all')">All</button>
-        <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" onclick="mktFilterListings(this,'active')">Active</button>
-        <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" onclick="mktFilterListings(this,'closed')">Closed</button>
+        <button type="button" class="mkt-text-tab" role="tab" aria-selected="true" onclick="mktFilterListings(this,'all')"><span data-i18n="filterAll">All</span></button>
+        <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" onclick="mktFilterListings(this,'active')"><span data-i18n="filterActive">Active</span></button>
+        <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" onclick="mktFilterListings(this,'closed')"><span data-i18n="filterClosed">Closed</span></button>
       </div>
     </div>
     <div class="mkt-listing-list" id="mkt-listing-list">${rowsHtml}</div>
@@ -921,6 +969,195 @@ function myListingsSectionHtml(listings, categories, guildId) {
         row.style.display = show ? 'flex' : 'none';
       });
     }
+  </script>`;
+}
+
+/**
+ * 🆕 [13 ต.ค. 2569 — "รอบ 6c"] ตัวสลับภาษา EN/TH จริงๆ สำหรับหน้า Marketplace Dashboard —
+ * คนละระบบกับปุ่ม EN/TH ของหน้าเว็บสาธารณะ (public/js/site-lang.js ใช้ localStorage key
+ * "aitaoLang") และคนละระบบกับหน้า Dashboard "Language" (ตั้งภาษาที่บอทตอบในดิสคอร์ด) —
+ * ดูคอมเมนต์เต็มๆ ที่หัวไฟล์นี้ (รอบ 6c) ว่าทำไมต้องแยกเป็นระบบที่ 3
+ *
+ * ทำงานยังไง: ฟังก์ชันนี้คืนค่าเป็น <script> ก้อนหนึ่ง แปะไว้ก่อนเนื้อหาอื่นของหน้า (ดู
+ * renderMarketplaceDashboardPage ด้านล่าง) กำหนด:
+ *   - window.MKT_I18N      = ดิกชันนารีคำแปล { key: { en, th } } ของทุกข้อความ UI ในหน้านี้
+ *   - window.MKT_LANG      = ภาษาปัจจุบัน (อ่านจาก localStorage ตอนโหลดหน้า, default 'en')
+ *   - window.mktT(key)     = คืนคำแปลของ key ตามภาษาปัจจุบัน
+ *   - window.mktRelativeTime(ms) = แปลงเวลาเป็นข้อความ "Xd ago"/"Xวันที่แล้ว" ตามภาษาปัจจุบัน
+ *   - window.mktApplyLang(lang) = สลับภาษาจริง — เดิน querySelectorAll('[data-i18n]') ทั้งหน้า
+ *     แล้วตั้ง textContent ใหม่ตาม key ที่ element นั้นประกาศไว้ (attribute data-i18n="xxx")
+ *     + อัปเดตปุ่ม EN/TH ที่กำลังเลือกอยู่ + คำนวณ "เวลาที่แล้ว" ของทุกประกาศใหม่ + บันทึก
+ *     ภาษาที่เลือกไว้ใน localStorage (key "aitaoDashboardLang") ให้จำได้ตอนเปิดหน้านี้ครั้งหน้า
+ *
+ * ⚠️ เพราะ script นี้รันตอน parse HTML (อยู่ก่อนเนื้อหาอื่นในหน้า) querySelectorAll ข้างในนี้
+ * เอง "จะยังไม่เห็น" element ของหน้า (ยังโหลดไม่ถึง) — เลยไม่เรียก mktApplyLang() ที่นี่ตรงๆ
+ * ต้องให้ script ตัวสุดท้ายของหน้า (ท้าย renderMarketplaceDashboardPage หลัง myListingsSectionHtml)
+ * เป็นคนเรียกแทน เพราะรันหลัง DOM ทั้งหน้าพร้อมแล้ว — ส่วนปุ่ม onclick="mktApplyLang(...)" ที่
+ * แปะไว้ตั้งแต่ตอนนี้ไม่มีปัญหา เพราะกว่าผู้ใช้จะกดปุ่ม หน้าก็โหลดเสร็จไปแล้วแน่นอน
+ */
+function mktI18nScript() {
+  const dict = {
+    eyebrow: { en: 'Seller dashboard', th: 'แดชบอร์ดผู้ขาย' },
+    pageTitle: { en: 'Marketplace', th: 'มาร์เก็ตเพลส' },
+    statListingsLabel: { en: 'active listings', th: 'รายการที่เปิดขาย' },
+    statSalesLabel: { en: 'sales completed', th: 'ยอดขายสำเร็จ' },
+    subtitlePart1: {
+      en: 'Sell decorations or services to other Discord server owners — set up everything right here, no need to run commands in Discord. Same data as the ',
+      th: 'ขายของแต่งเซิร์ฟหรือบริการให้เจ้าของเซิร์ฟ Discord คนอื่นได้เลย ตั้งค่าทุกอย่างจากหน้านี้หน้าเดียว ไม่ต้องไปพิมพ์คำสั่งในดิสคอร์ด ข้อมูลเชื่อมกับคำสั่ง ',
+    },
+    subtitlePart2: { en: ' slash command, so both stay in sync.', th: ' ตัวเดิมเป๊ะๆ ไม่ว่าจะแก้จากฝั่งไหนก็อัปเดตตรงกันหมด' },
+    bannerSaved: { en: 'Saved!', th: 'บันทึกแล้ว!' },
+    disclosureLine: {
+      en: 'This marketplace is peer-to-peer — Milo Bot never touches the money.',
+      th: 'มาร์เก็ตเพลสนี้เป็นการซื้อขายกันเอง (peer-to-peer) — Milo Bot ไม่แตะเงินเลย',
+    },
+    disclosureShow: { en: 'what this means', th: 'รายละเอียดคืออะไร' },
+    disclosureHide: { en: 'hide', th: 'ซ่อน' },
+    disclosureItem1: {
+      en: "Buyers pay your PromptPay (or your payment link) directly — Milo Bot never holds or sees the money, verifies anyone's identity, or acts as a party to the sale.",
+      th: 'ผู้ซื้อโอนเงินเข้าพร้อมเพย์ (หรือลิงก์รับเงิน) ของผู้ขายตรงๆ — Milo Bot ไม่ถือเงิน ไม่เห็นเงิน ไม่ตรวจสอบตัวตนใคร และไม่ได้เป็นคู่สัญญาในการซื้อขายนี้เลย',
+    },
+    disclosureItem2: {
+      en: "You're responsible for actually delivering what you list. Not delivering, or misrepresenting an item, can get your listings removed or your seller access suspended.",
+      th: 'ผู้ขายต้องส่งของ/บริการตามที่ลงประกาศไว้จริง ถ้าไม่ส่งหรือหลอกลวงผู้ซื้อ อาจถูกลบประกาศหรือระงับสิทธิ์การขายได้',
+    },
+    disclosureItem3: {
+      en: "Buyers can also report sellers directly from the Marketplace page. This isn't legal advice — just the terms of using this marketplace.",
+      th: 'ผู้ซื้อสามารถรายงานผู้ขายได้โดยตรงจากหน้า Marketplace นี้ ข้อความนี้ไม่ใช่คำแนะนำทางกฎหมาย แค่เงื่อนไขการใช้งานมาร์เก็ตเพลสนี้เท่านั้น',
+    },
+    sellingAsPrefix: { en: 'Selling as', th: 'กำลังขายในชื่อ' },
+    pmSetUp: { en: 'Payment method set up', th: 'ตั้งค่าช่องทางรับเงินแล้ว' },
+    pmNotSetUp: { en: 'Payment method not set up yet', th: 'ยังไม่ได้ตั้งค่าช่องทางรับเงิน' },
+    pmGetPaidWith: { en: 'Get paid with', th: 'รับเงินผ่าน' },
+    pmTabPromptpay: { en: 'PromptPay', th: 'พร้อมเพย์ (PromptPay)' },
+    pmTabLink: { en: 'Payment link', th: 'ลิงก์รับเงิน' },
+    pmBtnSave: { en: 'Save', th: 'บันทึก' },
+    pmBtnUpdate: { en: 'Update', th: 'อัปเดต' },
+    pmWarning: {
+      en: 'You need to set up a payment method before you can list anything — this is how buyers pay you directly.',
+      th: 'ต้องตั้งค่าช่องทางรับเงินก่อน ถึงจะลงขายของได้ — นี่คือวิธีที่ผู้ซื้อจะจ่ายเงินให้ผู้ขายตรงๆ',
+    },
+    pmHelpPromptpay: {
+      en: 'Buyers scan a QR for this number and pay you directly — no fees, no middle step.',
+      th: 'ผู้ซื้อสแกน QR ของเบอร์นี้แล้วโอนเงินให้ผู้ขายตรงๆ ไม่มีค่าธรรมเนียม ไม่มีตัวกลาง',
+    },
+    pmHelpLink: {
+      en: "Buyers get sent to this link to pay you directly. Milo Bot never sees what's behind it.",
+      th: 'ผู้ซื้อจะถูกพาไปที่ลิงก์นี้เพื่อจ่ายเงินให้ผู้ขายตรงๆ Milo Bot ไม่เห็นว่าลิงก์นี้พาไปไหน',
+    },
+    wizEyebrow: { en: 'New listing', th: 'ลงขายใหม่' },
+    wizHeading: { en: 'What are you selling today?', th: 'วันนี้จะลงขายอะไรดี?' },
+    progressCard: { en: 'Grid card', th: 'การ์ดในกริด' },
+    progressDetail: { en: 'Full details', th: 'รายละเอียดเต็ม' },
+    stepWord: { en: 'Step', th: 'ขั้นตอน' },
+    stepOf2: { en: 'of 2', th: 'จาก 2' },
+    stepTitleStep1: { en: '— the card buyers see in the grid', th: '— การ์ดที่ผู้ซื้อเห็นในหน้ากริด' },
+    stepTitleStep2: {
+      en: '— the full item page buyers see after they click in',
+      th: '— หน้ารายละเอียดเต็มที่ผู้ซื้อเห็นหลังคลิกเข้าไปดู',
+    },
+    fieldTitle: { en: 'Title', th: 'ชื่อสินค้า' },
+    fieldPrice: { en: 'Price (THB)', th: 'ราคา (บาท)' },
+    fieldCategory: { en: 'Category', th: 'หมวดหมู่' },
+    fieldSubcategory: { en: 'Subcategory', th: 'หมวดย่อย' },
+    fieldCoverImage: { en: 'Cover image', th: 'รูปปก' },
+    fieldCoverImageNote: { en: '(shown on the card — optional, up to 20MB)', th: '(โชว์บนการ์ด — ไม่บังคับ ขนาดไม่เกิน 20MB)' },
+    chooseCategory: { en: 'Choose a category…', th: 'เลือกหมวดหมู่…' },
+    fieldDescription: { en: 'Description', th: 'คำอธิบาย' },
+    fieldType: { en: 'Type', th: 'ประเภท' },
+    typeService: { en: 'Service (you contact the buyer yourself)', th: 'บริการ (ผู้ขายติดต่อผู้ซื้อเอง)' },
+    typeDigital: { en: 'Digital file (sent automatically after payment)', th: 'ไฟล์ดิจิทัล (ส่งให้ผู้ซื้อทันทีหลังจ่ายเงิน)' },
+    fieldDigitalFile: { en: 'Digital file', th: 'ไฟล์ดิจิทัล' },
+    fieldDigitalFileNote: {
+      en: '(sent to the buyer automatically — required for digital items, up to 20MB)',
+      th: '(ส่งให้ผู้ซื้อโดยอัตโนมัติ — บังคับถ้าเป็นไฟล์ดิจิทัล ขนาดไม่เกิน 20MB)',
+    },
+    disabledNote: {
+      en: 'Set up a payment method above first to unlock this form.',
+      th: 'ต้องตั้งค่าช่องทางรับเงินด้านบนก่อน ถึงจะปลดล็อกฟอร์มนี้ได้',
+    },
+    livePreview: { en: 'Live preview', th: 'พรีวิวสด' },
+    devicePreviewLabel: { en: 'Marketplace preview', th: 'พรีวิวมาร์เก็ตเพลส' },
+    previewDefaultTitle: { en: 'Your item title', th: 'ชื่อสินค้าของคุณ' },
+    previewDefaultDesc: { en: 'Your description will show up here.', th: 'คำอธิบายจะมาโชว์ตรงนี้' },
+    previewNote: {
+      en: 'Mirrors the real Marketplace page — this is what buyers actually see.',
+      th: 'เหมือนหน้ามาร์เก็ตเพลสจริง — นี่คือสิ่งที่ผู้ซื้อเห็นจริงๆ',
+    },
+    btnBack: { en: 'Back', th: 'ย้อนกลับ' },
+    btnNext: { en: 'Next: item details', th: 'ถัดไป: รายละเอียดสินค้า' },
+    btnSubmit: { en: 'List item', th: 'ลงขายเลย' },
+    errTitle: { en: 'Please enter a title.', th: 'กรุณากรอกชื่อสินค้า' },
+    errPrice: { en: 'Please enter a price between 1 and 20,000 THB.', th: 'กรุณากรอกราคาระหว่าง 1 ถึง 20,000 บาท' },
+    errCategory: { en: 'Please choose a category.', th: 'กรุณาเลือกหมวดหมู่' },
+    errSubcategory: { en: 'Please choose a subcategory.', th: 'กรุณาเลือกหมวดย่อย' },
+    errDescription: { en: 'Please write a description.', th: 'กรุณากรอกคำอธิบาย' },
+    errDigitalFile: {
+      en: 'Please attach the digital file buyers will receive.',
+      th: 'กรุณาแนบไฟล์ดิจิทัลที่จะส่งให้ผู้ซื้อ',
+    },
+    listingsHeading: { en: 'Your listings', th: 'ประกาศขายของฉัน' },
+    filterAll: { en: 'All', th: 'ทั้งหมด' },
+    filterActive: { en: 'Active', th: 'เปิดขาย' },
+    filterClosed: { en: 'Closed', th: 'ปิดแล้ว' },
+    emptyListings: {
+      en: "You haven't listed anything yet — use the form above to list your first item.",
+      th: 'ยังไม่มีของลงขายเลย — ใช้ฟอร์มด้านบนลงขายชิ้นแรกได้เลย',
+    },
+    statusActive: { en: 'Active', th: 'เปิดขาย' },
+    statusClosed: { en: 'Closed', th: 'ปิดแล้ว' },
+    statusSold: { en: 'Sold', th: 'ขายแล้ว' },
+    actionClose: { en: 'Close', th: 'ปิดการขาย' },
+    actionReopen: { en: 'Reopen', th: 'เปิดขายใหม่' },
+    rtJustNow: { en: 'just now', th: 'เมื่อสักครู่' },
+    rtMinutes: { en: '{n}m ago', th: '{n} นาทีที่แล้ว' },
+    rtHours: { en: '{n}h ago', th: '{n} ชม.ที่แล้ว' },
+    rtDays: { en: '{n}d ago', th: '{n} วันที่แล้ว' },
+    rtMonths: { en: '{n}mo ago', th: '{n} เดือนที่แล้ว' },
+    rtYears: { en: '{n}y ago', th: '{n} ปีที่แล้ว' },
+  };
+  // กัน </script> หลุดโผล่กลางหน้าถ้ามีใครเผลอใส่ไว้ในคำแปล (เหมือน subcategoryMapJson
+  // ด้านบนไฟล์นี้) — ตอนนี้ไม่มีจริง แต่ป้องกันไว้เผื่ออนาคตมาแก้คำแปลแล้วลืมเช็ค
+  const dictJson = JSON.stringify(dict).replace(/</g, '\\u003c');
+
+  return `<script>
+    window.MKT_I18N = ${dictJson};
+    window.MKT_LANG = (function () {
+      try { return localStorage.getItem('aitaoDashboardLang') || 'en'; } catch (e) { return 'en'; }
+    })();
+    window.mktT = function (key) {
+      var entry = window.MKT_I18N[key];
+      if (!entry) return key;
+      return entry[window.MKT_LANG] || entry.en;
+    };
+    window.mktRelativeTime = function (ms) {
+      var diffMs = Date.now() - ms;
+      var minutes = Math.floor(diffMs / 60000);
+      function fmt(key, n) { return mktT(key).replace('{n}', n); }
+      if (minutes < 1) return mktT('rtJustNow');
+      if (minutes < 60) return fmt('rtMinutes', minutes);
+      var hours = Math.floor(minutes / 60);
+      if (hours < 24) return fmt('rtHours', hours);
+      var days = Math.floor(hours / 24);
+      if (days < 30) return fmt('rtDays', days);
+      var months = Math.floor(days / 30);
+      if (months < 12) return fmt('rtMonths', months);
+      return fmt('rtYears', Math.floor(months / 12));
+    };
+    window.mktApplyLang = function (lang) {
+      window.MKT_LANG = lang;
+      try { localStorage.setItem('aitaoDashboardLang', lang); } catch (e) {}
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        el.textContent = mktT(el.getAttribute('data-i18n'));
+      });
+      var enBtn = document.getElementById('mkt-lang-en');
+      var thBtn = document.getElementById('mkt-lang-th');
+      if (enBtn) enBtn.setAttribute('aria-selected', String(lang === 'en'));
+      if (thBtn) thBtn.setAttribute('aria-selected', String(lang === 'th'));
+      document.querySelectorAll('.mkt-listing-meta[data-created]').forEach(function (el) {
+        el.textContent = mktRelativeTime(parseInt(el.getAttribute('data-created'), 10));
+      });
+    };
   </script>`;
 }
 
@@ -950,21 +1187,27 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
   const activeCount = listings.filter((item) => item.status === 'active').length;
   const completedSalesCount = Number(completedSales) || 0;
 
-  const bodyHtml = `<div class="mkt-page" style="padding:40px 56px 90px;">
+  const bodyHtml = `${mktI18nScript()}<div class="mkt-page" style="padding:40px 56px 90px;">
     <div class="mkt-grain"></div>
     <div class="mkt-glow"></div>
 
-    <div class="mkt-eyebrow">Seller dashboard</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div class="mkt-eyebrow" data-i18n="eyebrow">Seller dashboard</div>
+      <div class="mkt-tab-row" role="tablist" aria-label="Dashboard language" style="gap:12px;">
+        <button type="button" class="mkt-text-tab" role="tab" id="mkt-lang-en" aria-selected="true" onclick="mktApplyLang('en')">EN</button>
+        <button type="button" class="mkt-text-tab" role="tab" id="mkt-lang-th" aria-selected="false" onclick="mktApplyLang('th')">TH</button>
+      </div>
+    </div>
     <div class="mkt-header-row">
-      <h1 class="mkt-h1">Marketplace<svg class="mkt-squiggle" viewBox="0 0 120 10" width="104" height="8" fill="none" aria-hidden="true"><path d="M2 6c10-6 20 6 30 0s20-6 30 0 20 6 30 0 20-6 26 0" stroke="#f472b6" stroke-width="2.2" stroke-linecap="round"/></svg></h1>
+      <h1 class="mkt-h1"><span data-i18n="pageTitle">Marketplace</span><svg class="mkt-squiggle" viewBox="0 0 120 10" width="104" height="8" fill="none" aria-hidden="true"><path d="M2 6c10-6 20 6 30 0s20-6 30 0 20 6 30 0 20-6 26 0" stroke="#f472b6" stroke-width="2.2" stroke-linecap="round"/></svg></h1>
       <div class="mkt-stat-pair">
-        <div class="mkt-stat"><b id="mkt-stat-listings" data-target="${activeCount}">0</b><span>active listings</span></div>
-        <div class="mkt-stat"><b id="mkt-stat-sales" data-target="${completedSalesCount}">0</b><span>sales completed</span></div>
+        <div class="mkt-stat"><b id="mkt-stat-listings" data-target="${activeCount}">0</b><span data-i18n="statListingsLabel">active listings</span></div>
+        <div class="mkt-stat"><b id="mkt-stat-sales" data-target="${completedSalesCount}">0</b><span data-i18n="statSalesLabel">sales completed</span></div>
       </div>
     </div>
     <p class="mkt-subtitle">
-      Sell decorations or services to other Discord server owners — set up everything right here, no need to run
-      commands in Discord. Same data as the <code>/marketplace</code> slash command, so both stay in sync.
+      <span data-i18n="subtitlePart1">Sell decorations or services to other Discord server owners — set up everything right here, no need to run
+      commands in Discord. Same data as the </span><code>/marketplace</code><span data-i18n="subtitlePart2"> slash command, so both stay in sync.</span>
     </p>
 
     ${bannerHtml({ saved, error })}
@@ -999,6 +1242,13 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
         requestAnimationFrame(tick);
       }
       [document.getElementById('mkt-stat-listings'), document.getElementById('mkt-stat-sales')].forEach(mktCountUp);
+
+      // 🆕 รอบ 6c: ใช้ภาษาที่บันทึกไว้ (ถ้าเคยสลับเป็นไทยไว้ก่อน) ทาทั่วหน้า — ต้องรันตรงนี้
+      // (ท้ายสุดของหน้า หลัง DOM ทั้งหมดพร้อมแล้ว) ไม่ใช่ใน mktI18nScript() ตอนกำหนดฟังก์ชัน
+      // เพราะตอนนั้น element ของหน้ายังโหลดไม่ถึง (ดูคอมเมนต์เต็มๆ ที่ mktI18nScript ด้านบน)
+      if (typeof window.mktApplyLang === 'function') {
+        window.mktApplyLang(window.MKT_LANG || 'en');
+      }
     })();
   </script>`;
 
