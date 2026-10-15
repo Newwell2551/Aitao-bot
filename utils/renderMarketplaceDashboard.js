@@ -57,6 +57,32 @@
 //     หน้าครั้งแรกอาจมีกระพริบเป็นอังกฤษแว้บนึงก่อนสลับเป็นไทยอัตโนมัติ (ถ้าเคยเลือกไทยไว้ก่อน)
 //     เพราะต้องรอ JS รันหลัง HTML โหลดเสร็จก่อน — เป็น trade-off ที่ตั้งใจเพื่อไม่ไปแก้ชิ้นส่วน
 //     ที่ใช้ร่วมกับหน้าอื่น ถ้าอยากให้เนียนขึ้นค่อยทำเป็นรอบถัดไปได้
+//
+// 🆕 [15 ต.ค. 2569 — "รอบ 7" รีดีไซน์ธีมเกม] น้องหนาวขอให้รีดีไซน์หน้านี้ใหม่อีกรอบ ให้ดูเหมือน
+// หน้าแดชบอร์ดของเกม/แพลตฟอร์ม (ประมาณ Roblox Creator Dashboard หรือ Discord Developer
+// Portal) — รีวิวกันเป็น Claude Design canvas มาก่อน (3 artboard: Overview / My Listings /
+// Create New Listing) จนน้องหนาวโอเคกับหน้าตาแล้วค่อยพอร์ตมาที่นี่ สิ่งที่เปลี่ยนจาก "รอบ 6/6b/6c":
+//   - โครงหน้าเปลี่ยนจาก "เลื่อนยาวหน้าเดียว" (payment → sell wizard → my listings เรียงต่อกัน)
+//     มาเป็น "แถบเมนูย่อย (sub-sidebar) + สลับแผง (panel)" แบบ 3 แผง: Overview (สถิติ + ตั้งค่า
+//     ช่องทางรับเงิน) / My Listings (กริดการ์ด + ปุ่ม "+ New Listing") / Create Listing (ฟอร์ม
+//     ลงขายเดิมทั้งหมด ย้ายมาเป็น "หน้าของตัวเอง" แทนที่จะอยู่กลางๆหน้า) — สลับแผงด้วย JS ฝั่ง
+//     client ล้วนๆ (mktShowPanel) ไม่โหลดหน้าใหม่ ไม่มี route ใหม่ ไม่กระทบ backend เลย
+//   - แถบเมนูย่อยนี้ "ไม่ใช่" แถบข้างหลักของแดชบอร์ด (อันนั้นยังอยู่เหมือนเดิมที่ dashboardShell.js
+//     ไม่ได้แก้ไฟล์นั้นเลยสักบรรทัด) แต่เป็นแถบเมนูย่อยซ้อนอยู่ "ข้างใน" หน้า Marketplace เอง
+//     (ไอเดียเดียวกับหน้า Settings ของ Discord เอง: แถบเซิร์ฟ → แถบหมวดตั้งค่า → เนื้อหา)
+//   - สีธีมเปลี่ยนเป็นน้ำเงินกรมท่า/ม่วงเข้มคล้ายกันมากขึ้น ("deep blue/purple") แต่ "ไม่ได้"
+//     ไปแก้ตัวแปรสีกลาง :root ของ dashboardShell.js (จะกระทบแถบข้างหลัก+ทุกหน้าอื่นโดยไม่ตั้งใจ)
+//     — ประกาศตัวแปรสีใหม่ชุดนี้ไว้ใต้ scope ของ .mkt-page เท่านั้น (--mkt-bg-card, --mkt-accent
+//     ฯลฯ) มีผลแค่ในหน้านี้
+//   - เปลี่ยนจากแนว "ไม่มีกล่อง" (รอบ 6) กลับไปใช้กล่อง/การ์ดมีเส้นขอบ+เงาอีกครั้ง ตามที่ขอ
+//     ("enhance contrast... subtle card borders and shadows") — squiggle/grain/glow/hand-drawn
+//     ของรอบ 6 ถูกถอดออกหมด
+//   - แถว "My listings" เดิม (แถวยาวคั่นเส้น) เปลี่ยนเป็นกริดการ์ด (เหมือนหน้า public/marketplace.html
+//     ของผู้ซื้อ) — ข้อมูล/validation/route ที่ใช้ทั้งหมดเหมือนเดิม 100% เปลี่ยนแค่หน้าตา
+//   - ฟอร์มลงขาย (sellWizardHtml) ของเดิมเป็น wizard 2 สเต็ป + พรีวิวสดอยู่แล้ว (โครง "พรีวิวซ้าย
+//     ฟอร์มขวา" ก็มีอยู่แล้วตั้งแต่รอบ 5-6) รอบนี้แค่ย้ายมาเป็นแผนของตัวเอง + ปรับช่องกรอกจาก
+//     ขีดเส้นใต้ (.mkt-line-input แบบเดิม) เป็นกรอบสี่เหลี่ยมเต็ม (ตามธีมใหม่) — ไม่แก้ชื่อ field,
+//     ไม่แก้ validation, ไม่แก้ลำดับสเต็ปใดๆ เลย
 // ─────────────────────────────────────────────────────────────────────────
 
 const { escapeHtml, defaultAvatarUrl } = require('./renderServerPicker');
@@ -82,203 +108,250 @@ const CATEGORY_PREVIEW_STYLES = {
   package: { label: 'Package', badge: '#2f8f4e', gradient: 'linear-gradient(135deg,#4a3420,#4a5aa8 70%)' },
 };
 
-// ── CSS เฉพาะหน้า Marketplace (รอบ 6 — ดีไซน์ใหม่) ───────────────────────
-// ก๊อปแนวคิดมาจาก mockup ที่รีวิวกันในแชท (ดูคอมเมนต์หัวไฟล์) — ส่งเข้า
+// ── CSS เฉพาะหน้า Marketplace (รอบ 7 — ธีมเกม/ดีไซน์พอร์ทัล) ───────────────
+// ก๊อปแนวคิดมาจาก Design canvas ที่รีวิวกันในแชทก่อน (ดูคอมเมนต์รอบ 7 หัวไฟล์) — ส่งเข้า
 // renderDashboardLayout() ผ่าน opts.extraStyle ด้านล่างสุดของไฟล์นี้ ทุก selector ขึ้นต้น
-// ด้วย "mkt-" (หรือ ".mkt-xxx .dot/.cat-dot" ที่ซ้อนอยู่ข้างใน) กันชนกับ CSS กลางของ
-// dashboardShell.js หรือหน้าอื่นๆ ที่ใช้ extraStyle ของตัวเอง
+// ด้วย "mkt-" กันชนกับ CSS กลางของ dashboardShell.js หรือหน้าอื่นๆ ที่ใช้ extraStyle ของตัวเอง
+//
+// 🆕 รอบ 7: ตัวแปรสีใหม่ (--mkt-xxx) ประกาศไว้ใต้ scope ".mkt-page" เท่านั้น (ไม่ใช่ :root
+// ตรงๆ) ตั้งใจเพื่อไม่ให้ไปทับตัวแปรสีกลาง (--accent, --bg ฯลฯ) ของ dashboardShell.js ที่
+// ทุกหน้าแดชบอร์ดใช้ร่วมกัน — ถ้าประกาศทับที่ :root จะทำให้แถบข้างหลัก (sidebar) และหน้าอื่น
+// เปลี่ยนสีไปด้วยโดยไม่ตั้งใจ (คนละไฟล์ แก้ตรงนี้ไม่ควรกระทบที่อื่น)
 const MARKETPLACE_STYLE = `
-  .mkt-page { position: relative; max-width: 1100px; }
-  /* เกรนจางๆ แค่ในกรอบเนื้อหาของหน้านี้ (ไม่ทำเป็น fixed เต็มจอ เพราะจะทับ sidebar ด้วย) */
-  .mkt-grain {
-    position: absolute; inset: 0; pointer-events: none; z-index: 0;
-    background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 3px 3px;
+  .mkt-page {
+    --mkt-bg-card: #171a2b;
+    --mkt-bg-card-2: #1d2036;
+    --mkt-bg-sunken: #0d1120;
+    --mkt-border: rgba(255,255,255,0.09);
+    --mkt-border-strong: rgba(255,255,255,0.18);
+    --mkt-text-muted-2: #888db0;
+    --mkt-accent: #7c6ff4;
+    --mkt-accent-hover: #8d82ff;
+    --mkt-accent-soft: rgba(124,111,244,0.16);
+    --mkt-success: #2dd4a8;
+    --mkt-success-soft: rgba(45,212,168,0.14);
+    --mkt-gold: #f5b942;
   }
-  .mkt-glow {
-    position: absolute; top: -60px; right: -80px; width: 340px; height: 340px; z-index: 0;
-    background: radial-gradient(circle, #f472b6 0%, #7c83fd 55%, transparent 75%);
-    opacity: 0.14; filter: blur(70px); pointer-events: none;
-  }
-  .mkt-rule { border: none; border-top: 1px solid rgba(154,162,196,0.14); margin: 36px 0; position: relative; z-index: 1; }
 
-  .mkt-eyebrow, .mkt-section-eyebrow {
+  .mkt-shell { display: flex; flex-wrap: wrap; align-items: stretch; min-height: 100%; }
+
+  /* ── แถบเมนูย่อย "Marketplace" — ซ้อนอยู่ข้างในหน้านี้เท่านั้น ไม่ใช่แถบข้างหลักของ
+       แดชบอร์ด (อันนั้นยังอยู่ซ้ายสุดเหมือนเดิม ไม่ได้แก้ dashboardShell.js เลย) ไอเดีย
+       เหมือนหน้า Settings ของ Discord เอง: แถบแอป → แถบหมวดของหน้านี้ → เนื้อหา */
+  .mkt-subnav {
+    flex: 0 0 208px; width: 208px; box-sizing: border-box; padding: 32px 14px;
+    border-right: 1px solid var(--mkt-border); display: flex; flex-direction: column; gap: 3px;
+  }
+  .mkt-subnav-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mkt-text-muted-2); margin: 0 10px 10px;
+  }
+  .mkt-subnav-item {
+    display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px;
+    font-size: 13.5px; font-weight: 600; color: var(--text-muted); background: none; border: none;
+    cursor: pointer; font-family: inherit; text-align: left; width: 100%; transition: background 0.15s, color 0.15s;
+  }
+  .mkt-subnav-item:hover { background: rgba(255,255,255,0.045); color: var(--text); }
+  .mkt-subnav-item.is-active { background: var(--mkt-accent-soft); color: var(--text); }
+  .mkt-subnav-item.is-active svg { color: var(--mkt-accent); }
+  .mkt-subnav-item svg { color: var(--mkt-text-muted-2); flex: 0 0 auto; }
+  .mkt-subnav-back {
+    margin-top: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+    color: var(--mkt-text-muted-2); padding: 0 10px; text-decoration: none;
+  }
+  .mkt-subnav-back:hover { color: var(--text); }
+
+  .mkt-content { flex: 999 1 540px; min-width: 0; padding: 36px 48px 72px; box-sizing: border-box; }
+
+  .mkt-top-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .mkt-eyebrow {
     font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--text-muted-2); position: relative; padding-left: 13px; display: inline-block;
+    color: var(--mkt-accent);
   }
-  .mkt-eyebrow { z-index: 1; }
-  .mkt-section-eyebrow { margin-bottom: 7px; }
-  .mkt-eyebrow::before, .mkt-section-eyebrow::before {
-    content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-    width: 3px; height: 11px; border-radius: 2px; background: linear-gradient(180deg, #f472b6, var(--accent));
-  }
+  .mkt-lang-switch { display: flex; gap: 4px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 3px; }
+  .mkt-lang-switch .mkt-text-tab { padding: 5px 13px; border-radius: 999px; border-bottom: none; }
+  .mkt-lang-switch .mkt-text-tab[aria-selected="true"] { background: var(--mkt-accent); color: #fff; }
 
-  .mkt-header-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
-  .mkt-h1 { font-weight: 800; font-size: 35px; margin: 0; color: var(--text); line-height: 1; position: relative; }
-  .mkt-squiggle { position: absolute; left: 2px; bottom: -11px; }
-  .mkt-stat-pair { display: flex; gap: 32px; }
-  .mkt-stat { text-align: right; }
-  .mkt-stat b { display: block; font-size: 26px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
-  .mkt-stat span { font-size: 12px; color: var(--text-muted-2); white-space: nowrap; }
-  .mkt-subtitle { margin: 18px 0 0; max-width: 68ch; font-size: 14.5px; line-height: 1.75; color: var(--text-muted); position: relative; z-index: 1; }
-  .mkt-subtitle code { background: rgba(124,131,253,0.12); color: var(--accent); padding: 2px 7px; border-radius: 4px; font-size: 13.5px; }
+  .mkt-h1 { font-weight: 800; font-size: 28px; margin: 14px 0 0; color: var(--text); letter-spacing: -0.01em; }
+  .mkt-panel-subtitle { margin: 7px 0 0; max-width: 68ch; font-size: 13.5px; line-height: 1.7; color: var(--text-muted); }
+  .mkt-panel-subtitle code { background: var(--mkt-accent-soft); color: var(--mkt-accent); padding: 2px 7px; border-radius: 4px; font-size: 12.5px; }
 
-  .mkt-banner { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); margin: 22px 0 -4px; font-size: 13px; font-weight: 600; position: relative; z-index: 1; }
+  .mkt-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; margin: 20px 0 0; font-size: 13px; font-weight: 600; border: 1px solid transparent; }
   .mkt-banner .dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; }
-  .mkt-banner.is-ok { color: var(--teal); } .mkt-banner.is-ok .dot { background: var(--teal); }
-  .mkt-banner.is-error { color: #e8828a; } .mkt-banner.is-error .dot { background: #e8828a; }
+  .mkt-banner.is-ok { color: var(--mkt-success); background: var(--mkt-success-soft); border-color: rgba(45,212,168,0.3); } .mkt-banner.is-ok .dot { background: var(--mkt-success); }
+  .mkt-banner.is-error { color: #ff9aa2; background: rgba(255,154,162,0.1); border-color: rgba(255,154,162,0.3); } .mkt-banner.is-error .dot { background: #ff9aa2; }
 
-  .mkt-disclosure-line { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-muted-2); margin-bottom: 34px; }
-  .mkt-disclosure-line button { background: none; border: none; color: var(--text-muted); font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; font-family: inherit; }
+  .mkt-panel { margin-top: 28px; }
+
+  .mkt-disclosure-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--mkt-text-muted-2); margin-bottom: 22px; }
+  .mkt-disclosure-line button { background: none; border: none; color: var(--text-muted); font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-decoration-color: var(--mkt-border); text-underline-offset: 3px; font-family: inherit; }
   .mkt-disclosure-line button:hover { color: var(--text); text-decoration-color: var(--text-muted); }
-  .mkt-disclosure-detail { margin-top: 10px; font-size: 12px; color: var(--text-muted-2); line-height: 1.75; max-width: 64ch; }
+  .mkt-disclosure-detail { margin: -12px 0 22px; font-size: 12px; color: var(--mkt-text-muted-2); line-height: 1.75; max-width: 64ch; }
   .mkt-disclosure-detail ul { margin: 6px 0 0; padding-left: 18px; }
   .mkt-disclosure-detail li { margin-bottom: 4px; }
 
-  .mkt-shop-strip { position: relative; z-index: 1; display: flex; align-items: center; gap: 36px; flex-wrap: wrap; margin-bottom: 34px; }
-  .mkt-shop-id:hover .mkt-shop-avatar { transform: rotate(0deg) scale(1.08); }
-  .mkt-shop-avatar { transform: rotate(-4deg); transition: transform 0.25s ease; }
-  .mkt-pm-top { display: flex; align-items: baseline; gap: 16px; }
-  .mkt-pm-label { font-size: 12px; color: var(--text-muted-2); white-space: nowrap; }
-  .mkt-tab-row { display: flex; gap: 20px; }
-  .mkt-text-tab {
-    background: none; border: none; cursor: pointer; font-family: inherit;
-    padding: 2px 0 7px; font-size: 13px; font-weight: 600; color: var(--text-muted-2);
-    border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
+  /* ── การ์ดทั่วไป (Payment settings ฯลฯ) — ตามที่ขอ "subtle card borders and shadows" ── */
+  .mkt-card {
+    background: var(--mkt-bg-card); border: 1px solid var(--mkt-border); border-radius: 16px;
+    padding: 26px 28px; box-shadow: 0 10px 28px -16px rgba(0,0,0,0.65); max-width: 640px;
   }
-  .mkt-text-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
-  .mkt-text-tab:hover { color: var(--text); }
-  .mkt-pm-field-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; max-width: 420px; }
-  .mkt-line-input {
-    flex: 1 1 auto; min-width: 0; background: transparent; border: none; border-bottom: 1.5px solid var(--border);
-    color: var(--text); font-family: inherit; font-size: 13.5px; padding: 7px 2px;
-    font-variant-numeric: tabular-nums; transition: border-color 0.15s;
-  }
-  .mkt-line-input::placeholder { color: var(--text-muted-2); }
-  .mkt-line-input:focus { outline: none; border-color: var(--accent); }
-  .mkt-line-input:disabled { opacity: 0.5; cursor: not-allowed; }
-  .mkt-btn-text { flex: 0 0 auto; background: none; border: none; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 2px; }
-  .mkt-btn-text:hover { color: #fff; }
-  .mkt-pm-help { font-size: 11.5px; color: var(--text-muted-2); margin-top: 8px; line-height: 1.6; max-width: 420px; }
-  .mkt-pm-warning { font-size: 12.5px; color: var(--gold); margin-top: 10px; line-height: 1.6; max-width: 420px; }
+  .mkt-card-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--mkt-text-muted-2); margin-bottom: 6px; }
+  .mkt-card h2 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: var(--text); }
+  .mkt-card-desc { margin: 0 0 18px; font-size: 12.5px; color: var(--text-muted); line-height: 1.6; max-width: 52ch; }
 
-  .mkt-wizard h2 { font-weight: 800; font-size: 23px; margin: 0; color: var(--text); }
-  .mkt-progress-rule { display: flex; align-items: center; gap: 12px; margin: 18px 0 30px; max-width: 360px; position: relative; z-index: 1; }
-  .mkt-p-node { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
-  .mkt-p-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--border); transition: background 0.2s; flex: 0 0 auto; }
-  .mkt-p-node.is-done .mkt-p-dot, .mkt-p-node.is-active .mkt-p-dot { background: var(--accent); }
-  .mkt-p-text { font-size: 12.5px; font-weight: 600; color: var(--text-muted-2); white-space: nowrap; transition: color 0.2s; }
+  .mkt-stat-grid { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 26px; }
+  .mkt-stat-card {
+    background: var(--mkt-bg-card); border: 1px solid var(--mkt-border); border-radius: 16px; padding: 20px 22px;
+    flex: 1 1 210px; min-width: 190px; box-shadow: 0 10px 28px -16px rgba(0,0,0,0.65);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .mkt-stat-icon { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; background: var(--mkt-accent-soft); color: var(--mkt-accent); }
+  .mkt-stat-value { font-size: 28px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+  .mkt-stat-label { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 3px; }
+
+  .mkt-shop-strip { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mkt-shop-avatar { border-radius: 999px; }
+
+  .mkt-pm-top { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+  .mkt-pm-label { font-size: 12px; color: var(--mkt-text-muted-2); white-space: nowrap; }
+
+  /* ── แท็บแบบ segmented pill — ใช้ร่วมกันทั้งปุ่มสลับภาษา / ช่องทางรับเงิน / กรองประกาศ
+       (เปลี่ยนแค่หน้าตา CSS เท่านั้น ของเดิมที่สลับด้วย aria-selected ผ่าน JS ยังทำงาน
+       เหมือนเดิมทุกอย่าง ไม่ต้องแก้ script ใดๆ เลย) */
+  .mkt-tab-row { display: inline-flex; gap: 4px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 4px; }
+  .mkt-text-tab {
+    background: none; border: none; cursor: pointer; font-family: inherit; border-radius: 999px;
+    padding: 7px 16px; font-size: 12.5px; font-weight: 700; color: var(--mkt-text-muted-2);
+    border-bottom: none; transition: background 0.15s, color 0.15s;
+  }
+  .mkt-text-tab[aria-selected="true"] { background: var(--mkt-accent); color: #fff; }
+  .mkt-text-tab:hover:not([aria-selected="true"]) { color: var(--text); }
+
+  .mkt-pm-field-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; max-width: 420px; }
+  .mkt-line-input {
+    flex: 1 1 auto; min-width: 0; box-sizing: border-box; background: var(--mkt-bg-sunken);
+    border: 1px solid var(--mkt-border); border-radius: 10px; color: var(--text); font-family: inherit;
+    font-size: 13.5px; padding: 10px 13px; font-variant-numeric: tabular-nums; transition: border-color 0.15s;
+  }
+  .mkt-line-input::placeholder { color: var(--mkt-text-muted-2); }
+  .mkt-line-input:focus { outline: none; border-color: var(--mkt-accent); }
+  .mkt-line-input:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mkt-btn-text { flex: 0 0 auto; background: none; border: none; color: var(--mkt-accent); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 2px; }
+  .mkt-btn-text:hover { color: var(--mkt-accent-hover); }
+  .mkt-pm-help { font-size: 11.5px; color: var(--mkt-text-muted-2); margin-top: 10px; line-height: 1.6; max-width: 420px; }
+  .mkt-pm-warning { font-size: 12.5px; color: var(--mkt-gold); margin-top: 10px; line-height: 1.6; max-width: 420px; }
+
+  /* ── แผง "Create New Listing" — 50/50 split ตามที่ขอ: ซ้ายพรีวิวสดลอยตรึง / ขวาฟอร์ม ── */
+  .mkt-wizard-head { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .mkt-back-btn {
+    display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: 0 0 auto;
+    border-radius: 9px; border: 1px solid var(--mkt-border); color: var(--text-muted); background: none; cursor: pointer;
+  }
+  .mkt-back-btn:hover { border-color: var(--mkt-border-strong); color: var(--text); }
+  .mkt-wizard h2 { font-weight: 800; font-size: 22px; margin: 0; color: var(--text); }
+  .mkt-progress-rule { display: flex; align-items: center; gap: 12px; margin: 0 0 26px; max-width: 320px; }
+  .mkt-p-node { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+  .mkt-p-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--mkt-border); transition: background 0.2s; flex: 0 0 auto; }
+  .mkt-p-node.is-done .mkt-p-dot, .mkt-p-node.is-active .mkt-p-dot { background: var(--mkt-accent); }
+  .mkt-p-text { font-size: 12px; font-weight: 600; color: var(--mkt-text-muted-2); white-space: nowrap; transition: color 0.2s; }
   .mkt-p-node.is-active .mkt-p-text { color: var(--text); }
   .mkt-p-node.is-done .mkt-p-text { color: var(--text-muted); }
-  .mkt-p-fill { flex: 1 1 auto; height: 1.5px; background: var(--border); }
-  .mkt-p-fill.is-done { background: var(--accent); }
+  .mkt-p-fill { flex: 1 1 auto; height: 1.5px; background: var(--mkt-border); }
+  .mkt-p-fill.is-done { background: var(--mkt-accent); }
 
-  /* 🆕 รอบ 6b: น้องหนาวบอกว่า "ฝั่งขวาโล่ง เล็กอยู่" — ของเดิม mkt-form-col จำกัด max-width
-     ไว้แค่ 420px ทำให้เหลือพื้นที่ว่างฝั่งขวาเยอะเกินไป (container กว้างกว่านั้นตั้งแต่แรก)
-     ขยาย max-width ให้ฟอร์มยืดเต็มพื้นที่ที่มีจริง + ขยายกรอบพรีวิว/ฟอนต์ทุกจุดให้ใหญ่ขึ้น
-     ตามที่ขอ ("ขยายทั้งหมดให้ใหญ่ขึ้น") ไม่ใช่แค่แก้จุดเดียว */
-  .mkt-wizard-body { display: flex; gap: 36px; align-items: flex-start; flex-wrap: wrap; position: relative; z-index: 1; }
-  .mkt-preview-col { flex: 0 0 auto; position: relative; }
-  .mkt-form-col { flex: 1 1 380px; min-width: 300px; max-width: 600px; }
-  .mkt-flow-connector { align-self: center; flex: 0 0 auto; opacity: 0.6; }
-  .mkt-flow-dash { animation: mktFlowDash 1s linear infinite; }
-  @keyframes mktFlowDash { to { stroke-dashoffset: -16; } }
-  @media (max-width: 820px) { .mkt-flow-connector { display: none; } }
+  .mkt-wizard-body { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; }
+  .mkt-preview-col { flex: 0 0 340px; position: sticky; top: 24px; }
+  .mkt-form-col { flex: 1 1 360px; min-width: 300px; max-width: 460px; }
 
-  .mkt-frame-halo {
-    position: absolute; top: 4%; left: 2%; width: 220px; height: 220px; z-index: 0;
-    border-radius: 999px; filter: blur(50px); opacity: 0.42; pointer-events: none;
-    background: radial-gradient(circle, #f472b6 0%, transparent 70%); transition: background 0.5s ease;
+  .mkt-frame-wrap {
+    background: linear-gradient(180deg, var(--mkt-bg-card) 0%, var(--mkt-bg-card-2) 100%);
+    border: 1px solid var(--mkt-border-strong); border-radius: 18px; overflow: hidden;
+    box-shadow: 0 20px 44px -18px rgba(0,0,0,0.75); width: 100%;
   }
-  .mkt-frame-wrap { position: relative; z-index: 1; transform: rotate(-1.4deg); width: 266px; }
   .mkt-live-tag {
-    position: absolute; top: -12px; left: 16px; z-index: 2; transform: rotate(-3deg);
-    background: var(--accent); color: #fff; font-weight: 700; font-size: 10.5px; letter-spacing: 0.06em;
-    text-transform: uppercase; padding: 5px 12px; border-radius: 999px; box-shadow: 0 4px 10px -2px rgba(124,131,253,0.5);
-    animation: mktTagPop 0.5s cubic-bezier(.34,1.56,.64,1) 0.2s backwards;
+    display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--mkt-text-muted-2); margin-bottom: 10px;
   }
-  @keyframes mktTagPop {
-    0% { transform: rotate(-3deg) scale(0.5); opacity: 0; }
-    60% { transform: rotate(-3deg) scale(1.08); opacity: 1; }
-    100% { transform: rotate(-3deg) scale(1); opacity: 1; }
-  }
-  .mkt-device-frame {
-    position: relative; background: #05070f; border: 1px solid rgba(154,162,196,0.16); border-radius: 12px; overflow: hidden;
-    box-shadow: 0 24px 46px -18px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.03) inset;
-  }
-  .mkt-device-frame::after {
-    content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
-    background: linear-gradient(100deg, transparent, rgba(255,255,255,0.14), transparent);
-    transform: skewX(-20deg); animation: mktShine 1.3s ease-in-out 0.5s 1; pointer-events: none;
-  }
-  @keyframes mktShine { to { left: 130%; } }
-  .mkt-device-bar { display: flex; align-items: center; gap: 6px; padding: 9px 11px; background: #0d1120; }
+  .mkt-live-tag .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--mkt-success); animation: mktPulseTeal 2.2s ease-in-out infinite; }
+  .mkt-device-bar { display: flex; align-items: center; gap: 6px; padding: 9px 11px; background: var(--mkt-bg-sunken); }
   .mkt-device-dot { width: 7px; height: 7px; border-radius: 999px; background: #2c3559; }
   .mkt-device-url { flex: 1 1 auto; text-align: center; font-size: 9.5px; color: #5e6688; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; }
-  .mkt-preview-note { font-size: 11px; color: var(--text-muted-2); margin-top: 12px; line-height: 1.6; max-width: 266px; transform: rotate(-1.4deg); }
+  .mkt-preview-note { font-size: 11px; color: var(--mkt-text-muted-2); margin-top: 12px; line-height: 1.6; max-width: 300px; }
 
-  .mkt-form-step { display: flex; flex-direction: column; gap: 20px; }
-  .mkt-field-label { font-size: 12.5px; font-weight: 600; color: var(--text-muted-2); display: block; margin-bottom: 7px; }
+  .mkt-form-step { display: flex; flex-direction: column; gap: 18px; }
+  .mkt-field-label { font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 7px; letter-spacing: 0.01em; }
   .mkt-field { display: flex; flex-direction: column; }
-  .mkt-field-pair { display: flex; gap: 24px; }
+  .mkt-field-pair { display: flex; gap: 20px; }
   .mkt-field-pair > .mkt-field { flex: 1 1 auto; min-width: 0; }
-  textarea.mkt-line-input { resize: vertical; font-family: inherit; min-height: 92px; padding-top: 0; }
-  select.mkt-line-input { cursor: pointer; }
-  select.mkt-line-input option { background: #0d1120; }
-  input[type="file"].mkt-line-input { font-size: 13px; cursor: pointer; padding: 5px 0; color: var(--text-muted-2); }
+  textarea.mkt-line-input { resize: vertical; font-family: inherit; min-height: 92px; }
+  select.mkt-line-input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23888db0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
+  select.mkt-line-input option { background: var(--mkt-bg-sunken); }
+  input[type="file"].mkt-line-input { font-size: 13px; cursor: pointer; padding: 9px 13px; color: var(--mkt-text-muted-2); }
   input[type="file"].mkt-line-input::file-selector-button {
-    background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; margin-right: 10px; font-family: inherit;
+    background: none; border: none; color: var(--mkt-accent); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; margin-right: 10px; font-family: inherit;
   }
-  .mkt-line-input { font-size: 15px; padding: 9px 2px; }
 
-  .mkt-wizard-nav { display: flex; align-items: center; gap: 20px; margin-top: 22px; }
+  .mkt-wizard-nav { display: flex; align-items: center; gap: 18px; margin-top: 20px; }
   .mkt-btn-primary {
-    font-family: inherit; font-size: 14.5px; font-weight: 700; border-radius: 999px; border: none;
-    padding: 12px 26px; cursor: pointer; background: var(--accent); color: #fff; display: inline-flex;
-    align-items: center; gap: 8px; transition: background 0.15s, transform 0.08s, box-shadow 0.15s;
+    font-family: inherit; font-size: 13.5px; font-weight: 700; border-radius: 10px; border: none;
+    padding: 12px 24px; cursor: pointer; background: var(--mkt-accent); color: #fff; display: inline-flex;
+    align-items: center; gap: 8px; transition: background 0.15s, transform 0.08s;
   }
-  .mkt-btn-primary:hover { background: var(--accent-hover); box-shadow: 0 10px 22px -8px rgba(124,131,253,0.5); }
+  .mkt-btn-primary:hover { background: var(--mkt-accent-hover); }
   .mkt-btn-primary:active { transform: scale(0.97); }
-  .mkt-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
-  .mkt-btn-link { background: none; border: none; color: var(--text-muted-2); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 5px; }
+  .mkt-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mkt-btn-link { background: none; border: none; color: var(--mkt-text-muted-2); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 5px; }
   .mkt-btn-link:hover { color: var(--text); }
   .mkt-btn-link:disabled { opacity: 0.5; cursor: not-allowed; }
-  .mkt-wiz-error { font-size: 12px; color: #e8828a; margin-top: 12px; }
+  .mkt-wiz-error { font-size: 12px; color: #ff9aa2; margin-top: 12px; }
 
-  .mkt-listings-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 14px; position: relative; z-index: 1; }
+  /* ── แผง "My Listings" — กริดการ์ด (เดิมเป็นแถวยาวคั่นเส้น) ── */
+  .mkt-listings-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
   .mkt-listings-head h2 { font-weight: 800; font-size: 19px; margin: 0; color: var(--text); }
-  .mkt-listings-head .count { color: var(--text-muted-2); font-weight: 500; }
-  .mkt-listing-list { margin-top: 18px; position: relative; z-index: 1; }
-  .mkt-listing-row { display: flex; align-items: center; gap: 16px; padding: 15px 0; border-bottom: 1px solid rgba(154,162,196,0.12); }
-  .mkt-listing-row:first-child { border-top: 1px solid rgba(154,162,196,0.12); }
-  .mkt-listing-thumb { width: 42px; height: 42px; border-radius: 8px; flex: 0 0 auto; position: relative; background-size: cover; background-position: center; }
-  .mkt-listing-thumb .cat-dot { position: absolute; bottom: -2px; right: -2px; width: 9px; height: 9px; border-radius: 999px; border: 2px solid var(--bg); }
-  .mkt-listing-main { flex: 1 1 auto; min-width: 0; }
-  .mkt-listing-title { font-size: 14.5px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.12s; }
-  .mkt-listing-row:hover .mkt-listing-title { color: var(--accent); }
-  .mkt-listing-sub { font-size: 12.5px; color: var(--text-muted-2); margin-top: 3px; }
-  .mkt-listing-meta { font-size: 12px; color: var(--text-muted-2); flex: 0 0 auto; width: 90px; text-align: right; }
-  .mkt-listing-price { font-size: 14.5px; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; flex: 0 0 auto; width: 68px; text-align: right; }
-  .mkt-listing-status { flex: 0 0 auto; width: 76px; display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }
+  .mkt-listings-head .count { color: var(--mkt-text-muted-2); font-weight: 500; }
+  .mkt-listings-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+  .mkt-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); gap: 16px; margin-top: 18px; }
+  .mkt-item-card {
+    background: var(--mkt-bg-card); border: 1px solid var(--mkt-border); border-radius: 14px; overflow: hidden;
+    box-shadow: 0 10px 24px -14px rgba(0,0,0,0.6); display: flex; flex-direction: column; transition: border-color 0.15s;
+  }
+  .mkt-item-card:hover { border-color: var(--mkt-border-strong); }
+  .mkt-item-card.is-closed { opacity: 0.62; }
+  .mkt-item-thumb { height: 112px; position: relative; background-size: cover; background-position: center; }
+  .mkt-item-cat {
+    position: absolute; top: 9px; left: 9px; font-size: 10px; font-weight: 700; color: #fff;
+    padding: 4px 9px; border-radius: 999px;
+  }
+  .mkt-item-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; }
+  .mkt-item-title { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mkt-item-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .mkt-item-price { font-size: 13.5px; font-weight: 700; color: var(--mkt-gold); font-variant-numeric: tabular-nums; }
+  .mkt-item-meta { font-size: 11px; color: var(--mkt-text-muted-2); }
+  .mkt-listing-status { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; }
   .mkt-listing-status .dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; }
-  .mkt-listing-status.is-active { color: var(--teal); } .mkt-listing-status.is-active .dot { background: var(--teal); animation: mktPulseTeal 2.2s ease-in-out infinite; }
-  .mkt-listing-status.is-closed { color: var(--text-muted-2); } .mkt-listing-status.is-closed .dot { background: var(--text-muted-2); }
-  @keyframes mktPulseTeal { 0%, 100% { box-shadow: 0 0 0 0 rgba(82,199,192,0.35); } 50% { box-shadow: 0 0 0 4px rgba(82,199,192,0.15); } }
-  .mkt-listing-action { flex: 0 0 auto; width: 58px; text-align: right; }
-  .mkt-btn-row-action { background: none; border: none; color: var(--text-muted-2); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; padding: 0; text-decoration: underline; text-decoration-color: transparent; }
-  .mkt-btn-row-action:hover { color: var(--text); text-decoration-color: var(--text-muted-2); }
-  .mkt-btn-row-action.is-reopen { color: var(--accent); }
-  .mkt-btn-row-action.is-reopen:hover { text-decoration-color: var(--accent); }
+  .mkt-listing-status.is-active { color: var(--mkt-success); } .mkt-listing-status.is-active .dot { background: var(--mkt-success); animation: mktPulseTeal 2.2s ease-in-out infinite; }
+  .mkt-listing-status.is-closed { color: var(--mkt-text-muted-2); } .mkt-listing-status.is-closed .dot { background: var(--mkt-text-muted-2); }
+  @keyframes mktPulseTeal { 0%, 100% { box-shadow: 0 0 0 0 rgba(45,212,168,0.35); } 50% { box-shadow: 0 0 0 4px rgba(45,212,168,0.12); } }
+  .mkt-btn-row-action { background: none; border: none; color: var(--mkt-text-muted-2); font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0; text-decoration: underline; text-decoration-color: transparent; }
+  .mkt-btn-row-action:hover { color: var(--text); text-decoration-color: var(--mkt-text-muted-2); }
+  .mkt-btn-row-action.is-reopen { color: var(--mkt-accent); }
+  .mkt-btn-row-action.is-reopen:hover { text-decoration-color: var(--mkt-accent); }
 
+  @media (max-width: 880px) {
+    .mkt-shell { flex-direction: column; }
+    .mkt-subnav {
+      flex-direction: row; width: 100%; border-right: none; border-bottom: 1px solid var(--mkt-border);
+      padding: 14px 20px; gap: 8px; overflow-x: auto; align-items: center;
+    }
+    .mkt-subnav-label, .mkt-subnav-back { display: none; }
+    .mkt-subnav-item { flex: 0 0 auto; }
+    .mkt-content { padding: 28px 22px 60px; }
+  }
   @media (max-width: 759px) {
-    .mkt-h1 { font-size: 27px; }
-    .mkt-header-row { flex-direction: column; align-items: flex-start; }
-    .mkt-shop-strip { flex-direction: column; align-items: flex-start; gap: 18px; }
-    .mkt-wizard-body { flex-direction: column; gap: 26px; }
-    .mkt-frame-wrap { width: 100%; max-width: 270px; }
+    .mkt-h1 { font-size: 24px; }
+    .mkt-wizard-body { flex-direction: column; gap: 24px; }
+    .mkt-preview-col { flex-basis: auto; width: 100%; max-width: 340px; position: static; }
     .mkt-form-col { max-width: none; }
-    .mkt-listing-meta { display: none; }
-    .mkt-glow { width: 220px; height: 220px; top: -40px; right: -40px; }
   }
 `;
 
@@ -403,45 +476,47 @@ function paymentMethodSectionHtml(seller, user, guildId) {
     ? "Buyers get sent to this link to pay you directly. Milo Bot never sees what's behind it."
     : 'Buyers scan a QR for this number and pay you directly — no fees, no middle step.';
 
-  return `<div class="mkt-shop-strip">
-    <div class="mkt-shop-id" style="display:flex;align-items:center;gap:12px;flex:0 0 auto;">
-      <img src="${escapeHtml(avatarUrl)}" alt="" class="mkt-shop-avatar" style="width:40px;height:40px;border-radius:999px;object-fit:cover;" />
+  return `<div class="mkt-card">
+    <div class="mkt-card-eyebrow" data-i18n="pmEyebrow">Payment</div>
+    <h2 data-i18n="pmHeading">Get paid directly</h2>
+    <p class="mkt-card-desc" data-i18n="pmDesc">Buyers pay you straight through PromptPay or your own payment link — Milo Bot never touches the money.</p>
+
+    <div class="mkt-shop-strip">
+      <img src="${escapeHtml(avatarUrl)}" alt="" class="mkt-shop-avatar" style="width:36px;height:36px;object-fit:cover;" />
       <div>
-        <div style="font-size:14px;font-weight:700;color:var(--text);"><span data-i18n="sellingAsPrefix">Selling as</span> ${escapeHtml(user.username)}</div>
-        <div style="font-size:11.5px;color:${hasAnyMethod ? 'var(--teal)' : 'var(--text-muted-2)'};margin-top:1px;" data-i18n="${hasAnyMethod ? 'pmSetUp' : 'pmNotSetUp'}">${hasAnyMethod ? 'Payment method set up' : 'Payment method not set up yet'}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);"><span data-i18n="sellingAsPrefix">Selling as</span> ${escapeHtml(user.username)}</div>
+        <div style="font-size:11px;color:${hasAnyMethod ? 'var(--mkt-success)' : 'var(--mkt-text-muted-2)'};margin-top:1px;" data-i18n="${hasAnyMethod ? 'pmSetUp' : 'pmNotSetUp'}">${hasAnyMethod ? 'Payment method set up' : 'Payment method not set up yet'}</div>
       </div>
     </div>
 
-    <div style="flex:1 1 320px;min-width:280px;">
-      <div class="mkt-pm-top">
-        <span class="mkt-pm-label" data-i18n="pmGetPaidWith">Get paid with</span>
-        <div class="mkt-tab-row" role="tablist" aria-label="Payment method">
-          <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'false' : 'true'}" id="mkt-pm-tab-promptpay" onclick="mktSelectPaymentMethod('promptpay')"><span data-i18n="pmTabPromptpay">PromptPay</span></button>
-          <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'true' : 'false'}" id="mkt-pm-tab-link" onclick="mktSelectPaymentMethod('link')"><span data-i18n="pmTabLink">Payment link</span></button>
-        </div>
+    <div class="mkt-pm-top">
+      <span class="mkt-pm-label" data-i18n="pmGetPaidWith">Get paid with</span>
+      <div class="mkt-tab-row" role="tablist" aria-label="Payment method">
+        <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'false' : 'true'}" id="mkt-pm-tab-promptpay" onclick="mktSelectPaymentMethod('promptpay')"><span data-i18n="pmTabPromptpay">PromptPay</span></button>
+        <button type="button" class="mkt-text-tab" role="tab" aria-selected="${isLink ? 'true' : 'false'}" id="mkt-pm-tab-link" onclick="mktSelectPaymentMethod('link')"><span data-i18n="pmTabLink">Payment link</span></button>
       </div>
-
-      <form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/payment">
-        <input type="hidden" name="payment_method" id="mkt-pm-hidden-input" value="${isLink ? 'link' : 'promptpay'}" />
-
-        <div class="mkt-pm-field-row" id="mkt-pm-promptpay-field" style="display:${isLink ? 'none' : 'flex'};">
-          <input
-            class="mkt-line-input" type="text" name="promptpay_id" placeholder="0812345678" pattern="\\d{10}" maxlength="10"
-            value="${hasPromptPay ? escapeHtml(seller.promptpayId) : ''}"
-          />
-          <button type="submit" class="mkt-btn-text"><span data-i18n="${pmBtnKey}">${pmBtnLabel}</span></button>
-        </div>
-        <div class="mkt-pm-field-row" id="mkt-pm-link-field" style="display:${isLink ? 'flex' : 'none'};">
-          <input
-            class="mkt-line-input" type="url" name="payment_link" placeholder="https://paypal.me/yourname" maxlength="300"
-            value="${hasPaymentLink ? escapeHtml(seller.paymentLink) : ''}"
-          />
-          <button type="submit" class="mkt-btn-text"><span data-i18n="${pmBtnKey}">${pmBtnLabel}</span></button>
-        </div>
-      </form>
-      ${warningHtml}
-      <p class="mkt-pm-help" id="mkt-pm-help" data-i18n="${pmHelpKey}">${pmHelpText}</p>
     </div>
+
+    <form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/payment">
+      <input type="hidden" name="payment_method" id="mkt-pm-hidden-input" value="${isLink ? 'link' : 'promptpay'}" />
+
+      <div class="mkt-pm-field-row" id="mkt-pm-promptpay-field" style="display:${isLink ? 'none' : 'flex'};">
+        <input
+          class="mkt-line-input" type="text" name="promptpay_id" placeholder="0812345678" pattern="\\d{10}" maxlength="10"
+          value="${hasPromptPay ? escapeHtml(seller.promptpayId) : ''}"
+        />
+        <button type="submit" class="mkt-btn-text"><span data-i18n="${pmBtnKey}">${pmBtnLabel}</span></button>
+      </div>
+      <div class="mkt-pm-field-row" id="mkt-pm-link-field" style="display:${isLink ? 'flex' : 'none'};">
+        <input
+          class="mkt-line-input" type="url" name="payment_link" placeholder="https://paypal.me/yourname" maxlength="300"
+          value="${hasPaymentLink ? escapeHtml(seller.paymentLink) : ''}"
+        />
+        <button type="submit" class="mkt-btn-text"><span data-i18n="${pmBtnKey}">${pmBtnLabel}</span></button>
+      </div>
+    </form>
+    ${warningHtml}
+    <p class="mkt-pm-help" id="mkt-pm-help" data-i18n="${pmHelpKey}">${pmHelpText}</p>
   </div>
 
   <script>
@@ -499,9 +574,6 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
     : `<div style="font-size:12.5px;color:var(--text-muted-2);margin-top:14px;" data-i18n="disabledNote">Set up a payment method above first to unlock this form.</div>`;
 
   return `<div class="mkt-wizard" style="${canSell ? '' : 'opacity:0.55;'}">
-    <div class="mkt-section-eyebrow" data-i18n="wizEyebrow">New listing</div>
-    <h2 data-i18n="wizHeading">What are you selling today?</h2>
-
     <div class="mkt-progress-rule">
       <div class="mkt-p-node is-active" id="mkt-wiz-node1"><span class="mkt-p-dot"></span><span class="mkt-p-text" data-i18n="progressCard">Grid card</span></div>
       <span class="mkt-p-fill" id="mkt-wiz-line1"></span>
@@ -511,60 +583,51 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
     <form id="mkt-wiz-form" method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings" enctype="multipart/form-data">
       <div class="mkt-wizard-body">
 
-        <!-- ═══ ฝั่งซ้าย: พรีวิวสด ═══ สีพวกนี้ตั้งใจ hardcode ไม่ใช้ var(--xxx) ของแดชบอร์ด
-             เพราะพรีวิวต้องเลียนแบบหน้า public/marketplace.html (ธีมมืดของมันเอง) ให้ตรงเป๊ะๆ -->
+        <!-- ═══ ฝั่งซ้าย: พรีวิวสด ลอยตรึง (sticky) ═══ สีพวกนี้ตั้งใจ hardcode ไม่ใช้
+             var(--xxx) ของแดชบอร์ด เพราะพรีวิวต้องเลียนแบบหน้า public/marketplace.html
+             (ธีมมืดของมันเอง) ให้ตรงเป๊ะๆ -->
         <div class="mkt-preview-col">
-          <div class="mkt-frame-halo" id="mkt-wiz-frame-halo"></div>
+          <div class="mkt-live-tag"><span class="dot"></span><span data-i18n="livePreview">Live preview</span></div>
           <div class="mkt-frame-wrap">
-            <span class="mkt-live-tag" data-i18n="livePreview">Live preview</span>
-            <div class="mkt-device-frame">
-              <div class="mkt-device-bar">
-                <span class="mkt-device-dot"></span><span class="mkt-device-dot"></span><span class="mkt-device-dot"></span>
-                <span class="mkt-device-url" data-i18n="devicePreviewLabel">Marketplace preview</span>
-              </div>
+            <div class="mkt-device-bar">
+              <span class="mkt-device-dot"></span><span class="mkt-device-dot"></span><span class="mkt-device-dot"></span>
+              <span class="mkt-device-url" data-i18n="devicePreviewLabel">Marketplace preview</span>
+            </div>
 
-              <!-- พรีวิวสเต็ป 1: การ์ดในกริด (สไตล์ก๊อปจาก buildListingCardHtml() ใน public/marketplace.html)
-                   🆕 รอบ 6b: ขยายขนาดตามกรอบที่ใหญ่ขึ้น (216px → 266px, ~1.23x) ตัวเลขพิกเซลด้านล่าง
-                   คูณ 1.2 แบบคร่าวๆจากของเดิมทั้งหมด -->
-              <div id="mkt-wiz-preview-card" style="position:relative;height:182px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
-                <div id="mkt-wiz-pc-badge" style="position:absolute;top:11px;left:11px;background:#4b5563;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;" data-i18n="chooseCategory">Choose a category&hellip;</div>
-                <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
-                <div style="position:absolute;left:16px;right:16px;bottom:13px;">
-                  <div id="mkt-wiz-pc-title" style="font-size:15px;font-weight:700;color:#fff;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                    <span style="font-size:12px;color:rgba(255,255,255,0.75);">${escapeHtml(sellerDisplayName || 'You')}</span>
-                    <span id="mkt-wiz-pc-price" style="font-size:15px;font-weight:700;color:#f4b860;">&#3647;0</span>
-                  </div>
+            <!-- พรีวิวสเต็ป 1: การ์ดในกริด (สไตล์ก๊อปจาก buildListingCardHtml() ใน public/marketplace.html)
+                 🆕 รอบ 6b: ขยายขนาดตามกรอบที่ใหญ่ขึ้น (216px → 266px, ~1.23x) ตัวเลขพิกเซลด้านล่าง
+                 คูณ 1.2 แบบคร่าวๆจากของเดิมทั้งหมด -->
+            <div id="mkt-wiz-preview-card" style="position:relative;height:182px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
+              <div id="mkt-wiz-pc-badge" style="position:absolute;top:11px;left:11px;background:#4b5563;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;" data-i18n="chooseCategory">Choose a category&hellip;</div>
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
+              <div style="position:absolute;left:16px;right:16px;bottom:13px;">
+                <div id="mkt-wiz-pc-title" style="font-size:15px;font-weight:700;color:#fff;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                  <span style="font-size:12px;color:rgba(255,255,255,0.75);">${escapeHtml(sellerDisplayName || 'You')}</span>
+                  <span id="mkt-wiz-pc-price" style="font-size:15px;font-weight:700;color:#f4b860;">&#3647;0</span>
                 </div>
               </div>
+            </div>
 
-              <!-- พรีวิวสเต็ป 2: หน้ารายละเอียดเต็ม (สไตล์ก๊อปจาก modal #productDetailModal ในหน้าเดียวกัน) -->
-              <div id="mkt-wiz-preview-detail" style="display:none;">
-                <div id="mkt-wiz-pd-hero" style="height:98px;position:relative;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
-                  <div id="mkt-wiz-pd-badge" style="position:absolute;top:11px;left:11px;border-radius:999px;padding:4px 11px;font-size:10px;font-weight:700;color:#fff;background:#4b5563;" data-i18n="chooseCategory">Choose a category&hellip;</div>
+            <!-- พรีวิวสเต็ป 2: หน้ารายละเอียดเต็ม (สไตล์ก๊อปจาก modal #productDetailModal ในหน้าเดียวกัน) -->
+            <div id="mkt-wiz-preview-detail" style="display:none;">
+              <div id="mkt-wiz-pd-hero" style="height:98px;position:relative;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
+                <div id="mkt-wiz-pd-badge" style="position:absolute;top:11px;left:11px;border-radius:999px;padding:4px 11px;font-size:10px;font-weight:700;color:#fff;background:#4b5563;" data-i18n="chooseCategory">Choose a category&hellip;</div>
+              </div>
+              <div style="padding:14px 16px 16px;">
+                <div id="mkt-wiz-pd-title" style="font-size:15px;font-weight:700;color:#f3f1fb;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+                  <span style="font-size:12px;color:#9aa2c4;">${escapeHtml(sellerDisplayName || 'You')}</span>
+                  <span id="mkt-wiz-pd-price" style="font-size:16px;font-weight:700;color:#f4b860;">&#3647;0</span>
                 </div>
-                <div style="padding:14px 16px 16px;">
-                  <div id="mkt-wiz-pd-title" style="font-size:15px;font-weight:700;color:#f3f1fb;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
-                    <span style="font-size:12px;color:#9aa2c4;">${escapeHtml(sellerDisplayName || 'You')}</span>
-                    <span id="mkt-wiz-pd-price" style="font-size:16px;font-weight:700;color:#f4b860;">&#3647;0</span>
-                  </div>
-                  <div style="height:1px;background:#262f4d;margin:12px 0;"></div>
-                  <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#9aa2c4;text-transform:uppercase;margin-bottom:5px;" data-i18n="fieldDescription">Description</div>
-                  <div id="mkt-wiz-pd-desc" style="font-size:12.5px;color:#c3c8e6;line-height:1.6;" data-i18n="previewDefaultDesc">Your description will show up here.</div>
-                  <div id="mkt-wiz-pd-filebadge" style="display:none;margin-top:9px;font-size:12px;color:#7fc9c0;"></div>
-                </div>
+                <div style="height:1px;background:#262f4d;margin:12px 0;"></div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#9aa2c4;text-transform:uppercase;margin-bottom:5px;" data-i18n="fieldDescription">Description</div>
+                <div id="mkt-wiz-pd-desc" style="font-size:12.5px;color:#c3c8e6;line-height:1.6;" data-i18n="previewDefaultDesc">Your description will show up here.</div>
+                <div id="mkt-wiz-pd-filebadge" style="display:none;margin-top:9px;font-size:12px;color:#7fc9c0;"></div>
               </div>
             </div>
           </div>
           <p class="mkt-preview-note" data-i18n="previewNote">Mirrors the real Marketplace page — this is what buyers actually see.</p>
-        </div>
-
-        <div class="mkt-flow-connector" aria-hidden="true">
-          <svg width="36" height="22" viewBox="0 0 40 24" fill="none">
-            <path d="M36 12H6" stroke="#7c83fd" stroke-width="1.5" stroke-dasharray="4 4" class="mkt-flow-dash"/>
-            <path d="M12 6L6 12L12 18" stroke="#7c83fd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
         </div>
 
         <!-- ═══ ฝั่งขวา: ฟอร์มของสเต็ปที่กำลังทำอยู่ ═══ -->
@@ -668,7 +731,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       var line1 = document.getElementById('mkt-wiz-line1');
       var previewCardEl = document.getElementById('mkt-wiz-preview-card');
       var previewDetailEl = document.getElementById('mkt-wiz-preview-detail');
-      var frameHalo = document.getElementById('mkt-wiz-frame-halo'); // 🆕 รอบ 6: แสงฟุ้งหลังกรอบพรีวิว
+      // 🆕 รอบ 7: ตัดแสงฟุ้งหลังกรอบพรีวิว (frame-halo) ออกแล้ว — ธีมใหม่ใช้การ์ดมีขอบ/เงาแทน
 
       // ── ช่องกรอกสเต็ป 1 ──
       var titleInput = document.getElementById('mkt-wiz-title-input');
@@ -733,8 +796,6 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         applyPreviewBackground(previewCardEl, style);
         pcTitle.textContent = titleInput.value.trim() || mktT('previewDefaultTitle');
         pcPrice.textContent = formattedPrice();
-        // 🆕 รอบ 6: แสงฟุ้งหลังกรอบพรีวิวเปลี่ยนสีตามหมวดหมู่ที่เลือกแบบเรียลไทม์
-        frameHalo.style.background = 'radial-gradient(circle, ' + style.badge + ' 0%, transparent 70%)';
       }
 
       // อัปเดตพรีวิวดีเทล (สเต็ป 2) — เรียกทุกครั้งที่พิมพ์คำอธิบาย/เปลี่ยน type/เลือกไฟล์ด้วย
@@ -891,14 +952,14 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
 }
 
 /**
- * แถวประกาศขาย 1 แถว — มีปุ่มปิด/เปิดขายใหม่ (ฟอร์มเล็กๆ ปุ่มเดียวจบ ไม่ต้องพึ่ง JS)
- * ตามสถานะปัจจุบัน 🆕 รอบ 6: เปลี่ยนจาก <tr> ในตารางเป็น flex row คั่นด้วยเส้นบางๆ
- * (.mkt-listing-row) ตามแนว "ไม่มีกล่อง" ของดีไซน์รอบนี้ — คอลัมน์ "ขายไปกี่ชิ้น" เดิม (ที่
- * ไม่มีข้อมูลจริงรองรับต่อประกาศ) เปลี่ยนเป็น "ลงขายมานานแค่ไหนแล้ว" จาก listing.createdAt
+ * การ์ดประกาศขาย 1 ใบ ในกริด "My Listings" — มีปุ่มปิด/เปิดขายใหม่ (ฟอร์มเล็กๆ ปุ่มเดียวจบ
+ * ไม่ต้องพึ่ง JS) ตามสถานะปัจจุบัน 🆕 รอบ 7: เปลี่ยนจากแถวยาวคั่นเส้น (.mkt-listing-row เดิม
+ * ของรอบ 6) เป็นการ์ดในกริด (.mkt-item-card) หน้าตาใกล้เคียงการ์ดในหน้า public/marketplace.html
+ * ของผู้ซื้อมากขึ้น — ข้อมูล/validation/route เดิมทุกอย่าง เปลี่ยนแค่หน้าตา
  * @param {object} listing { id, title, priceThb, category, subcategory, status, imageUrl, createdAt }
  * @param {object} categories CATEGORIES object
  */
-function listingRowHtml(listing, categories, guildId) {
+function listingCardHtml(listing, categories, guildId) {
   const categoryInfo = categories[listing.category];
   const categoryLabel = categoryInfo ? categoryInfo.label + (listing.subcategory ? ` / ${listing.subcategory}` : '') : listing.category;
   const styleKey = listing.category === 'media' && listing.subcategory === 'banner' ? 'media:banner' : listing.category;
@@ -919,44 +980,59 @@ function listingRowHtml(listing, categories, guildId) {
   // 🆕 รอบ 6c: เก็บ createdAt ดิบไว้ใน data-created (หน่วย ms) ไว้ให้ mktApplyLang() เอาไป
   // คำนวณ "Xd ago"/"Xวันที่แล้ว" ใหม่ตอนสลับภาษา (relativeTimeLabel() นี้รันแค่ตอน render
   // ครั้งแรกบน server เป็นอังกฤษเสมอ ไม่รู้จักภาษาที่เลือกไว้ใน localStorage)
-  return `<div class="mkt-listing-row" data-status="${isActive ? 'active' : 'closed'}">
-    <div class="mkt-listing-thumb" style="${thumbStyle}"><span class="cat-dot" style="background:${catStyle.badge};"></span></div>
-    <div class="mkt-listing-main">
-      <div class="mkt-listing-title">${escapeHtml(listing.title)}</div>
-      <div class="mkt-listing-sub">${escapeHtml(categoryLabel)}</div>
+  return `<div class="mkt-item-card${isActive ? '' : ' is-closed'}" data-status="${isActive ? 'active' : 'closed'}">
+    <div class="mkt-item-thumb" style="${thumbStyle}">
+      <span class="mkt-item-cat" style="background:${catStyle.badge};">${escapeHtml(categoryLabel)}</span>
     </div>
-    <div class="mkt-listing-meta" data-created="${new Date(listing.createdAt).getTime()}">${escapeHtml(relativeTimeLabel(listing.createdAt))}</div>
-    <div class="mkt-listing-price">&#3647;${Number(listing.priceThb).toLocaleString('en-US')}</div>
-    ${statusIndicatorHtml(listing.status)}
-    <div class="mkt-listing-action">${actionHtml}</div>
+    <div class="mkt-item-body">
+      <div class="mkt-item-title">${escapeHtml(listing.title)}</div>
+      <div class="mkt-item-row">
+        <span class="mkt-item-price">&#3647;${Number(listing.priceThb).toLocaleString('en-US')}</span>
+        <span class="mkt-item-meta" data-created="${new Date(listing.createdAt).getTime()}">${escapeHtml(relativeTimeLabel(listing.createdAt))}</span>
+      </div>
+      <div class="mkt-item-row">
+        ${statusIndicatorHtml(listing.status)}
+        ${actionHtml}
+      </div>
+    </div>
   </div>`;
 }
 
 /**
- * รายการ "ประกาศขายของฉัน" ทั้งก้อน — โชว์ข้อความเฉยๆ ถ้ายังไม่เคยลงขายอะไรเลย
- * 🆕 รอบ 6: เพิ่มแท็บกรอง All / Active / Closed เหนือรายการ (ของใหม่ ไม่มีในรอบ 5) —
- * กรองด้วย JS ฝั่ง client เฉยๆ (ซ่อน/โชว์แถวด้วย data-status) ไม่ยิง request ใหม่เลย
+ * แผง "My Listings" ทั้งก้อน — โชว์ข้อความเฉยๆ ถ้ายังไม่เคยลงขายอะไรเลย
+ * 🆕 รอบ 7: ย้าย "+ New Listing" มาเป็นปุ่มเด่นในหัวแผงนี้ (กดแล้วสลับไปแผง "Create Listing"
+ * ด้วย mktShowPanel('create') — เรียกใช้ฟังก์ชันเดียวกับแถบเมนูย่อย ดู renderMarketplaceDashboardPage)
+ * แท็บกรอง All / Active / Closed ยังเป็นของรอบ 6 เดิม กรองด้วย JS ฝั่ง client เฉยๆ ไม่ยิง
+ * request ใหม่เลย (เปลี่ยนแค่ตัวที่กรอง จากแถวเป็นการ์ดในกริด)
  */
 function myListingsSectionHtml(listings, categories, guildId) {
+  const headHtml = `<div class="mkt-listings-head">
+    <h2><span data-i18n="listingsHeading">Your listings</span>${listings.length ? ` <span class="count">(${listings.length})</span>` : ''}</h2>
+    <button type="button" class="mkt-btn-primary" onclick="mktShowPanel('create')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <span data-i18n="newListingBtn">New Listing</span>
+    </button>
+  </div>`;
+
   if (listings.length === 0) {
     return `<div class="mkt-listings">
-      <div class="mkt-listings-head"><h2 data-i18n="listingsHeading">Your listings</h2></div>
-      <div style="font-size:12.5px;color:var(--text-muted-2);margin-top:10px;" data-i18n="emptyListings">You haven't listed anything yet — use the form above to list your first item.</div>
+      ${headHtml}
+      <div style="font-size:12.5px;color:var(--mkt-text-muted-2);margin-top:14px;" data-i18n="emptyListings">You haven't listed anything yet — use the "New Listing" button above to list your first item.</div>
     </div>`;
   }
 
-  const rowsHtml = listings.map((listing) => listingRowHtml(listing, categories, guildId)).join('');
+  const cardsHtml = listings.map((listing) => listingCardHtml(listing, categories, guildId)).join('');
 
   return `<div class="mkt-listings">
-    <div class="mkt-listings-head">
-      <h2><span data-i18n="listingsHeading">Your listings</span> <span class="count">(${listings.length})</span></h2>
+    ${headHtml}
+    <div class="mkt-listings-toolbar">
       <div class="mkt-tab-row" role="tablist" aria-label="Filter listings">
         <button type="button" class="mkt-text-tab" role="tab" aria-selected="true" onclick="mktFilterListings(this,'all')"><span data-i18n="filterAll">All</span></button>
         <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" onclick="mktFilterListings(this,'active')"><span data-i18n="filterActive">Active</span></button>
         <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" onclick="mktFilterListings(this,'closed')"><span data-i18n="filterClosed">Closed</span></button>
       </div>
     </div>
-    <div class="mkt-listing-list" id="mkt-listing-list">${rowsHtml}</div>
+    <div class="mkt-item-grid" id="mkt-listing-list">${cardsHtml}</div>
   </div>
 
   <script>
@@ -964,9 +1040,9 @@ function myListingsSectionHtml(listings, categories, guildId) {
       var tabs = btn.parentElement.querySelectorAll('.mkt-text-tab');
       tabs.forEach(function (t) { t.setAttribute('aria-selected', 'false'); });
       btn.setAttribute('aria-selected', 'true');
-      document.querySelectorAll('#mkt-listing-list .mkt-listing-row').forEach(function (row) {
-        var show = status === 'all' || row.getAttribute('data-status') === status;
-        row.style.display = show ? 'flex' : 'none';
+      document.querySelectorAll('#mkt-listing-list .mkt-item-card').forEach(function (card) {
+        var show = status === 'all' || card.getAttribute('data-status') === status;
+        card.style.display = show ? '' : 'none';
       });
     }
   </script>`;
@@ -998,14 +1074,26 @@ function myListingsSectionHtml(listings, categories, guildId) {
 function mktI18nScript() {
   const dict = {
     eyebrow: { en: 'Seller dashboard', th: 'แดชบอร์ดผู้ขาย' },
-    pageTitle: { en: 'Marketplace', th: 'มาร์เก็ตเพลส' },
     statListingsLabel: { en: 'active listings', th: 'รายการที่เปิดขาย' },
     statSalesLabel: { en: 'sales completed', th: 'ยอดขายสำเร็จ' },
-    subtitlePart1: {
-      en: 'Sell decorations or services to other Discord server owners — set up everything right here, no need to run commands in Discord. Same data as the ',
-      th: 'ขายของแต่งเซิร์ฟหรือบริการให้เจ้าของเซิร์ฟ Discord คนอื่นได้เลย ตั้งค่าทุกอย่างจากหน้านี้หน้าเดียว ไม่ต้องไปพิมพ์คำสั่งในดิสคอร์ด ข้อมูลเชื่อมกับคำสั่ง ',
+    // 🆕 รอบ 7: ป้ายของแถบเมนูย่อย + หัวข้อแผง (ชื่อเดียวกันใช้ซ้ำทั้ง 2 ที่ — ปุ่มเมนูย่อย
+    // กับ <h1> ของแผงนั้นๆ)
+    navOverview: { en: 'Overview', th: 'ภาพรวม' },
+    navMyListings: { en: 'My Listings', th: 'ประกาศของฉัน' },
+    backToDashboard: { en: 'Back to Dashboard', th: 'กลับไปแดชบอร์ด' },
+    overviewSubtitle: {
+      en: 'Track how your shop is doing and manage how buyers pay you.',
+      th: 'ดูภาพรวมร้านของคุณ และตั้งค่าว่าผู้ซื้อจะจ่ายเงินให้คุณยังไง',
     },
-    subtitlePart2: { en: ' slash command, so both stay in sync.', th: ' ตัวเดิมเป๊ะๆ ไม่ว่าจะแก้จากฝั่งไหนก็อัปเดตตรงกันหมด' },
+    pmEyebrow: { en: 'Payment', th: 'การรับเงิน' },
+    pmHeading: { en: 'Get paid directly', th: 'รับเงินเข้ากระเป๋าตรงๆ' },
+    pmDesc: {
+      en: 'Buyers pay you straight through PromptPay or your own payment link — Milo Bot never touches the money.',
+      th: 'ผู้ซื้อจ่ายเงินให้คุณตรงๆ ผ่านพร้อมเพย์หรือลิงก์รับเงินของคุณเอง — Milo Bot ไม่แตะเงินเลย',
+    },
+    newListingBtn: { en: 'New Listing', th: 'ลงขายใหม่' },
+    createListingEyebrow: { en: 'My Listings', th: 'ประกาศของฉัน' },
+    createListingHeading: { en: 'Create New Listing', th: 'สร้างประกาศขายใหม่' },
     bannerSaved: { en: 'Saved!', th: 'บันทึกแล้ว!' },
     disclosureLine: {
       en: 'This marketplace is peer-to-peer — Milo Bot never touches the money.',
@@ -1045,8 +1133,6 @@ function mktI18nScript() {
       en: "Buyers get sent to this link to pay you directly. Milo Bot never sees what's behind it.",
       th: 'ผู้ซื้อจะถูกพาไปที่ลิงก์นี้เพื่อจ่ายเงินให้ผู้ขายตรงๆ Milo Bot ไม่เห็นว่าลิงก์นี้พาไปไหน',
     },
-    wizEyebrow: { en: 'New listing', th: 'ลงขายใหม่' },
-    wizHeading: { en: 'What are you selling today?', th: 'วันนี้จะลงขายอะไรดี?' },
     progressCard: { en: 'Grid card', th: 'การ์ดในกริด' },
     progressDetail: { en: 'Full details', th: 'รายละเอียดเต็ม' },
     stepWord: { en: 'Step', th: 'ขั้นตอน' },
@@ -1187,43 +1273,85 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
   const activeCount = listings.filter((item) => item.status === 'active').length;
   const completedSalesCount = Number(completedSales) || 0;
 
-  const bodyHtml = `${mktI18nScript()}<div class="mkt-page" style="padding:40px 56px 90px;">
-    <div class="mkt-grain"></div>
-    <div class="mkt-glow"></div>
+  // 🆕 รอบ 7: โครงหน้าเปลี่ยนเป็น "แถบเมนูย่อย (mkt-subnav) + แผงสลับ (mkt-panel) x3" —
+  // ดูคอมเมนต์รอบ 7 หัวไฟล์นี้ว่าทำไมแถบเมนูย่อยนี้ "ไม่ใช่" แถบข้างหลักของแดชบอร์ด
+  const bodyHtml = `${mktI18nScript()}<div class="mkt-page">
+  <div class="mkt-shell">
 
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-      <div class="mkt-eyebrow" data-i18n="eyebrow">Seller dashboard</div>
-      <div class="mkt-tab-row" role="tablist" aria-label="Dashboard language" style="gap:12px;">
-        <button type="button" class="mkt-text-tab" role="tab" id="mkt-lang-en" aria-selected="true" onclick="mktApplyLang('en')">EN</button>
-        <button type="button" class="mkt-text-tab" role="tab" id="mkt-lang-th" aria-selected="false" onclick="mktApplyLang('th')">TH</button>
+    <nav class="mkt-subnav">
+      <div class="mkt-subnav-label">Marketplace</div>
+      <button type="button" class="mkt-subnav-item is-active" id="mkt-subnav-overview" onclick="mktShowPanel('overview')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="3" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="3" y="13" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="13" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/></svg>
+        <span data-i18n="navOverview">Overview</span>
+      </button>
+      <button type="button" class="mkt-subnav-item" id="mkt-subnav-listings" onclick="mktShowPanel('listings')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.17L4 3a1 1 0 0 0-1 1l.17 5.59a2 2 0 0 0 .66 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor"/></svg>
+        <span data-i18n="navMyListings">My Listings</span>
+      </button>
+      <a href="/dashboard/${encodeURIComponent(guild.id)}" class="mkt-subnav-back">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="backToDashboard">Back to Dashboard</span>
+      </a>
+    </nav>
+
+    <div class="mkt-content">
+      <div class="mkt-top-bar">
+        <div class="mkt-eyebrow" data-i18n="eyebrow">Seller dashboard</div>
+        <div class="mkt-tab-row mkt-lang-switch" role="tablist" aria-label="Dashboard language">
+          <button type="button" class="mkt-text-tab" role="tab" id="mkt-lang-en" aria-selected="true" onclick="mktApplyLang('en')">EN</button>
+          <button type="button" class="mkt-text-tab" role="tab" id="mkt-lang-th" aria-selected="false" onclick="mktApplyLang('th')">TH</button>
+        </div>
       </div>
-    </div>
-    <div class="mkt-header-row">
-      <h1 class="mkt-h1"><span data-i18n="pageTitle">Marketplace</span><svg class="mkt-squiggle" viewBox="0 0 120 10" width="104" height="8" fill="none" aria-hidden="true"><path d="M2 6c10-6 20 6 30 0s20-6 30 0 20 6 30 0 20-6 26 0" stroke="#f472b6" stroke-width="2.2" stroke-linecap="round"/></svg></h1>
-      <div class="mkt-stat-pair">
-        <div class="mkt-stat"><b id="mkt-stat-listings" data-target="${activeCount}">0</b><span data-i18n="statListingsLabel">active listings</span></div>
-        <div class="mkt-stat"><b id="mkt-stat-sales" data-target="${completedSalesCount}">0</b><span data-i18n="statSalesLabel">sales completed</span></div>
+
+      ${bannerHtml({ saved, error })}
+
+      <!-- ═══ แผง Overview — สถิติ + ตั้งค่าช่องทางรับเงิน ═══ -->
+      <div class="mkt-panel" id="mkt-panel-overview">
+        <h1 class="mkt-h1" data-i18n="navOverview">Overview</h1>
+        <p class="mkt-panel-subtitle" data-i18n="overviewSubtitle">Track how your shop is doing and manage how buyers pay you.</p>
+
+        <div class="mkt-stat-grid" style="margin-top:24px;">
+          <div class="mkt-stat-card">
+            <div class="mkt-stat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 13h4l3-8 4 16 3-8h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div>
+              <div class="mkt-stat-value" id="mkt-stat-listings" data-target="${activeCount}">0</div>
+              <div class="mkt-stat-label" data-i18n="statListingsLabel">active listings</div>
+            </div>
+          </div>
+          <div class="mkt-stat-card">
+            <div class="mkt-stat-icon" style="background:rgba(245,185,66,0.14);color:var(--mkt-gold);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div>
+              <div class="mkt-stat-value" id="mkt-stat-sales" data-target="${completedSalesCount}">0</div>
+              <div class="mkt-stat-label" data-i18n="statSalesLabel">sales completed</div>
+            </div>
+          </div>
+        </div>
+
+        ${disclosureHtml()}
+        ${paymentMethodSectionHtml(seller, user, guild.id)}
       </div>
+
+      <!-- ═══ แผง My Listings — กริดการ์ด + ปุ่ม New Listing ═══ -->
+      <div class="mkt-panel" id="mkt-panel-listings" hidden>
+        ${myListingsSectionHtml(listings, categories, guild.id)}
+      </div>
+
+      <!-- ═══ แผง Create Listing — ฟอร์มลงขายเดิมทั้งหมด (50/50 พรีวิว/ฟอร์ม) ═══ -->
+      <div class="mkt-panel" id="mkt-panel-create" hidden>
+        <div class="mkt-wizard-head">
+          <button type="button" class="mkt-back-btn" onclick="mktShowPanel('listings')" aria-label="Back to My Listings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div>
+            <div class="mkt-card-eyebrow" data-i18n="createListingEyebrow">My Listings</div>
+            <h1 class="mkt-h1" style="margin-top:2px;font-size:21px;" data-i18n="createListingHeading">Create New Listing</h1>
+          </div>
+        </div>
+        ${sellWizardHtml(categories, canSell, guild.id, user.username)}
+      </div>
+
     </div>
-    <p class="mkt-subtitle">
-      <span data-i18n="subtitlePart1">Sell decorations or services to other Discord server owners — set up everything right here, no need to run
-      commands in Discord. Same data as the </span><code>/marketplace</code><span data-i18n="subtitlePart2"> slash command, so both stay in sync.</span>
-    </p>
-
-    ${bannerHtml({ saved, error })}
-
-    <hr class="mkt-rule" />
-
-    ${disclosureHtml()}
-    ${paymentMethodSectionHtml(seller, user, guild.id)}
-
-    <hr class="mkt-rule" />
-
-    ${sellWizardHtml(categories, canSell, guild.id, user.username)}
-
-    <hr class="mkt-rule" />
-
-    ${myListingsSectionHtml(listings, categories, guild.id)}
+  </div>
   </div>
 
   <script>
@@ -1249,6 +1377,26 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
       if (typeof window.mktApplyLang === 'function') {
         window.mktApplyLang(window.MKT_LANG || 'en');
       }
+
+      // 🆕 รอบ 7: สลับ 3 แผง (Overview / My Listings / Create Listing) ล้วนด้วย JS ฝั่ง client
+      // ไม่โหลดหน้าใหม่ ไม่มี route ใหม่ ไม่กระทบ backend เลย — ปุ่ม "+ New Listing" และปุ่ม
+      // ย้อนกลับในแผง Create Listing เรียกฟังก์ชันนี้ตรงๆ (ดู myListingsSectionHtml /
+      // renderMarketplaceDashboardPage ด้านบน)
+      window.mktShowPanel = function (name) {
+        var panels = {
+          overview: document.getElementById('mkt-panel-overview'),
+          listings: document.getElementById('mkt-panel-listings'),
+          create: document.getElementById('mkt-panel-create'),
+        };
+        Object.keys(panels).forEach(function (key) {
+          if (panels[key]) panels[key].hidden = key !== name;
+        });
+        var navOverview = document.getElementById('mkt-subnav-overview');
+        var navListings = document.getElementById('mkt-subnav-listings');
+        if (navOverview) navOverview.classList.toggle('is-active', name === 'overview');
+        if (navListings) navListings.classList.toggle('is-active', name === 'listings');
+        window.scrollTo(0, 0);
+      };
     })();
   </script>`;
 
