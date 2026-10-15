@@ -395,6 +395,20 @@ const MARKETPLACE_STYLE = `
   .mkt-file-chip-remove { flex: 0 0 auto; background: none; border: none; color: var(--mkt-text-muted-2); cursor: pointer; padding: 4px; border-radius: 6px; display: flex; }
   .mkt-file-chip-remove:hover { color: #ff9aa2; background: rgba(255,154,162,0.1); }
 
+  /* 🆕 รอบ 9: error ของ dropzone เอง (ไฟล์ใหญ่เกิน 20MB) — โชว์เป็นข้อความเล็กๆสีแดงใต้กล่อง
+     dropzone ตรงๆ ไม่ใช่ error รวมของทั้งสเต็ป (mkt-wiz-step-error) เพราะอยากให้คนเห็นว่า
+     "ไฟล์นี้" ผิดตรงไหนทันที ไม่ต้องเลื่อนตาไปมา + ใส่ animation เขย่ากล่องเบาๆ (shake) ตอนโดน
+     reject ให้สะดุดตาโดยไม่ต้องมี popup/alert รบกวน */
+  .mkt-dropzone-error { font-size: 11.5px; color: #ff9aa2; margin-top: 8px; line-height: 1.5; }
+  .mkt-dropzone.is-shake { animation: mkt-dz-shake 0.4s ease; }
+  @keyframes mkt-dz-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
   .mkt-wizard-nav { display: flex; align-items: center; gap: 18px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--mkt-border); }
   .mkt-btn-primary {
     font-family: inherit; font-size: 13.5px; font-weight: 700; border-radius: 10px; border: none;
@@ -815,8 +829,12 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
               <label for="mkt-wiz-image-input" class="mkt-dropzone${canSell ? '' : ' is-disabled'}" id="mkt-wiz-image-dropzone">
                 ${cloudUploadSvg}
                 <div class="mkt-dropzone-text" data-i18n="dropzoneImageTitle">Drag and drop or click to upload cover image</div>
-                <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Up to 20MB)</div>
+                <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Max size: 20MB)</div>
               </label>
+              <!-- 🆕 รอบ 9: error เฉพาะของ dropzone นี้ (ไฟล์ใหญ่เกิน 20MB) — ซ่อนไว้ก่อน เติม
+                   ข้อความ/โชว์ด้วย JS ใน mktInitDropzone() เท่านั้น ดู aria-live ไว้ให้ screen
+                   reader อ่านข้อความ error ทันทีที่โชว์ด้วย -->
+              <div class="mkt-dropzone-error" id="mkt-wiz-image-error" style="display:none;" aria-live="polite"></div>
               <div class="mkt-file-chip" id="mkt-wiz-image-chip" style="display:none;">
                 <div class="mkt-file-chip-thumb" id="mkt-wiz-image-chip-thumb"></div>
                 <div class="mkt-file-chip-name" id="mkt-wiz-image-chip-name"></div>
@@ -851,8 +869,9 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
               <label for="mkt-digitalfile-input" class="mkt-dropzone${canSell ? '' : ' is-disabled'}" id="mkt-digitalfile-dropzone">
                 ${cloudUploadSvg}
                 <div class="mkt-dropzone-text" data-i18n="dropzoneFileTitle">Drag and drop or click to upload the digital file</div>
-                <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Up to 20MB)</div>
+                <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Max size: 20MB)</div>
               </label>
+              <div class="mkt-dropzone-error" id="mkt-digitalfile-error" style="display:none;" aria-live="polite"></div>
               <div class="mkt-file-chip" id="mkt-digitalfile-chip" style="display:none;">
                 <div class="mkt-file-chip-thumb" id="mkt-digitalfile-chip-thumb"></div>
                 <div class="mkt-file-chip-name" id="mkt-digitalfile-chip-name"></div>
@@ -1146,14 +1165,46 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       // (ไม่ต้องใช้ JS เปิด dialog เลย) ส่วน drag & drop ใช้ DataTransfer เซ็ต input.files
       // ตรงๆ แล้วยิง 'change' event ต่อ ให้ listener เดิมของแต่ละ input ทำงานเหมือนเลือกไฟล์
       // ผ่านปุ่มปกติทุกอย่าง (รูปอัปเดตพรีวิว / ชื่อไฟล์โชว์ในชิป ฯลฯ)
-      function mktInitDropzone(inputId, dropzoneId, chipId, thumbId, nameId, removeId, isImage) {
+      // 🆕 รอบ 9: 20MB เท่ากับลิมิตฝั่ง server เป๊ะๆ (ดู marketplaceUpload ใน server.js) — เช็ค
+      // ขนาดไฟล์ฝั่ง browser ก่อน เพื่อกันปัญหาที่น้องหนาวแจ้งมา: เดิมถ้าไฟล์ใหญ่เกิน 20MB
+      // ฟอร์มจะหลุดไป submit ที่ server จริง แล้วโดน multer เตะกลับมาเป็น redirect ไปหน้า
+      // "Overview" พร้อมล้างข้อมูลที่กรอกไว้ทั้งหมด (Title/Price/Description/Category) ทิ้งหมด
+      // ต้องมานั่งกรอกใหม่ทั้งหมด ตอนนี้เช็คตรงนี้ก่อนเลย ไฟล์ใหญ่เกินจะไม่ถูกปล่อยให้ submit
+      // ออกไปไกลขนาดนั้นอีกต่อไป — หน้าไม่ reload/redirect เลย ฟิลด์อื่นๆไม่หายแน่นอน
+      var MKT_MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+      function mktInitDropzone(inputId, dropzoneId, chipId, thumbId, nameId, removeId, errorId, isImage) {
         var input = document.getElementById(inputId);
         var dropzone = document.getElementById(dropzoneId);
         var chip = document.getElementById(chipId);
         var thumb = document.getElementById(thumbId);
         var nameEl = document.getElementById(nameId);
         var removeBtn = document.getElementById(removeId);
+        var errorEl = document.getElementById(errorId);
         if (!input || !dropzone || !chip) return;
+
+        // โชว์ข้อความ error เล็กๆใต้กล่อง dropzone + เขย่ากล่อง (shake) เบาๆให้สะดุดตา —
+        // ถอด class 'is-shake' ออกก่อนแล้วค่อยใส่กลับ (บวก forced reflow ด้วย offsetWidth)
+        // เพื่อให้ animation เล่นใหม่ได้ทุกครั้ง แม้จะเลือกไฟล์ใหญ่เกินซ้ำๆติดกันก็ตาม
+        function showFileError(msg) {
+          if (errorEl) {
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+          }
+          dropzone.classList.remove('is-shake');
+          void dropzone.offsetWidth;
+          dropzone.classList.add('is-shake');
+        }
+        function clearFileError() {
+          if (errorEl) {
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+          }
+          dropzone.classList.remove('is-shake');
+        }
+        dropzone.addEventListener('animationend', function () {
+          dropzone.classList.remove('is-shake');
+        });
 
         function showChip(file) {
           nameEl.textContent = file.name;
@@ -1181,13 +1232,28 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
 
         input.addEventListener('change', function () {
           var file = input.files && input.files[0];
-          if (file) showChip(file); else showEmpty();
+          if (!file) {
+            showEmpty();
+            return;
+          }
+          if (file.size > MKT_MAX_FILE_BYTES) {
+            // ไฟล์ใหญ่เกิน 20MB — เคลียร์ input ทิ้งทันที (ค่า value='' จะล้าง .files ไปด้วย)
+            // กันไม่ให้ไฟล์นี้หลุดไปติด submit ตอนกดปุ่ม Next/ลงขายจริงได้เลย ไม่ต้องรอ validate
+            // ตอน submit อีกชั้น — โชว์กล่อง dropzone เปล่ากลับมาพร้อม error ใต้กล่อง
+            input.value = '';
+            showEmpty();
+            showFileError(mktT('errFileTooLarge'));
+            return;
+          }
+          clearFileError();
+          showChip(file);
         });
 
         if (removeBtn) {
           removeBtn.addEventListener('click', function (e) {
             e.preventDefault();
             input.value = '';
+            clearFileError();
             input.dispatchEvent(new Event('change', { bubbles: true }));
           });
         }
@@ -1209,8 +1275,8 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         });
       }
 
-      mktInitDropzone('mkt-wiz-image-input', 'mkt-wiz-image-dropzone', 'mkt-wiz-image-chip', 'mkt-wiz-image-chip-thumb', 'mkt-wiz-image-chip-name', 'mkt-wiz-image-chip-remove', true);
-      mktInitDropzone('mkt-digitalfile-input', 'mkt-digitalfile-dropzone', 'mkt-digitalfile-chip', 'mkt-digitalfile-chip-thumb', 'mkt-digitalfile-chip-name', 'mkt-digitalfile-chip-remove', false);
+      mktInitDropzone('mkt-wiz-image-input', 'mkt-wiz-image-dropzone', 'mkt-wiz-image-chip', 'mkt-wiz-image-chip-thumb', 'mkt-wiz-image-chip-name', 'mkt-wiz-image-chip-remove', 'mkt-wiz-image-error', true);
+      mktInitDropzone('mkt-digitalfile-input', 'mkt-digitalfile-dropzone', 'mkt-digitalfile-chip', 'mkt-digitalfile-chip-thumb', 'mkt-digitalfile-chip-name', 'mkt-digitalfile-chip-remove', 'mkt-digitalfile-error', false);
 
       // ── สลับสเต็ป 1 ↔ 2 ──
       // 🆕 ตัว input ของทั้ง 2 สเต็ปไม่มี attribute "required" ติดอยู่เลยนะครับ เพราะพอแยก
@@ -1501,7 +1567,7 @@ function mktI18nScript() {
     // 🆕 รอบ 8: ข้อความใน dropzone อัปโหลดไฟล์ (แทนปุ่ม "เลือกไฟล์" เดิมของเบราว์เซอร์)
     dropzoneImageTitle: { en: 'Drag and drop or click to upload cover image', th: 'ลากไฟล์มาวาง หรือกดเพื่ออัปโหลดรูปปก' },
     dropzoneFileTitle: { en: 'Drag and drop or click to upload the digital file', th: 'ลากไฟล์มาวาง หรือกดเพื่ออัปโหลดไฟล์ดิจิทัล' },
-    dropzoneLimitNote: { en: '(Up to 20MB)', th: '(ขนาดไม่เกิน 20MB)' },
+    dropzoneLimitNote: { en: '(Max size: 20MB)', th: '(ขนาดไฟล์สูงสุด 20MB)' },
     removeFileLabel: { en: 'Remove', th: 'นำออก' },
     fieldDescription: { en: 'Description', th: 'คำอธิบาย' },
     fieldType: { en: 'Type', th: 'ประเภท' },
@@ -1535,6 +1601,12 @@ function mktI18nScript() {
     errDigitalFile: {
       en: 'Please attach the digital file buyers will receive.',
       th: 'กรุณาแนบไฟล์ดิจิทัลที่จะส่งให้ผู้ซื้อ',
+    },
+    // 🆕 รอบ 9: ข้อความ error ของ dropzone เองตอนไฟล์ใหญ่เกิน 20MB — ใช้กับทั้งกล่องรูปปกและ
+    // กล่องไฟล์ดิจิทัล (โชว์ใต้กล่องตรงๆ ไม่ใช่ error รวมของสเต็ป)
+    errFileTooLarge: {
+      en: 'This file exceeds the 20MB limit. Please choose a smaller file.',
+      th: 'ไฟล์นี้มีขนาดเกิน 20MB นะครับ กรุณาเลือกไฟล์ที่เล็กกว่านี้ครับ',
     },
     listingsHeading: { en: 'Your listings', th: 'ประกาศขายของฉัน' },
     filterAll: { en: 'All', th: 'ทั้งหมด' },
