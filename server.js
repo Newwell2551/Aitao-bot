@@ -1249,13 +1249,30 @@ function createWebhookServer(client) {
       const imageFile = req.files?.image?.[0];
       const digitalFile = req.files?.digitalFile?.[0];
 
-      if (type === 'digital' && !digitalFile) {
-        return fail('Please attach the digital file customers will receive automatically.');
+      // 🆕 [15 ต.ค. 2569 — รอบ 10] วิธีส่งมอบไฟล์ดิจิทัล: "file" (อัปโหลดไฟล์จริง — ของเดิม)
+      // หรือ "link" (วางลิงก์ระบบ/เทมเพลต เช่น discord.new/... หรือลิงก์เชิญบอท — สำหรับผู้ขาย
+      // สาย "ขายระบบ" ที่ไม่มีไฟล์จริงให้อัปโหลด) ค่าจาก <input type="hidden" name="delivery_method">
+      // ในฟอร์ม — เช็คซ้ำฝั่งนี้เสมอ (เผื่อคนแก้ HTML เอง/ปิด JS หลบการเช็คฝั่ง client ไป)
+      const deliveryMethod = body.delivery_method === 'link' ? 'link' : 'file';
+      const digitalLinkRaw = String(body.digitalLink || '').trim();
+
+      if (type === 'digital') {
+        if (deliveryMethod === 'link') {
+          // ใช้ PAYMENT_LINK_PATTERN/MAX_PAYMENT_LINK_LENGTH ตัวเดียวกับช่องทางรับเงิน (รอบ 4)
+          // เพราะเป็นกฎเดียวกันเป๊ะๆ: ต้องเป็น https:// เท่านั้น ไม่เกิน 300 ตัวอักษร
+          if (!PAYMENT_LINK_PATTERN.test(digitalLinkRaw) || digitalLinkRaw.length > MAX_PAYMENT_LINK_LENGTH) {
+            return fail('Please enter a valid https:// link for the system/template customers will receive.');
+          }
+        } else if (!digitalFile) {
+          return fail('Please attach the digital file customers will receive automatically.');
+        }
       }
 
       try {
         const imageRef = imageFile ? await storeBufferPermanently(guild, imageFile.buffer, imageFile.originalname) : null;
-        const fileRef = digitalFile ? await storeBufferPermanently(guild, digitalFile.buffer, digitalFile.originalname) : null;
+        const fileRef = type === 'digital' && deliveryMethod === 'file' && digitalFile
+          ? await storeBufferPermanently(guild, digitalFile.buffer, digitalFile.originalname)
+          : null;
 
         createListing({
           sellerId: req.session.user.id,
@@ -1265,7 +1282,9 @@ function createWebhookServer(client) {
           category,
           subcategory,
           type,
+          deliveryMethod,
           digitalFileUrl: fileRef,
+          digitalLinkUrl: type === 'digital' && deliveryMethod === 'link' ? digitalLinkRaw : null,
           imageUrl: imageRef,
         });
       } catch (error) {

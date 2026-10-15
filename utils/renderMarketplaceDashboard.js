@@ -409,6 +409,17 @@ const MARKETPLACE_STYLE = `
     80% { transform: translateX(4px); }
   }
 
+  /* 🆕 รอบ 10: โหมดส่งมอบไฟล์ดิจิทัล (Delivery method) — สลับระหว่าง "อัปโหลดไฟล์" กับ
+     "วางลิงก์ระบบ/เทมเพลต" ใต้ dropdown "ประเภท" ตอนเลือก "ไฟล์ดิจิทัล" — .mkt-dm-group
+     ครอบทั้ง 2 โหมด (กลุ่มอัปโหลด/กลุ่มลิงก์) ใส่ animation ไว้ตรงๆที่ class เลย (ไม่ต้องมี
+     class เพิ่ม/ถอดจาก JS แบบ shake) เพราะ CSS animation จะเล่นเองอัตโนมัติทุกครั้งที่ element
+     เปลี่ยนจาก display:none กลับมาโชว็ — ทำให้สลับโหมดไปมาดูลื่นไหลไม่กระตุกเปลี่ยนฉับพลัน */
+  .mkt-dm-group { display: flex; flex-direction: column; animation: mkt-dm-fadein 0.22s ease; }
+  @keyframes mkt-dm-fadein {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   .mkt-wizard-nav { display: flex; align-items: center; gap: 18px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--mkt-border); }
   .mkt-btn-primary {
     font-family: inherit; font-size: 13.5px; font-weight: 700; border-radius: 10px; border: none;
@@ -864,18 +875,40 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
               </div>
             </div>
             <div class="mkt-field" id="mkt-digitalfile-label" style="display:none;">
-              <label class="mkt-field-label"><span data-i18n="fieldDigitalFile">Digital file</span> <span style="font-weight:400;" data-i18n="fieldDigitalFileNote">(sent to the buyer automatically — required for digital items, up to 20MB)</span></label>
-              <input class="mkt-sr-input" type="file" name="digitalFile" id="mkt-digitalfile-input" ${disabledAttr} />
-              <label for="mkt-digitalfile-input" class="mkt-dropzone${canSell ? '' : ' is-disabled'}" id="mkt-digitalfile-dropzone">
-                ${cloudUploadSvg}
-                <div class="mkt-dropzone-text" data-i18n="dropzoneFileTitle">Drag and drop or click to upload the digital file</div>
-                <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Max size: 20MB)</div>
-              </label>
-              <div class="mkt-dropzone-error" id="mkt-digitalfile-error" style="display:none;" aria-live="polite"></div>
-              <div class="mkt-file-chip" id="mkt-digitalfile-chip" style="display:none;">
-                <div class="mkt-file-chip-thumb" id="mkt-digitalfile-chip-thumb"></div>
-                <div class="mkt-file-chip-name" id="mkt-digitalfile-chip-name"></div>
-                <button type="button" class="mkt-file-chip-remove" id="mkt-digitalfile-chip-remove" data-i18n-title="removeFileLabel" title="Remove">${removeXSvg}</button>
+              <label class="mkt-field-label"><span data-i18n="fieldDigitalFile">Digital file</span> <span style="font-weight:400;" data-i18n="fieldDigitalFileNote">(sent to the buyer automatically — choose a file to upload or a system/template link below)</span></label>
+
+              <!-- 🆕 รอบ 10: ตัวเลือก "วิธีส่งมอบ" — ผู้ขายสาย Discord server template/บอทระบบ
+                   อัตโนมัติ ไม่ได้มีไฟล์จริงให้อัปโหลดเสมอไป บางทีมีแค่ "ลิงก์" (เช่น
+                   discord.new/... สำหรับเทมเพลตเซิร์ฟ หรือลิงก์เชิญบอท) เลยเพิ่มตัวเลือกให้
+                   วางลิงก์แทนไฟล์ได้ — ใช้ component ปุ่มแท็บ pill เดียวกับตัวเลือกช่องทางรับเงิน
+                   (.mkt-tab-row/.mkt-text-tab) ให้หน้าตาเข้าธีมเดียวกันทั้งหน้า -->
+              <div class="mkt-field-label-row" style="margin-bottom:10px;">
+                <span class="mkt-pm-label" data-i18n="deliveryMethodLabel">Delivery method</span>
+                <div class="mkt-tab-row" role="tablist" aria-label="Delivery method">
+                  <button type="button" class="mkt-text-tab" role="tab" aria-selected="true" id="mkt-dm-tab-file" ${disabledAttr} onclick="mktSelectDeliveryMethod('file')"><span data-i18n="deliveryMethodFile">Upload file</span></button>
+                  <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" id="mkt-dm-tab-link" ${disabledAttr} onclick="mktSelectDeliveryMethod('link')"><span data-i18n="deliveryMethodLink">System / template link</span></button>
+                </div>
+              </div>
+              <input type="hidden" name="delivery_method" id="mkt-delivery-method-input" value="file" />
+
+              <div class="mkt-dm-group" id="mkt-digitalfile-upload-group">
+                <input class="mkt-sr-input" type="file" name="digitalFile" id="mkt-digitalfile-input" ${disabledAttr} />
+                <label for="mkt-digitalfile-input" class="mkt-dropzone${canSell ? '' : ' is-disabled'}" id="mkt-digitalfile-dropzone">
+                  ${cloudUploadSvg}
+                  <div class="mkt-dropzone-text" data-i18n="dropzoneFileTitle">Drag and drop or click to upload the digital file</div>
+                  <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Max size: 20MB)</div>
+                </label>
+                <div class="mkt-dropzone-error" id="mkt-digitalfile-error" style="display:none;" aria-live="polite"></div>
+                <div class="mkt-file-chip" id="mkt-digitalfile-chip" style="display:none;">
+                  <div class="mkt-file-chip-thumb" id="mkt-digitalfile-chip-thumb"></div>
+                  <div class="mkt-file-chip-name" id="mkt-digitalfile-chip-name"></div>
+                  <button type="button" class="mkt-file-chip-remove" id="mkt-digitalfile-chip-remove" data-i18n-title="removeFileLabel" title="Remove">${removeXSvg}</button>
+                </div>
+              </div>
+
+              <div class="mkt-dm-group" id="mkt-digitalfile-link-group" style="display:none;">
+                <input class="mkt-line-input" type="url" name="digitalLink" id="mkt-digital-link-input" maxlength="300" placeholder="https://discord.new... หรือ ลิงก์เชิญบอทของคุณ" ${disabledAttr} />
+                <div class="mkt-currency-note" id="mkt-digital-link-note" data-i18n="digitalLinkNote">This link will be sent to the buyer automatically as soon as payment is confirmed.</div>
               </div>
             </div>
           </div>
@@ -935,6 +968,12 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       var typeSelect = document.getElementById('mkt-type-select');
       var fileLabel = document.getElementById('mkt-digitalfile-label');
       var fileInput = document.getElementById('mkt-digitalfile-input');
+      // 🆕 รอบ 10: เลือกวิธีส่งมอบไฟล์ดิจิทัล — hidden input นี้คือ "ค่าจริง" ที่ส่งไป server
+      // (name="delivery_method") ส่วน digitalLinkInput คือช่องกรอกลิงก์ของโหมด "link"
+      var deliveryMethodInput = document.getElementById('mkt-delivery-method-input');
+      var digitalLinkInput = document.getElementById('mkt-digital-link-input');
+      var digitalUploadGroup = document.getElementById('mkt-digitalfile-upload-group');
+      var digitalLinkGroup = document.getElementById('mkt-digitalfile-link-group');
 
       // ── ส่วนต่างๆ ของพรีวิว (สเต็ป 1 = การ์ด, สเต็ป 2 = ดีเทล) ──
       var pcBadge = document.getElementById('mkt-wiz-pc-badge');
@@ -1006,7 +1045,11 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         pdPrice.textContent = formattedPriceAmount();
         pdCoin.textContent = currencySymbol();
         pdDesc.textContent = descInput.value.trim() || mktT('previewDefaultDesc');
-        if (typeSelect.value === 'digital' && fileInput.files && fileInput.files[0]) {
+        // 🆕 รอบ 10: โชว์ badge ไฟล์แนบในพรีวิวเหมือนเดิม แต่แยก 2 แบบตามวิธีส่งมอบที่เลือก
+        if (typeSelect.value === 'digital' && deliveryMethodInput.value === 'link' && digitalLinkInput.value.trim()) {
+          pdFileBadge.textContent = '\\ud83d\\udd17 ' + mktT('digitalLinkAttachedBadge');
+          pdFileBadge.style.display = 'block';
+        } else if (typeSelect.value === 'digital' && fileInput.files && fileInput.files[0]) {
           pdFileBadge.textContent = '\\ud83d\\udcce ' + fileInput.files[0].name;
           pdFileBadge.style.display = 'block';
         } else {
@@ -1042,6 +1085,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       priceInput.addEventListener('input', updateBothPreviews);
       descInput.addEventListener('input', updateDetailPreview);
       fileInput.addEventListener('change', updateDetailPreview);
+      digitalLinkInput.addEventListener('input', updateDetailPreview);
 
       imageInput.addEventListener('change', function () {
         var file = imageInput.files && imageInput.files[0];
@@ -1078,9 +1122,41 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       function updateDigitalFile() {
         var isDigital = typeSelect.value === 'digital';
         fileLabel.style.display = isDigital ? 'flex' : 'none';
-        if (!isDigital) fileInput.value = ''; // เผื่อเคยเลือกไฟล์ไว้แล้วเปลี่ยนใจเป็น service ล้างออกกันค้าง
+        if (!isDigital) {
+          // เผื่อเคยเลือกไฟล์/กรอกลิงก์ไว้แล้วเปลี่ยนใจเป็น service ล้างออกกันค้าง (ทั้ง 2 โหมด)
+          fileInput.value = '';
+          digitalLinkInput.value = '';
+        }
         updateDetailPreview();
       }
+
+      // 🆕 รอบ 10: สลับโหมดส่งมอบไฟล์ดิจิทัล "อัปโหลดไฟล์" ↔ "วางลิงก์ระบบ/เทมเพลต" — ต้องเป็น
+      // window.xxx (ไม่ใช่ function ธรรมดาในนี้) เพราะปุ่มเรียกผ่าน onclick="" ใน HTML แบบเดียว
+      // กับ mktSelectCurrency ด้านบน ค่าจริงที่ submit ไป server (name="delivery_method") คือ
+      // hidden input mkt-delivery-method-input เท่านั้น — สลับโหมดแล้วเคลียร์ค่าของอีกโหมดทิ้ง
+      // กันข้อมูลค้าง (เช่น กรอกลิงก์ไว้แล้วสลับไปโหมดไฟล์ จะไม่มีลิงก์เก่าแอบติดไปด้วยตอน submit)
+      window.mktSelectDeliveryMethod = function (method) {
+        var isLink = method === 'link';
+        var fileTab = document.getElementById('mkt-dm-tab-file');
+        var linkTab = document.getElementById('mkt-dm-tab-link');
+        if (fileTab) fileTab.setAttribute('aria-selected', String(!isLink));
+        if (linkTab) linkTab.setAttribute('aria-selected', String(isLink));
+        // เคลียร์ error ของสเต็ปทิ้งด้วย เผื่อเพิ่งกด "List item" ไม่ผ่านตอนอยู่โหมดเดิม (เช่น
+        // ลิงก์ไม่ครบ) ค้างข้อความ error ของโหมดเก่าไว้ แล้วสลับโหมดมาที่นี่ — ไม่งั้นข้อความ
+        // error จะค้างโชว์ผิดๆ ทั้งที่ยังไม่ได้ลองกด submit ในโหมดใหม่เลย
+        clearStepError();
+        deliveryMethodInput.value = method;
+        digitalUploadGroup.style.display = isLink ? 'none' : 'flex';
+        digitalLinkGroup.style.display = isLink ? 'flex' : 'none';
+        if (isLink) {
+          // เคลียร์ไฟล์ที่เคยเลือกไว้ (ถ้ามี) ยิง change ต่อให้ dropzone เคลียร์ชิป/error ของตัวเองด้วย
+          fileInput.value = '';
+          fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+          digitalLinkInput.value = '';
+        }
+        updateDetailPreview();
+      };
 
       // 🆕 รอบ 8: custom dropdown ── ปุ่ม trigger + เมนูลอย คุม <select> ของจริงที่ซ่อนไว้
       // (ซ่อนด้วย .mkt-sr-input ไม่ใช่ display:none กัน browser งอแงเรื่อง submit) เลือก
@@ -1302,8 +1378,17 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
 
       function validateStep2() {
         if (!descInput.value.trim()) return mktT('errDescription');
-        if (typeSelect.value === 'digital' && (!fileInput.files || !fileInput.files[0])) {
-          return mktT('errDigitalFile');
+        if (typeSelect.value === 'digital') {
+          if (deliveryMethodInput.value === 'link') {
+            var linkVal = digitalLinkInput.value.trim();
+            // เช็คแบบง่ายๆฝั่ง client พอ (ขึ้นต้นด้วย https://) ตัว validate เข้มจริงอยู่ที่
+            // server (PAYMENT_LINK_PATTERN เดียวกับช่องทางรับเงิน) — ดู server.js
+            if (!linkVal || linkVal.slice(0, 8).toLowerCase() !== 'https://') {
+              return mktT('errDigitalLink');
+            }
+          } else if (!fileInput.files || !fileInput.files[0]) {
+            return mktT('errDigitalFile');
+          }
         }
         return null;
       }
@@ -1575,9 +1660,19 @@ function mktI18nScript() {
     typeDigital: { en: 'Digital file (sent automatically after payment)', th: 'ไฟล์ดิจิทัล (ส่งให้ผู้ซื้อทันทีหลังจ่ายเงิน)' },
     fieldDigitalFile: { en: 'Digital file', th: 'ไฟล์ดิจิทัล' },
     fieldDigitalFileNote: {
-      en: '(sent to the buyer automatically — required for digital items, up to 20MB)',
-      th: '(ส่งให้ผู้ซื้อโดยอัตโนมัติ — บังคับถ้าเป็นไฟล์ดิจิทัล ขนาดไม่เกิน 20MB)',
+      en: '(sent to the buyer automatically — choose a file to upload or a system/template link below)',
+      th: '(ส่งให้ผู้ซื้อโดยอัตโนมัติ — เลือกได้ว่าจะอัปโหลดไฟล์ หรือวางลิงก์ระบบ/เทมเพลตแทนด้านล่าง)',
     },
+    // 🆕 รอบ 10: ตัวเลือกวิธีส่งมอบไฟล์ดิจิทัล — "อัปโหลดไฟล์" (ของเดิม) หรือ "วางลิงก์ระบบ/
+    // เทมเพลต" (ใหม่ — สำหรับผู้ขายสาย Discord server template/บอทระบบอัตโนมัติที่ไม่มีไฟล์จริง)
+    deliveryMethodLabel: { en: 'Delivery method', th: 'วิธีจัดส่ง' },
+    deliveryMethodFile: { en: 'Upload file', th: 'อัปโหลดไฟล์ระบบ (Upload File)' },
+    deliveryMethodLink: { en: 'System / template link', th: 'วางลิงก์ระบบ/เทมเพลต (System/Template Link)' },
+    digitalLinkNote: {
+      en: 'This link will be sent to the buyer automatically as soon as payment is confirmed.',
+      th: 'ระบบจะส่งลิงก์นี้ให้ผู้ซื้อทันทีหลังจากการชำระเงินเสร็จสิ้น',
+    },
+    digitalLinkAttachedBadge: { en: 'System link attached', th: 'แนบลิงก์ระบบแล้ว' },
     disabledNote: {
       en: 'Set up a payment method above first to unlock this form.',
       th: 'ต้องตั้งค่าช่องทางรับเงินด้านบนก่อน ถึงจะปลดล็อกฟอร์มนี้ได้',
@@ -1601,6 +1696,10 @@ function mktI18nScript() {
     errDigitalFile: {
       en: 'Please attach the digital file buyers will receive.',
       th: 'กรุณาแนบไฟล์ดิจิทัลที่จะส่งให้ผู้ซื้อ',
+    },
+    errDigitalLink: {
+      en: 'Please enter a valid https:// link for the system/template.',
+      th: 'กรุณาใส่ลิงก์ที่ขึ้นต้นด้วย https:// ให้ถูกต้องนะครับ',
     },
     // 🆕 รอบ 9: ข้อความ error ของ dropzone เองตอนไฟล์ใหญ่เกิน 20MB — ใช้กับทั้งกล่องรูปปกและ
     // กล่องไฟล์ดิจิทัล (โชว์ใต้กล่องตรงๆ ไม่ใช่ error รวมของสเต็ป)

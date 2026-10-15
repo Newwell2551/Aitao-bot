@@ -40,9 +40,23 @@
 //                                            ("servers" | "media" | "emoji-sticker" | "builder" |
 //                                            "role" | "welcome-goodbye" | "package")
 //       "subcategory": "wallpaper",      ← ตรงกับ data-subcat ในหน้าเว็บ (null ได้ถ้าหมวดนั้นไม่มีหมวดย่อย)
-//       "type": "digital",               ← "digital" (ส่งไฟล์อัตโนมัติหลังจ่ายเงิน) หรือ "service"
-//                                            (ผู้ขายต้องติดต่อลูกค้าเองหลังจ่ายเงิน)
-//       "digitalFileUrl": { "channelId": "...", "messageId": "..." },  ← 🆕 [11 ต.ค. 2569]
+//       "type": "digital",               ← "digital" (ส่งไฟล์/ลิงก์อัตโนมัติหลังจ่ายเงิน) หรือ
+//                                            "service" (ผู้ขายต้องติดต่อลูกค้าเองหลังจ่ายเงิน)
+//       "deliveryMethod": "file",        ← 🆕 [15 ต.ค. 2569 — รอบ 10] มีผลเฉพาะตอน type==="digital"
+//                                            เท่านั้น: "file" (อัปโหลดไฟล์จริง — ของเดิม) หรือ
+//                                            "link" (วางลิงก์ระบบ/เทมเพลต เช่น discord.new/...
+//                                            สำหรับเทมเพลตเซิร์ฟ หรือลิงก์เชิญบอท — สำหรับผู้ขาย
+//                                            สาย "ขายระบบ" ที่ไม่มีไฟล์จริงให้อัปโหลด) — ของเก่า
+//                                            ก่อนรอบนี้ไม่มี field นี้เลย ตีความเป็น "file" เสมอ
+//                                            (เพราะตอนนั้นมีแค่ทางเดียว) null ถ้า type !== "digital"
+//       "digitalFileUrl": { "channelId": "...", "messageId": "..." },  ← 🆕 [11 ต.ค. 2569] มีค่า
+//                                            เฉพาะตอน deliveryMethod==="file" เท่านั้น (null ถ้า
+//                                            เป็น "link")
+//       "digitalLinkUrl": "https://discord.new/abc123",  ← 🆕 [15 ต.ค. 2569 — รอบ 10] ลิงก์ดิบๆ
+//                     ตรงๆ (ไม่ต้องผ่าน resolveListingAssets() แบบรูป/ไฟล์ เพราะเป็นข้อความ
+//                     ธรรมดา ไม่ใช่พิกัดไฟล์ใน Discord ที่หมดอายุ) มีค่าเฉพาะตอน
+//                     deliveryMethod==="link" เท่านั้น ต้องขึ้นต้นด้วย https:// เสมอ (validate
+//                     ด้วย PAYMENT_LINK_PATTERN ตัวเดียวกับช่องทางรับเงิน — ดู server.js)
 //       "imageUrl": { "channelId": "...", "messageId": "..." },       ← ไม่เก็บ URL ตรงๆ
 //                     แล้ว (URL ของ Discord หมดอายุใน ~24 ชม.!) เก็บแค่ "พิกัดข้อความ" ใน
 //                     ห้องเก็บไฟล์ถาวร asset-storage แทน (ดู utils/assetStorage.js) แล้วค่อย
@@ -306,15 +320,21 @@ function saveSellerPromptPay(discordUserId, promptpayId, displayName) {
 
 /**
  * สร้างประกาศขายใหม่ 1 ชิ้น
+ * 🆕 [15 ต.ค. 2569 — รอบ 10] เพิ่ม deliveryMethod/digitalLinkUrl รองรับการ "วางลิงก์ระบบ/
+ * เทมเพลต" แทนการอัปโหลดไฟล์จริง — deliveryMethod ไม่ได้ส่งมาก็ไม่เป็นไร fallback เป็น 'file'
+ * อัตโนมัติ (ของเดิมมีแค่ทางเดียวอยู่แล้ว ไม่กระทบของเก่าเลย)
  * @param {{ sellerId: string, title: string, description: string, priceThb: number,
  *   category: string, subcategory: string|null, type: 'digital'|'service',
- *   digitalFileUrl: string|null, imageUrl: string|null }} info
+ *   deliveryMethod?: 'file'|'link', digitalFileUrl: string|null, digitalLinkUrl?: string|null,
+ *   imageUrl: string|null }} info
  * @returns {object} ประกาศที่เพิ่งสร้าง (มี id แล้ว)
  */
 function createListing(info) {
   const data = readAll();
   const id = generateId(data.listings);
   const now = new Date().toISOString();
+  const isDigital = info.type === 'digital';
+  const deliveryMethod = isDigital && info.deliveryMethod === 'link' ? 'link' : isDigital ? 'file' : null;
   data.listings[id] = {
     id,
     sellerId: info.sellerId,
@@ -324,7 +344,9 @@ function createListing(info) {
     category: info.category,
     subcategory: info.subcategory || null,
     type: info.type,
-    digitalFileUrl: info.type === 'digital' ? (info.digitalFileUrl || null) : null,
+    deliveryMethod,
+    digitalFileUrl: deliveryMethod === 'file' ? (info.digitalFileUrl || null) : null,
+    digitalLinkUrl: deliveryMethod === 'link' ? (info.digitalLinkUrl || null) : null,
     imageUrl: info.imageUrl || null,
     status: 'active',
     createdAt: now,

@@ -668,7 +668,16 @@ async function handleConfirmButton(interaction) {
     // แล้ว (ไม่ใช่ URL ดิบๆ แบบเดิม) ต้อง resolve ให้เป็น URL สดใหม่ก่อนส่งให้ลูกค้าเสมอ —
     // ถ้าไม่ resolve แล้วส่ง object ตรงๆ ให้ discord.js มันจะพังทันที (ไม่ใช่ไฟล์แนบที่ถูกต้อง)
     const { digitalFileUrl } = listing ? await resolveListingAssets(interaction.client, listing) : { digitalFileUrl: null };
-    if (listing && listing.type === 'digital' && digitalFileUrl) {
+    // 🆕 [15 ต.ค. 2569 — รอบ 10] listing.digitalLinkUrl เป็น URL ดิบๆ ตรงๆ อยู่แล้ว (ไม่ใช่
+    // พิกัดไฟล์ที่ต้อง resolve แบบ digitalFileUrl) มีค่าเฉพาะตอน deliveryMethod==="link"
+    if (listing && listing.type === 'digital' && listing.deliveryMethod === 'link' && listing.digitalLinkUrl) {
+      await buyerUser.send({
+        content:
+          `🎉 ผู้ขายยืนยันได้รับเงินแล้ว! นี่คือลิงก์ของ **${listing.title}** ที่คุณซื้อจาก Marketplace ของ Milo Bot ครับ:\n${listing.digitalLinkUrl}`,
+      });
+      buyerNotified = true;
+      buyerNotifyNote = 'ระบบส่งลิงก์ให้ลูกค้าทาง DM อัตโนมัติแล้วครับ';
+    } else if (listing && listing.type === 'digital' && digitalFileUrl) {
       await buyerUser.send({
         content:
           `🎉 ผู้ขายยืนยันได้รับเงินแล้ว! นี่คือไฟล์ **${listing.title}** ที่คุณซื้อจาก Marketplace ของ Milo Bot ครับ`,
