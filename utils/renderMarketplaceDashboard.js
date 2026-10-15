@@ -241,27 +241,52 @@ const MARKETPLACE_STYLE = `
   .mkt-pm-help { font-size: 11.5px; color: var(--mkt-text-muted-2); margin-top: 10px; line-height: 1.6; max-width: 420px; }
   .mkt-pm-warning { font-size: 12.5px; color: var(--mkt-gold); margin-top: 10px; line-height: 1.6; max-width: 420px; }
 
-  /* ── แผง "Create New Listing" — 50/50 split ตามที่ขอ: ซ้ายพรีวิวสดลอยตรึง / ขวาฟอร์ม ── */
+  /* ── แผง "Create New Listing" — รีดีไซน์รอบ 8 ── แรงบันดาลใจจาก Discord Developer
+       Portal / Roblox Developer Portal (dark mode คอนทราสต์สูง, โครงสร้างชัด ไม่รก)
+       โครงสร้างข้อมูล/validation/route เดิมทุกอย่างเหมือนเดิม 100% เปลี่ยนแค่หน้าตา+
+       ส่วนประกอบ UI (custom dropdown, dropzone อัปโหลดไฟล์, ตัวเลือกสกุลเงิน) ── */
   .mkt-wizard-head { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
   .mkt-back-btn {
     display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: 0 0 auto;
     border-radius: 9px; border: 1px solid var(--mkt-border); color: var(--text-muted); background: none; cursor: pointer;
   }
   .mkt-back-btn:hover { border-color: var(--mkt-border-strong); color: var(--text); }
-  .mkt-wizard h2 { font-weight: 800; font-size: 22px; margin: 0; color: var(--text); }
-  .mkt-progress-rule { display: flex; align-items: center; gap: 12px; margin: 0 0 26px; max-width: 320px; }
-  .mkt-p-node { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-  .mkt-p-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--mkt-border); transition: background 0.2s; flex: 0 0 auto; }
-  .mkt-p-node.is-done .mkt-p-dot, .mkt-p-node.is-active .mkt-p-dot { background: var(--mkt-accent); }
+
+  /* ── ตัวบอกขั้นตอน (stepper) ── ป้าย "STEP X OF 2" + จุด 2 จุดมีเลขในตัว เชื่อมด้วย
+       แถบที่ไหลสีทีละนิดตอนเปลี่ยนสเต็ป ไอดี/โครงเดิมทุกตัว (mkt-wiz-node1/2, mkt-wiz-line1)
+       — JS ตัวเดิมที่สลับคลาส is-active/is-done ทำงานเหมือนเดิม ไม่ต้องแก้ script เลย
+       🆕 ตัดแถวจุดเล็กๆซ้ำซ้อน (mkt-wiz-dot1/2) ที่เคยลอยอยู่เหนือฟอร์มออก เพราะมันไม่เคย
+       อัปเดตสถานะจริง (ดีไซน์เก่าค้างบั๊ก) — ตัวบอกขั้นตอนเหลือจุดเดียวชัดๆพอ */
+  .mkt-wiz-stepper { margin: 0 0 28px; }
+  .mkt-wiz-step-badge {
+    display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--mkt-accent); background: var(--mkt-accent-soft); border-radius: 999px;
+    padding: 4px 11px; margin-bottom: 12px;
+  }
+  .mkt-wiz-step-caption { font-size: 12.5px; color: var(--mkt-text-muted-2); margin: 6px 0 16px; }
+  .mkt-progress-rule { display: flex; align-items: center; gap: 10px; max-width: 360px; }
+  .mkt-p-node { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+  .mkt-p-dot {
+    width: 24px; height: 24px; border-radius: 999px; flex: 0 0 auto; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-weight: 800; color: var(--mkt-text-muted-2);
+    background: var(--mkt-bg-sunken); border: 1.5px solid var(--mkt-border-strong); transition: all 0.25s;
+  }
+  .mkt-p-node.is-active .mkt-p-dot { background: var(--mkt-accent); border-color: var(--mkt-accent); color: #fff; box-shadow: 0 0 0 4px var(--mkt-accent-soft); }
+  .mkt-p-node.is-done .mkt-p-dot { background: var(--mkt-success); border-color: var(--mkt-success); color: #0d1120; }
+  .mkt-p-node.is-done .mkt-p-dot .mkt-p-num { display: none; }
+  .mkt-p-check { display: none; }
+  .mkt-p-node.is-done .mkt-p-check { display: block; }
   .mkt-p-text { font-size: 12px; font-weight: 600; color: var(--mkt-text-muted-2); white-space: nowrap; transition: color 0.2s; }
   .mkt-p-node.is-active .mkt-p-text { color: var(--text); }
   .mkt-p-node.is-done .mkt-p-text { color: var(--text-muted); }
-  .mkt-p-fill { flex: 1 1 auto; height: 1.5px; background: var(--mkt-border); }
-  .mkt-p-fill.is-done { background: var(--mkt-accent); }
+  .mkt-p-fill { flex: 1 1 auto; height: 3px; border-radius: 999px; background: var(--mkt-border); overflow: hidden; }
+  .mkt-p-fill::after { content: ''; display: block; height: 100%; width: 0%; background: var(--mkt-accent); transition: width 0.3s ease; }
+  .mkt-p-fill.is-done::after { width: 100%; }
 
-  .mkt-wizard-body { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; }
-  .mkt-preview-col { flex: 0 0 340px; position: sticky; top: 24px; }
-  .mkt-form-col { flex: 1 1 360px; min-width: 300px; max-width: 460px; }
+  /* ── โครง 50/50 split ตามที่ขอ: ซ้ายพรีวิวลอยตรึง (sticky) / ขวาฟอร์มเลื่อนไปตามหน้า ── */
+  .mkt-wiz-split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+  .mkt-wiz-preview-pane { position: sticky; top: 24px; }
+  .mkt-wiz-form-pane { min-width: 0; }
 
   .mkt-frame-wrap {
     background: linear-gradient(180deg, var(--mkt-bg-card) 0%, var(--mkt-bg-card-2) 100%);
@@ -276,34 +301,113 @@ const MARKETPLACE_STYLE = `
   .mkt-device-bar { display: flex; align-items: center; gap: 6px; padding: 9px 11px; background: var(--mkt-bg-sunken); }
   .mkt-device-dot { width: 7px; height: 7px; border-radius: 999px; background: #2c3559; }
   .mkt-device-url { flex: 1 1 auto; text-align: center; font-size: 9.5px; color: #5e6688; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; }
-  .mkt-preview-note { font-size: 11px; color: var(--mkt-text-muted-2); margin-top: 12px; line-height: 1.6; max-width: 300px; }
+  .mkt-preview-note { font-size: 11px; color: var(--mkt-text-muted-2); margin-top: 12px; line-height: 1.6; max-width: 320px; }
+  .mkt-wiz-price-coin {
+    display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 999px;
+    background: rgba(245,185,66,0.18); color: var(--mkt-gold); font-size: 10px; font-weight: 800; margin-right: 5px; flex: 0 0 auto;
+  }
 
-  .mkt-form-step { display: flex; flex-direction: column; gap: 18px; }
-  .mkt-field-label { font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 7px; letter-spacing: 0.01em; }
+  /* ── ฟิลด์ฟอร์ม ── พื้นหลังมืดเข้ม ขอบจางๆ โฟกัสแล้วขอบ+เรืองแสงสีม่วง ตามที่ขอ ── */
+  .mkt-form-step { display: flex; flex-direction: column; gap: 20px; }
+  .mkt-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .mkt-field-label { font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.01em; }
   .mkt-field { display: flex; flex-direction: column; }
   .mkt-field-pair { display: flex; gap: 20px; }
   .mkt-field-pair > .mkt-field { flex: 1 1 auto; min-width: 0; }
-  textarea.mkt-line-input { resize: vertical; font-family: inherit; min-height: 92px; }
-  select.mkt-line-input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23888db0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
-  select.mkt-line-input option { background: var(--mkt-bg-sunken); }
-  input[type="file"].mkt-line-input { font-size: 13px; cursor: pointer; padding: 9px 13px; color: var(--mkt-text-muted-2); }
-  input[type="file"].mkt-line-input::file-selector-button {
-    background: none; border: none; color: var(--mkt-accent); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; margin-right: 10px; font-family: inherit;
-  }
 
-  .mkt-wizard-nav { display: flex; align-items: center; gap: 18px; margin-top: 20px; }
+  .mkt-line-input {
+    flex: 1 1 auto; min-width: 0; box-sizing: border-box; background: var(--mkt-bg-sunken);
+    border: 1.5px solid var(--mkt-border); border-radius: 10px; color: var(--text); font-family: inherit;
+    font-size: 13.5px; padding: 11px 14px; font-variant-numeric: tabular-nums;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .mkt-line-input::placeholder { color: var(--mkt-text-muted-2); }
+  .mkt-line-input:focus { outline: none; border-color: var(--mkt-accent); box-shadow: 0 0 0 3px var(--mkt-accent-soft); }
+  .mkt-line-input:disabled { opacity: 0.5; cursor: not-allowed; }
+  textarea.mkt-line-input { resize: vertical; font-family: inherit; min-height: 92px; }
+
+  /* ── ตัวสลับสกุลเงิน THB/USD ── ปุ่มเล็กข้างๆ label ราคา รีไซเคิลหน้าตา segmented-pill
+       แบบเดียวกับตัวสลับภาษา/ช่องทางรับเงิน (ของใหม่จริงๆคือ JS mktSelectCurrency ด้านล่าง)
+       🆕 หมายเหตุสำคัญ: สลับแค่ "หน้าตา/label" กับพรีวิวเท่านั้นนะครับ ตัวเลขที่ส่งไปจริง
+       (name="price") ระบบฝั่งเซิร์ฟเวอร์ยังตีความเป็นบาทไทยเสมอ (ดูคอมเมนต์เต็มๆที่ท้ายไฟล์
+       นี้/build-notes doc — ตัดสินใจแล้วว่ายังไม่ต่อระบบจ่ายเงินจริงเป็น USD เพราะ PromptPay
+       QR รองรับแต่บาทไทยเท่านั้น) เลยมีข้อความแจ้งเตือนเล็กๆใต้ช่องราคาด้วย ไม่ให้เข้าใจผิด */
+  .mkt-currency-toggle { display: inline-flex; gap: 3px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 3px; flex: 0 0 auto; }
+  .mkt-currency-btn {
+    background: none; border: none; cursor: pointer; font-family: inherit; border-radius: 999px;
+    padding: 4px 11px; font-size: 11.5px; font-weight: 700; color: var(--mkt-text-muted-2);
+    transition: background 0.15s, color 0.15s;
+  }
+  .mkt-currency-btn[aria-selected="true"] { background: var(--mkt-accent); color: #fff; }
+  .mkt-currency-btn:hover:not([aria-selected="true"]) { color: var(--text); }
+  .mkt-currency-note { font-size: 11px; color: var(--mkt-text-muted-2); margin-top: 8px; line-height: 1.55; }
+
+  /* ── custom dropdown ── หน้าตาคุมเองทั้งหมด (ปุ่ม trigger + เมนูลอย) ไม่ใช่ default
+       browser <select> ของจริงที่ยิง form ยังเป็น <select> เดิมทุกอย่าง (ไอดี/ชื่อ field
+       เดิม) แค่ซ่อนด้วย .mkt-sr-input (ซ่อนด้วย position/opacity ไม่ใช้ display:none —
+       กันไว้ให้ชัวร์ 100% ว่า browser ยัง submit ค่าตามปกติ) ── */
+  .mkt-sr-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
+  .mkt-custom-select { position: relative; }
+  .mkt-select-trigger {
+    width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; background: var(--mkt-bg-sunken); border: 1.5px solid var(--mkt-border); border-radius: 10px;
+    color: var(--text); font-family: inherit; font-size: 13.5px; padding: 11px 14px; cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .mkt-select-trigger-label.placeholder { color: var(--mkt-text-muted-2); }
+  .mkt-select-trigger svg { flex: 0 0 auto; color: var(--mkt-text-muted-2); transition: transform 0.15s; }
+  .mkt-select-trigger.is-open svg { transform: rotate(180deg); }
+  .mkt-select-trigger:hover { border-color: var(--mkt-border-strong); }
+  .mkt-select-trigger.is-open { border-color: var(--mkt-accent); box-shadow: 0 0 0 3px var(--mkt-accent-soft); }
+  .mkt-select-trigger:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+  .mkt-select-menu {
+    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--mkt-bg-card-2);
+    border: 1px solid var(--mkt-border-strong); border-radius: 12px; box-shadow: 0 18px 38px -14px rgba(0,0,0,0.75);
+    padding: 6px; max-height: 240px; overflow-y: auto;
+  }
+  .mkt-select-option {
+    display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+    font-family: inherit; font-size: 13px; color: var(--text); padding: 9px 11px; border-radius: 8px;
+  }
+  .mkt-select-option:hover { background: rgba(255,255,255,0.06); }
+  .mkt-select-option.is-selected { background: var(--mkt-accent-soft); color: var(--mkt-accent); font-weight: 700; }
+
+  /* ── dropzone อัปโหลดไฟล์ ── กล่องเส้นประ+ไอคอนก้อนเมฆ แทนปุ่มเลือกไฟล์พื้นฐานของ
+       เบราว์เซอร์ที่โชว์ "เลือกไฟล์ ไม่ได้เลือกไฟล์ใด" (อ่านไม่รู้เรื่อง ไม่สวย) รองรับ
+       ลากไฟล์มาวาง (drag & drop) จริงๆด้วย ไม่ใช่แค่หน้าตา ── */
+  .mkt-dropzone {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    gap: 6px; padding: 26px 16px; border-radius: 12px; border: 1.5px dashed var(--mkt-border-strong);
+    background: var(--mkt-bg-sunken); cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  }
+  .mkt-dropzone:hover, .mkt-dropzone.is-dragover { border-color: var(--mkt-accent); background: var(--mkt-accent-soft); }
+  .mkt-dropzone svg { color: var(--mkt-text-muted-2); }
+  .mkt-dropzone:hover svg, .mkt-dropzone.is-dragover svg { color: var(--mkt-accent); }
+  .mkt-dropzone-text { font-size: 12.5px; font-weight: 600; color: var(--text-muted); line-height: 1.5; max-width: 280px; }
+  .mkt-dropzone-sub { font-size: 11px; color: var(--mkt-text-muted-2); }
+  .mkt-dropzone.is-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+  .mkt-file-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--mkt-bg-sunken); border: 1px solid var(--mkt-border); }
+  .mkt-file-chip-thumb {
+    width: 34px; height: 34px; border-radius: 8px; flex: 0 0 auto; background-size: cover; background-position: center;
+    background-color: var(--mkt-bg-card-2); display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--mkt-text-muted-2);
+  }
+  .mkt-file-chip-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mkt-file-chip-remove { flex: 0 0 auto; background: none; border: none; color: var(--mkt-text-muted-2); cursor: pointer; padding: 4px; border-radius: 6px; display: flex; }
+  .mkt-file-chip-remove:hover { color: #ff9aa2; background: rgba(255,154,162,0.1); }
+
+  .mkt-wizard-nav { display: flex; align-items: center; gap: 18px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--mkt-border); }
   .mkt-btn-primary {
     font-family: inherit; font-size: 13.5px; font-weight: 700; border-radius: 10px; border: none;
-    padding: 12px 24px; cursor: pointer; background: var(--mkt-accent); color: #fff; display: inline-flex;
-    align-items: center; gap: 8px; transition: background 0.15s, transform 0.08s;
+    padding: 12px 26px; cursor: pointer; background: var(--mkt-accent); color: #fff; display: inline-flex;
+    align-items: center; gap: 8px; transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
   }
-  .mkt-btn-primary:hover { background: var(--mkt-accent-hover); }
-  .mkt-btn-primary:active { transform: scale(0.97); }
-  .mkt-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mkt-btn-primary:hover { background: var(--mkt-accent-hover); transform: translateY(-1px); box-shadow: 0 10px 22px -8px rgba(124,111,244,0.6); }
+  .mkt-btn-primary:active { transform: scale(0.97) translateY(0); }
+  .mkt-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .mkt-btn-link { background: none; border: none; color: var(--mkt-text-muted-2); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 5px; }
   .mkt-btn-link:hover { color: var(--text); }
   .mkt-btn-link:disabled { opacity: 0.5; cursor: not-allowed; }
-  .mkt-wiz-error { font-size: 12px; color: #ff9aa2; margin-top: 12px; }
+  .mkt-wiz-error { font-size: 12px; color: #ff9aa2; margin-top: 4px; }
 
   /* ── แผง "My Listings" — กริดการ์ด (เดิมเป็นแถวยาวคั่นเส้น) ── */
   .mkt-listings-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
@@ -349,9 +453,8 @@ const MARKETPLACE_STYLE = `
   }
   @media (max-width: 759px) {
     .mkt-h1 { font-size: 24px; }
-    .mkt-wizard-body { flex-direction: column; gap: 24px; }
-    .mkt-preview-col { flex-basis: auto; width: 100%; max-width: 340px; position: static; }
-    .mkt-form-col { max-width: none; }
+    .mkt-wiz-split { grid-template-columns: 1fr; gap: 24px; }
+    .mkt-wiz-preview-pane { position: static; max-width: 360px; margin: 0 auto; }
   }
 `;
 
@@ -573,20 +676,39 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
     ? ''
     : `<div style="font-size:12.5px;color:var(--text-muted-2);margin-top:14px;" data-i18n="disabledNote">Set up a payment method above first to unlock this form.</div>`;
 
+  // ไอคอน SVG ที่ใช้ซ้ำหลายจุดด้านล่าง (เขียนแยกไว้ตรงนี้ให้อ่านง่ายขึ้น)
+  const chevronDownSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const cloudUploadSvg = `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4"/><path d="M12 12v9"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>`;
+  const removeXSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+  const checkSvg = `<svg class="mkt-p-check" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
   return `<div class="mkt-wizard" style="${canSell ? '' : 'opacity:0.55;'}">
-    <div class="mkt-progress-rule">
-      <div class="mkt-p-node is-active" id="mkt-wiz-node1"><span class="mkt-p-dot"></span><span class="mkt-p-text" data-i18n="progressCard">Grid card</span></div>
-      <span class="mkt-p-fill" id="mkt-wiz-line1"></span>
-      <div class="mkt-p-node" id="mkt-wiz-node2"><span class="mkt-p-dot"></span><span class="mkt-p-text" data-i18n="progressDetail">Full details</span></div>
+    <!-- ═══ ตัวบอกขั้นตอน (stepper) ── อยู่เหนือ 50/50 split ทั้งก้อน ═══ -->
+    <div class="mkt-wiz-stepper">
+      <div class="mkt-wiz-step-badge">
+        <span data-i18n="stepWord">Step</span>&nbsp;<span id="mkt-wiz-step-label">1</span>&nbsp;<span data-i18n="stepOf2">of 2</span>
+      </div>
+      <div class="mkt-progress-rule">
+        <div class="mkt-p-node is-active" id="mkt-wiz-node1">
+          <span class="mkt-p-dot"><span class="mkt-p-num">1</span>${checkSvg}</span>
+          <span class="mkt-p-text" data-i18n="progressCard">Grid card</span>
+        </div>
+        <span class="mkt-p-fill" id="mkt-wiz-line1"></span>
+        <div class="mkt-p-node" id="mkt-wiz-node2">
+          <span class="mkt-p-dot"><span class="mkt-p-num">2</span>${checkSvg}</span>
+          <span class="mkt-p-text" data-i18n="progressDetail">Full details</span>
+        </div>
+      </div>
+      <div class="mkt-wiz-step-caption" id="mkt-wiz-step-title" data-i18n="stepTitleStep1">— the card buyers see in the grid</div>
     </div>
 
     <form id="mkt-wiz-form" method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings" enctype="multipart/form-data">
-      <div class="mkt-wizard-body">
+      <div class="mkt-wiz-split">
 
         <!-- ═══ ฝั่งซ้าย: พรีวิวสด ลอยตรึง (sticky) ═══ สีพวกนี้ตั้งใจ hardcode ไม่ใช้
              var(--xxx) ของแดชบอร์ด เพราะพรีวิวต้องเลียนแบบหน้า public/marketplace.html
              (ธีมมืดของมันเอง) ให้ตรงเป๊ะๆ -->
-        <div class="mkt-preview-col">
+        <div class="mkt-wiz-preview-pane">
           <div class="mkt-live-tag"><span class="dot"></span><span data-i18n="livePreview">Live preview</span></div>
           <div class="mkt-frame-wrap">
             <div class="mkt-device-bar">
@@ -594,9 +716,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
               <span class="mkt-device-url" data-i18n="devicePreviewLabel">Marketplace preview</span>
             </div>
 
-            <!-- พรีวิวสเต็ป 1: การ์ดในกริด (สไตล์ก๊อปจาก buildListingCardHtml() ใน public/marketplace.html)
-                 🆕 รอบ 6b: ขยายขนาดตามกรอบที่ใหญ่ขึ้น (216px → 266px, ~1.23x) ตัวเลขพิกเซลด้านล่าง
-                 คูณ 1.2 แบบคร่าวๆจากของเดิมทั้งหมด -->
+            <!-- พรีวิวสเต็ป 1: การ์ดในกริด (สไตล์ก๊อปจาก buildListingCardHtml() ใน public/marketplace.html) -->
             <div id="mkt-wiz-preview-card" style="position:relative;height:182px;overflow:hidden;background:linear-gradient(135deg,#1f2937,#2c3559 75%);">
               <div id="mkt-wiz-pc-badge" style="position:absolute;top:11px;left:11px;background:#4b5563;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;" data-i18n="chooseCategory">Choose a category&hellip;</div>
               <div style="position:absolute;inset:0;background:linear-gradient(180deg, transparent 42%, rgba(5,7,15,0.94) 100%);"></div>
@@ -604,7 +724,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
                 <div id="mkt-wiz-pc-title" style="font-size:15px;font-weight:700;color:#fff;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
                   <span style="font-size:12px;color:rgba(255,255,255,0.75);">${escapeHtml(sellerDisplayName || 'You')}</span>
-                  <span id="mkt-wiz-pc-price" style="font-size:15px;font-weight:700;color:#f4b860;">&#3647;0</span>
+                  <span style="display:flex;align-items:center;"><span class="mkt-wiz-price-coin" id="mkt-wiz-pc-coin">&#3647;</span><span id="mkt-wiz-pc-price" style="font-size:15px;font-weight:700;color:#f4b860;">0</span></span>
                 </div>
               </div>
             </div>
@@ -618,7 +738,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
                 <div id="mkt-wiz-pd-title" style="font-size:15px;font-weight:700;color:#f3f1fb;line-height:1.3;" data-i18n="previewDefaultTitle">Your item title</div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
                   <span style="font-size:12px;color:#9aa2c4;">${escapeHtml(sellerDisplayName || 'You')}</span>
-                  <span id="mkt-wiz-pd-price" style="font-size:16px;font-weight:700;color:#f4b860;">&#3647;0</span>
+                  <span style="display:flex;align-items:center;"><span class="mkt-wiz-price-coin" id="mkt-wiz-pd-coin">&#3647;</span><span id="mkt-wiz-pd-price" style="font-size:16px;font-weight:700;color:#f4b860;">0</span></span>
                 </div>
                 <div style="height:1px;background:#262f4d;margin:12px 0;"></div>
                 <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:#9aa2c4;text-transform:uppercase;margin-bottom:5px;" data-i18n="fieldDescription">Description</div>
@@ -630,43 +750,78 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
           <p class="mkt-preview-note" data-i18n="previewNote">Mirrors the real Marketplace page — this is what buyers actually see.</p>
         </div>
 
-        <!-- ═══ ฝั่งขวา: ฟอร์มของสเต็ปที่กำลังทำอยู่ ═══ -->
-        <div class="mkt-form-col">
-          <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:4px;">
-            <span id="mkt-wiz-dot1" style="width:7px;height:7px;border-radius:999px;background:var(--accent);"></span>
-            <span id="mkt-wiz-dot2" style="width:7px;height:7px;border-radius:999px;background:var(--border);"></span>
-            <span style="font-size:12px;font-weight:700;color:var(--text-muted-2);text-transform:uppercase;letter-spacing:0.06em;">
-              <span data-i18n="stepWord">Step</span> <span id="mkt-wiz-step-label">1</span> <span data-i18n="stepOf2">of 2</span>
-            </span>
-            <span id="mkt-wiz-step-title" style="font-size:12.5px;color:var(--text-muted-2);" data-i18n="stepTitleStep1">— the card buyers see in the grid</span>
-          </div>
+        <!-- ═══ ฝั่งขวา: ฟอร์มของสเต็ปที่กำลังทำอยู่ — เลื่อนไปตามหน้าได้ปกติ ═══ -->
+        <div class="mkt-wiz-form-pane">
 
           <!-- สเต็ป 1/2: ข้อมูลสำหรับการ์ด -->
-          <div class="mkt-form-step" id="mkt-wiz-step1" style="margin-top:18px;">
+          <div class="mkt-form-step" id="mkt-wiz-step1">
             <div class="mkt-field">
               <label class="mkt-field-label" data-i18n="fieldTitle">Title</label>
               <input class="mkt-line-input" type="text" name="title" id="mkt-wiz-title-input" maxlength="80" ${disabledAttr} />
             </div>
+
+            <!-- 🆕 รอบ 8: ช่องราคา + ตัวสลับสกุลเงิน THB/USD ข้างๆ label (ของใหม่ตามสเปค
+                 "Currency Toggle" — สลับแค่หน้าตา/label/พรีวิว ตัวเลขที่ยิงไปจริงยังตีความ
+                 เป็นบาทไทยเสมอ ดูคอมเมนต์เต็มๆ ที่ MARKETPLACE_STYLE หัวข้อ mkt-currency-toggle) -->
             <div class="mkt-field">
-              <label class="mkt-field-label" data-i18n="fieldPrice">Price (THB)</label>
+              <div class="mkt-field-label-row">
+                <label class="mkt-field-label" id="mkt-wiz-price-label" data-i18n="fieldPriceThb">Price (THB)</label>
+                <div class="mkt-currency-toggle" role="group" aria-label="Currency">
+                  <button type="button" class="mkt-currency-btn" id="mkt-currency-thb" aria-selected="true" ${disabledAttr} onclick="mktSelectCurrency('THB')">&#3647; THB</button>
+                  <button type="button" class="mkt-currency-btn" id="mkt-currency-usd" aria-selected="false" ${disabledAttr} onclick="mktSelectCurrency('USD')">$ USD</button>
+                </div>
+              </div>
               <input class="mkt-line-input" type="number" name="price" id="mkt-wiz-price-input" min="1" max="20000" step="1" ${disabledAttr} />
+              <div class="mkt-currency-note" data-i18n="currencyNote">Payments are always processed in Thai Baht (THB) — USD is shown for preview only.</div>
             </div>
+
+            <!-- 🆕 รอบ 8: หมวดหมู่/หมวดย่อย เปลี่ยนจาก native &lt;select&gt; เป็น custom
+                 dropdown หน้าตาคุมเอง — &lt;select&gt; ของจริงยังอยู่ (ซ่อนด้วย .mkt-sr-input)
+                 ชื่อ field/ค่าที่ submit เหมือนเดิม 100% ดู mktInitCustomSelect() ด้านล่าง -->
             <div class="mkt-field-pair">
               <div class="mkt-field">
                 <label class="mkt-field-label" data-i18n="fieldCategory">Category</label>
-                <select class="mkt-line-input" name="category" id="mkt-category-select" ${disabledAttr}>
-                  <option value="" disabled selected data-i18n="chooseCategory">Choose a category&hellip;</option>
-                  ${categoryOptionsHtml}
-                </select>
+                <div class="mkt-custom-select" id="mkt-category-wrap">
+                  <select class="mkt-sr-input" name="category" id="mkt-category-select" ${disabledAttr}>
+                    <option value="" disabled selected data-i18n="chooseCategory">Choose a category&hellip;</option>
+                    ${categoryOptionsHtml}
+                  </select>
+                  <button type="button" class="mkt-select-trigger" id="mkt-category-trigger" data-select="mkt-category-select" ${disabledAttr}>
+                    <span class="mkt-select-trigger-label placeholder" data-i18n="chooseCategory">Choose a category&hellip;</span>
+                    ${chevronDownSvg}
+                  </button>
+                  <div class="mkt-select-menu" id="mkt-category-menu" hidden></div>
+                </div>
               </div>
               <div class="mkt-field" id="mkt-subcategory-label" style="display:none;">
                 <label class="mkt-field-label" data-i18n="fieldSubcategory">Subcategory</label>
-                <select class="mkt-line-input" name="subcategory" id="mkt-subcategory-select" ${disabledAttr}></select>
+                <div class="mkt-custom-select" id="mkt-subcategory-wrap">
+                  <select class="mkt-sr-input" name="subcategory" id="mkt-subcategory-select" ${disabledAttr}></select>
+                  <button type="button" class="mkt-select-trigger" id="mkt-subcategory-trigger" data-select="mkt-subcategory-select" ${disabledAttr}>
+                    <span class="mkt-select-trigger-label placeholder">—</span>
+                    ${chevronDownSvg}
+                  </button>
+                  <div class="mkt-select-menu" id="mkt-subcategory-menu" hidden></div>
+                </div>
               </div>
             </div>
+
+            <!-- 🆕 รอบ 8: dropzone ลากไฟล์มาวาง/กดเพื่ออัปโหลด แทนปุ่มเลือกไฟล์พื้นฐานของ
+                 เบราว์เซอร์ — &lt;input type="file"&gt; ของจริงยังชื่อ "image" เหมือนเดิม
+                 (ซ่อนด้วย .mkt-sr-input) ดู mktInitDropzone() ด้านล่าง -->
             <div class="mkt-field">
               <label class="mkt-field-label"><span data-i18n="fieldCoverImage">Cover image</span> <span style="font-weight:400;" data-i18n="fieldCoverImageNote">(shown on the card — optional, up to 20MB)</span></label>
-              <input class="mkt-line-input" type="file" name="image" id="mkt-wiz-image-input" accept="image/png,image/jpeg,image/webp,image/gif" ${disabledAttr} />
+              <input class="mkt-sr-input" type="file" name="image" id="mkt-wiz-image-input" accept="image/png,image/jpeg,image/webp,image/gif" ${disabledAttr} />
+              <label for="mkt-wiz-image-input" class="mkt-dropzone${canSell ? '' : ' is-disabled'}" id="mkt-wiz-image-dropzone">
+                ${cloudUploadSvg}
+                <div class="mkt-dropzone-text" data-i18n="dropzoneImageTitle">Drag and drop or click to upload cover image</div>
+                <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Up to 20MB)</div>
+              </label>
+              <div class="mkt-file-chip" id="mkt-wiz-image-chip" style="display:none;">
+                <div class="mkt-file-chip-thumb" id="mkt-wiz-image-chip-thumb"></div>
+                <div class="mkt-file-chip-name" id="mkt-wiz-image-chip-name"></div>
+                <button type="button" class="mkt-file-chip-remove" id="mkt-wiz-image-chip-remove" data-i18n-title="removeFileLabel" title="Remove">${removeXSvg}</button>
+              </div>
             </div>
           </div>
 
@@ -678,14 +833,31 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
             </div>
             <div class="mkt-field">
               <label class="mkt-field-label" data-i18n="fieldType">Type</label>
-              <select class="mkt-line-input" name="type" id="mkt-type-select" ${disabledAttr}>
-                <option value="service" data-i18n="typeService">Service (you contact the buyer yourself)</option>
-                <option value="digital" data-i18n="typeDigital">Digital file (sent automatically after payment)</option>
-              </select>
+              <div class="mkt-custom-select" id="mkt-type-wrap">
+                <select class="mkt-sr-input" name="type" id="mkt-type-select" ${disabledAttr}>
+                  <option value="service" data-i18n="typeService">Service (you contact the buyer yourself)</option>
+                  <option value="digital" data-i18n="typeDigital">Digital file (sent automatically after payment)</option>
+                </select>
+                <button type="button" class="mkt-select-trigger" id="mkt-type-trigger" data-select="mkt-type-select" ${disabledAttr}>
+                  <span class="mkt-select-trigger-label" data-i18n="typeService">Service (you contact the buyer yourself)</span>
+                  ${chevronDownSvg}
+                </button>
+                <div class="mkt-select-menu" id="mkt-type-menu" hidden></div>
+              </div>
             </div>
             <div class="mkt-field" id="mkt-digitalfile-label" style="display:none;">
               <label class="mkt-field-label"><span data-i18n="fieldDigitalFile">Digital file</span> <span style="font-weight:400;" data-i18n="fieldDigitalFileNote">(sent to the buyer automatically — required for digital items, up to 20MB)</span></label>
-              <input class="mkt-line-input" type="file" name="digitalFile" id="mkt-digitalfile-input" ${disabledAttr} />
+              <input class="mkt-sr-input" type="file" name="digitalFile" id="mkt-digitalfile-input" ${disabledAttr} />
+              <label for="mkt-digitalfile-input" class="mkt-dropzone${canSell ? '' : ' is-disabled'}" id="mkt-digitalfile-dropzone">
+                ${cloudUploadSvg}
+                <div class="mkt-dropzone-text" data-i18n="dropzoneFileTitle">Drag and drop or click to upload the digital file</div>
+                <div class="mkt-dropzone-sub" data-i18n="dropzoneLimitNote">(Up to 20MB)</div>
+              </label>
+              <div class="mkt-file-chip" id="mkt-digitalfile-chip" style="display:none;">
+                <div class="mkt-file-chip-thumb" id="mkt-digitalfile-chip-thumb"></div>
+                <div class="mkt-file-chip-name" id="mkt-digitalfile-chip-name"></div>
+                <button type="button" class="mkt-file-chip-remove" id="mkt-digitalfile-chip-remove" data-i18n-title="removeFileLabel" title="Remove">${removeXSvg}</button>
+              </div>
             </div>
           </div>
 
@@ -713,6 +885,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
     (function () {
       var SUBCATS = ${subcategoryMapJson};
       var CATSTYLES = ${categoryStylesJson};
+      var currentCurrency = 'THB'; // 🆕 รอบ 8: แค่ state ฝั่งหน้าเว็บ ไม่ได้ส่งไป server เลย
 
       // ── องค์ประกอบของฟอร์ม/ปุ่มควบคุมสเต็ป ──
       var form = document.getElementById('mkt-wiz-form');
@@ -724,14 +897,11 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       var stepErrorEl = document.getElementById('mkt-wiz-step-error');
       var stepLabelEl = document.getElementById('mkt-wiz-step-label');
       var stepTitleEl = document.getElementById('mkt-wiz-step-title');
-      var dot1 = document.getElementById('mkt-wiz-dot1');
-      var dot2 = document.getElementById('mkt-wiz-dot2');
       var node1 = document.getElementById('mkt-wiz-node1');
       var node2 = document.getElementById('mkt-wiz-node2');
       var line1 = document.getElementById('mkt-wiz-line1');
       var previewCardEl = document.getElementById('mkt-wiz-preview-card');
       var previewDetailEl = document.getElementById('mkt-wiz-preview-detail');
-      // 🆕 รอบ 7: ตัดแสงฟุ้งหลังกรอบพรีวิว (frame-halo) ออกแล้ว — ธีมใหม่ใช้การ์ดมีขอบ/เงาแทน
 
       // ── ช่องกรอกสเต็ป 1 ──
       var titleInput = document.getElementById('mkt-wiz-title-input');
@@ -751,10 +921,12 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       var pcBadge = document.getElementById('mkt-wiz-pc-badge');
       var pcTitle = document.getElementById('mkt-wiz-pc-title');
       var pcPrice = document.getElementById('mkt-wiz-pc-price');
+      var pcCoin = document.getElementById('mkt-wiz-pc-coin');
       var pdHero = document.getElementById('mkt-wiz-pd-hero');
       var pdBadge = document.getElementById('mkt-wiz-pd-badge');
       var pdTitle = document.getElementById('mkt-wiz-pd-title');
       var pdPrice = document.getElementById('mkt-wiz-pd-price');
+      var pdCoin = document.getElementById('mkt-wiz-pd-coin');
       var pdDesc = document.getElementById('mkt-wiz-pd-desc');
       var pdFileBadge = document.getElementById('mkt-wiz-pd-filebadge');
 
@@ -783,19 +955,25 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         }
       }
 
-      function formattedPrice() {
+      // 🆕 รอบ 8: เลขราคา (ไม่รวมสัญลักษณ์สกุลเงินแล้ว — ย้ายสัญลักษณ์ไปอยู่ที่ "เหรียญ"
+      // mkt-wiz-price-coin แยกต่างหาก ดู currencySymbol() ด้านล่าง)
+      function formattedPriceAmount() {
         var price = parseInt(priceInput.value, 10);
-        return '\\u0e3f' + (price > 0 ? price.toLocaleString('en-US') : '0');
+        return price > 0 ? price.toLocaleString('en-US') : '0';
+      }
+      function currencySymbol() {
+        return currentCurrency === 'USD' ? '$' : '\\u0e3f';
       }
 
-      // อัปเดตพรีวิวการ์ด (สเต็ป 1) — เรียกทุกครั้งที่พิมพ์ชื่อ/ราคา/เปลี่ยนหมวด/เปลี่ยนรูป
+      // อัปเดตพรีวิวการ์ด (สเต็ป 1) — เรียกทุกครั้งที่พิมพ์ชื่อ/ราคา/เปลี่ยนหมวด/เปลี่ยนรูป/สลับสกุลเงิน
       function updateCardPreview() {
         var style = currentCategoryStyle();
         pcBadge.textContent = style.label;
         pcBadge.style.background = style.badge;
         applyPreviewBackground(previewCardEl, style);
         pcTitle.textContent = titleInput.value.trim() || mktT('previewDefaultTitle');
-        pcPrice.textContent = formattedPrice();
+        pcPrice.textContent = formattedPriceAmount();
+        pcCoin.textContent = currencySymbol();
       }
 
       // อัปเดตพรีวิวดีเทล (สเต็ป 2) — เรียกทุกครั้งที่พิมพ์คำอธิบาย/เปลี่ยน type/เลือกไฟล์ด้วย
@@ -806,7 +984,8 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         pdBadge.style.background = style.badge;
         applyPreviewBackground(pdHero, style);
         pdTitle.textContent = titleInput.value.trim() || mktT('previewDefaultTitle');
-        pdPrice.textContent = formattedPrice();
+        pdPrice.textContent = formattedPriceAmount();
+        pdCoin.textContent = currencySymbol();
         pdDesc.textContent = descInput.value.trim() || mktT('previewDefaultDesc');
         if (typeSelect.value === 'digital' && fileInput.files && fileInput.files[0]) {
           pdFileBadge.textContent = '\\ud83d\\udcce ' + fileInput.files[0].name;
@@ -820,6 +999,25 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         updateCardPreview();
         updateDetailPreview();
       }
+
+      // 🆕 รอบ 8: สลับสกุลเงิน THB/USD — ของจริงที่ส่งไป server (name="price") ยังเป็น
+      // เลขเดียวกันเป๊ะๆไม่ว่าจะเลือกสกุลไหน (ดูคอมเมนต์เต็มๆใน MARKETPLACE_STYLE) ฟังก์ชันนี้
+      // ต้องเป็น window.xxx (ไม่ใช่ function ธรรมดาในนี้) เพราะปุ่มเรียกผ่าน onclick="" ใน
+      // HTML ซึ่งมองไม่เห็นตัวแปร/ฟังก์ชันที่อยู่ข้างในวงเล็บ (function(){ ... })() ก้อนนี้
+      window.mktSelectCurrency = function (currency) {
+        currentCurrency = currency;
+        var thbBtn = document.getElementById('mkt-currency-thb');
+        var usdBtn = document.getElementById('mkt-currency-usd');
+        if (thbBtn) thbBtn.setAttribute('aria-selected', String(currency === 'THB'));
+        if (usdBtn) usdBtn.setAttribute('aria-selected', String(currency === 'USD'));
+        var priceLabelEl = document.getElementById('mkt-wiz-price-label');
+        if (priceLabelEl) {
+          var key = currency === 'USD' ? 'fieldPriceUsd' : 'fieldPriceThb';
+          priceLabelEl.setAttribute('data-i18n', key);
+          priceLabelEl.textContent = mktT(key);
+        }
+        updateBothPreviews();
+      };
 
       titleInput.addEventListener('input', updateBothPreviews);
       priceInput.addEventListener('input', updateBothPreviews);
@@ -853,6 +1051,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
           subcatSelect.innerHTML = '';
           subcatLabel.style.display = 'none';
         }
+        if (subcategoryCustom) subcategoryCustom.refresh(); // 🆕 รอบ 8: เมนู custom ของ subcategory ต้องรีสร้างใหม่ตามตัวเลือกที่เปลี่ยนไป
         updateBothPreviews();
       }
 
@@ -864,11 +1063,154 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         updateDetailPreview();
       }
 
+      // 🆕 รอบ 8: custom dropdown ── ปุ่ม trigger + เมนูลอย คุม <select> ของจริงที่ซ่อนไว้
+      // (ซ่อนด้วย .mkt-sr-input ไม่ใช่ display:none กัน browser งอแงเรื่อง submit) เลือก
+      // ตัวเลือกในเมนูแล้วเซ็ต select.value + ยิง 'change' event ต่อให้ select ของจริง
+      // เพื่อให้ listener เดิมที่ผูกกับ select (updateSubcategory/updateDigitalFile) ทำงาน
+      // ต่อตามปกติ ไม่ต้องแก้ตรรกะเดิมเลย
+      function mktInitCustomSelect(selectId, triggerId, menuId) {
+        var select = document.getElementById(selectId);
+        var trigger = document.getElementById(triggerId);
+        var menu = document.getElementById(menuId);
+        if (!select || !trigger || !menu) return null;
+
+        function syncLabel() {
+          var labelEl = trigger.querySelector('.mkt-select-trigger-label');
+          var selected = select.options[select.selectedIndex];
+          if (!labelEl || !selected) return;
+          labelEl.textContent = selected.textContent;
+          labelEl.classList.toggle('placeholder', !!selected.disabled);
+        }
+
+        function renderMenu() {
+          var html = '';
+          for (var i = 0; i < select.options.length; i++) {
+            var opt = select.options[i];
+            if (opt.disabled) continue; // ตัวเลือก placeholder ("Choose a category...") ไม่โชว์ในเมนู เหมือน native select
+            html += '<button type="button" class="mkt-select-option' + (opt.selected ? ' is-selected' : '') + '" data-value="' + String(opt.value).replace(/"/g, '&quot;') + '">' + opt.textContent + '</button>';
+          }
+          menu.innerHTML = html;
+          var optionBtns = menu.querySelectorAll('.mkt-select-option');
+          for (var j = 0; j < optionBtns.length; j++) {
+            optionBtns[j].addEventListener('click', function () {
+              select.value = this.getAttribute('data-value');
+              closeMenu();
+              syncLabel();
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+          }
+        }
+
+        function openMenu() {
+          if (trigger.disabled) return;
+          renderMenu();
+          menu.hidden = false;
+          trigger.classList.add('is-open');
+          document.addEventListener('click', onOutsideClick);
+        }
+        function closeMenu() {
+          menu.hidden = true;
+          trigger.classList.remove('is-open');
+          document.removeEventListener('click', onOutsideClick);
+        }
+        function onOutsideClick(e) {
+          if (!trigger.contains(e.target) && !menu.contains(e.target)) closeMenu();
+        }
+
+        trigger.addEventListener('click', function () {
+          if (menu.hidden) openMenu(); else closeMenu();
+        });
+        trigger.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') closeMenu();
+        });
+
+        syncLabel();
+        return { refresh: function () { syncLabel(); if (!menu.hidden) renderMenu(); } };
+      }
+
+      // 🆕 รอบ 8: สร้าง custom dropdown ทั้ง 3 ตัว — ต้องสร้างตรงนี้ก่อนเรียก updateSubcategory()
+      // ด้านล่าง เพราะ updateSubcategory() เรียก subcategoryCustom.refresh() ทันทีตอนโหลดหน้า
+      var categoryCustom = mktInitCustomSelect('mkt-category-select', 'mkt-category-trigger', 'mkt-category-menu');
+      var subcategoryCustom = mktInitCustomSelect('mkt-subcategory-select', 'mkt-subcategory-trigger', 'mkt-subcategory-menu');
+      var typeCustom = mktInitCustomSelect('mkt-type-select', 'mkt-type-trigger', 'mkt-type-menu');
+
       categorySelect.addEventListener('change', updateSubcategory);
       typeSelect.addEventListener('change', updateDigitalFile);
       updateSubcategory();
       updateDigitalFile();
       updateBothPreviews();
+
+      // 🆕 รอบ 8: dropzone ลากไฟล์มาวาง/กดเพื่ออัปโหลด แทนปุ่ม "เลือกไฟล์" พื้นฐานของเบราว์เซอร์
+      // ที่อ่านไม่รู้เรื่อง — input ของจริงยังเป็น input[type=file] ชื่อเดิมทุกอย่าง (ซ่อนด้วย
+      // .mkt-sr-input) แค่ครอบด้วย <label for="..."> เป็นกล่องเส้นประให้กดเปิดไฟล์ได้ตรงๆ
+      // (ไม่ต้องใช้ JS เปิด dialog เลย) ส่วน drag & drop ใช้ DataTransfer เซ็ต input.files
+      // ตรงๆ แล้วยิง 'change' event ต่อ ให้ listener เดิมของแต่ละ input ทำงานเหมือนเลือกไฟล์
+      // ผ่านปุ่มปกติทุกอย่าง (รูปอัปเดตพรีวิว / ชื่อไฟล์โชว์ในชิป ฯลฯ)
+      function mktInitDropzone(inputId, dropzoneId, chipId, thumbId, nameId, removeId, isImage) {
+        var input = document.getElementById(inputId);
+        var dropzone = document.getElementById(dropzoneId);
+        var chip = document.getElementById(chipId);
+        var thumb = document.getElementById(thumbId);
+        var nameEl = document.getElementById(nameId);
+        var removeBtn = document.getElementById(removeId);
+        if (!input || !dropzone || !chip) return;
+
+        function showChip(file) {
+          nameEl.textContent = file.name;
+          if (isImage) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+              thumb.style.backgroundImage = "url('" + e.target.result + "')";
+              thumb.textContent = '';
+            };
+            reader.readAsDataURL(file);
+          } else {
+            thumb.style.backgroundImage = '';
+            thumb.textContent = '\\ud83d\\udcc4';
+          }
+          chip.style.display = 'flex';
+          dropzone.style.display = 'none';
+        }
+        function showEmpty() {
+          chip.style.display = 'none';
+          dropzone.style.display = 'flex';
+          thumb.style.backgroundImage = '';
+          thumb.textContent = '';
+          nameEl.textContent = '';
+        }
+
+        input.addEventListener('change', function () {
+          var file = input.files && input.files[0];
+          if (file) showChip(file); else showEmpty();
+        });
+
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            input.value = '';
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        }
+
+        dropzone.addEventListener('dragover', function (e) {
+          e.preventDefault();
+          dropzone.classList.add('is-dragover');
+        });
+        dropzone.addEventListener('dragleave', function () {
+          dropzone.classList.remove('is-dragover');
+        });
+        dropzone.addEventListener('drop', function (e) {
+          e.preventDefault();
+          dropzone.classList.remove('is-dragover');
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+      }
+
+      mktInitDropzone('mkt-wiz-image-input', 'mkt-wiz-image-dropzone', 'mkt-wiz-image-chip', 'mkt-wiz-image-chip-thumb', 'mkt-wiz-image-chip-name', 'mkt-wiz-image-chip-remove', true);
+      mktInitDropzone('mkt-digitalfile-input', 'mkt-digitalfile-dropzone', 'mkt-digitalfile-chip', 'mkt-digitalfile-chip-thumb', 'mkt-digitalfile-chip-name', 'mkt-digitalfile-chip-remove', false);
 
       // ── สลับสเต็ป 1 ↔ 2 ──
       // 🆕 ตัว input ของทั้ง 2 สเต็ปไม่มี attribute "required" ติดอยู่เลยนะครับ เพราะพอแยก
@@ -1143,12 +1485,24 @@ function mktI18nScript() {
       th: '— หน้ารายละเอียดเต็มที่ผู้ซื้อเห็นหลังคลิกเข้าไปดู',
     },
     fieldTitle: { en: 'Title', th: 'ชื่อสินค้า' },
-    fieldPrice: { en: 'Price (THB)', th: 'ราคา (บาท)' },
+    // 🆕 รอบ 8: fieldPrice เดิม เปลี่ยนชื่อเป็น fieldPriceThb + เพิ่ม fieldPriceUsd คู่กัน
+    // (สลับกันตามปุ่มเลือกสกุลเงิน THB/USD — ดู mktSelectCurrency ใน sellWizardHtml())
+    fieldPriceThb: { en: 'Price (THB)', th: 'ราคา (บาท)' },
+    fieldPriceUsd: { en: 'Price (USD)', th: 'ราคา (ดอลลาร์)' },
+    currencyNote: {
+      en: 'Payments are always processed in Thai Baht (THB) — USD is shown for preview only.',
+      th: 'ระบบรับเงินเป็นเงินบาทไทย (THB) เท่านั้นนะครับ ตัวเลือก USD ใช้แสดงตัวอย่างราคาเท่านั้น',
+    },
     fieldCategory: { en: 'Category', th: 'หมวดหมู่' },
     fieldSubcategory: { en: 'Subcategory', th: 'หมวดย่อย' },
     fieldCoverImage: { en: 'Cover image', th: 'รูปปก' },
     fieldCoverImageNote: { en: '(shown on the card — optional, up to 20MB)', th: '(โชว์บนการ์ด — ไม่บังคับ ขนาดไม่เกิน 20MB)' },
     chooseCategory: { en: 'Choose a category…', th: 'เลือกหมวดหมู่…' },
+    // 🆕 รอบ 8: ข้อความใน dropzone อัปโหลดไฟล์ (แทนปุ่ม "เลือกไฟล์" เดิมของเบราว์เซอร์)
+    dropzoneImageTitle: { en: 'Drag and drop or click to upload cover image', th: 'ลากไฟล์มาวาง หรือกดเพื่ออัปโหลดรูปปก' },
+    dropzoneFileTitle: { en: 'Drag and drop or click to upload the digital file', th: 'ลากไฟล์มาวาง หรือกดเพื่ออัปโหลดไฟล์ดิจิทัล' },
+    dropzoneLimitNote: { en: '(Up to 20MB)', th: '(ขนาดไม่เกิน 20MB)' },
+    removeFileLabel: { en: 'Remove', th: 'นำออก' },
     fieldDescription: { en: 'Description', th: 'คำอธิบาย' },
     fieldType: { en: 'Type', th: 'ประเภท' },
     typeService: { en: 'Service (you contact the buyer yourself)', th: 'บริการ (ผู้ขายติดต่อผู้ซื้อเอง)' },
@@ -1235,6 +1589,21 @@ function mktI18nScript() {
       try { localStorage.setItem('aitaoDashboardLang', lang); } catch (e) {}
       document.querySelectorAll('[data-i18n]').forEach(function (el) {
         el.textContent = mktT(el.getAttribute('data-i18n'));
+      });
+      // 🆕 รอบ 8: ป้าย title (เช่นปุ่ม "Remove" ของ dropzone) ไม่ใช่ textContent เลยต้อง
+      // รีเฟรชแยกผ่าน attribute title="" โดยตรง
+      document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+        el.title = mktT(el.getAttribute('data-i18n-title'));
+      });
+      // 🆕 รอบ 8: ป้ายของปุ่ม custom dropdown (category/subcategory/type) ไม่ได้มี
+      // data-i18n ติดตัวเอง (ข้อความมันก็อปมาจาก <option> ที่เลือกอยู่ของ select ของจริง
+      // ซึ่งอัปเดตคำแปลไปแล้วจากลูปด้านบน) แค่ต้องก๊อปข้อความที่แปลแล้วมาแสดงผลซ้ำที่ปุ่มด้วย
+      document.querySelectorAll('.mkt-select-trigger[data-select]').forEach(function (btn) {
+        var select = document.getElementById(btn.getAttribute('data-select'));
+        var labelEl = btn.querySelector('.mkt-select-trigger-label');
+        if (!select || !labelEl) return;
+        var selected = select.options[select.selectedIndex];
+        if (selected) labelEl.textContent = selected.textContent;
       });
       var enBtn = document.getElementById('mkt-lang-en');
       var thBtn = document.getElementById('mkt-lang-th');
