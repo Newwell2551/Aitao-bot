@@ -677,6 +677,19 @@ async function handleConfirmButton(interaction) {
       });
       buyerNotified = true;
       buyerNotifyNote = 'ระบบส่งลิงก์ให้ลูกค้าทาง DM อัตโนมัติแล้วครับ';
+    } else if (listing && listing.type === 'digital' && listing.deliveryMethod === 'miloconfig' && listing.digitalConfigKey) {
+      // 🆕 [15 ต.ค. 2569 — รอบ 11] ส่งรหัสการตั้งค่า Milo Bot ให้ผู้ซื้อทาง DM — เหมือน
+      // ลิงก์ของรอบ 10 เป๊ะๆ (เป็นค่าดิบๆที่ผู้ขายกรอกมา บอทแค่เก็บ+ส่งต่อ ไม่ได้ไปตรวจสอบ/
+      // สร้างรหัสเองว่าใช้งานได้จริงไหม) ⚠️ ตอนนี้ยังไม่มีคำสั่ง /milo export-config กับ
+      // /milo import-config จริงในระบบ — ข้อความนี้บอกผู้ซื้อว่าให้ไปรันคำสั่งที่ยังไม่มีอยู่จริง
+      // รอคุยเรื่อง scope ของฟีเจอร์นี้กับน้องหนาวก่อนว่าจะสร้างคำสั่งจริงยังไง (ดูสรุปที่ส่งให้
+      // น้องหนาวในแชทรอบนี้)
+      await buyerUser.send({
+        content:
+          `🎉 ผู้ขายยืนยันได้รับเงินแล้ว! นี่คือรหัสการตั้งค่า Milo Bot ของ **${listing.title}** ที่คุณซื้อจาก Marketplace ของ Milo Bot ครับ:\n\`${listing.digitalConfigKey}\`\n\nนำรหัสนี้ไปใช้กับคำสั่ง \`/milo import-config\` ในดิสคอร์ดของคุณได้เลยครับ`,
+      });
+      buyerNotified = true;
+      buyerNotifyNote = 'ระบบส่งรหัสการตั้งค่า Milo Bot ให้ลูกค้าทาง DM อัตโนมัติแล้วครับ';
     } else if (listing && listing.type === 'digital' && digitalFileUrl) {
       await buyerUser.send({
         content:

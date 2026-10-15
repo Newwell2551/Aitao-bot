@@ -176,8 +176,12 @@ const MARKETPLACE_STYLE = `
   .mkt-panel-subtitle { margin: 7px 0 0; max-width: 68ch; font-size: 13.5px; line-height: 1.7; color: var(--text-muted); }
   .mkt-panel-subtitle code { background: var(--mkt-accent-soft); color: var(--mkt-accent); padding: 2px 7px; border-radius: 4px; font-size: 12.5px; }
 
-  .mkt-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; margin: 20px 0 0; font-size: 13px; font-weight: 600; border: 1px solid transparent; }
+  .mkt-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; margin: 20px 0 0; font-size: 13px; font-weight: 600; border: 1px solid transparent; transition: opacity 0.25s ease, transform 0.25s ease; opacity: 1; transform: translateY(0); }
+  .mkt-banner.is-hiding { opacity: 0; transform: translateY(-4px); }
   .mkt-banner .dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; }
+  .mkt-banner .mkt-banner-text { flex: 1 1 auto; }
+  .mkt-banner-close { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: none; border-radius: 999px; background: transparent; color: inherit; opacity: 0.7; cursor: pointer; transition: opacity 0.15s ease, background 0.15s ease; }
+  .mkt-banner-close:hover { opacity: 1; background: rgba(255,255,255,0.08); }
   .mkt-banner.is-ok { color: var(--mkt-success); background: var(--mkt-success-soft); border-color: rgba(45,212,168,0.3); } .mkt-banner.is-ok .dot { background: var(--mkt-success); }
   .mkt-banner.is-error { color: #ff9aa2; background: rgba(255,154,162,0.1); border-color: rgba(255,154,162,0.3); } .mkt-banner.is-error .dot { background: #ff9aa2; }
 
@@ -466,6 +470,18 @@ const MARKETPLACE_STYLE = `
   .mkt-btn-row-action.is-reopen { color: var(--mkt-accent); }
   .mkt-btn-row-action.is-reopen:hover { text-decoration-color: var(--mkt-accent); }
 
+  /* 🆕 [15 ต.ค. 2569 — รอบ 11] ปุ่ม Edit/Delete มุมล่างขวาของการ์ด — ไอคอนล้วนๆ (ไม่มีตัวหนังสือ)
+     กะทัดรัด ไม่แย่งที่กับปุ่ม Close/Reopen เดิมที่อยู่แถวบนขึ้นไป */
+  .mkt-item-actions-row { justify-content: flex-end; gap: 6px; margin-top: 2px; }
+  .mkt-icon-btn {
+    display: flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+    border-radius: 8px; border: 1px solid var(--mkt-border); background: transparent;
+    color: var(--mkt-text-muted-2); cursor: pointer; text-decoration: none; font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .mkt-icon-btn:hover { background: var(--mkt-accent-soft); color: var(--mkt-accent); border-color: var(--mkt-accent); }
+  .mkt-icon-btn.is-danger:hover { background: rgba(255,154,162,0.12); color: #ff9aa2; border-color: rgba(255,154,162,0.4); }
+
   @media (max-width: 880px) {
     .mkt-shell { flex-direction: column; }
     .mkt-subnav {
@@ -510,16 +526,53 @@ function statusIndicatorHtml(status) {
 }
 
 /**
- * แบนเนอร์แจ้งผล (สำเร็จ/ผิดพลาด) — pattern เดียวกับหน้า Language/Premium (query string
- * ?saved=1 / ?error=...) ชั่วคราว หายไปทันทีที่โหลดหน้าใหม่แบบไม่มี query พวกนี้
+ * แบนเนอร์แจ้งผล (สำเร็จ/ผิดพลาด/ลบแล้ว) — pattern เดียวกับหน้า Language/Premium (query string
+ * ?saved=1 / ?error=... / ?deleted=1) ชั่วคราว หายไปทันทีที่โหลดหน้าใหม่แบบไม่มี query พวกนี้
  * 🆕 รอบ 6: เปลี่ยนจากกล่องสีพื้นหลัง+ขอบ เป็นเส้นบางๆ+จุดสี ตามแนว "ไม่มีกล่อง"
+ * 🆕 [15 ต.ค. 2569 — รอบ 11] น้องหนาวแจ้งว่าแบนเนอร์ค้างอยู่ตลอด ไม่หายไปเอง — เพิ่ม 2 อย่าง
+ * พร้อมกัน: (1) ปุ่ม X ปิดได้ทันที (2) จางหายไปเองอัตโนมัติใน 3 วิ ด้วย CSS transition
+ * (class .is-hiding) + setTimeout ฝั่ง client แล้วค่อยลบ element ออกจาก DOM จริงๆ (รอ
+ * transition เล่นจบก่อน ไม่ใช่ตัด opacity:0 ทิ้งดื้อๆ จะดูกระตุก)
  */
-function bannerHtml({ saved, error }) {
+function bannerHtml({ saved, error, deleted }) {
   // หมายเหตุ: ข้อความ error มาจาก server ตรงๆ (query string ?error=...) ไม่ได้อยู่ใน
   // MKT_I18N เลย เพราะ server สร้างข้อความนี้ไว้เป็นภาษาอังกฤษตายตัวอยู่แล้ว — ยังไม่แปล
-  if (error) return `<div class="mkt-banner is-error"><span class="dot"></span>${escapeHtml(error)}</div>`;
-  if (saved) return `<div class="mkt-banner is-ok"><span class="dot"></span><span data-i18n="bannerSaved">Saved!</span></div>`;
-  return '';
+  if (!error && !saved && !deleted) return '';
+  const variant = error ? 'is-error' : 'is-ok';
+  const textHtml = error
+    ? escapeHtml(error)
+    : deleted
+      ? `<span data-i18n="bannerDeleted">Listing deleted.</span>`
+      : `<span data-i18n="bannerSaved">Saved!</span>`;
+  const closeXSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+
+  return `<div class="mkt-banner ${variant}" id="mkt-banner" role="status">
+    <span class="dot"></span>
+    <span class="mkt-banner-text">${textHtml}</span>
+    <button type="button" class="mkt-banner-close" id="mkt-banner-close" data-i18n-title="bannerCloseLabel" title="Close" aria-label="Close">${closeXSvg}</button>
+  </div>
+  <script>
+    (function () {
+      var el = document.getElementById('mkt-banner');
+      if (!el) return;
+      var closeBtn = document.getElementById('mkt-banner-close');
+      var dismissed = false;
+      function dismiss() {
+        if (dismissed) return;
+        dismissed = true;
+        el.classList.add('is-hiding');
+        // รอ transition (0.25 วิ ที่ตั้งไว้ใน CSS) เล่นจบก่อนค่อยลบออกจาก DOM จริงๆ
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
+      }
+      var autoTimer = setTimeout(dismiss, 3000); // 🆕 auto-dismiss หลัง 3 วิ ตามที่ขอ
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+          clearTimeout(autoTimer); // กดปิดเองแล้วไม่ต้องรอ timer เดิมมาเล่นซ้ำ
+          dismiss();
+        });
+      }
+    })();
+  </script>`;
 }
 
 /**
@@ -680,8 +733,12 @@ function paymentMethodSectionHtml(seller, user, guildId) {
  * @param {boolean} canSell seller ตั้งช่องทางรับเงินไว้แล้วหรือยัง
  * @param {string} guildId
  * @param {string} sellerDisplayName ชื่อผู้ขาย (ชื่อ Discord ของคนที่ล็อกอินอยู่) โชว์ในพรีวิวเฉยๆ
+ * @param {object|null} editingListing 🆕 [15 ต.ค. 2569 — รอบ 11] ถ้ามีค่า = โหมด "แก้ไข"
+ *   ประกาศเดิม (null = โหมด "สร้างใหม่" ตามปกติ) — ต้อง resolve imageUrl แล้วก่อนส่งมาที่นี่
+ *   (ผ่าน resolveListingAssets ที่ server.js) ฟอร์มจะ pre-fill ทุกช่องด้วยข้อมูลเดิม และ
+ *   เปลี่ยน action/ปุ่ม submit ให้ไปทาง route "update" แทน "listings" (สร้างใหม่)
  */
-function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
+function sellWizardHtml(categories, canSell, guildId, sellerDisplayName, editingListing) {
   const categoryOptionsHtml = Object.entries(categories)
     .map(([value, info]) => `<option value="${escapeHtml(value)}">${escapeHtml(info.label)}</option>`)
     .join('');
@@ -695,6 +752,11 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
   // สี/ไล่สีของแต่ละหมวด ส่งให้ JS ฝั่ง client ไว้ใช้วาดพรีวิวสด (ดูคอมเมนต์เต็มๆ ที่
   // CATEGORY_PREVIEW_STYLES ด้านบนไฟล์ว่าทำไมต้องก๊อปข้อมูลนี้มาไว้ที่นี่ด้วย)
   const categoryStylesJson = JSON.stringify(CATEGORY_PREVIEW_STYLES).replace(/</g, '\\u003c');
+
+  // 🆕 [15 ต.ค. 2569 — รอบ 11] ตัวช่วยฝัง string ของข้อมูลประกาศเดิม (โหมดแก้ไข) เข้าไปใน
+  // <script> อย่างปลอดภัย — เหมือน subcategoryMapJson/categoryStylesJson ด้านบน (กัน
+  // </script> หลุดโผล่กลางหน้าถ้า title/description ของประกาศมีข้อความแปลกๆ)
+  const jsStr = (value) => JSON.stringify(value || '').replace(/</g, '\\u003c');
 
   const disabledAttr = canSell ? '' : 'disabled';
   const disabledNoteHtml = canSell
@@ -727,7 +789,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       <div class="mkt-wiz-step-caption" id="mkt-wiz-step-title" data-i18n="stepTitleStep1">— the card buyers see in the grid</div>
     </div>
 
-    <form id="mkt-wiz-form" method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings" enctype="multipart/form-data">
+    <form id="mkt-wiz-form" method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings${editingListing ? `/${encodeURIComponent(editingListing.id)}/update` : ''}" enctype="multipart/form-data">
       <div class="mkt-wiz-split">
 
         <!-- ═══ ฝั่งซ้าย: พรีวิวสด ลอยตรึง (sticky) ═══ สีพวกนี้ตั้งใจ hardcode ไม่ใช้
@@ -881,12 +943,15 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
                    อัตโนมัติ ไม่ได้มีไฟล์จริงให้อัปโหลดเสมอไป บางทีมีแค่ "ลิงก์" (เช่น
                    discord.new/... สำหรับเทมเพลตเซิร์ฟ หรือลิงก์เชิญบอท) เลยเพิ่มตัวเลือกให้
                    วางลิงก์แทนไฟล์ได้ — ใช้ component ปุ่มแท็บ pill เดียวกับตัวเลือกช่องทางรับเงิน
-                   (.mkt-tab-row/.mkt-text-tab) ให้หน้าตาเข้าธีมเดียวกันทั้งหน้า -->
+                   (.mkt-tab-row/.mkt-text-tab) ให้หน้าตาเข้าธีมเดียวกันทั้งหน้า
+                   🆕 รอบ 11: เพิ่มตัวเลือกที่ 3 "รหัสการตั้งค่า Milo Bot" สำหรับผู้ขายที่ขาย
+                   setup ที่สร้างด้วย Milo Bot เอง (เหมือนขายเทมเพลต Canva ให้คนเอาไปแก้ต่อ) -->
               <div class="mkt-field-label-row" style="margin-bottom:10px;">
                 <span class="mkt-pm-label" data-i18n="deliveryMethodLabel">Delivery method</span>
                 <div class="mkt-tab-row" role="tablist" aria-label="Delivery method">
                   <button type="button" class="mkt-text-tab" role="tab" aria-selected="true" id="mkt-dm-tab-file" ${disabledAttr} onclick="mktSelectDeliveryMethod('file')"><span data-i18n="deliveryMethodFile">Upload file</span></button>
                   <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" id="mkt-dm-tab-link" ${disabledAttr} onclick="mktSelectDeliveryMethod('link')"><span data-i18n="deliveryMethodLink">System / template link</span></button>
+                  <button type="button" class="mkt-text-tab" role="tab" aria-selected="false" id="mkt-dm-tab-miloconfig" ${disabledAttr} onclick="mktSelectDeliveryMethod('miloconfig')"><span data-i18n="deliveryMethodMiloConfig">Milo Bot config key</span></button>
                 </div>
               </div>
               <input type="hidden" name="delivery_method" id="mkt-delivery-method-input" value="file" />
@@ -904,11 +969,23 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
                   <div class="mkt-file-chip-name" id="mkt-digitalfile-chip-name"></div>
                   <button type="button" class="mkt-file-chip-remove" id="mkt-digitalfile-chip-remove" data-i18n-title="removeFileLabel" title="Remove">${removeXSvg}</button>
                 </div>
+                <!-- 🆕 รอบ 11: โหมดแก้ไขประกาศ — ไฟล์เดิมมีอยู่แล้ว ไม่บังคับอัปโหลดใหม่ -->
+                ${editingListing && editingListing.deliveryMethod === 'file' && editingListing.digitalFileUrl
+                  ? `<div class="mkt-currency-note" id="mkt-digitalfile-keep-note" data-i18n="editKeepExistingFileNote">Leave this empty to keep the file you already uploaded.</div>`
+                  : ''}
               </div>
 
               <div class="mkt-dm-group" id="mkt-digitalfile-link-group" style="display:none;">
                 <input class="mkt-line-input" type="url" name="digitalLink" id="mkt-digital-link-input" maxlength="300" placeholder="https://discord.new... หรือ ลิงก์เชิญบอทของคุณ" ${disabledAttr} />
                 <div class="mkt-currency-note" id="mkt-digital-link-note" data-i18n="digitalLinkNote">This link will be sent to the buyer automatically as soon as payment is confirmed.</div>
+              </div>
+
+              <!-- 🆕 [15 ต.ค. 2569 — รอบ 11] "รหัสการตั้งค่า Milo Bot" — ผู้ขายกรอกรหัสที่ได้จาก
+                   คำสั่ง /milo export-config มาที่นี่ ระบบจะส่งรหัสนี้ให้ผู้ซื้อทาง DM อัตโนมัติ
+                   ทันทีหลังจ่ายเงิน เหมือนไฟล์/ลิงก์ด้านบนเป๊ะๆ -->
+              <div class="mkt-dm-group" id="mkt-digitalfile-miloconfig-group" style="display:none;">
+                <input class="mkt-line-input" type="text" name="digitalConfigKey" id="mkt-digital-config-input" maxlength="120" placeholder="เช่น MILO-SETUP-XXXXXX" ${disabledAttr} />
+                <div class="mkt-currency-note" data-i18n="digitalConfigKeyNote">Use the /milo export-config command in Discord to get this key, then paste it here. We'll send it to the buyer so they can run /milo import-config right after payment.</div>
               </div>
             </div>
           </div>
@@ -925,7 +1002,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
               <span data-i18n="btnNext">Next: item details</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <button type="submit" class="mkt-btn-primary" id="mkt-wiz-submit-btn" style="display:none;" ${disabledAttr}><span data-i18n="btnSubmit">List item</span></button>
+            <button type="submit" class="mkt-btn-primary" id="mkt-wiz-submit-btn" style="display:none;" ${disabledAttr}><span data-i18n="${editingListing ? 'btnSubmitEdit' : 'btnSubmit'}">${editingListing ? 'Save changes' : 'List item'}</span></button>
           </div>
         </div>
       </div>
@@ -938,6 +1015,11 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       var SUBCATS = ${subcategoryMapJson};
       var CATSTYLES = ${categoryStylesJson};
       var currentCurrency = 'THB'; // 🆕 รอบ 8: แค่ state ฝั่งหน้าเว็บ ไม่ได้ส่งไป server เลย
+      // 🆕 [15 ต.ค. 2569 — รอบ 11] โหมดแก้ไขประกาศเดิม — EDIT_HAS_EXISTING_FILE ใช้ผ่อนปรน
+      // validateStep2() ตอน deliveryMethod เป็น "file": ถ้าแก้ไขประกาศที่มีไฟล์เดิมอยู่แล้ว
+      // ไม่ต้องบังคับอัปโหลดไฟล์ใหม่ (ไม่เลือกไฟล์ใหม่ = ใช้ไฟล์เดิมต่อ ดู server.js ฝั่ง
+      // route /update ที่ทำแบบเดียวกัน)
+      var EDIT_HAS_EXISTING_FILE = ${editingListing && editingListing.deliveryMethod === 'file' && editingListing.digitalFileUrl ? 'true' : 'false'};
 
       // ── องค์ประกอบของฟอร์ม/ปุ่มควบคุมสเต็ป ──
       var form = document.getElementById('mkt-wiz-form');
@@ -974,6 +1056,9 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       var digitalLinkInput = document.getElementById('mkt-digital-link-input');
       var digitalUploadGroup = document.getElementById('mkt-digitalfile-upload-group');
       var digitalLinkGroup = document.getElementById('mkt-digitalfile-link-group');
+      // 🆕 รอบ 11: ตัวเลือกที่ 3 "รหัสการตั้งค่า Milo Bot" — ช่องกรอก+กลุ่มเดียวกับไฟล์/ลิงก์ด้านบน
+      var digitalConfigKeyInput = document.getElementById('mkt-digital-config-input');
+      var digitalConfigGroup = document.getElementById('mkt-digitalfile-miloconfig-group');
 
       // ── ส่วนต่างๆ ของพรีวิว (สเต็ป 1 = การ์ด, สเต็ป 2 = ดีเทล) ──
       var pcBadge = document.getElementById('mkt-wiz-pc-badge');
@@ -1045,12 +1130,18 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         pdPrice.textContent = formattedPriceAmount();
         pdCoin.textContent = currencySymbol();
         pdDesc.textContent = descInput.value.trim() || mktT('previewDefaultDesc');
-        // 🆕 รอบ 10: โชว์ badge ไฟล์แนบในพรีวิวเหมือนเดิม แต่แยก 2 แบบตามวิธีส่งมอบที่เลือก
+        // 🆕 รอบ 10-11: โชว์ badge ไฟล์แนบในพรีวิวเหมือนเดิม แต่แยก 3 แบบตามวิธีส่งมอบที่เลือก
         if (typeSelect.value === 'digital' && deliveryMethodInput.value === 'link' && digitalLinkInput.value.trim()) {
           pdFileBadge.textContent = '\\ud83d\\udd17 ' + mktT('digitalLinkAttachedBadge');
           pdFileBadge.style.display = 'block';
+        } else if (typeSelect.value === 'digital' && deliveryMethodInput.value === 'miloconfig' && digitalConfigKeyInput.value.trim()) {
+          pdFileBadge.textContent = '\\ud83d\\udd11 ' + mktT('digitalConfigKeyAttachedBadge');
+          pdFileBadge.style.display = 'block';
         } else if (typeSelect.value === 'digital' && fileInput.files && fileInput.files[0]) {
           pdFileBadge.textContent = '\\ud83d\\udcce ' + fileInput.files[0].name;
+          pdFileBadge.style.display = 'block';
+        } else if (typeSelect.value === 'digital' && deliveryMethodInput.value === 'file' && EDIT_HAS_EXISTING_FILE) {
+          pdFileBadge.textContent = '\\ud83d\\udcce ' + mktT('digitalFileKeptBadge');
           pdFileBadge.style.display = 'block';
         } else {
           pdFileBadge.style.display = 'none';
@@ -1086,6 +1177,7 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
       descInput.addEventListener('input', updateDetailPreview);
       fileInput.addEventListener('change', updateDetailPreview);
       digitalLinkInput.addEventListener('input', updateDetailPreview);
+      digitalConfigKeyInput.addEventListener('input', updateDetailPreview);
 
       imageInput.addEventListener('change', function () {
         var file = imageInput.files && imageInput.files[0];
@@ -1123,38 +1215,46 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
         var isDigital = typeSelect.value === 'digital';
         fileLabel.style.display = isDigital ? 'flex' : 'none';
         if (!isDigital) {
-          // เผื่อเคยเลือกไฟล์/กรอกลิงก์ไว้แล้วเปลี่ยนใจเป็น service ล้างออกกันค้าง (ทั้ง 2 โหมด)
+          // เผื่อเคยเลือกไฟล์/กรอกลิงก์/กรอกรหัสไว้แล้วเปลี่ยนใจเป็น service ล้างออกกันค้าง
+          // (ทั้ง 3 โหมด)
           fileInput.value = '';
           digitalLinkInput.value = '';
+          digitalConfigKeyInput.value = '';
         }
         updateDetailPreview();
       }
 
-      // 🆕 รอบ 10: สลับโหมดส่งมอบไฟล์ดิจิทัล "อัปโหลดไฟล์" ↔ "วางลิงก์ระบบ/เทมเพลต" — ต้องเป็น
-      // window.xxx (ไม่ใช่ function ธรรมดาในนี้) เพราะปุ่มเรียกผ่าน onclick="" ใน HTML แบบเดียว
-      // กับ mktSelectCurrency ด้านบน ค่าจริงที่ submit ไป server (name="delivery_method") คือ
-      // hidden input mkt-delivery-method-input เท่านั้น — สลับโหมดแล้วเคลียร์ค่าของอีกโหมดทิ้ง
-      // กันข้อมูลค้าง (เช่น กรอกลิงก์ไว้แล้วสลับไปโหมดไฟล์ จะไม่มีลิงก์เก่าแอบติดไปด้วยตอน submit)
+      // 🆕 รอบ 10-11: สลับโหมดส่งมอบไฟล์ดิจิทัล "อัปโหลดไฟล์" ↔ "วางลิงก์ระบบ/เทมเพลต" ↔
+      // "รหัสการตั้งค่า Milo Bot" — ต้องเป็น window.xxx (ไม่ใช่ function ธรรมดาในนี้) เพราะปุ่ม
+      // เรียกผ่าน onclick="" ใน HTML แบบเดียวกับ mktSelectCurrency ด้านบน ค่าจริงที่ submit
+      // ไป server (name="delivery_method") คือ hidden input mkt-delivery-method-input เท่านั้น
+      // — สลับโหมดแล้วเคลียร์ค่าของโหมดอื่นทิ้งกันข้อมูลค้าง (เช่น กรอกลิงก์ไว้แล้วสลับไป
+      // โหมดไฟล์ จะไม่มีลิงก์เก่าแอบติดไปด้วยตอน submit)
       window.mktSelectDeliveryMethod = function (method) {
         var isLink = method === 'link';
+        var isMiloConfig = method === 'miloconfig';
+        var isFile = !isLink && !isMiloConfig;
         var fileTab = document.getElementById('mkt-dm-tab-file');
         var linkTab = document.getElementById('mkt-dm-tab-link');
-        if (fileTab) fileTab.setAttribute('aria-selected', String(!isLink));
+        var miloconfigTab = document.getElementById('mkt-dm-tab-miloconfig');
+        if (fileTab) fileTab.setAttribute('aria-selected', String(isFile));
         if (linkTab) linkTab.setAttribute('aria-selected', String(isLink));
-        // เคลียร์ error ของสเต็ปทิ้งด้วย เผื่อเพิ่งกด "List item" ไม่ผ่านตอนอยู่โหมดเดิม (เช่น
-        // ลิงก์ไม่ครบ) ค้างข้อความ error ของโหมดเก่าไว้ แล้วสลับโหมดมาที่นี่ — ไม่งั้นข้อความ
-        // error จะค้างโชว์ผิดๆ ทั้งที่ยังไม่ได้ลองกด submit ในโหมดใหม่เลย
+        if (miloconfigTab) miloconfigTab.setAttribute('aria-selected', String(isMiloConfig));
+        // เคลียร์ error ของสเต็ปทิ้งด้วย เผื่อเพิ่งกด "List item"/"Save changes" ไม่ผ่านตอนอยู่
+        // โหมดเดิม (เช่น ลิงก์ไม่ครบ) ค้างข้อความ error ของโหมดเก่าไว้ แล้วสลับโหมดมาที่นี่ —
+        // ไม่งั้นข้อความ error จะค้างโชว์ผิดๆ ทั้งที่ยังไม่ได้ลองกด submit ในโหมดใหม่เลย
         clearStepError();
         deliveryMethodInput.value = method;
-        digitalUploadGroup.style.display = isLink ? 'none' : 'flex';
+        digitalUploadGroup.style.display = isFile ? 'flex' : 'none';
         digitalLinkGroup.style.display = isLink ? 'flex' : 'none';
-        if (isLink) {
+        digitalConfigGroup.style.display = isMiloConfig ? 'flex' : 'none';
+        if (!isFile) {
           // เคลียร์ไฟล์ที่เคยเลือกไว้ (ถ้ามี) ยิง change ต่อให้ dropzone เคลียร์ชิป/error ของตัวเองด้วย
           fileInput.value = '';
           fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-        } else {
-          digitalLinkInput.value = '';
         }
+        if (!isLink) digitalLinkInput.value = '';
+        if (!isMiloConfig) digitalConfigKeyInput.value = '';
         updateDetailPreview();
       };
 
@@ -1386,8 +1486,17 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
             if (!linkVal || linkVal.slice(0, 8).toLowerCase() !== 'https://') {
               return mktT('errDigitalLink');
             }
+          } else if (deliveryMethodInput.value === 'miloconfig') {
+            // 🆕 รอบ 11: เช็คแบบง่ายๆฝั่ง client พอ (ไม่ว่างเปล่า) ตัว validate เข้มจริง
+            // (ตัวอักษร/ความยาวที่อนุญาต) อยู่ที่ server (MILO_CONFIG_KEY_PATTERN) — ดู server.js
+            if (!digitalConfigKeyInput.value.trim()) {
+              return mktT('errDigitalConfigKey');
+            }
           } else if (!fileInput.files || !fileInput.files[0]) {
-            return mktT('errDigitalFile');
+            // 🆕 รอบ 11: โหมดแก้ไขประกาศที่มีไฟล์เดิมอยู่แล้ว ไม่บังคับเลือกไฟล์ใหม่
+            if (!EDIT_HAS_EXISTING_FILE) {
+              return mktT('errDigitalFile');
+            }
           }
         }
         return null;
@@ -1440,6 +1549,39 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName) {
           showStepError(err);
         }
       });
+
+      ${editingListing ? `
+      // 🆕 [15 ต.ค. 2569 — รอบ 11] โหมดแก้ไขประกาศเดิม — ตั้งค่าเริ่มต้นของทุกช่องให้ตรงกับ
+      // ข้อมูลเดิมของประกาศนี้ ด้วยวิธี "เซ็ตค่าจริงแล้วยิง change event ต่อ" ให้ฟังก์ชันที่มี
+      // อยู่แล้ว (updateSubcategory/updateDigitalFile/mktSelectDeliveryMethod/categoryCustom.
+      // refresh ฯลฯ) ทำงานเหมือนผู้ใช้กดเลือกเองทุกจุด ไม่ต้องเขียน logic pre-fill ซ้ำใหม่เลย
+      (function () {
+        titleInput.value = ${jsStr(editingListing.title)};
+        priceInput.value = ${jsStr(String(editingListing.priceThb || ''))};
+        categorySelect.value = ${jsStr(editingListing.category)};
+        categorySelect.dispatchEvent(new Event('change', { bubbles: true }));
+        if (categoryCustom) categoryCustom.refresh();
+        var editSubcategory = ${jsStr(editingListing.subcategory || '')};
+        if (editSubcategory) {
+          subcatSelect.value = editSubcategory;
+          if (subcategoryCustom) subcategoryCustom.refresh();
+        }
+        descInput.value = ${jsStr(editingListing.description)};
+        typeSelect.value = ${jsStr(editingListing.type || 'service')};
+        typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        if (typeCustom) typeCustom.refresh();
+        var editDeliveryMethod = ${jsStr(editingListing.deliveryMethod || 'file')};
+        if (editDeliveryMethod === 'link') {
+          digitalLinkInput.value = ${jsStr(editingListing.digitalLinkUrl || '')};
+          window.mktSelectDeliveryMethod('link');
+        } else if (editDeliveryMethod === 'miloconfig') {
+          digitalConfigKeyInput.value = ${jsStr(editingListing.digitalConfigKey || '')};
+          window.mktSelectDeliveryMethod('miloconfig');
+        }
+        ${editingListing.imageUrl ? `currentImageDataUrl = ${jsStr(editingListing.imageUrl)};` : ''}
+        updateBothPreviews();
+      })();
+` : ''}
     })();
   </script>`;
 }
@@ -1470,6 +1612,18 @@ function listingCardHtml(listing, categories, guildId) {
         <button type="submit" class="mkt-btn-row-action is-reopen"><span data-i18n="actionReopen">Reopen</span></button>
       </form>`;
 
+  // 🆕 [15 ต.ค. 2569 — รอบ 11] ปุ่ม Edit (ลิงก์ <a> ธรรมดา ไปหน้าเดิมพร้อม ?edit=<id> —
+  // ดู route GET /dashboard/:guildId/marketplace ใน server.js) + ปุ่ม Delete (ฟอร์ม POST
+  // ไปยัง route /delete ใหม่ มี confirm() ก่อนเสมอ กันกดลบพลาด — ลบแล้วกู้คืนไม่ได้)
+  const pencilSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const trashSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const editDeleteHtml = `<div class="mkt-item-row mkt-item-actions-row">
+        <a href="/dashboard/${encodeURIComponent(guildId)}/marketplace?edit=${encodeURIComponent(listing.id)}" class="mkt-icon-btn" data-i18n-title="actionEdit" title="Edit" aria-label="Edit">${pencilSvg}</a>
+        <form method="POST" action="/dashboard/${encodeURIComponent(guildId)}/marketplace/listings/${encodeURIComponent(listing.id)}/delete" onsubmit="return window.mktConfirmDelete(this);" style="margin:0;">
+          <button type="submit" class="mkt-icon-btn is-danger" data-i18n-title="actionDelete" title="Delete" aria-label="Delete">${trashSvg}</button>
+        </form>
+      </div>`;
+
   // 🆕 รอบ 6c: เก็บ createdAt ดิบไว้ใน data-created (หน่วย ms) ไว้ให้ mktApplyLang() เอาไป
   // คำนวณ "Xd ago"/"Xวันที่แล้ว" ใหม่ตอนสลับภาษา (relativeTimeLabel() นี้รันแค่ตอน render
   // ครั้งแรกบน server เป็นอังกฤษเสมอ ไม่รู้จักภาษาที่เลือกไว้ใน localStorage)
@@ -1487,6 +1641,7 @@ function listingCardHtml(listing, categories, guildId) {
         ${statusIndicatorHtml(listing.status)}
         ${actionHtml}
       </div>
+      ${editDeleteHtml}
     </div>
   </div>`;
 }
@@ -1538,6 +1693,14 @@ function myListingsSectionHtml(listings, categories, guildId) {
         card.style.display = show ? '' : 'none';
       });
     }
+
+    // 🆕 [15 ต.ค. 2569 — รอบ 11] confirm dialog ก่อนลบประกาศจริง (ลบแล้วกู้คืนไม่ได้ ต่างจาก
+    // ปุ่ม Close ที่แค่ปิดขายชั่วคราว) — ต้องเป็น window.xxx เพราะ onsubmit="" ในฟอร์มของการ์ด
+    // เรียกผ่าน inline attribute เหมือน mktSelectCurrency/mktSelectDeliveryMethod ด้านบน
+    window.mktConfirmDelete = function () {
+      var msg = (typeof mktT === 'function') ? mktT('deleteConfirmMessage') : 'Delete this listing? This cannot be undone.';
+      return window.confirm(msg);
+    };
   </script>`;
 }
 
@@ -1587,7 +1750,10 @@ function mktI18nScript() {
     newListingBtn: { en: 'New Listing', th: 'ลงขายใหม่' },
     createListingEyebrow: { en: 'My Listings', th: 'ประกาศของฉัน' },
     createListingHeading: { en: 'Create New Listing', th: 'สร้างประกาศขายใหม่' },
+    editListingHeading: { en: 'Edit Listing', th: 'แก้ไขประกาศขาย' },
     bannerSaved: { en: 'Saved!', th: 'บันทึกแล้ว!' },
+    bannerDeleted: { en: 'Listing deleted.', th: 'ลบประกาศแล้ว' },
+    bannerCloseLabel: { en: 'Close', th: 'ปิด' },
     disclosureLine: {
       en: 'This marketplace is peer-to-peer — Milo Bot never touches the money.',
       th: 'มาร์เก็ตเพลสนี้เป็นการซื้อขายกันเอง (peer-to-peer) — Milo Bot ไม่แตะเงินเลย',
@@ -1668,11 +1834,26 @@ function mktI18nScript() {
     deliveryMethodLabel: { en: 'Delivery method', th: 'วิธีจัดส่ง' },
     deliveryMethodFile: { en: 'Upload file', th: 'อัปโหลดไฟล์ระบบ (Upload File)' },
     deliveryMethodLink: { en: 'System / template link', th: 'วางลิงก์ระบบ/เทมเพลต (System/Template Link)' },
+    // 🆕 [15 ต.ค. 2569 — รอบ 11] ตัวเลือกที่ 3: "รหัสการตั้งค่า Milo Bot" — สำหรับผู้ขายที่ขาย
+    // setup ที่สร้างด้วย Milo Bot เอง (เหมือนขายเทมเพลต Canva ให้คนเอาไปแก้ต่อ)
+    deliveryMethodMiloConfig: { en: 'Milo Bot config key', th: 'รหัสการตั้งค่า Milo Bot (Milo Bot Configuration Key)' },
     digitalLinkNote: {
       en: 'This link will be sent to the buyer automatically as soon as payment is confirmed.',
       th: 'ระบบจะส่งลิงก์นี้ให้ผู้ซื้อทันทีหลังจากการชำระเงินเสร็จสิ้น',
     },
     digitalLinkAttachedBadge: { en: 'System link attached', th: 'แนบลิงก์ระบบแล้ว' },
+    digitalConfigKeyAttachedBadge: { en: 'Milo Bot config key attached', th: 'แนบรหัสการตั้งค่า Milo Bot แล้ว' },
+    // ข้อความ note ใต้ช่องกรอกรหัส — th เป็นข้อความต้นฉบับที่น้องหนาวให้มาตรงๆ
+    digitalConfigKeyNote: {
+      en: "Use the /milo export-config command in Discord to get this key, then paste it here. We'll send it to the buyer so they can run /milo import-config right after payment.",
+      th: 'คนขายสามารถใช้คำสั่ง /milo export-config ใน Discord เพื่อนำรหัสการตั้งค่ามาใส่ในช่องนี้ ระบบจะส่งคีย์นี้ให้คนซื้อไปรันคำสั่ง /milo import-config ใช้งานต่อได้ทันทีหลังจ่ายเงิน',
+    },
+    // 🆕 รอบ 11: ตอนแก้ไขประกาศที่มีไฟล์เดิมอยู่แล้ว — บอกผู้ขายว่าไม่ต้องอัปโหลดใหม่ก็ได้
+    editKeepExistingFileNote: {
+      en: 'Leave this empty to keep the file you already uploaded.',
+      th: 'เว้นว่างไว้ได้เลยถ้าอยากใช้ไฟล์เดิมที่แนบไว้ต่อ',
+    },
+    digitalFileKeptBadge: { en: 'Keeping existing file', th: 'ใช้ไฟล์เดิมต่อ' },
     disabledNote: {
       en: 'Set up a payment method above first to unlock this form.',
       th: 'ต้องตั้งค่าช่องทางรับเงินด้านบนก่อน ถึงจะปลดล็อกฟอร์มนี้ได้',
@@ -1688,6 +1869,7 @@ function mktI18nScript() {
     btnBack: { en: 'Back', th: 'ย้อนกลับ' },
     btnNext: { en: 'Next: item details', th: 'ถัดไป: รายละเอียดสินค้า' },
     btnSubmit: { en: 'List item', th: 'ลงขายเลย' },
+    btnSubmitEdit: { en: 'Save changes', th: 'บันทึกการแก้ไข' },
     errTitle: { en: 'Please enter a title.', th: 'กรุณากรอกชื่อสินค้า' },
     errPrice: { en: 'Please enter a price between 1 and 20,000 THB.', th: 'กรุณากรอกราคาระหว่าง 1 ถึง 20,000 บาท' },
     errCategory: { en: 'Please choose a category.', th: 'กรุณาเลือกหมวดหมู่' },
@@ -1700,6 +1882,10 @@ function mktI18nScript() {
     errDigitalLink: {
       en: 'Please enter a valid https:// link for the system/template.',
       th: 'กรุณาใส่ลิงก์ที่ขึ้นต้นด้วย https:// ให้ถูกต้องนะครับ',
+    },
+    errDigitalConfigKey: {
+      en: 'Please enter the Milo Bot configuration key.',
+      th: 'กรุณากรอกรหัสการตั้งค่า Milo Bot นะครับ',
     },
     // 🆕 รอบ 9: ข้อความ error ของ dropzone เองตอนไฟล์ใหญ่เกิน 20MB — ใช้กับทั้งกล่องรูปปกและ
     // กล่องไฟล์ดิจิทัล (โชว์ใต้กล่องตรงๆ ไม่ใช่ error รวมของสเต็ป)
@@ -1720,6 +1906,12 @@ function mktI18nScript() {
     statusSold: { en: 'Sold', th: 'ขายแล้ว' },
     actionClose: { en: 'Close', th: 'ปิดการขาย' },
     actionReopen: { en: 'Reopen', th: 'เปิดขายใหม่' },
+    actionEdit: { en: 'Edit', th: 'แก้ไข' },
+    actionDelete: { en: 'Delete', th: 'ลบ' },
+    deleteConfirmMessage: {
+      en: 'Delete this listing permanently? This cannot be undone.',
+      th: 'ลบประกาศนี้ถาวรเลยไหมครับ? กู้คืนไม่ได้แล้วนะครับ',
+    },
     rtJustNow: { en: 'just now', th: 'เมื่อสักครู่' },
     rtMinutes: { en: '{n}m ago', th: '{n} นาทีที่แล้ว' },
     rtHours: { en: '{n}h ago', th: '{n} ชม.ที่แล้ว' },
@@ -1801,12 +1993,16 @@ function mktI18nScript() {
  * @param {object[]} opts.listings  listSellerListings() + imageUrl resolved แล้ว
  * @param {object} opts.categories CATEGORIES จาก marketplaceStorage.js
  * @param {boolean} opts.saved
+ * @param {boolean} [opts.deleted] 🆕 [15 ต.ค. 2569 — รอบ 11] true = เพิ่งลบประกาศสำเร็จ (query ?deleted=1)
  * @param {string|null} opts.error
  * @param {number} opts.completedSales 🆕 ยอดขายสำเร็จรวมทั้งร้าน จาก getSellerStats() —
  *   server.js ต้องเรียก getSellerStats(req.session.user.id) แล้วส่ง completedSales มาด้วย
  *   (ดูคอมเมนต์ท้ายไฟล์นี้ตรงจุดที่ต้องแก้ server.js)
+ * @param {object|null} [opts.editingListing] 🆕 [15 ต.ค. 2569 — รอบ 11] ประกาศที่กำลังแก้ไข
+ *   (ผ่าน resolveListingAssets แล้ว) — null = โหมดสร้างใหม่ปกติ เปิดแผง "Create Listing"
+ *   ค้างไว้ให้เลยพร้อม pre-fill ข้อมูลเดิม (ดู server.js route GET /dashboard/:guildId/marketplace)
  */
-function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, seller, listings, categories, saved, error, completedSales }) {
+function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, seller, listings, categories, saved, deleted, error, completedSales, editingListing }) {
   // 🆕 [12 ต.ค. 2569] เช็คทั้ง 2 ช่องทาง (promptpayId หรือ paymentLink) แทนที่จะเช็คแค่
   // promptpayId ตรงๆ แบบเดิม — ดูเหตุผลเต็มๆ ที่คอมเมนต์ paymentMethodSectionHtml ด้านบน
   const canSell = Boolean(seller?.promptpayId) || Boolean(seller?.paymentLink);
@@ -1843,7 +2039,7 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
         </div>
       </div>
 
-      ${bannerHtml({ saved, error })}
+      ${bannerHtml({ saved, error, deleted })}
 
       <!-- ═══ แผง Overview — สถิติ + ตั้งค่าช่องทางรับเงิน ═══ -->
       <div class="mkt-panel" id="mkt-panel-overview">
@@ -1884,10 +2080,10 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
           </button>
           <div>
             <div class="mkt-card-eyebrow" data-i18n="createListingEyebrow">My Listings</div>
-            <h1 class="mkt-h1" style="margin-top:2px;font-size:21px;" data-i18n="createListingHeading">Create New Listing</h1>
+            <h1 class="mkt-h1" style="margin-top:2px;font-size:21px;" data-i18n="${editingListing ? 'editListingHeading' : 'createListingHeading'}">${editingListing ? 'Edit Listing' : 'Create New Listing'}</h1>
           </div>
         </div>
-        ${sellWizardHtml(categories, canSell, guild.id, user.username)}
+        ${sellWizardHtml(categories, canSell, guild.id, user.username, editingListing)}
       </div>
 
     </div>
@@ -1937,6 +2133,11 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
         if (navListings) navListings.classList.toggle('is-active', name === 'listings');
         window.scrollTo(0, 0);
       };
+
+      // 🆕 [15 ต.ค. 2569 — รอบ 11] กดปุ่ม Edit ที่การ์ด → มาหน้านี้พร้อม ?edit=<id> → เปิดแผง
+      // "Create Listing" (ตอนนี้ pre-fill เป็นโหมดแก้ไขแล้ว) ค้างไว้ให้เลยทันทีที่โหลดหน้า
+      // ไม่ต้องให้ผู้ขายกดเมนูย่อยเองอีกที
+      ${editingListing ? `window.mktShowPanel('create');` : ''}
     })();
   </script>`;
 

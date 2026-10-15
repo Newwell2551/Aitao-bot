@@ -146,6 +146,14 @@ const PROMPTPAY_ID_PATTERN = /^\d{10}$/;
 const PAYMENT_LINK_PATTERN = /^https:\/\/\S{1,290}$/i;
 const MAX_PAYMENT_LINK_LENGTH = 300;
 
+// 🆕 [15 ต.ค. 2569 — รอบ 11] "รหัสการตั้งค่า Milo Bot" — ผู้ขายสายขาย setup ที่สร้างด้วย
+// Milo Bot ของเราเอง (เหมือนขายเทมเพลต Canva ให้คนเอาไปแก้ต่อ) กรอกรหัสนี้มาแทนไฟล์/ลิงก์
+// — รับได้แค่ตัวอักษร A-Z, a-z, เลข, ขีดกลาง/ขีดล่าง ยาว 4-120 ตัวอักษร (กันค่าว่าง/ค่า
+// ยาวผิดปกติหลุดเข้ามา) ⚠️ ตอนนี้บอทแค่ "เก็บ+ส่งต่อ" รหัสนี้ให้ผู้ซื้อทาง DM เหมือนลิงก์ของ
+// รอบ 10 เป๊ะๆ — ยังไม่มีคำสั่ง /milo export-config หรือ /milo import-config จริงที่คอย
+// สร้าง/ตรวจสอบรหัสนี้เลย (เป็นฟีเจอร์ใหญ่แยกต่างหากที่ต้องคุยเรื่อง scope กับน้องหนาวก่อน)
+const MILO_CONFIG_KEY_PATTERN = /^[A-Za-z0-9_-]{4,120}$/;
+
 // 🆕 [11 ต.ค. 2569] ย้ายมาจาก commands/marketplace.js (ของเดิมประกาศซ้ำไว้คนละที่กับ
 // server.js ที่กำลังจะเพิ่มฟอร์มลงขายบนเว็บ) — ย้ายมาเป็น "แหล่งความจริงเดียว" ไว้ที่นี่
 // ที่เดียว กันลืมแก้พร้อมกัน 2 ที่ทีหลัง (ปรับราคาสูงสุดได้ — กันพิมพ์เลข 0 เกินมาโดยไม่
@@ -334,7 +342,11 @@ function createListing(info) {
   const id = generateId(data.listings);
   const now = new Date().toISOString();
   const isDigital = info.type === 'digital';
-  const deliveryMethod = isDigital && info.deliveryMethod === 'link' ? 'link' : isDigital ? 'file' : null;
+  // 🆕 [15 ต.ค. 2569 — รอบ 11] เพิ่มวิธีส่งมอบที่ 3: 'miloconfig' (ส่งรหัสการตั้งค่า Milo Bot
+  // ให้ผู้ซื้อแทนไฟล์/ลิงก์ — ดูคอมเมนต์เต็มๆ ที่หัวไฟล์นี้หัวข้อ "รอบ 11")
+  const deliveryMethod = isDigital
+    ? (info.deliveryMethod === 'link' ? 'link' : info.deliveryMethod === 'miloconfig' ? 'miloconfig' : 'file')
+    : null;
   data.listings[id] = {
     id,
     sellerId: info.sellerId,
@@ -347,6 +359,7 @@ function createListing(info) {
     deliveryMethod,
     digitalFileUrl: deliveryMethod === 'file' ? (info.digitalFileUrl || null) : null,
     digitalLinkUrl: deliveryMethod === 'link' ? (info.digitalLinkUrl || null) : null,
+    digitalConfigKey: deliveryMethod === 'miloconfig' ? (info.digitalConfigKey || null) : null,
     imageUrl: info.imageUrl || null,
     status: 'active',
     createdAt: now,
@@ -363,6 +376,65 @@ function createListing(info) {
 function getListing(listingId) {
   const data = readAll();
   return data.listings[listingId] || null;
+}
+
+/**
+ * แก้ไขประกาศขายที่มีอยู่แล้ว (เจ้าของเท่านั้นแก้ได้) — คืน null ถ้าไม่เจอ/ไม่ใช่เจ้าของ
+ * 🆕 [15 ต.ค. 2569 — รอบ 11] รับ info รูปแบบเดียวกับ createListing() เป๊ะๆ ไม่ได้ทำ "merge
+ * แบบ partial" เอง (ลดจุดพลาด) — server.js ต้องเตรียมค่า "เดิม" มาให้ครบก่อนเรียกฟังก์ชันนี้
+ * เสมอ (เช่น ผู้ขายไม่ได้อัปโหลดรูปปกใหม่ตอนแก้ไข ก็ต้องส่ง imageUrl เดิมของประกาศนั้นมาด้วย
+ * ไม่ใช่ null — ไม่งั้นรูปเดิมจะหายไปเฉยๆ) เขียนทับ record เดิมแทนการสร้าง record ใหม่
+ * (id/sellerId/createdAt/status เดิมไม่เปลี่ยน)
+ * @param {string} listingId
+ * @param {string} sellerId ต้องตรงกับเจ้าของประกาศเดิมเท่านั้น (กันแก้ไขประกาศของคนอื่น)
+ * @param {object} info รูปแบบเดียวกับ createListing()
+ * @returns {object|null} ประกาศที่แก้ไขแล้ว หรือ null ถ้าแก้ไม่ได้
+ */
+function updateListing(listingId, sellerId, info) {
+  const data = readAll();
+  const listing = data.listings[listingId];
+  if (!listing || listing.sellerId !== sellerId) return null;
+
+  const isDigital = info.type === 'digital';
+  const deliveryMethod = isDigital
+    ? (info.deliveryMethod === 'link' ? 'link' : info.deliveryMethod === 'miloconfig' ? 'miloconfig' : 'file')
+    : null;
+
+  listing.title = info.title;
+  listing.description = info.description || '';
+  listing.priceThb = info.priceThb;
+  listing.category = info.category;
+  listing.subcategory = info.subcategory || null;
+  listing.type = info.type;
+  listing.deliveryMethod = deliveryMethod;
+  listing.digitalFileUrl = deliveryMethod === 'file' ? (info.digitalFileUrl || null) : null;
+  listing.digitalLinkUrl = deliveryMethod === 'link' ? (info.digitalLinkUrl || null) : null;
+  listing.digitalConfigKey = deliveryMethod === 'miloconfig' ? (info.digitalConfigKey || null) : null;
+  listing.imageUrl = info.imageUrl || null;
+  listing.updatedAt = new Date().toISOString();
+
+  writeAll(data);
+  return listing;
+}
+
+/**
+ * ลบประกาศขายทิ้งถาวร (เจ้าของเท่านั้นลบได้) — ต่างจาก setListingStatus(id,'removed') ที่แค่
+ * "ปิดขาย" ยังเก็บข้อมูลไว้เสมอ (กู้คืนได้ด้วยปุ่ม Reopen) อันนี้ลบ record ออกจากไฟล์จริงๆ
+ * กู้คืนไม่ได้แล้ว (ถึงต้องมี confirm dialog ฝั่งหน้าเว็บก่อนเรียก route นี้)
+ * 🆕 [15 ต.ค. 2569 — รอบ 11] ไม่ลบไฟล์ถาวรที่เก็บไว้ใน asset-storage (รูปปก/ไฟล์ดิจิทัล)
+ * ตามไปด้วย — ตั้งใจเก็บไว้เฉยๆก่อน (ไม่ใช่ทำไม่ได้ แค่ยังไม่จำเป็นต้องรีบทำ ถ้าอยากได้
+ * ระบบเก็บกวาดไฟล์ที่ไม่มีประกาศอ้างอิงแล้วทิ้งอัตโนมัติ ทำเพิ่มได้ในอนาคต)
+ * @param {string} listingId
+ * @param {string} sellerId ต้องตรงกับเจ้าของประกาศเดิมเท่านั้น
+ * @returns {boolean} true ถ้าลบสำเร็จ, false ถ้าไม่เจอ/ไม่ใช่เจ้าของ
+ */
+function deleteListing(listingId, sellerId) {
+  const data = readAll();
+  const listing = data.listings[listingId];
+  if (!listing || listing.sellerId !== sellerId) return false;
+  delete data.listings[listingId];
+  writeAll(data);
+  return true;
 }
 
 /**
@@ -574,6 +646,7 @@ module.exports = {
   PROMPTPAY_ID_PATTERN,
   PAYMENT_LINK_PATTERN,
   MAX_PAYMENT_LINK_LENGTH,
+  MILO_CONFIG_KEY_PATTERN,
   CATEGORIES,
   MAX_PRICE_THB,
   getSeller,
@@ -583,6 +656,8 @@ module.exports = {
   hasPaymentMethodSet,
   createListing,
   getListing,
+  updateListing,
+  deleteListing,
   resolveListingAssets,
   listActiveListings,
   listSellerListings,

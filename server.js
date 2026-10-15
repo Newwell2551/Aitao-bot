@@ -117,6 +117,8 @@ const {
   getSellerPaymentMethod,
   hasPaymentMethodSet,
   createListing,
+  updateListing,
+  deleteListing,
   listSellerListings,
   setListingStatus,
   resolveListingAssets,
@@ -124,6 +126,7 @@ const {
   PROMPTPAY_ID_PATTERN,
   PAYMENT_LINK_PATTERN,
   MAX_PAYMENT_LINK_LENGTH,
+  MILO_CONFIG_KEY_PATTERN,
   MAX_PRICE_THB,
 } = require('./utils/marketplaceStorage');
 const { generatePromptPayQrBuffer } = require('./utils/promptpayQr');
@@ -1146,6 +1149,19 @@ function createWebhookServer(client) {
     // สาธารณะ /api/marketplace/listings อยู่ก่อนแล้ว) แค่ route แดชบอร์ดนี้ยังไม่เคยเรียกใช้
     const { completedSales } = getSellerStats(req.session.user.id);
 
+    // 🆕 [15 ต.ค. 2569 — รอบ 11] ปุ่ม "Edit" บนการ์ดลิงก์มาที่หน้านี้พร้อม ?edit=<listingId>
+    // (ไม่ทำ route/หน้าใหม่แยก — ใช้หน้าเดิมเปิดไปที่แผง "Create Listing" แทน แค่ pre-fill
+    // ข้อมูลเดิมเข้าไปในฟอร์มเดียวกัน) เช็คเจ้าของก่อนด้วยเสมอ กันคนอื่นแก้ query string เอง
+    // มาดู/แก้ประกาศของคนอื่น — ถ้าไม่ใช่เจ้าของหรือไม่เจอ ก็แค่เปิดเป็นโหมดสร้างใหม่ปกติ
+    let editingListing = null;
+    if (req.query.edit) {
+      const target = getListing(String(req.query.edit).toUpperCase());
+      if (target && target.sellerId === req.session.user.id) {
+        const resolved = await resolveListingAssets(client, target);
+        editingListing = { ...target, ...resolved };
+      }
+    }
+
     res.send(renderMarketplaceDashboardPage({
       guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
       user: req.session.user,
@@ -1155,8 +1171,10 @@ function createWebhookServer(client) {
       listings: listingsWithImages,
       categories: CATEGORIES,
       saved: req.query.saved === '1',
+      deleted: req.query.deleted === '1',
       error: req.query.error || null,
       completedSales,
+      editingListing,
     }));
   });
 
@@ -1253,8 +1271,11 @@ function createWebhookServer(client) {
       // หรือ "link" (วางลิงก์ระบบ/เทมเพลต เช่น discord.new/... หรือลิงก์เชิญบอท — สำหรับผู้ขาย
       // สาย "ขายระบบ" ที่ไม่มีไฟล์จริงให้อัปโหลด) ค่าจาก <input type="hidden" name="delivery_method">
       // ในฟอร์ม — เช็คซ้ำฝั่งนี้เสมอ (เผื่อคนแก้ HTML เอง/ปิด JS หลบการเช็คฝั่ง client ไป)
-      const deliveryMethod = body.delivery_method === 'link' ? 'link' : 'file';
+      // 🆕 [15 ต.ค. 2569 — รอบ 11] เพิ่มวิธีส่งมอบที่ 3: "miloconfig" (ส่งรหัสการตั้งค่า
+      // Milo Bot ให้ผู้ซื้อแทนไฟล์/ลิงก์ — สำหรับผู้ขายที่ขาย setup ที่สร้างด้วย Milo Bot เอง)
+      const deliveryMethod = body.delivery_method === 'link' ? 'link' : body.delivery_method === 'miloconfig' ? 'miloconfig' : 'file';
       const digitalLinkRaw = String(body.digitalLink || '').trim();
+      const digitalConfigKeyRaw = String(body.digitalConfigKey || '').trim();
 
       if (type === 'digital') {
         if (deliveryMethod === 'link') {
@@ -1262,6 +1283,10 @@ function createWebhookServer(client) {
           // เพราะเป็นกฎเดียวกันเป๊ะๆ: ต้องเป็น https:// เท่านั้น ไม่เกิน 300 ตัวอักษร
           if (!PAYMENT_LINK_PATTERN.test(digitalLinkRaw) || digitalLinkRaw.length > MAX_PAYMENT_LINK_LENGTH) {
             return fail('Please enter a valid https:// link for the system/template customers will receive.');
+          }
+        } else if (deliveryMethod === 'miloconfig') {
+          if (!MILO_CONFIG_KEY_PATTERN.test(digitalConfigKeyRaw)) {
+            return fail('Please enter a valid Milo Bot configuration key (letters, numbers, - or _ only, 4-120 characters).');
           }
         } else if (!digitalFile) {
           return fail('Please attach the digital file customers will receive automatically.');
@@ -1285,6 +1310,7 @@ function createWebhookServer(client) {
           deliveryMethod,
           digitalFileUrl: fileRef,
           digitalLinkUrl: type === 'digital' && deliveryMethod === 'link' ? digitalLinkRaw : null,
+          digitalConfigKey: type === 'digital' && deliveryMethod === 'miloconfig' ? digitalConfigKeyRaw : null,
           imageUrl: imageRef,
         });
       } catch (error) {
@@ -1296,6 +1322,121 @@ function createWebhookServer(client) {
       res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
     }
   );
+
+  // 🆕 [15 ต.ค. 2569 — รอบ 11] POST แก้ไขประกาศที่มีอยู่แล้ว — ตรรกะ validate เหมือน POST
+  // สร้างประกาศใหม่ด้านบนเป๊ะๆ ต่างกันแค่: (1) เช็คเจ้าของประกาศเดิมก่อนเสมอ (2) รูปปก/ไฟล์
+  // ดิจิทัลเป็น "ตัวเลือก" — ถ้าผู้ขายไม่ได้อัปโหลดใหม่ ก็เก็บของเดิมไว้ (ไม่ใช่ล้างทิ้งเฉยๆ)
+  app.post(
+    '/dashboard/:guildId/marketplace/listings/:listingId/update',
+    requireAuth,
+    requireGuildAccess,
+    (req, res, next) => {
+      marketplaceUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'digitalFile', maxCount: 1 }])(req, res, (error) => {
+        if (error) {
+          console.warn('[dashboard marketplace] อัปโหลดไฟล์ไม่สำเร็จ (แก้ไขประกาศ):', error.message);
+          const message = error.code === 'LIMIT_FILE_SIZE' ? 'That file is larger than the 20MB limit.' : 'Could not read the uploaded file(s). Please try again.';
+          return res.redirect(`/dashboard/${req.params.guildId}/marketplace?edit=${req.params.listingId}&error=${encodeURIComponent(message)}`);
+        }
+        next();
+      });
+    },
+    async (req, res) => {
+      const { guildId, listingId } = req.params;
+      const guild = client.guilds.cache.get(guildId);
+      const body = req.body || {};
+      const existing = getListing(String(listingId).toUpperCase());
+
+      const fail = (message) => res.redirect(`/dashboard/${guildId}/marketplace?edit=${listingId}&error=${encodeURIComponent(message)}`);
+
+      if (!existing || existing.sellerId !== req.session.user.id) {
+        return fail('Listing not found, or you are not the owner of this listing.');
+      }
+
+      const title = String(body.title || '').trim().slice(0, 80);
+      const description = String(body.description || '').trim().slice(0, 1000);
+      const priceThb = Number(body.price);
+      const category = String(body.category || '');
+      const subcategory = body.subcategory ? String(body.subcategory) : null;
+      const type = body.type === 'digital' ? 'digital' : 'service';
+      const categoryInfo = CATEGORIES[category];
+
+      if (!title) return fail('Please enter a title.');
+      if (!description) return fail('Please enter a description.');
+      if (!Number.isFinite(priceThb) || priceThb <= 0 || priceThb > MAX_PRICE_THB) {
+        return fail(`Price must be between 1 and ${MAX_PRICE_THB} THB.`);
+      }
+      if (!categoryInfo) return fail('Please choose a valid category.');
+      if (categoryInfo.subcategories) {
+        if (!subcategory || !categoryInfo.subcategories.includes(subcategory)) {
+          return fail(`Category "${categoryInfo.label}" requires a subcategory: ${categoryInfo.subcategories.join(', ')}`);
+        }
+      } else if (subcategory) {
+        return fail(`Category "${categoryInfo.label}" doesn't have subcategories.`);
+      }
+
+      const imageFile = req.files?.image?.[0];
+      const digitalFile = req.files?.digitalFile?.[0];
+      const deliveryMethod = body.delivery_method === 'link' ? 'link' : body.delivery_method === 'miloconfig' ? 'miloconfig' : 'file';
+      const digitalLinkRaw = String(body.digitalLink || '').trim();
+      const digitalConfigKeyRaw = String(body.digitalConfigKey || '').trim();
+
+      // ⚠️ ไม่บังคับว่าต้องมีไฟล์/ลิงก์/รหัสใหม่เสมอ เหมือนตอนสร้างครั้งแรก เพราะตอนแก้ไข
+      // ผู้ขายอาจจะ "ไม่เปลี่ยน" ไฟล์ดิจิทัลเลยก็ได้ (ใช้ของเดิมต่อ) — เช็คแค่ตอนที่เลือกวิธี
+      // ส่งมอบแบบ "link"/"miloconfig" แล้วค่าที่กรอกมาไม่ถูกต้องเท่านั้น ถ้าเลือก "file" และ
+      // ไม่มีไฟล์ใหม่แนบมา ก็แปลว่าจะใช้ไฟล์เดิมต่อ (เช็คว่ามีไฟล์เดิมจริงด้านล่าง)
+      if (type === 'digital') {
+        if (deliveryMethod === 'link') {
+          if (!PAYMENT_LINK_PATTERN.test(digitalLinkRaw) || digitalLinkRaw.length > MAX_PAYMENT_LINK_LENGTH) {
+            return fail('Please enter a valid https:// link for the system/template customers will receive.');
+          }
+        } else if (deliveryMethod === 'miloconfig') {
+          if (!MILO_CONFIG_KEY_PATTERN.test(digitalConfigKeyRaw)) {
+            return fail('Please enter a valid Milo Bot configuration key (letters, numbers, - or _ only, 4-120 characters).');
+          }
+        } else if (!digitalFile && !(existing.deliveryMethod === 'file' && existing.digitalFileUrl)) {
+          return fail('Please attach the digital file customers will receive automatically.');
+        }
+      }
+
+      try {
+        // รูปปก: มีอัปโหลดใหม่ → เก็บใหม่แทนที่ / ไม่มี → เก็บของเดิมไว้ (existing.imageUrl
+        // อาจเป็น object พิกัด asset-storage หรือ string ดิบเก่าก็ได้ ส่งผ่านตรงๆได้เลย)
+        const imageRef = imageFile ? await storeBufferPermanently(guild, imageFile.buffer, imageFile.originalname) : existing.imageUrl;
+        const fileRef = type === 'digital' && deliveryMethod === 'file'
+          ? (digitalFile ? await storeBufferPermanently(guild, digitalFile.buffer, digitalFile.originalname) : existing.digitalFileUrl)
+          : null;
+
+        updateListing(existing.id, req.session.user.id, {
+          title,
+          description,
+          priceThb,
+          category,
+          subcategory,
+          type,
+          deliveryMethod,
+          digitalFileUrl: fileRef,
+          digitalLinkUrl: type === 'digital' && deliveryMethod === 'link' ? digitalLinkRaw : null,
+          digitalConfigKey: type === 'digital' && deliveryMethod === 'miloconfig' ? digitalConfigKeyRaw : null,
+          imageUrl: imageRef,
+        });
+      } catch (error) {
+        console.error('[dashboard marketplace] แก้ไขประกาศขายจากเว็บไม่สำเร็จ:', error);
+        return fail('Something went wrong while saving your changes. Please try again.');
+      }
+
+      console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) แก้ไขประกาศ "${title}" (${existing.id}) แล้ว`);
+      res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
+    }
+  );
+
+  // 🆕 [15 ต.ค. 2569 — รอบ 11] POST ลบประกาศทิ้งถาวร — เช็คเจ้าของก่อนเสมอ เหมือน close/reopen
+  // ต่างจาก close ตรงที่ลบ record ออกจากไฟล์จริงๆ กู้คืนไม่ได้ (ฝั่งหน้าเว็บมี confirm()
+  // ก่อนกดปุ่มนี้แล้ว — ดู utils/renderMarketplaceDashboard.js listingCardHtml())
+  app.post('/dashboard/:guildId/marketplace/listings/:listingId/delete', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, listingId } = req.params;
+    deleteListing(String(listingId).toUpperCase(), req.session.user.id);
+    res.redirect(`/dashboard/${guildId}/marketplace?deleted=1`);
+  });
 
   // POST ปิด/เปิดขายใหม่ — ตัวเดียวกับ /marketplace remove และ /marketplace markselling
   // เช็คเจ้าของก่อนเสมอ (listing.sellerId ต้องตรงกับคนที่ login อยู่) กันแก้ประกาศของคนอื่น
