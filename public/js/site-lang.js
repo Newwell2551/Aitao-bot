@@ -194,10 +194,24 @@
         features: 'Features',
         pricing: 'Pricing',
         marketplace: 'Marketplace',
+        // 🆕 [17 ต.ค. 2569] ลิงก์ Commands (คู่มือคำสั่งทั้งหมด — public/commands.html)
+        commands: 'Commands',
         // 🆕 [23 ก.ย. 2569] เพิ่มลิงก์ Dashboard กลับเข้าแถบนำทาง — ดูคอมเมนต์ที่ตัว
         // <a href="/dashboard"> ใน public/index.html
         dashboard: 'Dashboard',
         addBot: 'Add Bot',
+      },
+      // 🆕 [17 ต.ค. 2569] commands — แปลไว้เฉพาะหัวข้อใหญ่บนสุด (เหมือนแพทเทิร์นของ
+      // marketplace ด้านล่าง) ส่วนรายละเอียดคำสั่งแต่ละอันในหน้ายังเป็นภาษาไทยตายตัว —
+      // ดูคอมเมนต์หัวไฟล์ public/commands.html สำหรับเหตุผลเต็มๆ
+      commands: {
+        _meta: {
+          title: 'Milo Bot — All Commands',
+          description: 'A detailed, step-by-step guide to every Milo Bot command — from welcome cards and auto-roles to exporting/importing a full setup through the Marketplace.',
+        },
+        eyebrow: 'Command Guide',
+        title: 'All Milo Bot Commands',
+        lead: 'A detailed walkthrough of every command — jump to a section below, or just scroll.',
       },
       home: {
         _meta: {
@@ -408,8 +422,18 @@
         features: 'ฟีเจอร์',
         pricing: 'ราคา',
         marketplace: 'มาร์เก็ตเพลส',
+        commands: 'คำสั่ง',
         dashboard: 'แดชบอร์ด',
         addBot: 'เพิ่มบอท',
+      },
+      commands: {
+        _meta: {
+          title: 'Milo Bot — คำสั่งทั้งหมด',
+          description: 'คู่มือคำสั่งทั้งหมดของ Milo Bot แบบละเอียด ทีละขั้นตอน ตั้งแต่การ์ดต้อนรับ ยศอัตโนมัติ ไปจนถึงการส่งออก/นำเข้าชุดตั้งค่าผ่าน Marketplace',
+        },
+        eyebrow: 'คู่มือคำสั่ง',
+        title: 'คำสั่งทั้งหมดของ Milo Bot',
+        lead: 'รวมวิธีใช้คำสั่งทุกตัวแบบละเอียด ทีละขั้นตอน — เลือกหัวข้อด้านล่าง หรือเลื่อนดูได้เลย',
       },
       home: {
         _meta: {
