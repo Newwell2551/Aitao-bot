@@ -948,5 +948,30 @@
         "success": "✅ Uploaded **{name}** successfully!"
       }
     }
+  },
+  "milo_config": {
+    "export": {
+      "nothing_to_export": "❌ There's nothing to export yet — set up a welcome/goodbye card, a role setup, or a builder message first, then try `/milo export-config` again.",
+      "summary_welcome_yes": "Welcome card: included",
+      "summary_welcome_no": "Welcome card: not set up",
+      "summary_goodbye_yes": "Goodbye card: included",
+      "summary_goodbye_no": "Goodbye card: not set up",
+      "summary_role_setups": "Role setups: {count} included",
+      "summary_builders": "Builder messages: {count} included",
+      "success": "✅ **Code created — one-time use only:**\n```\n{code}\n```\nThis is included:\n{summary}\n\nPaste this code into the \"Milo Bot Configuration Key\" field on the Marketplace listing form, or send it directly to the buyer. It can only be used once — once someone runs `/milo import-config` with it successfully, it stops working."
+    },
+    "import": {
+      "invalid_code": "❌ Code not found. Double-check it and try again.",
+      "already_used": "❌ This code has already been used once and can't be used again.",
+      "apply_failed": "❌ Something went wrong while applying this configuration. Nothing was changed and the code hasn't been used up — please try again, or contact the seller.",
+      "success_header": "✅ **Configuration imported successfully!**",
+      "item_welcome": "• Welcome card — go to `/welcome-setup` and pick a channel to turn it on in this server.",
+      "item_goodbye": "• Goodbye card — go to `/goodbye-setup` and pick a channel to turn it on in this server.",
+      "item_role_setups": "• Role setup(s) imported: {names}",
+      "item_builders": "• Builder message(s) imported: {names}",
+      "skipped_tier_notice": "⚠️ {count} item(s) from this code were skipped because this server is on the Free plan (role setup type, or quota limits). Upgrade with `/premium` to import everything.",
+      "warning_roles_channels": "⚠️ **Important:** any role buttons/menus/reactions, or role/channel buttons inside builder messages, still point to roles and channels from the **seller's** server — they won't work until you reassign them to your own roles/channels via `/role-setup edit` or `/builder edit`.",
+      "warning_channel": "⚠️ The welcome/goodbye card's posting channel was intentionally not carried over — pick a channel for it in this server via `/welcome-setup` / `/goodbye-setup`."
+    }
   }
 }
