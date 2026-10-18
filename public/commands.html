@@ -32,10 +32,15 @@
     — ไม่ต้องเพิ่ม route ใหม่เลยสักบรรทัด แค่วางไฟล์นี้ไว้ใน public/ ก็เข้าได้ที่
     /commands ทันที)
 
-    ⚠️ เหมือน public/marketplace.html — หน้านี้แปลไว้เฉพาะโครงหลัก (nav, หัวข้อ
-    ใหญ่บนสุด) ผ่าน data-i18n ร่วมกับหน้าอื่น ส่วนเนื้อหาคำสั่งแต่ละอันยังเป็น
-    ภาษาไทยตายตัว (ไม่สลับตาม EN/TH) เพราะเป็นคู่มือละเอียดยาวมาก แปลให้ครบจะใช้
-    เวลามาก ถ้าน้องหนาวอยากได้เวอร์ชันอังกฤษด้วย บอกได้เลยครับ ทำเพิ่มให้ได้
+    [🆕 18 ต.ค. 2569] น้องหนาวขอให้แปลครบทุกคำสั่งเป็นอังกฤษด้วย — ตอนแรกแปลไว้
+    เฉพาะโครงหลัก (nav, หัวข้อใหญ่บนสุด) เหมือน public/marketplace.html แต่รอบนี้
+    ขยายคำแปลให้ครบทุกจุดในหน้านี้แล้ว: ชื่อกลุ่ม/badge สิทธิ์/คำอธิบายคำสั่ง/
+    รายการ subcommand/ขั้นตอนวิธีใช้/กล่องเตือน-ทิป ทุกตัว ผ่าน data-i18n ทั้งหมด
+    (list item แต่ละอันใช้ array index เป็นคีย์ เช่น commands.cmd.roleSetup.opts.0
+    — getNested() ใน site-lang.js รองรับ index ของ array อยู่แล้วเพราะ JS array
+    เป็น object ที่มี key เป็นเลขเหมือนกัน) คำแปลทั้งหมดอยู่ใน public/js/site-lang.js
+    namespace "commands" — ชื่อคำสั่งเองไม่แปล (เช่น /role-setup) เพราะเป็นคำสั่ง
+    จริงที่พิมพ์ในดิสคอร์ด ไม่ใช่ข้อความที่ต้องอ่านเป็นภาษาใดภาษาหนึ่ง
     ═══════════════════════════════════════════════════════════════════════
   -->
 
@@ -197,7 +202,7 @@
 
     <!-- ═══════════ สารบัญ ═══════════ -->
     <div class="cmd-toc-group">
-      <div class="cmd-toc-label">🎨 ตกแต่งเซิร์ฟ</div>
+      <div class="cmd-toc-label" data-i18n="commands.groups.decorate.label">🎨 ตกแต่งเซิร์ฟ</div>
       <div class="cmd-toc">
         <a href="#welcome-setup">/welcome-setup</a>
         <a href="#goodbye-setup">/goodbye-setup</a>
@@ -208,7 +213,7 @@
       </div>
     </div>
     <div class="cmd-toc-group">
-      <div class="cmd-toc-label">⚙️ ตั้งค่าทั่วไป</div>
+      <div class="cmd-toc-label" data-i18n="commands.groups.general.label">⚙️ ตั้งค่าทั่วไป</div>
       <div class="cmd-toc">
         <a href="#language">/language</a>
         <a href="#premium">/premium</a>
@@ -217,7 +222,7 @@
       </div>
     </div>
     <div class="cmd-toc-group">
-      <div class="cmd-toc-label">🛒 Marketplace</div>
+      <div class="cmd-toc-label" data-i18n="commands.groups.marketplace.label">🛒 Marketplace</div>
       <div class="cmd-toc">
         <a href="#marketplace">/marketplace</a>
         <a href="#milo">/milo export-config / import-config</a>
@@ -227,200 +232,200 @@
     <!-- ═══════════ กลุ่ม 1: ตกแต่งเซิร์ฟ ═══════════ -->
     <div class="cmd-group">
       <div class="cmd-group-head">
-        <h2>🎨 ตกแต่งเซิร์ฟ</h2>
-        <span class="cmd-group-note">ค่าเริ่มต้นเปิดให้สมาชิกทุกคนใช้ได้ — ถ้าอยากจำกัดแค่แอดมิน ไปตั้งเองได้ที่ Discord Server Settings → Integrations → Milo Bot</span>
+        <h2 data-i18n="commands.groups.decorate.label">🎨 ตกแต่งเซิร์ฟ</h2>
+        <span class="cmd-group-note" data-i18n="commands.groups.decorate.note">ค่าเริ่มต้นเปิดให้สมาชิกทุกคนใช้ได้ — ถ้าอยากจำกัดแค่แอดมิน ไปตั้งเองได้ที่ Discord Server Settings → Integrations → Milo Bot</span>
       </div>
 
       <div class="cmd-card" id="welcome-setup">
         <div class="cmd-card-head">
           <span class="cmd-name">/welcome-setup</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">ตั้งค่าการ์ดต้อนรับสมาชิกใหม่ — โพสต์การ์ดรูปสวยๆ อัตโนมัติทุกครั้งที่มีคนเข้าเซิร์ฟ</p>
-        <div class="cmd-steps-label">วิธีใช้</div>
+        <p class="cmd-desc" data-i18n="commands.cmd.welcomeSetup.desc">ตั้งค่าการ์ดต้อนรับสมาชิกใหม่ — โพสต์การ์ดรูปสวยๆ อัตโนมัติทุกครั้งที่มีคนเข้าเซิร์ฟ</p>
+        <div class="cmd-steps-label" data-i18n="commands.stepsLabel.default">วิธีใช้</div>
         <ol class="cmd-steps">
-          <li>พิมพ์ <code>/welcome-setup</code> เฉยๆ ไม่มีตัวเลือกให้กรอกตรงนี้ — บอทจะเด้งแผงควบคุมเป็นปุ่มกดมาให้ทันที (เห็นแค่คนที่พิมพ์คำสั่ง)</li>
-          <li>กดปุ่มเลือกห้องที่จะโพสต์การ์ด, พื้นหลัง (รูปของตัวเอง, สีพื้น หรือ GIF ถ้าเป็นพรีเมียม), ข้อความต้อนรับ, ฟอนต์</li>
-          <li>เปิด/ปิดการใช้งานได้จากปุ่มเดียวกัน — ถ้ายังไม่เลือกห้อง การ์ดจะยังไม่โพสต์ไปไหน</li>
+          <li data-i18n="commands.cmd.welcomeSetup.steps.0" data-i18n-html="1">พิมพ์ <code>/welcome-setup</code> เฉยๆ ไม่มีตัวเลือกให้กรอกตรงนี้ — บอทจะเด้งแผงควบคุมเป็นปุ่มกดมาให้ทันที (เห็นแค่คนที่พิมพ์คำสั่ง)</li>
+          <li data-i18n="commands.cmd.welcomeSetup.steps.1" data-i18n-html="1">กดปุ่มเลือกห้องที่จะโพสต์การ์ด, พื้นหลัง (รูปของตัวเอง, สีพื้น หรือ GIF ถ้าเป็นพรีเมียม), ข้อความต้อนรับ, ฟอนต์</li>
+          <li data-i18n="commands.cmd.welcomeSetup.steps.2" data-i18n-html="1">เปิด/ปิดการใช้งานได้จากปุ่มเดียวกัน — ถ้ายังไม่เลือกห้อง การ์ดจะยังไม่โพสต์ไปไหน</li>
         </ol>
       </div>
 
       <div class="cmd-card" id="goodbye-setup">
         <div class="cmd-card-head">
           <span class="cmd-name">/goodbye-setup</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">ตั้งค่าการ์ดอำลาสมาชิกที่ออกจากเซิร์ฟ — ทำงานแบบเดียวกับ <code>/welcome-setup</code> เป๊ะๆ แค่ฝั่ง "ออก" แทน "เข้า"</p>
-        <div class="cmd-steps-label">วิธีใช้</div>
+        <p class="cmd-desc" data-i18n="commands.cmd.goodbyeSetup.desc" data-i18n-html="1">ตั้งค่าการ์ดอำลาสมาชิกที่ออกจากเซิร์ฟ — ทำงานแบบเดียวกับ <code>/welcome-setup</code> เป๊ะๆ แค่ฝั่ง "ออก" แทน "เข้า"</p>
+        <div class="cmd-steps-label" data-i18n="commands.stepsLabel.default">วิธีใช้</div>
         <ol class="cmd-steps">
-          <li>พิมพ์ <code>/goodbye-setup</code> เฉยๆ — เจอแผงควบคุมแบบเดียวกับ welcome</li>
-          <li>เลือกห้อง, พื้นหลัง, ข้อความอำลา, ฟอนต์ แล้วเปิดใช้งาน</li>
+          <li data-i18n="commands.cmd.goodbyeSetup.steps.0" data-i18n-html="1">พิมพ์ <code>/goodbye-setup</code> เฉยๆ — เจอแผงควบคุมแบบเดียวกับ welcome</li>
+          <li data-i18n="commands.cmd.goodbyeSetup.steps.1" data-i18n-html="1">เลือกห้อง, พื้นหลัง, ข้อความอำลา, ฟอนต์ แล้วเปิดใช้งาน</li>
         </ol>
       </div>
 
       <div class="cmd-card" id="role-setup">
         <div class="cmd-card-head">
           <span class="cmd-name">/role-setup</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">สร้างระบบแจกยศอัตโนมัติ — สมาชิกกดรับยศเอง ไม่ต้องรอแอดมินแจกทีละคน</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.roleSetup.desc">สร้างระบบแจกยศอัตโนมัติ — สมาชิกกดรับยศเอง ไม่ต้องรอแอดมินแจกทีละคน</p>
         <ul class="cmd-opts">
-          <li><code>/role-setup new</code> — สร้างชุดใหม่ (ตั้งชื่อ + เลือกรูปแบบ: <code>menu</code> ดรอปดาวน์, <code>button</code> ปุ่มกด, <code>reaction</code> กด emoji — เมนู/ปุ่มเป็นของพรีเมียม ฟรีใช้ได้แค่ reaction สูงสุด 2 ยศ)</li>
-          <li><code>/role-setup edit</code> — เปิดชุดเดิมมาแก้ (เพิ่ม/ลดยศ, เปลี่ยน emoji ฯลฯ)</li>
-          <li><code>/role-setup list</code> — ดูรายชื่อชุดที่สร้างไว้ทั้งหมดในเซิร์ฟนี้</li>
-          <li><code>/role-setup delete</code> — ลบชุดที่ไม่ใช้แล้ว</li>
+          <li data-i18n="commands.cmd.roleSetup.opts.0" data-i18n-html="1"><code>/role-setup new</code> — สร้างชุดใหม่ (ตั้งชื่อ + เลือกรูปแบบ: <code>menu</code> ดรอปดาวน์, <code>button</code> ปุ่มกด, <code>reaction</code> กด emoji — เมนู/ปุ่มเป็นของพรีเมียม ฟรีใช้ได้แค่ reaction สูงสุด 2 ยศ)</li>
+          <li data-i18n="commands.cmd.roleSetup.opts.1" data-i18n-html="1"><code>/role-setup edit</code> — เปิดชุดเดิมมาแก้ (เพิ่ม/ลดยศ, เปลี่ยน emoji ฯลฯ)</li>
+          <li data-i18n="commands.cmd.roleSetup.opts.2" data-i18n-html="1"><code>/role-setup list</code> — ดูรายชื่อชุดที่สร้างไว้ทั้งหมดในเซิร์ฟนี้</li>
+          <li data-i18n="commands.cmd.roleSetup.opts.3" data-i18n-html="1"><code>/role-setup delete</code> — ลบชุดที่ไม่ใช้แล้ว</li>
         </ul>
-        <div class="cmd-steps-label">วิธีใช้ (สร้างใหม่)</div>
+        <div class="cmd-steps-label" data-i18n="commands.stepsLabel.createNew">วิธีใช้ (สร้างใหม่)</div>
         <ol class="cmd-steps">
-          <li>พิมพ์ <code>/role-setup new</code> ตั้งชื่อ + เลือกรูปแบบ</li>
-          <li>กดปุ่มในแผงควบคุมเพื่อเพิ่มยศแต่ละอัน (เลือกยศจริงของเซิร์ฟ + ข้อความ/emoji ของปุ่มนั้น)</li>
-          <li>กดโพสต์ข้อความลงห้องที่ต้องการ — สมาชิกกด/เลือก/reply ได้รับยศเองทันที</li>
+          <li data-i18n="commands.cmd.roleSetup.steps.0" data-i18n-html="1">พิมพ์ <code>/role-setup new</code> ตั้งชื่อ + เลือกรูปแบบ</li>
+          <li data-i18n="commands.cmd.roleSetup.steps.1" data-i18n-html="1">กดปุ่มในแผงควบคุมเพื่อเพิ่มยศแต่ละอัน (เลือกยศจริงของเซิร์ฟ + ข้อความ/emoji ของปุ่มนั้น)</li>
+          <li data-i18n="commands.cmd.roleSetup.steps.2" data-i18n-html="1">กดโพสต์ข้อความลงห้องที่ต้องการ — สมาชิกกด/เลือก/reply ได้รับยศเองทันที</li>
         </ol>
-        <div class="callout tip"><p>บอทต้องมีสิทธิ์ <strong>Manage Roles</strong> และยศของบอทต้องอยู่ "สูงกว่า" ยศที่จะแจก ไม่งั้นแจกไม่ได้ (ข้อจำกัดของ Discord เอง ไม่ใช่บั๊ก)</p></div>
+        <div class="callout tip"><p data-i18n="commands.cmd.roleSetup.tip" data-i18n-html="1">บอทต้องมีสิทธิ์ <strong>Manage Roles</strong> และยศของบอทต้องอยู่ "สูงกว่า" ยศที่จะแจก ไม่งั้นแจกไม่ได้ (ข้อจำกัดของ Discord เอง ไม่ใช่บั๊ก)</p></div>
       </div>
 
       <div class="cmd-card" id="builder">
         <div class="cmd-card-head">
           <span class="cmd-name">/builder</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">ตัวจัดวางข้อความ/ประกาศเอง ไม่ต้องเขียนโค้ด — คลิกเพิ่ม block (ข้อความ, รูป, เส้นคั่น, ปุ่มลิงก์/ยศ/ห้อง) แล้วโพสต์เป็นข้อความสวยๆ</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.builder.desc">ตัวจัดวางข้อความ/ประกาศเอง ไม่ต้องเขียนโค้ด — คลิกเพิ่ม block (ข้อความ, รูป, เส้นคั่น, ปุ่มลิงก์/ยศ/ห้อง) แล้วโพสต์เป็นข้อความสวยๆ</p>
         <ul class="cmd-opts">
-          <li><code>/builder new</code> — สร้างฉบับร่างใหม่ (ตั้งชื่อ) — ฟรีมีได้ 1 ฉบับ/เซิร์ฟ พรีเมียมไม่จำกัด</li>
-          <li><code>/builder edit</code> — เปิดฉบับร่างเดิมมาแก้ต่อ</li>
-          <li><code>/builder list</code> — ดูรายชื่อฉบับร่างทั้งหมด</li>
-          <li><code>/builder delete</code> — ลบฉบับร่างที่ไม่ใช้แล้ว</li>
+          <li data-i18n="commands.cmd.builder.opts.0" data-i18n-html="1"><code>/builder new</code> — สร้างฉบับร่างใหม่ (ตั้งชื่อ) — ฟรีมีได้ 1 ฉบับ/เซิร์ฟ พรีเมียมไม่จำกัด</li>
+          <li data-i18n="commands.cmd.builder.opts.1" data-i18n-html="1"><code>/builder edit</code> — เปิดฉบับร่างเดิมมาแก้ต่อ</li>
+          <li data-i18n="commands.cmd.builder.opts.2" data-i18n-html="1"><code>/builder list</code> — ดูรายชื่อฉบับร่างทั้งหมด</li>
+          <li data-i18n="commands.cmd.builder.opts.3" data-i18n-html="1"><code>/builder delete</code> — ลบฉบับร่างที่ไม่ใช้แล้ว</li>
         </ul>
-        <div class="cmd-steps-label">วิธีใช้ (สร้างใหม่)</div>
+        <div class="cmd-steps-label" data-i18n="commands.stepsLabel.createNew">วิธีใช้ (สร้างใหม่)</div>
         <ol class="cmd-steps">
-          <li>พิมพ์ <code>/builder new</code> ตั้งชื่อฉบับร่าง</li>
-          <li>กดปุ่มเพิ่ม block ทีละอัน แล้วกรอก/อัปโหลดเนื้อหาของ block นั้น</li>
-          <li>กดโพสต์ลงห้องที่ต้องการเมื่อพอใจแล้ว — แก้ต่อได้ตลอดผ่าน <code>/builder edit</code></li>
+          <li data-i18n="commands.cmd.builder.steps.0" data-i18n-html="1">พิมพ์ <code>/builder new</code> ตั้งชื่อฉบับร่าง</li>
+          <li data-i18n="commands.cmd.builder.steps.1" data-i18n-html="1">กดปุ่มเพิ่ม block ทีละอัน แล้วกรอก/อัปโหลดเนื้อหาของ block นั้น</li>
+          <li data-i18n="commands.cmd.builder.steps.2" data-i18n-html="1">กดโพสต์ลงห้องที่ต้องการเมื่อพอใจแล้ว — แก้ต่อได้ตลอดผ่าน <code>/builder edit</code></li>
         </ol>
       </div>
 
       <div class="cmd-card" id="fonts">
         <div class="cmd-card-head">
           <span class="cmd-name">/fonts</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">อัปโหลดฟอนต์ของตัวเอง (.ttf/.otf) ไว้ใช้กับการ์ด welcome/goodbye และยศของเซิร์ฟนี้</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.fonts.desc">อัปโหลดฟอนต์ของตัวเอง (.ttf/.otf) ไว้ใช้กับการ์ด welcome/goodbye และยศของเซิร์ฟนี้</p>
         <ul class="cmd-opts">
-          <li><code>/fonts list</code> — ดูฟอนต์ทั้งหมด (ฟอนต์มาตรฐานของบอท + ที่อัปโหลดเอง) เลือกลบฟอนต์ที่อัปโหลดเองได้</li>
-          <li><code>/fonts upload</code> — แนบไฟล์ฟอนต์ <code>.ttf</code> หรือ <code>.otf</code> เพื่ออัปโหลด (สูงสุด 20 ฟอนต์/เซิร์ฟ)</li>
+          <li data-i18n="commands.cmd.fonts.opts.0" data-i18n-html="1"><code>/fonts list</code> — ดูฟอนต์ทั้งหมด (ฟอนต์มาตรฐานของบอท + ที่อัปโหลดเอง) เลือกลบฟอนต์ที่อัปโหลดเองได้</li>
+          <li data-i18n="commands.cmd.fonts.opts.1" data-i18n-html="1"><code>/fonts upload</code> — แนบไฟล์ฟอนต์ <code>.ttf</code> หรือ <code>.otf</code> เพื่ออัปโหลด (สูงสุด 20 ฟอนต์/เซิร์ฟ)</li>
         </ul>
       </div>
 
       <div class="cmd-card" id="upload-image">
         <div class="cmd-card-head">
           <span class="cmd-name">/upload-image</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">อัปโหลดรูปเพื่อเอา "ลิงก์ถาวร" มาใช้กับคำสั่งอื่นที่ต้องกรอกลิงก์รูป (เช่นพื้นหลังการ์ด)</p>
-        <div class="cmd-steps-label">วิธีใช้</div>
+        <p class="cmd-desc" data-i18n="commands.cmd.uploadImage.desc">อัปโหลดรูปเพื่อเอา "ลิงก์ถาวร" มาใช้กับคำสั่งอื่นที่ต้องกรอกลิงก์รูป (เช่นพื้นหลังการ์ด)</p>
+        <div class="cmd-steps-label" data-i18n="commands.stepsLabel.default">วิธีใช้</div>
         <ol class="cmd-steps">
-          <li>พิมพ์ <code>/upload-image</code> แล้วแนบไฟล์รูป (<code>.png .jpg .jpeg .webp .gif</code>)</li>
-          <li>บอทตอบลิงก์กลับมา — ก๊อปลิงก์นั้นไปวางในช่องที่ต้องการได้เลย ลิงก์นี้ไม่มีวันหมดอายุ</li>
+          <li data-i18n="commands.cmd.uploadImage.steps.0" data-i18n-html="1">พิมพ์ <code>/upload-image</code> แล้วแนบไฟล์รูป (<code>.png .jpg .jpeg .webp .gif</code>)</li>
+          <li data-i18n="commands.cmd.uploadImage.steps.1" data-i18n-html="1">บอทตอบลิงก์กลับมา — ก๊อปลิงก์นั้นไปวางในช่องที่ต้องการได้เลย ลิงก์นี้ไม่มีวันหมดอายุ</li>
         </ol>
       </div>
     </div>
 
     <!-- ═══════════ กลุ่ม 2: ตั้งค่าทั่วไป ═══════════ -->
     <div class="cmd-group">
-      <div class="cmd-group-head"><h2>⚙️ ตั้งค่าทั่วไป</h2></div>
+      <div class="cmd-group-head"><h2 data-i18n="commands.groups.general.label">⚙️ ตั้งค่าทั่วไป</h2></div>
 
       <div class="cmd-card" id="language">
         <div class="cmd-card-head">
           <span class="cmd-name">/language</span>
-          <span class="cmd-badge b-manage">ต้องมี Manage Server</span>
+          <span class="cmd-badge b-manage" data-i18n="commands.badges.manage">ต้องมี Manage Server</span>
         </div>
-        <p class="cmd-desc">ตั้งภาษาที่บอทใช้ตอบในเซิร์ฟนี้ — เลือกได้ระหว่าง <code>English</code> กับ <code>ไทย</code> มีผลกับทุกข้อความที่บอทตอบในเซิร์ฟนี้ตั้งแต่ตั้งค่า</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.language.desc" data-i18n-html="1">ตั้งภาษาที่บอทใช้ตอบในเซิร์ฟนี้ — เลือกได้ระหว่าง <code>English</code> กับ <code>ไทย</code> มีผลกับทุกข้อความที่บอทตอบในเซิร์ฟนี้ตั้งแต่ตั้งค่า</p>
       </div>
 
       <div class="cmd-card" id="premium">
         <div class="cmd-card-head">
           <span class="cmd-name">/premium</span>
-          <span class="cmd-badge b-manage">ต้องมี Manage Server</span>
+          <span class="cmd-badge b-manage" data-i18n="commands.badges.manage">ต้องมี Manage Server</span>
         </div>
-        <p class="cmd-desc">จัดการสถานะพรีเมียมของเซิร์ฟนี้ — ดูสถานะปัจจุบัน, สมัคร/ต่ออายุ, หรือจัดการการสมัครสมาชิก</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.premium.desc">จัดการสถานะพรีเมียมของเซิร์ฟนี้ — ดูสถานะปัจจุบัน, สมัคร/ต่ออายุ, หรือจัดการการสมัครสมาชิก</p>
       </div>
 
       <div class="cmd-card" id="help">
         <div class="cmd-card-head">
           <span class="cmd-name">/help</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">โชว์รายการคำสั่งทั้งหมด พร้อมตัวอย่างสิ่งที่บอทสร้างได้จริง — เหมาะเป็นจุดเริ่มต้นสำหรับคนที่เพิ่งเชิญบอทเข้าเซิร์ฟ</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.help.desc">โชว์รายการคำสั่งทั้งหมด พร้อมตัวอย่างสิ่งที่บอทสร้างได้จริง — เหมาะเป็นจุดเริ่มต้นสำหรับคนที่เพิ่งเชิญบอทเข้าเซิร์ฟ</p>
       </div>
 
       <div class="cmd-card" id="ping">
         <div class="cmd-card-head">
           <span class="cmd-name">/ping</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">เช็กความหน่วง (latency) ของบอทตอนนี้ — ใช้ตอนสงสัยว่าบอทตอบช้าผิดปกติหรือเปล่า</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.ping.desc">เช็กความหน่วง (latency) ของบอทตอนนี้ — ใช้ตอนสงสัยว่าบอทตอบช้าผิดปกติหรือเปล่า</p>
       </div>
     </div>
 
     <!-- ═══════════ กลุ่ม 3: Marketplace ═══════════ -->
     <div class="cmd-group">
-      <div class="cmd-group-head"><h2>🛒 Marketplace</h2></div>
+      <div class="cmd-group-head"><h2 data-i18n="commands.groups.marketplace.label">🛒 Marketplace</h2></div>
 
       <div class="cmd-card" id="marketplace">
         <div class="cmd-card-head">
           <span class="cmd-name">/marketplace</span>
-          <span class="cmd-badge b-all">ใช้ได้ทุกคน</span>
+          <span class="cmd-badge b-all" data-i18n="commands.badges.all">ใช้ได้ทุกคน</span>
         </div>
-        <p class="cmd-desc">เปิดร้านขายของตกแต่ง/บริการสาย Discord ของตัวเอง ผ่านตลาดกลางบนหน้าเว็บ <a href="/marketplace">/marketplace</a> — ลงประกาศจากดิสคอร์ด แล้วไปโชว์ขายอยู่บนหน้าเว็บให้คนอื่นซื้อได้</p>
+        <p class="cmd-desc" data-i18n="commands.cmd.marketplace.desc" data-i18n-html="1">เปิดร้านขายของตกแต่ง/บริการสาย Discord ของตัวเอง ผ่านตลาดกลางบนหน้าเว็บ <a href="/marketplace">/marketplace</a> — ลงประกาศจากดิสคอร์ด แล้วไปโชว์ขายอยู่บนหน้าเว็บให้คนอื่นซื้อได้</p>
         <ul class="cmd-opts">
-          <li><code>/marketplace sell</code> — ลงประกาศขายใหม่ (ชื่อ, ราคา, คำอธิบาย, หมวดหมู่, รูปปก, และของที่จะส่ง — ไฟล์ดิจิทัล/ลิงก์ระบบหรือเทมเพลต/รหัสตั้งค่า Milo Bot — เลือกได้จากหน้าเว็บ Dashboard ด้วย ไม่ต้องกรอกทุกอย่างจากดิสคอร์ด)</li>
-          <li><code>/marketplace mylistings</code> — ดูประกาศขายทั้งหมดของตัวเอง</li>
-          <li><code>/marketplace remove</code> — ปิดประกาศ (ขายหมด/ไม่ขายแล้ว แต่ยังเปิดขายใหม่ได้ทีหลัง)</li>
-          <li><code>/marketplace markselling</code> — เปิดประกาศที่เคยปิดไว้ให้กลับมาขายอีกครั้ง</li>
-          <li><code>/marketplace setpromptpay</code> — ตั้ง/แก้เบอร์พร้อมเพย์รับเงิน (สำหรับผู้ขายในไทย)</li>
-          <li><code>/marketplace setpaymentlink</code> — ตั้ง/แก้ลิงก์รับเงินสากล เช่น PayPal.me (สำหรับผู้ขายต่างชาติ)</li>
+          <li data-i18n="commands.cmd.marketplace.opts.0" data-i18n-html="1"><code>/marketplace sell</code> — ลงประกาศขายใหม่ (ชื่อ, ราคา, คำอธิบาย, หมวดหมู่, รูปปก, และของที่จะส่ง — ไฟล์ดิจิทัล/ลิงก์ระบบหรือเทมเพลต/รหัสตั้งค่า Milo Bot — เลือกได้จากหน้าเว็บ Dashboard ด้วย ไม่ต้องกรอกทุกอย่างจากดิสคอร์ด)</li>
+          <li data-i18n="commands.cmd.marketplace.opts.1" data-i18n-html="1"><code>/marketplace mylistings</code> — ดูประกาศขายทั้งหมดของตัวเอง</li>
+          <li data-i18n="commands.cmd.marketplace.opts.2" data-i18n-html="1"><code>/marketplace remove</code> — ปิดประกาศ (ขายหมด/ไม่ขายแล้ว แต่ยังเปิดขายใหม่ได้ทีหลัง)</li>
+          <li data-i18n="commands.cmd.marketplace.opts.3" data-i18n-html="1"><code>/marketplace markselling</code> — เปิดประกาศที่เคยปิดไว้ให้กลับมาขายอีกครั้ง</li>
+          <li data-i18n="commands.cmd.marketplace.opts.4" data-i18n-html="1"><code>/marketplace setpromptpay</code> — ตั้ง/แก้เบอร์พร้อมเพย์รับเงิน (สำหรับผู้ขายในไทย)</li>
+          <li data-i18n="commands.cmd.marketplace.opts.5" data-i18n-html="1"><code>/marketplace setpaymentlink</code> — ตั้ง/แก้ลิงก์รับเงินสากล เช่น PayPal.me (สำหรับผู้ขายต่างชาติ)</li>
         </ul>
-        <div class="callout info"><p>บอทไม่แตะเงินของใครเลย — ผู้ซื้อจ่ายตรงเข้าบัญชีผู้ขาย (สแกน QR หรือกดลิงก์) บอทแค่ช่วยแจ้ง/ส่งของต่อให้อัตโนมัติหลังผู้ขายกดยืนยันว่าได้รับเงินแล้ว</p></div>
+        <div class="callout info"><p data-i18n="commands.cmd.marketplace.info">บอทไม่แตะเงินของใครเลย — ผู้ซื้อจ่ายตรงเข้าบัญชีผู้ขาย (สแกน QR หรือกดลิงก์) บอทแค่ช่วยแจ้ง/ส่งของต่อให้อัตโนมัติหลังผู้ขายกดยืนยันว่าได้รับเงินแล้ว</p></div>
       </div>
 
       <!-- ═══════════ เจาะลึก /milo — จุดเด่นของหน้านี้ ═══════════ -->
       <div class="cmd-card" id="milo" style="padding:0; background:transparent; border:none;">
         <div class="milo-section">
           <div class="milo-section-head">
-            <div class="cmd-eyebrow">เจาะลึก — ฟีเจอร์ที่คนงงกันบ่อยที่สุด</div>
-            <h3><span class="cmd-name" style="font-size:16px;">/milo export-config</span> &nbsp;&amp;&nbsp; <span class="cmd-name" style="font-size:16px;">/milo import-config</span> <span class="cmd-badge b-admin" style="margin-left:6px;vertical-align:2px;">ต้องมี Administrator</span></h3>
-            <p>ใช้สำหรับ "ส่งต่อชุดตั้งค่า Milo Bot" ของเซิร์ฟตัวเองให้คนอื่นเอาไปใช้ต่อได้ทันที — คล้ายการขายเทมเพลต Canva ที่คนซื้อกด Import แล้วได้ของพร้อมใช้เลย โดยส่งผ่านตลาด <code>/marketplace</code> ด้านบน</p>
+            <div class="cmd-eyebrow" data-i18n="commands.milo.eyebrow">เจาะลึก — ฟีเจอร์ที่คนงงกันบ่อยที่สุด</div>
+            <h3><span class="cmd-name" style="font-size:16px;">/milo export-config</span> &nbsp;&amp;&nbsp; <span class="cmd-name" style="font-size:16px;">/milo import-config</span> <span class="cmd-badge b-admin" style="margin-left:6px;vertical-align:2px;" data-i18n="commands.badges.admin">ต้องมี Administrator</span></h3>
+            <p data-i18n="commands.milo.intro" data-i18n-html="1">ใช้สำหรับ "ส่งต่อชุดตั้งค่า Milo Bot" ของเซิร์ฟตัวเองให้คนอื่นเอาไปใช้ต่อได้ทันที — คล้ายการขายเทมเพลต Canva ที่คนซื้อกด Import แล้วได้ของพร้อมใช้เลย โดยส่งผ่านตลาด <code>/marketplace</code> ด้านบน</p>
           </div>
 
           <div class="milo-flow">
             <div class="milo-col">
-              <h4>🧑‍💻 ฝั่งคนขาย (ผู้สร้างชุดตั้งค่า)</h4>
-              <p class="milo-col-sub">ทำในเซิร์ฟที่ตั้งค่าไว้สวยแล้ว ก่อนเอาไปลงขาย</p>
+              <h4 data-i18n="commands.milo.seller.h4">🧑‍💻 ฝั่งคนขาย (ผู้สร้างชุดตั้งค่า)</h4>
+              <p class="milo-col-sub" data-i18n="commands.milo.seller.sub">ทำในเซิร์ฟที่ตั้งค่าไว้สวยแล้ว ก่อนเอาไปลงขาย</p>
               <ol>
-                <li>ตั้งค่าการ์ด Welcome/Goodbye, Role setup, และ/หรือ Builder ในเซิร์ฟตัวเองให้เรียบร้อยตามที่จะขาย</li>
-                <li>พิมพ์ <code>/milo export-config</code> ในเซิร์ฟนั้น (ต้องมีสิทธิ์ Administrator) — บอทจะรวบรวม 3 อย่างนี้เป็นรหัสเดียว เช่น <code>MILO-7K2X9QAB</code></li>
-                <li>บอทตอบ (เห็นแค่คนพิมพ์คำสั่ง) สรุปว่ารหัสนี้มีอะไรติดไปบ้าง — เช็คให้ตรงกับที่ตั้งใจขาย</li>
-                <li>เอารหัสนี้ไปกรอกในช่อง <strong>"รหัสการตั้งค่า Milo Bot"</strong> ตอนลงขายด้วย <code>/marketplace sell</code> (หรือจากหน้าเว็บ Dashboard)</li>
+                <li data-i18n="commands.milo.seller.steps.0" data-i18n-html="1">ตั้งค่าการ์ด Welcome/Goodbye, Role setup, และ/หรือ Builder ในเซิร์ฟตัวเองให้เรียบร้อยตามที่จะขาย</li>
+                <li data-i18n="commands.milo.seller.steps.1" data-i18n-html="1">พิมพ์ <code>/milo export-config</code> ในเซิร์ฟนั้น (ต้องมีสิทธิ์ Administrator) — บอทจะเปิด <strong>"แผงเลือก"</strong> ให้ติ๊กเองว่าจะรวม Welcome/Goodbye ไหม แล้วเลือก role setup/builder เฉพาะชุดที่จะขายจริง (ไม่บังคับรวมทุกอย่างที่มีในเซิร์ฟ)</li>
+                <li data-i18n="commands.milo.seller.steps.2" data-i18n-html="1">เลือกเสร็จแล้วกด <strong>"สร้างรหัส"</strong> — บอทตอบ (เห็นแค่คนพิมพ์คำสั่ง) รหัสที่สร้าง เช่น <code>MILO-7K2X9QAB</code> พร้อมสรุปว่ารหัสนี้มีอะไรติดไปบ้าง — เช็คให้ตรงกับที่ตั้งใจขาย</li>
+                <li data-i18n="commands.milo.seller.steps.3" data-i18n-html="1">เอารหัสนี้ไปกรอกในช่อง <strong>"รหัสการตั้งค่า Milo Bot"</strong> ตอนลงขายด้วย <code>/marketplace sell</code> (หรือจากหน้าเว็บ Dashboard)</li>
               </ol>
             </div>
             <div class="milo-col">
-              <h4>🛍️ ฝั่งคนซื้อ (ผู้รับชุดตั้งค่า)</h4>
-              <p class="milo-col-sub">ทำหลังจ่ายเงินซื้อสำเร็จแล้ว</p>
+              <h4 data-i18n="commands.milo.buyer.h4">🛍️ ฝั่งคนซื้อ (ผู้รับชุดตั้งค่า)</h4>
+              <p class="milo-col-sub" data-i18n="commands.milo.buyer.sub">ทำหลังจ่ายเงินซื้อสำเร็จแล้ว</p>
               <ol>
-                <li>จ่ายเงินซื้อสินค้าบนหน้าเว็บ Marketplace ตามปกติ</li>
-                <li>บอทส่งรหัส (เช่น <code>MILO-7K2X9QAB</code>) มาทาง DM ให้ทันทีหลังผู้ขายกดยืนยันว่าได้รับเงินแล้ว</li>
-                <li>ไปที่เซิร์ฟของตัวเอง พิมพ์ <code>/milo import-config</code> แล้ววางรหัสที่ได้ในช่อง <code>code</code> (ต้องมีสิทธิ์ Administrator ของเซิร์ฟนั้น)</li>
-                <li>บอทติดตั้งการ์ด/role setup/builder ที่ติดมากับรหัสให้ทันที พร้อมสรุปว่าติดตั้งอะไรไปบ้าง</li>
+                <li data-i18n="commands.milo.buyer.steps.0" data-i18n-html="1">จ่ายเงินซื้อสินค้าบนหน้าเว็บ Marketplace ตามปกติ</li>
+                <li data-i18n="commands.milo.buyer.steps.1" data-i18n-html="1">บอทส่งรหัส (เช่น <code>MILO-7K2X9QAB</code>) มาทาง DM ให้ทันทีหลังผู้ขายกดยืนยันว่าได้รับเงินแล้ว</li>
+                <li data-i18n="commands.milo.buyer.steps.2" data-i18n-html="1">ไปที่เซิร์ฟของตัวเอง พิมพ์ <code>/milo import-config</code> แล้ววางรหัสที่ได้ในช่อง <code>code</code> (ต้องมีสิทธิ์ Administrator ของเซิร์ฟนั้น)</li>
+                <li data-i18n="commands.milo.buyer.steps.3" data-i18n-html="1">บอทติดตั้งการ์ด/role setup/builder ที่ติดมากับรหัสให้ทันที พร้อมสรุปว่าติดตั้งอะไรไปบ้าง</li>
               </ol>
             </div>
           </div>
 
           <div class="callout warn">
-            <p><strong>⚠️ ข้อควรรู้ก่อนใช้งานจริง</strong></p>
-            <p>รหัสแต่ละอัน <strong>ใช้ได้ครั้งเดียวเท่านั้น</strong> — import ไปแล้วรหัสนั้นจะใช้ซ้ำไม่ได้อีก (กันขายรหัสเดียวซ้ำแบบไม่จำกัด)</p>
-            <p>ยศ/ห้องที่ติดมากับ role setup และ builder (ปุ่มแจกยศ, ปุ่มลิงก์ห้อง) <strong>ยังเป็นของเซิร์ฟผู้ขายเดิม</strong> ใช้งานไม่ได้จนกว่าผู้ซื้อจะไปกำหนดยศ/ห้องของเซิร์ฟตัวเองใหม่เองผ่าน <code>/role-setup edit</code> / <code>/builder edit</code></p>
-            <p>ห้องโพสต์การ์ด Welcome/Goodbye ก็ไม่ติดมาด้วย (ตั้งใจ) — ผู้ซื้อต้องเลือกห้องของตัวเองใหม่เสมอหลัง import</p>
-            <p>ถ้าเซิร์ฟผู้ซื้อเป็นแผนฟรี ระบบจะตัดเฉพาะส่วนที่แผนฟรีทำไม่ได้อยู่แล้วให้อัตโนมัติ (เช่น role setup แบบเมนู/ปุ่ม, reaction เกิน 2 ยศ) ไม่ทำให้ import ล้มเหลวทั้งหมด</p>
+            <p><strong data-i18n="commands.milo.warn.title">⚠️ ข้อควรรู้ก่อนใช้งานจริง</strong></p>
+            <p data-i18n="commands.milo.warn.lines.0" data-i18n-html="1">รหัสแต่ละอัน <strong>ใช้ได้ครั้งเดียวเท่านั้น</strong> — import ไปแล้วรหัสนั้นจะใช้ซ้ำไม่ได้อีก (กันขายรหัสเดียวซ้ำแบบไม่จำกัด)</p>
+            <p data-i18n="commands.milo.warn.lines.1" data-i18n-html="1">ยศ/ห้องที่ติดมากับ role setup และ builder (ปุ่มแจกยศ, ปุ่มลิงก์ห้อง) <strong>ยังเป็นของเซิร์ฟผู้ขายเดิม</strong> ใช้งานไม่ได้จนกว่าผู้ซื้อจะไปกำหนดยศ/ห้องของเซิร์ฟตัวเองใหม่เองผ่าน <code>/role-setup edit</code> / <code>/builder edit</code></p>
+            <p data-i18n="commands.milo.warn.lines.2" data-i18n-html="1">ห้องโพสต์การ์ด Welcome/Goodbye ก็ไม่ติดมาด้วย (ตั้งใจ) — ผู้ซื้อต้องเลือกห้องของตัวเองใหม่เสมอหลัง import</p>
+            <p data-i18n="commands.milo.warn.lines.3" data-i18n-html="1">ถ้าเซิร์ฟผู้ซื้อเป็นแผนฟรี ระบบจะตัดเฉพาะส่วนที่แผนฟรีทำไม่ได้อยู่แล้วให้อัตโนมัติ (เช่น role setup แบบเมนู/ปุ่ม, reaction เกิน 2 ยศ) ไม่ทำให้ import ล้มเหลวทั้งหมด</p>
           </div>
         </div>
       </div>

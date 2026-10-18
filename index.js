@@ -278,6 +278,20 @@ client.on('interactionCreate', async interaction => {
         }
       }
     }
+
+    // 🆕 [รอบ 14] milo_export_ = ปุ่มในแผงเลือก /milo export-config (toggle welcome/goodbye,
+    // ยืนยันสร้างรหัส, ยกเลิก) — ดู commands/milo.js ส่วน MX / handleButton()
+    if (interaction.customId.startsWith('milo_export_')) {
+      const miloCommand = client.commands.get('milo');
+      try {
+        await miloCommand.handleButton(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนกดปุ่มนี้', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
     return;
   }
 
@@ -450,6 +464,20 @@ client.on('interactionCreate', async interaction => {
       const builderCommand = client.commands.get('builder');
       try {
         await builderCommand.handleSelectMenu(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
+
+    // 🆕 [รอบ 14] milo_export_ = dropdown ในแผงเลือก /milo export-config (เลือก role setup /
+    // builder draft ที่จะรวม) — ดู commands/milo.js ส่วน MX / handleSelectMenu()
+    if (interaction.customId.startsWith('milo_export_')) {
+      const miloCommand = client.commands.get('milo');
+      try {
+        await miloCommand.handleSelectMenu(interaction);
       } catch (error) {
         console.error(error);
         if (!interaction.replied && !interaction.deferred) {

@@ -19,8 +19,21 @@
 // เฉยๆ ไม่ error/ไม่พังบอท) เลย import เข้าไปตรงๆ ได้โดยไม่ต้องลบ/แก้ข้อมูลพวกนี้เอง แต่
 // ผู้ซื้อ "ต้อง" ไปกำหนดยศ/ห้องใหม่เองผ่าน /role-setup edit หรือ /builder edit ก่อนใช้งานจริง
 // — แจ้งเตือนเรื่องนี้ชัดๆ ในข้อความตอบกลับหลัง import เสร็จด้านล่าง
+//
+// 🆕 [18 ต.ค. 2569 รอบ 14] ปรับ export-config จาก "รวมทุกอย่างอัตโนมัติ" ให้เป็น "แผงเลือก"
+// (interactive panel) แทน — เหตุผล: น้องหนาวสังเกตว่าของเดิมบังคับรวมทุกอย่างที่มีอยู่ใน
+// เซิร์ฟตอนนั้นเข้ารหัสเดียว ทำให้ผู้ขายขายแบบเจาะจงไม่ได้ (เช่น จะขายแค่ role setup ชุดเดียว
+// หรือแค่ welcome+goodbye โดยไม่เอา role setup ไปด้วย) ถ้าอยากขายแยกชิ้นต้องไปสร้างเซิร์ฟใหม่
+// แยกเก็บแต่ละชิ้นเท่านั้น — ตอนนี้กด /milo export-config แล้วจะเจอ "แผงเลือก" (ปุ่ม toggle
+// welcome/goodbye + dropdown เลือก role setup/builder เฉพาะชื่อที่ต้องการ) ติ๊กเสร็จแล้วค่อยกด
+// "สร้างรหัส" ทีเดียว โดย "ไม่มีอะไรติ๊กไว้ล่วงหน้าเลย" (ต้องเลือกเองทุกครั้ง — ขอบเขตที่คุยกับ
+// น้องหนาวแล้วตอนออกแบบรอบนี้) ดู handleButton()/handleSelectMenu()/buildExportPanel() ด้านล่าง
 
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const {
+  SlashCommandBuilder, PermissionFlagsBits, MessageFlags,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
+} = require('discord.js');
 const { createTranslator } = require('../utils/i18n');
 const { getGuildLanguage } = require('../utils/languageStorage');
 const { isPremiumGuild } = require('../utils/tierManager');
@@ -39,6 +52,47 @@ const { createExport, getExport, markUsed } = require('../utils/miloConfigStorag
 const FREE_ROLE_SETUP_LIMIT = 1;
 const FREE_BUILDER_LIMIT = 1;
 const FREE_REACTION_LIMIT = 2;
+
+// ─── In-memory state สำหรับแผงเลือก export (รอบ 14) ───────────────────────────
+//
+// 🔑 เก็บ state ไว้ในหน่วยความจำ (ไม่เขียนลงไฟล์) เพราะเป็นแค่ "ระหว่างกำลังเลือก" ของผู้ขาย
+// คนเดียว ไม่ต้องรอดบอทรีสตาร์ท — ใช้ pattern เดียวกับ sessions ใน commands/role-setup.js
+// (ดูคอมเมนต์ยาวในไฟล์นั้นว่าทำไมต้องผูก key กับทั้ง guildId และ userId พร้อมกัน ไม่ใช่
+// userId เดี่ยวๆ — กัน admin คนเดียวกันเปิดคำสั่งนี้ค้างไว้ในเซิร์ฟ A พร้อมเซิร์ฟ B แล้ว
+// สลับไปมา ทำให้ state ของเซิร์ฟนึงไปทับอีกเซิร์ฟในหน่วยความจำ)
+//
+// key (guildId_userId) → {
+//   welcome, goodbye:     snapshot ของการตั้งค่าที่มีอยู่จริงตอนเปิดแผง (object|null)
+//   roleSetups, builderDrafts: snapshot รายการทั้งหมดตอนเปิดแผง (array ของ object เดิมจาก storage)
+//   selWelcome, selGoodbye:    boolean — ผู้ขายติ๊กจะรวมไปด้วยไหม
+//   selRoleSetups, selBuilders: Set<string> — ชื่อที่ผู้ขายเลือกไว้
+// }
+//
+// ⚠️ จงใจไม่มี timeout/cleanup — เหมือนกับ Map อื่นๆ ในไฟล์ role-setup.js (ไม่มี TTL เขียนไว้
+// ที่นั่นเหมือนกัน) ถ้าผู้ขายเปิดแผงแล้วทิ้งไว้เฉยๆ โค้ด Discord เองจะทำให้ปุ่ม/dropdown ใช้ไม่ได้
+// อยู่แล้วหลังผ่านไปประมาณ 15 นาที (interaction token หมดอายุ) ส่วน state ที่ค้างในหน่วยความจำ
+// (ไม่กี่ร้อยไบต์ต่อรายการ) จะถูกเขียนทับทันทีถ้าผู้ขายกด /milo export-config ใหม่อีกครั้ง
+const exportSessions = new Map();
+
+function sessionKey(guildId, userId) {
+  return `${guildId}_${userId}`;
+}
+
+// customId ของทุกปุ่ม/dropdown ในแผงเลือก export — ขึ้นต้นด้วย 'milo_export_' ทั้งหมด
+// (ดู index.js ส่วน isButton()/isStringSelectMenu() ที่ route มาเรียก handleButton()/
+// handleSelectMenu() ของไฟล์นี้ตาม prefix นี้)
+const MX = {
+  TOGGLE_WELCOME: 'milo_export_toggle_welcome',
+  TOGGLE_GOODBYE: 'milo_export_toggle_goodbye',
+  SELECT_ROLE_SETUPS: 'milo_export_sel_rs',
+  SELECT_BUILDERS: 'milo_export_sel_bd',
+  CONFIRM: 'milo_export_confirm',
+  CANCEL: 'milo_export_cancel',
+};
+
+// ไอคอนหน้าชื่อใน dropdown เลือก role setup — ช่วยให้ผู้ขายแยกชนิดได้ไว ๆ โดยไม่ต้องเพิ่ม
+// locale key ใหม่ (ไอคอนสื่อความหมายได้เลยโดยไม่ต้องแปล)
+const ROLE_SETUP_TYPE_EMOJI = { menu: '📋', button: '🔘', reaction: '👍' };
 
 /**
  * หาชื่อที่ไม่ชนกับของเดิมในเซิร์ฟปลายทาง — ถ้าชื่อเดิมไม่ชนใช้ได้เลย ถ้าชนจะต่อท้าย
@@ -100,12 +154,100 @@ module.exports = {
     if (sub === 'export-config') return handleExport(interaction, guildId, t);
     if (sub === 'import-config') return handleImport(interaction, guildId, t);
   },
+
+  // 🆕 [รอบ 14] handler ของแผงเลือก export — ถูกเรียกจาก index.js ตาม customId prefix
+  // 'milo_export_' (ดูคอมเมนต์ที่ MX ด้านบน และส่วน isButton()/isStringSelectMenu() ใน index.js)
+  handleButton,
+  handleSelectMenu,
 };
 
 /**
- * /milo export-config — รวบรวมการตั้งค่า 3 ระบบ (welcome/goodbye, role setup, builder)
- * ของเซิร์ฟนี้ ณ ตอนนี้ เป็นรหัสเดียวใช้ครั้งเดียว แล้วตอบกลับให้ผู้ขายเอาไปใส่ในฟอร์ม
- * "รหัสการตั้งค่า Milo Bot" ของ Marketplace dashboard ได้เลย
+ * สร้างเนื้อหา + components ของ "แผงเลือก" export-config ตาม state ปัจจุบัน
+ * เรียกทั้งตอนเปิดแผงครั้งแรก (handleExport) และทุกครั้งที่ผู้ขายกดปุ่ม/เลือก dropdown
+ * (handleButton/handleSelectMenu) เพื่อ "วาดแผงใหม่" ให้ตรงกับ state ล่าสุดเสมอ
+ *
+ * @param {(key: string, replacements?: object) => string} t
+ * @param {object} state - ดู exportSessions ด้านบนว่า state มีอะไรบ้าง
+ * @param {string|null} errorKey - ใส่คีย์ error ถ้าต้องการโชว์แจ้งเตือนต่อท้าย intro (เช่น ยังไม่เลือกอะไรเลยแล้วกดสร้างรหัส)
+ * @returns {{ content: string, components: ActionRowBuilder[] }}
+ */
+function buildExportPanel(t, state, errorKey = null) {
+  const lines = [t('milo_config.export.panel_intro')];
+  if (errorKey) lines.push('', t(errorKey));
+  lines.push('', t('milo_config.export.panel_summary', {
+    welcome: state.selWelcome ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
+    goodbye: state.selGoodbye ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
+    roleSetups: state.selRoleSetups.size > 0 ? [...state.selRoleSetups].join(', ') : t('milo_config.export.panel_none'),
+    builders: state.selBuilders.size > 0 ? [...state.selBuilders].join(', ') : t('milo_config.export.panel_none'),
+  }));
+
+  const components = [];
+
+  // แถวที่ 1: ปุ่ม toggle welcome/goodbye — โชว์เฉพาะอันที่เซิร์ฟนี้มีตั้งค่าไว้จริงเท่านั้น
+  // (ถ้าเซิร์ฟยังไม่ตั้ง welcome เลย ก็ไม่มีอะไรให้ toggle ไม่ต้องโชว์ปุ่มเปล่าๆ ให้งง)
+  const toggleButtons = [];
+  if (state.welcome) {
+    toggleButtons.push(new ButtonBuilder()
+      .setCustomId(MX.TOGGLE_WELCOME)
+      .setLabel(state.selWelcome ? t('milo_config.export.panel_btn_welcome_on') : t('milo_config.export.panel_btn_welcome_off'))
+      .setStyle(state.selWelcome ? ButtonStyle.Success : ButtonStyle.Secondary));
+  }
+  if (state.goodbye) {
+    toggleButtons.push(new ButtonBuilder()
+      .setCustomId(MX.TOGGLE_GOODBYE)
+      .setLabel(state.selGoodbye ? t('milo_config.export.panel_btn_goodbye_on') : t('milo_config.export.panel_btn_goodbye_off'))
+      .setStyle(state.selGoodbye ? ButtonStyle.Success : ButtonStyle.Secondary));
+  }
+  if (toggleButtons.length > 0) components.push(new ActionRowBuilder().addComponents(...toggleButtons));
+
+  // แถวที่ 2: dropdown เลือก role setup (เฉพาะชื่อ) — โชว์เฉพาะถ้าเซิร์ฟนี้มีอย่างน้อย 1 ชุด
+  // ⚠️ Discord จำกัด select menu ไว้สูงสุด 25 ตัวเลือก/อัน — ตัดเหลือ 25 ชุดแรกถ้าเกิน (ในทาง
+  // ปฏิบัติไม่น่าถึง เพราะแผนฟรีจำกัด 1 ชุด/เซิร์ฟ และแผนพรีเมียมก็ไม่ได้ตั้งใจให้สร้างเกินนี้)
+  if (state.roleSetups.length > 0) {
+    const options = state.roleSetups.slice(0, 25).map(s => new StringSelectMenuOptionBuilder()
+      .setLabel(`${ROLE_SETUP_TYPE_EMOJI[s.type] || '•'} ${s.name}`.slice(0, 100))
+      .setValue(s.name)
+      .setDefault(state.selRoleSetups.has(s.name)));
+    components.push(new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(MX.SELECT_ROLE_SETUPS)
+        .setPlaceholder(t('milo_config.export.panel_select_role_setups_placeholder'))
+        .setMinValues(0)
+        .setMaxValues(options.length)
+        .addOptions(options)
+    ));
+  }
+
+  // แถวที่ 3: dropdown เลือก builder draft (เฉพาะชื่อ) — โชว์เฉพาะถ้าเซิร์ฟนี้มีอย่างน้อย 1 ชุด
+  if (state.builderDrafts.length > 0) {
+    const options = state.builderDrafts.slice(0, 25).map(d => new StringSelectMenuOptionBuilder()
+      .setLabel(d.name.slice(0, 100))
+      .setValue(d.name)
+      .setDefault(state.selBuilders.has(d.name)));
+    components.push(new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(MX.SELECT_BUILDERS)
+        .setPlaceholder(t('milo_config.export.panel_select_builders_placeholder'))
+        .setMinValues(0)
+        .setMaxValues(options.length)
+        .addOptions(options)
+    ));
+  }
+
+  // แถวสุดท้าย: ปุ่มยืนยัน/ยกเลิก — มีเสมอไม่ว่าจะเลือกอะไรไว้หรือยัง (กดยืนยันแล้วค่อยเช็ค
+  // ว่าเลือกอะไรไว้บ้างไหมอีกที ดู handleButton() กรณี MX.CONFIRM ด้านล่าง)
+  components.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(MX.CONFIRM).setLabel(t('milo_config.export.panel_btn_confirm')).setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(MX.CANCEL).setLabel(t('milo_config.export.panel_btn_cancel')).setStyle(ButtonStyle.Danger),
+  ));
+
+  return { content: lines.join('\n'), components };
+}
+
+/**
+ * /milo export-config — 🆕 [รอบ 14] เปิด "แผงเลือก" ให้ผู้ขายติ๊กเองว่าจะรวมอะไรบ้าง
+ * (welcome/goodbye/role setup ชุดไหน/builder ชุดไหน) แทนที่จะรวมทุกอย่างอัตโนมัติแบบเดิม —
+ * ตัวจบจริงๆ (สร้างรหัส) อยู่ที่ handleButton() กรณี MX.CONFIRM ด้านล่าง ไม่ใช่ที่นี่
  */
 async function handleExport(interaction, guildId, t) {
   const welcome = loadWelcomeConfig(guildId);
@@ -113,36 +255,127 @@ async function handleExport(interaction, guildId, t) {
   const roleSetups = listSetups(guildId);
   const builderDrafts = listDrafts(guildId);
 
-  // ไม่มีอะไรให้ export เลย — ไม่สร้างรหัสเปล่าๆ ทิ้งไว้ในระบบ
+  // ไม่มีอะไรให้ export เลย — ไม่ต้องเปิดแผงเปล่าๆ ให้งง ตอบตรงๆ ไปเลย
   if (!welcome && !goodbye && roleSetups.length === 0 && builderDrafts.length === 0) {
     return interaction.reply({ content: t('milo_config.export.nothing_to_export'), flags: MessageFlags.Ephemeral });
   }
 
-  // ⚠️ ล้าง channelId ออกก่อนเก็บเข้ารหัส — channelId เป็น id ห้องของเซิร์ฟผู้ขายเอง เอาไป
-  // ใช้ในเซิร์ฟอื่นไม่ได้แน่ๆ (ห้องนั้นไม่มีจริงในเซิร์ฟผู้ซื้อ) ต้องให้ผู้ซื้อเลือกห้องใหม่
-  // เองหลัง import เสมอ — ฟีเจอร์นี้ออกแบบไว้แล้วว่า enabled จะไม่ทำงานถ้า channelId เป็น
-  // null (ดู handleMemberAdd() ใน welcome-setup.js/goodbye-setup.js) กันพลาดส่งเข้าห้องผิด
-  const bundle = {
-    welcome: welcome ? { ...welcome, channelId: null } : null,
-    goodbye: goodbye ? { ...goodbye, channelId: null } : null,
-    roleSetups,
-    builderDrafts,
+  // snapshot ทุกอย่างไว้ใน state ตอนเปิดแผง ณ ตอนนี้ — ไม่ติ๊กอะไรไว้ล่วงหน้าเลยสักอัน
+  // (ขอบเขตที่คุยกับน้องหนาวแล้ว: ต้องเลือกเองทุกครั้ง ไม่ใช่ pre-select ให้ครบแล้วค่อยติ๊กออก)
+  const state = {
+    welcome, goodbye, roleSetups, builderDrafts,
+    selWelcome: false, selGoodbye: false,
+    selRoleSetups: new Set(), selBuilders: new Set(),
   };
-
-  const code = createExport(guildId, interaction.user.id, bundle);
-
-  // สรุปให้ผู้ขายเห็นชัดๆ ว่ารหัสนี้มีอะไรติดไปด้วยบ้าง (เผื่อลืมว่าตั้งอะไรไว้)
-  const summaryLines = [
-    welcome ? t('milo_config.export.summary_welcome_yes') : t('milo_config.export.summary_welcome_no'),
-    goodbye ? t('milo_config.export.summary_goodbye_yes') : t('milo_config.export.summary_goodbye_no'),
-    t('milo_config.export.summary_role_setups', { count: roleSetups.length }),
-    t('milo_config.export.summary_builders', { count: builderDrafts.length }),
-  ];
+  exportSessions.set(sessionKey(guildId, interaction.user.id), state);
 
   return interaction.reply({
-    content: t('milo_config.export.success', { code, summary: summaryLines.map(l => `• ${l}`).join('\n') }),
+    ...buildExportPanel(t, state),
     flags: MessageFlags.Ephemeral,
   });
+}
+
+/**
+ * ปุ่มในแผงเลือก export (toggle welcome/goodbye, ยืนยันสร้างรหัส, ยกเลิก)
+ * ถูกเรียกจาก index.js ตาม customId prefix 'milo_export_' (ดู MX ด้านบน)
+ */
+async function handleButton(interaction) {
+  const guildId = interaction.guildId;
+  const userId = interaction.user.id;
+  const t = createTranslator(getGuildLanguage(guildId));
+  const key = sessionKey(guildId, userId);
+  const state = exportSessions.get(key);
+
+  // แผงหมดอายุ (บอทรีสตาร์ท หรือผู้ขายเปิดทิ้งไว้นานจนข้อมูลในหน่วยความจำหาย) — บอกให้สั่งใหม่
+  if (!state) {
+    return interaction.update({ content: t('milo_config.export.panel_expired'), components: [] });
+  }
+
+  if (interaction.customId === MX.TOGGLE_WELCOME) {
+    state.selWelcome = !state.selWelcome;
+    return interaction.update(buildExportPanel(t, state));
+  }
+
+  if (interaction.customId === MX.TOGGLE_GOODBYE) {
+    state.selGoodbye = !state.selGoodbye;
+    return interaction.update(buildExportPanel(t, state));
+  }
+
+  if (interaction.customId === MX.CANCEL) {
+    exportSessions.delete(key);
+    return interaction.update({ content: t('milo_config.export.panel_cancelled'), components: [] });
+  }
+
+  if (interaction.customId === MX.CONFIRM) {
+    const nothingSelected = !state.selWelcome && !state.selGoodbye
+      && state.selRoleSetups.size === 0 && state.selBuilders.size === 0;
+
+    // ไม่ติ๊กอะไรไว้เลยแล้วกดสร้างรหัส — ไม่สร้างรหัสเปล่าๆ ทิ้งไว้ในระบบ โชว์แจ้งเตือนแล้ว
+    // วาดแผงเดิมกลับให้เลือกต่อได้เลย (ไม่ต้องสั่งคำสั่งใหม่)
+    if (nothingSelected) {
+      return interaction.update(buildExportPanel(t, state, 'milo_config.export.panel_error_nothing_selected'));
+    }
+
+    // กรองเอาเฉพาะชื่อที่เลือกไว้จาก snapshot ตอนเปิดแผง (ไม่ query storage ใหม่ — กันกรณี
+    // ผู้ขายแก้/ลบอะไรไปกลางทางระหว่างเลือก ให้ยึดตามที่เห็นในแผงตอนนั้นเป๊ะๆ)
+    const selectedRoleSetups = state.roleSetups.filter(s => state.selRoleSetups.has(s.name));
+    const selectedBuilders = state.builderDrafts.filter(d => state.selBuilders.has(d.name));
+
+    // ⚠️ ล้าง channelId ออกก่อนเก็บเข้ารหัส — เหตุผลเดียวกับโค้ดเดิม (ห้องของเซิร์ฟผู้ขายเอง
+    // เอาไปใช้ในเซิร์ฟผู้ซื้อไม่ได้แน่ๆ) ดูคอมเมนต์เดิมที่ handleExport() เวอร์ชันก่อนหน้า
+    const bundle = {
+      welcome: (state.selWelcome && state.welcome) ? { ...state.welcome, channelId: null } : null,
+      goodbye: (state.selGoodbye && state.goodbye) ? { ...state.goodbye, channelId: null } : null,
+      roleSetups: selectedRoleSetups,
+      builderDrafts: selectedBuilders,
+    };
+
+    const code = createExport(guildId, userId, bundle);
+    exportSessions.delete(key);
+
+    // สรุปให้ผู้ขายเห็นชัดๆ ว่ารหัสนี้มี "อะไรที่เลือกไว้จริง" ติดไปด้วยบ้าง — ไม่ใช่ทุกอย่าง
+    // ที่มีอยู่ในเซิร์ฟเหมือนโค้ดเดิมอีกต่อไป (นี่คือจุดสำคัญที่เปลี่ยนไปจากรอบก่อน)
+    const summaryLines = [
+      bundle.welcome ? t('milo_config.export.summary_welcome_yes') : t('milo_config.export.summary_welcome_no'),
+      bundle.goodbye ? t('milo_config.export.summary_goodbye_yes') : t('milo_config.export.summary_goodbye_no'),
+      t('milo_config.export.summary_role_setups', { count: selectedRoleSetups.length }),
+      t('milo_config.export.summary_builders', { count: selectedBuilders.length }),
+    ];
+
+    return interaction.update({
+      content: t('milo_config.export.success', { code, summary: summaryLines.map(l => `• ${l}`).join('\n') }),
+      components: [],
+    });
+  }
+}
+
+/**
+ * dropdown ในแผงเลือก export (เลือก role setup / builder draft ที่จะรวม)
+ * ถูกเรียกจาก index.js ตาม customId prefix 'milo_export_' (ดู MX ด้านบน)
+ */
+async function handleSelectMenu(interaction) {
+  const guildId = interaction.guildId;
+  const userId = interaction.user.id;
+  const t = createTranslator(getGuildLanguage(guildId));
+  const key = sessionKey(guildId, userId);
+  const state = exportSessions.get(key);
+
+  if (!state) {
+    return interaction.update({ content: t('milo_config.export.panel_expired'), components: [] });
+  }
+
+  // interaction.values = array ของ value (ชื่อ) ที่ผู้ขายติ๊กไว้ ณ ตอนกดส่ง dropdown นี้ —
+  // แทนที่ Set เดิมทั้งหมดเลย (ไม่ merge) เพราะ Discord ส่ง "สถานะล่าสุดทั้งหมด" ของ dropdown
+  // อันนั้นมาให้ทุกครั้ง ไม่ใช่แค่ส่วนที่เปลี่ยน
+  if (interaction.customId === MX.SELECT_ROLE_SETUPS) {
+    state.selRoleSetups = new Set(interaction.values);
+    return interaction.update(buildExportPanel(t, state));
+  }
+
+  if (interaction.customId === MX.SELECT_BUILDERS) {
+    state.selBuilders = new Set(interaction.values);
+    return interaction.update(buildExportPanel(t, state));
+  }
 }
 
 /**

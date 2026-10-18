@@ -201,9 +201,10 @@
         dashboard: 'Dashboard',
         addBot: 'Add Bot',
       },
-      // 🆕 [17 ต.ค. 2569] commands — แปลไว้เฉพาะหัวข้อใหญ่บนสุด (เหมือนแพทเทิร์นของ
-      // marketplace ด้านล่าง) ส่วนรายละเอียดคำสั่งแต่ละอันในหน้ายังเป็นภาษาไทยตายตัว —
-      // ดูคอมเมนต์หัวไฟล์ public/commands.html สำหรับเหตุผลเต็มๆ
+      // 🆕 [17 ต.ค. 2569] commands — ตอนแรกแปลไว้เฉพาะหัวข้อใหญ่บนสุด (เหมือน
+      // แพทเทิร์นของ marketplace ด้านล่าง) [🆕 18 ต.ค. 2569] น้องหนาวขอให้แปลครบทุก
+      // คำสั่งเป็นอังกฤษด้วย — ขยายเป็นคำแปลเต็มทุกจุดแล้ว (badge/คำอธิบาย/ขั้นตอน/
+      // กล่องเตือน ฯลฯ) ดูคอมเมนต์หัวไฟล์ public/commands.html สำหรับโครงที่ใช้
       commands: {
         _meta: {
           title: 'Milo Bot — All Commands',
@@ -212,6 +213,140 @@
         eyebrow: 'Command Guide',
         title: 'All Milo Bot Commands',
         lead: 'A detailed walkthrough of every command — jump to a section below, or just scroll.',
+        groups: {
+          decorate: {
+            label: '🎨 Server Styling',
+            note: 'Open to every member by default — if you want to limit it to admins only, set that up yourself under Discord Server Settings → Integrations → Milo Bot',
+          },
+          general: { label: '⚙️ General Settings' },
+          marketplace: { label: '🛒 Marketplace' },
+        },
+        badges: {
+          all: 'Everyone can use this',
+          manage: 'Requires Manage Server',
+          admin: 'Requires Administrator',
+        },
+        stepsLabel: {
+          default: 'How to use it',
+          createNew: 'How to use it (creating a new one)',
+        },
+        cmd: {
+          welcomeSetup: {
+            desc: 'Set up the new-member welcome card — automatically posts a nice-looking card every time someone joins your server',
+            steps: [
+              'Just type <code>/welcome-setup</code> — there\'s nothing to fill in here. The bot immediately opens a button-based control panel (visible only to you)',
+              'Use the buttons to pick the channel to post in, a background (your own image, a solid color, or a GIF on Premium), the welcome message, and the font',
+              'Turn it on/off from the same panel — if you haven\'t picked a channel yet, no card will be posted anywhere',
+            ],
+          },
+          goodbyeSetup: {
+            desc: 'Set up the goodbye card for members who leave — works exactly like <code>/welcome-setup</code>, just for "leaving" instead of "joining"',
+            steps: [
+              'Just type <code>/goodbye-setup</code> — you\'ll get the same control panel as welcome',
+              'Pick the channel, background, goodbye message, and font, then turn it on',
+            ],
+          },
+          roleSetup: {
+            desc: 'Build an auto-role system — members grab their own roles, no need for an admin to hand them out one by one',
+            opts: [
+              '<code>/role-setup new</code> — create a new set (give it a name + pick a type: <code>menu</code> dropdown, <code>button</code> buttons, <code>reaction</code> emoji reactions — menu/button are Premium-only; the free plan only gets reactions, up to 2 roles)',
+              '<code>/role-setup edit</code> — reopen an existing set to edit it (add/remove roles, change emoji, etc.)',
+              '<code>/role-setup list</code> — view every set you\'ve created in this server',
+              '<code>/role-setup delete</code> — delete a set you no longer need',
+            ],
+            steps: [
+              'Type <code>/role-setup new</code>, give it a name, and pick a type',
+              'Use the control panel buttons to add each role (pick an actual role from your server + the label/emoji for that button)',
+              'Post the message to the channel you want — members click/pick/react and get the role instantly',
+            ],
+            tip: 'The bot needs the <strong>Manage Roles</strong> permission, and the bot\'s own role must sit "above" the role(s) it\'s handing out, or it can\'t assign them (this is a Discord limitation, not a bug)',
+          },
+          builder: {
+            desc: 'A drag-and-drop message/announcement builder — no coding needed. Click to add blocks (text, images, dividers, link/role/channel buttons) and post a polished message',
+            opts: [
+              '<code>/builder new</code> — create a new draft (give it a name) — the free plan gets 1 draft per server, Premium is unlimited',
+              '<code>/builder edit</code> — reopen an existing draft to keep editing it',
+              '<code>/builder list</code> — view all your drafts',
+              '<code>/builder delete</code> — delete a draft you no longer need',
+            ],
+            steps: [
+              'Type <code>/builder new</code> and name your draft',
+              'Click to add blocks one at a time, filling in or uploading the content for each block',
+              'Post it to the channel you want once you\'re happy with it — you can keep editing anytime via <code>/builder edit</code>',
+            ],
+          },
+          fonts: {
+            desc: 'Upload your own font (.ttf/.otf) to use on this server\'s welcome/goodbye cards',
+            opts: [
+              '<code>/fonts list</code> — view every font (the bot\'s built-in fonts plus any you\'ve uploaded) and delete any you\'ve uploaded yourself',
+              '<code>/fonts upload</code> — attach a <code>.ttf</code> or <code>.otf</code> font file to upload it (up to 20 fonts per server)',
+            ],
+          },
+          uploadImage: {
+            desc: 'Upload an image to get a "permanent link" for use with other commands that need an image URL (like a card background)',
+            steps: [
+              'Type <code>/upload-image</code> and attach an image file (<code>.png .jpg .jpeg .webp .gif</code>)',
+              'The bot replies with a link — copy it into whatever field needs it. This link never expires',
+            ],
+          },
+          language: {
+            desc: 'Set the language the bot replies in for this server — choose between <code>English</code> and <code>ไทย</code> (Thai). This affects every message the bot sends from this point on',
+          },
+          premium: {
+            desc: 'Manage this server\'s Premium status — check your current status, subscribe/renew, or manage your subscription',
+          },
+          help: {
+            desc: 'Shows the full command list along with real examples of what the bot can make — a good starting point for anyone who just invited the bot',
+          },
+          ping: {
+            desc: 'Checks the bot\'s current latency — handy when you\'re wondering if it\'s responding slower than usual',
+          },
+          marketplace: {
+            desc: 'Open your own shop for Discord decoration/services through the <a href="/marketplace">/marketplace</a> web marketplace — list from Discord, and it shows up for sale on the website for others to buy',
+            opts: [
+              '<code>/marketplace sell</code> — create a new listing (name, price, description, category, cover image, and what you\'ll deliver — a digital file / a system or template link / a Milo Bot config code — you can also fill all of this in from the Dashboard instead of Discord)',
+              '<code>/marketplace mylistings</code> — view all of your own listings',
+              '<code>/marketplace remove</code> — close a listing (sold out/no longer selling — you can reopen it later)',
+              '<code>/marketplace markselling</code> — reopen a listing you previously closed',
+              '<code>/marketplace setpromptpay</code> — set/update your PromptPay number for receiving payment (for sellers in Thailand)',
+              '<code>/marketplace setpaymentlink</code> — set/update an international payment link like PayPal.me (for sellers outside Thailand)',
+            ],
+            info: 'The bot never touches anyone\'s money — buyers pay the seller directly (by scanning a QR code or clicking a link). The bot only handles notifications and auto-delivery once the seller confirms payment was received',
+          },
+        },
+        milo: {
+          eyebrow: 'Deep dive — the feature that confuses people the most',
+          intro: 'Used to "hand off a Milo Bot setup" from your server for someone else to use right away — like selling a Canva template where the buyer clicks Import and gets something ready to use, delivered through the <code>/marketplace</code> above',
+          seller: {
+            h4: '🧑‍💻 Seller side (the one creating the setup)',
+            sub: 'Do this in the server you\'ve already set up nicely, before listing it for sale',
+            steps: [
+              'Finish setting up the Welcome/Goodbye cards, Role setup, and/or Builder in your own server exactly as you plan to sell it',
+              'Type <code>/milo export-config</code> in that server (requires Administrator) — the bot opens a <strong>selection panel</strong> where you pick whether to include Welcome/Goodbye and choose exactly which role setup(s)/builder message(s) to sell (you\'re not forced to bundle everything in the server)',
+              'Once you\'ve picked what to include, hit <strong>"Create code"</strong> — the bot replies (visible only to you) with the generated code, e.g. <code>MILO-7K2X9QAB</code>, plus a summary of what\'s included — double-check it matches what you meant to sell',
+              'Paste that code into the "Milo Bot Configuration Key" field when listing it with <code>/marketplace sell</code> (or from the Dashboard)',
+            ],
+          },
+          buyer: {
+            h4: '🛍️ Buyer side (the one receiving the setup)',
+            sub: 'Do this after your payment goes through',
+            steps: [
+              'Pay for the listing on the Marketplace website as usual',
+              'The bot DMs you the code (e.g. <code>MILO-7K2X9QAB</code>) as soon as the seller confirms they received payment',
+              'Go to your own server, type <code>/milo import-config</code>, and paste the code into the <code>code</code> field (requires Administrator on that server)',
+              'The bot immediately installs the cards/role setups/builders bundled in that code, along with a summary of what got installed',
+            ],
+          },
+          warn: {
+            title: '⚠️ What to know before using this',
+            lines: [
+              'Each code can <strong>only be used once</strong> — once it\'s imported, that same code can\'t be used again (this stops one code from being resold an unlimited number of times)',
+              'Roles/channels bundled into the role setup and builder (role buttons, channel link buttons) still belong to the seller\'s original server and won\'t work until the buyer reassigns their own roles/channels via <code>/role-setup edit</code> / <code>/builder edit</code>',
+              'The Welcome/Goodbye posting channel is intentionally not carried over — buyers always need to pick their own channel again after importing',
+              'If the buyer\'s server is on the free plan, the system automatically trims whatever the free plan can\'t support anyway (like menu/button role setups, or reactions beyond 2 roles) instead of failing the whole import',
+            ],
+          },
+        },
       },
       home: {
         _meta: {
@@ -434,6 +569,140 @@
         eyebrow: 'คู่มือคำสั่ง',
         title: 'คำสั่งทั้งหมดของ Milo Bot',
         lead: 'รวมวิธีใช้คำสั่งทุกตัวแบบละเอียด ทีละขั้นตอน — เลือกหัวข้อด้านล่าง หรือเลื่อนดูได้เลย',
+        groups: {
+          decorate: {
+            label: '🎨 ตกแต่งเซิร์ฟ',
+            note: 'ค่าเริ่มต้นเปิดให้สมาชิกทุกคนใช้ได้ — ถ้าอยากจำกัดแค่แอดมิน ไปตั้งเองได้ที่ Discord Server Settings → Integrations → Milo Bot',
+          },
+          general: { label: '⚙️ ตั้งค่าทั่วไป' },
+          marketplace: { label: '🛒 Marketplace' },
+        },
+        badges: {
+          all: 'ใช้ได้ทุกคน',
+          manage: 'ต้องมี Manage Server',
+          admin: 'ต้องมี Administrator',
+        },
+        stepsLabel: {
+          default: 'วิธีใช้',
+          createNew: 'วิธีใช้ (สร้างใหม่)',
+        },
+        cmd: {
+          welcomeSetup: {
+            desc: 'ตั้งค่าการ์ดต้อนรับสมาชิกใหม่ — โพสต์การ์ดรูปสวยๆ อัตโนมัติทุกครั้งที่มีคนเข้าเซิร์ฟ',
+            steps: [
+              'พิมพ์ <code>/welcome-setup</code> เฉยๆ ไม่มีตัวเลือกให้กรอกตรงนี้ — บอทจะเด้งแผงควบคุมเป็นปุ่มกดมาให้ทันที (เห็นแค่คนที่พิมพ์คำสั่ง)',
+              'กดปุ่มเลือกห้องที่จะโพสต์การ์ด, พื้นหลัง (รูปของตัวเอง, สีพื้น หรือ GIF ถ้าเป็นพรีเมียม), ข้อความต้อนรับ, ฟอนต์',
+              'เปิด/ปิดการใช้งานได้จากปุ่มเดียวกัน — ถ้ายังไม่เลือกห้อง การ์ดจะยังไม่โพสต์ไปไหน',
+            ],
+          },
+          goodbyeSetup: {
+            desc: 'ตั้งค่าการ์ดอำลาสมาชิกที่ออกจากเซิร์ฟ — ทำงานแบบเดียวกับ <code>/welcome-setup</code> เป๊ะๆ แค่ฝั่ง "ออก" แทน "เข้า"',
+            steps: [
+              'พิมพ์ <code>/goodbye-setup</code> เฉยๆ — เจอแผงควบคุมแบบเดียวกับ welcome',
+              'เลือกห้อง, พื้นหลัง, ข้อความอำลา, ฟอนต์ แล้วเปิดใช้งาน',
+            ],
+          },
+          roleSetup: {
+            desc: 'สร้างระบบแจกยศอัตโนมัติ — สมาชิกกดรับยศเอง ไม่ต้องรอแอดมินแจกทีละคน',
+            opts: [
+              '<code>/role-setup new</code> — สร้างชุดใหม่ (ตั้งชื่อ + เลือกรูปแบบ: <code>menu</code> ดรอปดาวน์, <code>button</code> ปุ่มกด, <code>reaction</code> กด emoji — เมนู/ปุ่มเป็นของพรีเมียม ฟรีใช้ได้แค่ reaction สูงสุด 2 ยศ)',
+              '<code>/role-setup edit</code> — เปิดชุดเดิมมาแก้ (เพิ่ม/ลดยศ, เปลี่ยน emoji ฯลฯ)',
+              '<code>/role-setup list</code> — ดูรายชื่อชุดที่สร้างไว้ทั้งหมดในเซิร์ฟนี้',
+              '<code>/role-setup delete</code> — ลบชุดที่ไม่ใช้แล้ว',
+            ],
+            steps: [
+              'พิมพ์ <code>/role-setup new</code> ตั้งชื่อ + เลือกรูปแบบ',
+              'กดปุ่มในแผงควบคุมเพื่อเพิ่มยศแต่ละอัน (เลือกยศจริงของเซิร์ฟ + ข้อความ/emoji ของปุ่มนั้น)',
+              'กดโพสต์ข้อความลงห้องที่ต้องการ — สมาชิกกด/เลือก/reply ได้รับยศเองทันที',
+            ],
+            tip: 'บอทต้องมีสิทธิ์ <strong>Manage Roles</strong> และยศของบอทต้องอยู่ "สูงกว่า" ยศที่จะแจก ไม่งั้นแจกไม่ได้ (ข้อจำกัดของ Discord เอง ไม่ใช่บั๊ก)',
+          },
+          builder: {
+            desc: 'ตัวจัดวางข้อความ/ประกาศเอง ไม่ต้องเขียนโค้ด — คลิกเพิ่ม block (ข้อความ, รูป, เส้นคั่น, ปุ่มลิงก์/ยศ/ห้อง) แล้วโพสต์เป็นข้อความสวยๆ',
+            opts: [
+              '<code>/builder new</code> — สร้างฉบับร่างใหม่ (ตั้งชื่อ) — ฟรีมีได้ 1 ฉบับ/เซิร์ฟ พรีเมียมไม่จำกัด',
+              '<code>/builder edit</code> — เปิดฉบับร่างเดิมมาแก้ต่อ',
+              '<code>/builder list</code> — ดูรายชื่อฉบับร่างทั้งหมด',
+              '<code>/builder delete</code> — ลบฉบับร่างที่ไม่ใช้แล้ว',
+            ],
+            steps: [
+              'พิมพ์ <code>/builder new</code> ตั้งชื่อฉบับร่าง',
+              'กดปุ่มเพิ่ม block ทีละอัน แล้วกรอก/อัปโหลดเนื้อหาของ block นั้น',
+              'กดโพสต์ลงห้องที่ต้องการเมื่อพอใจแล้ว — แก้ต่อได้ตลอดผ่าน <code>/builder edit</code>',
+            ],
+          },
+          fonts: {
+            desc: 'อัปโหลดฟอนต์ของตัวเอง (.ttf/.otf) ไว้ใช้กับการ์ด welcome/goodbye และยศของเซิร์ฟนี้',
+            opts: [
+              '<code>/fonts list</code> — ดูฟอนต์ทั้งหมด (ฟอนต์มาตรฐานของบอท + ที่อัปโหลดเอง) เลือกลบฟอนต์ที่อัปโหลดเองได้',
+              '<code>/fonts upload</code> — แนบไฟล์ฟอนต์ <code>.ttf</code> หรือ <code>.otf</code> เพื่ออัปโหลด (สูงสุด 20 ฟอนต์/เซิร์ฟ)',
+            ],
+          },
+          uploadImage: {
+            desc: 'อัปโหลดรูปเพื่อเอา "ลิงก์ถาวร" มาใช้กับคำสั่งอื่นที่ต้องกรอกลิงก์รูป (เช่นพื้นหลังการ์ด)',
+            steps: [
+              'พิมพ์ <code>/upload-image</code> แล้วแนบไฟล์รูป (<code>.png .jpg .jpeg .webp .gif</code>)',
+              'บอทตอบลิงก์กลับมา — ก๊อปลิงก์นั้นไปวางในช่องที่ต้องการได้เลย ลิงก์นี้ไม่มีวันหมดอายุ',
+            ],
+          },
+          language: {
+            desc: 'ตั้งภาษาที่บอทใช้ตอบในเซิร์ฟนี้ — เลือกได้ระหว่าง <code>English</code> กับ <code>ไทย</code> มีผลกับทุกข้อความที่บอทตอบในเซิร์ฟนี้ตั้งแต่ตั้งค่า',
+          },
+          premium: {
+            desc: 'จัดการสถานะพรีเมียมของเซิร์ฟนี้ — ดูสถานะปัจจุบัน, สมัคร/ต่ออายุ, หรือจัดการการสมัครสมาชิก',
+          },
+          help: {
+            desc: 'โชว์รายการคำสั่งทั้งหมด พร้อมตัวอย่างสิ่งที่บอทสร้างได้จริง — เหมาะเป็นจุดเริ่มต้นสำหรับคนที่เพิ่งเชิญบอทเข้าเซิร์ฟ',
+          },
+          ping: {
+            desc: 'เช็กความหน่วง (latency) ของบอทตอนนี้ — ใช้ตอนสงสัยว่าบอทตอบช้าผิดปกติหรือเปล่า',
+          },
+          marketplace: {
+            desc: 'เปิดร้านขายของตกแต่ง/บริการสาย Discord ของตัวเอง ผ่านตลาดกลางบนหน้าเว็บ <a href="/marketplace">/marketplace</a> — ลงประกาศจากดิสคอร์ด แล้วไปโชว์ขายอยู่บนหน้าเว็บให้คนอื่นซื้อได้',
+            opts: [
+              '<code>/marketplace sell</code> — ลงประกาศขายใหม่ (ชื่อ, ราคา, คำอธิบาย, หมวดหมู่, รูปปก, และของที่จะส่ง — ไฟล์ดิจิทัล/ลิงก์ระบบหรือเทมเพลต/รหัสตั้งค่า Milo Bot — เลือกได้จากหน้าเว็บ Dashboard ด้วย ไม่ต้องกรอกทุกอย่างจากดิสคอร์ด)',
+              '<code>/marketplace mylistings</code> — ดูประกาศขายทั้งหมดของตัวเอง',
+              '<code>/marketplace remove</code> — ปิดประกาศ (ขายหมด/ไม่ขายแล้ว แต่ยังเปิดขายใหม่ได้ทีหลัง)',
+              '<code>/marketplace markselling</code> — เปิดประกาศที่เคยปิดไว้ให้กลับมาขายอีกครั้ง',
+              '<code>/marketplace setpromptpay</code> — ตั้ง/แก้เบอร์พร้อมเพย์รับเงิน (สำหรับผู้ขายในไทย)',
+              '<code>/marketplace setpaymentlink</code> — ตั้ง/แก้ลิงก์รับเงินสากล เช่น PayPal.me (สำหรับผู้ขายต่างชาติ)',
+            ],
+            info: 'บอทไม่แตะเงินของใครเลย — ผู้ซื้อจ่ายตรงเข้าบัญชีผู้ขาย (สแกน QR หรือกดลิงก์) บอทแค่ช่วยแจ้ง/ส่งของต่อให้อัตโนมัติหลังผู้ขายกดยืนยันว่าได้รับเงินแล้ว',
+          },
+        },
+        milo: {
+          eyebrow: 'เจาะลึก — ฟีเจอร์ที่คนงงกันบ่อยที่สุด',
+          intro: 'ใช้สำหรับ "ส่งต่อชุดตั้งค่า Milo Bot" ของเซิร์ฟตัวเองให้คนอื่นเอาไปใช้ต่อได้ทันที — คล้ายการขายเทมเพลต Canva ที่คนซื้อกด Import แล้วได้ของพร้อมใช้เลย โดยส่งผ่านตลาด <code>/marketplace</code> ด้านบน',
+          seller: {
+            h4: '🧑‍💻 ฝั่งคนขาย (ผู้สร้างชุดตั้งค่า)',
+            sub: 'ทำในเซิร์ฟที่ตั้งค่าไว้สวยแล้ว ก่อนเอาไปลงขาย',
+            steps: [
+              'ตั้งค่าการ์ด Welcome/Goodbye, Role setup, และ/หรือ Builder ในเซิร์ฟตัวเองให้เรียบร้อยตามที่จะขาย',
+              'พิมพ์ <code>/milo export-config</code> ในเซิร์ฟนั้น (ต้องมีสิทธิ์ Administrator) — บอทจะเปิด <strong>"แผงเลือก"</strong> ให้ติ๊กเองว่าจะรวม Welcome/Goodbye ไหม แล้วเลือก role setup/builder เฉพาะชุดที่จะขายจริง (ไม่บังคับรวมทุกอย่างที่มีในเซิร์ฟ)',
+              'เลือกเสร็จแล้วกด <strong>"สร้างรหัส"</strong> — บอทตอบ (เห็นแค่คนพิมพ์คำสั่ง) รหัสที่สร้าง เช่น <code>MILO-7K2X9QAB</code> พร้อมสรุปว่ารหัสนี้มีอะไรติดไปบ้าง — เช็คให้ตรงกับที่ตั้งใจขาย',
+              'เอารหัสนี้ไปกรอกในช่อง "รหัสการตั้งค่า Milo Bot" ตอนลงขายด้วย <code>/marketplace sell</code> (หรือจากหน้าเว็บ Dashboard)',
+            ],
+          },
+          buyer: {
+            h4: '🛍️ ฝั่งคนซื้อ (ผู้รับชุดตั้งค่า)',
+            sub: 'ทำหลังจ่ายเงินซื้อสำเร็จแล้ว',
+            steps: [
+              'จ่ายเงินซื้อสินค้าบนหน้าเว็บ Marketplace ตามปกติ',
+              'บอทส่งรหัส (เช่น <code>MILO-7K2X9QAB</code>) มาทาง DM ให้ทันทีหลังผู้ขายกดยืนยันว่าได้รับเงินแล้ว',
+              'ไปที่เซิร์ฟของตัวเอง พิมพ์ <code>/milo import-config</code> แล้ววางรหัสที่ได้ในช่อง <code>code</code> (ต้องมีสิทธิ์ Administrator ของเซิร์ฟนั้น)',
+              'บอทติดตั้งการ์ด/role setup/builder ที่ติดมากับรหัสให้ทันที พร้อมสรุปว่าติดตั้งอะไรไปบ้าง',
+            ],
+          },
+          warn: {
+            title: '⚠️ ข้อควรรู้ก่อนใช้งานจริง',
+            lines: [
+              'รหัสแต่ละอัน <strong>ใช้ได้ครั้งเดียวเท่านั้น</strong> — import ไปแล้วรหัสนั้นจะใช้ซ้ำไม่ได้อีก (กันขายรหัสเดียวซ้ำแบบไม่จำกัด)',
+              'ยศ/ห้องที่ติดมากับ role setup และ builder (ปุ่มแจกยศ, ปุ่มลิงก์ห้อง) <strong>ยังเป็นของเซิร์ฟผู้ขายเดิม</strong> ใช้งานไม่ได้จนกว่าผู้ซื้อจะไปกำหนดยศ/ห้องของเซิร์ฟตัวเองใหม่เองผ่าน <code>/role-setup edit</code> / <code>/builder edit</code>',
+              'ห้องโพสต์การ์ด Welcome/Goodbye ก็ไม่ติดมาด้วย (ตั้งใจ) — ผู้ซื้อต้องเลือกห้องของตัวเองใหม่เสมอหลัง import',
+              'ถ้าเซิร์ฟผู้ซื้อเป็นแผนฟรี ระบบจะตัดเฉพาะส่วนที่แผนฟรีทำไม่ได้อยู่แล้วให้อัตโนมัติ (เช่น role setup แบบเมนู/ปุ่ม, reaction เกิน 2 ยศ) ไม่ทำให้ import ล้มเหลวทั้งหมด',
+            ],
+          },
+        },
       },
       home: {
         _meta: {
