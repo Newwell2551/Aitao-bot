@@ -809,9 +809,18 @@
     var subcatAttr = item.subcategory ? ' data-subcat="' + escapeHtml(item.subcategory) + '"' : '';
     // 🆕 [12 ต.ค. 2569] ชื่อร้าน + badge ขายสำเร็จ X ครั้ง (ถ้ามี) — ร้านใหม่ (0 ครั้ง) ไม่โชว์
     // badge ให้รกเปล่าๆ โชว์แค่ชื่อร้านเฉยๆ พอ
+    //
+    // 🛠️ [19 ต.ค. 2569 — hotfix บั๊ก "ยอดขายเพี้ยนข้ามสินค้า"] ของเดิมตรงนี้ใช้
+    // item.sellerCompletedSales (ยอดขายรวม "ทั้งร้าน" ไม่ใช่แค่สินค้าชิ้นนี้) มาติดเป็นป้าย
+    // "ขายแล้ว N" บนการ์ดสินค้า — ปัญหาคือเลขนี้เป็นเลขก้อนเดียวกันซ้ำกันทุกการ์ดของร้าน
+    // เดียวกัน พอลูกค้าซื้อสินค้า "ชิ้น A" สำเร็จ 1 ออเดอร์ การ์ดของสินค้า "ชิ้น B/C/D..."
+    // ในร้านเดียวกันก็เด้งเลข +1 ไปพร้อมกันหมดทุกใบ ดูราวกับสินค้าชิ้นอื่นถูกขายไปด้วย ทั้งที่
+    // จริงๆ ขายแค่ชิ้นเดียว — ตอนนี้เปลี่ยนมาใช้ item.listingSalesCount แทน (ยอดขายเฉพาะ
+    // สินค้าชิ้นนี้ชิ้นเดียว จาก getListingSalesCount() ใน utils/marketplaceStorage.js — ดู
+    // server.js ส่วน GET /api/marketplace/listings) แก้ไขที่ต้นตอจริงๆ ไม่ใช่แค่เปลี่ยน UI
     var sellerLineHtml = escapeHtml(item.sellerName) +
-      (item.sellerCompletedSales > 0
-        ? ' <span style="color:#7fc9c0;">· ขายแล้ว ' + item.sellerCompletedSales + '</span>'
+      (item.listingSalesCount > 0
+        ? ' <span style="color:#7fc9c0;">· ขายแล้ว ' + item.listingSalesCount + '</span>'
         : '');
     return (
       '<div class="listing-card" data-id="' + id + '" data-cat="' + escapeHtml(item.category) + '"' + subcatAttr + ' onclick="openProductDetail(\'' + id + '\')" style="position:relative;height:165px;border-radius:4px;overflow:hidden;' + bgStyle + '">' +

@@ -110,6 +110,7 @@ const {
   createOrder,
   getOrder,
   getSellerStats,
+  getListingSalesCount,
   markOrderBuyerPaid,
   createReport,
   saveSellerPromptPay,
@@ -509,6 +510,13 @@ function createWebhookServer(client) {
         // ออกไปด้วย — เอาไปแทนที่ rating/reviews ปลอมๆ เดิมบนหน้าเว็บ เป็นคะแนนความ
         // น่าเชื่อถือร้านแบบข้อมูลจริง (ดู getSellerStats ใน utils/marketplaceStorage.js)
         const { completedSales } = getSellerStats(item.sellerId);
+        // 🆕 [19 ต.ค. 2569 — hotfix] และแยกส่งยอดขาย "เฉพาะสินค้าชิ้นนี้" ไปด้วยอีกค่าหนึ่ง
+        // (listingSalesCount) — เดิมหน้าเว็บเอา sellerCompletedSales (ยอดรวมทั้งร้าน) ไปโชว์
+        // เป็นป้าย "ขายแล้ว N" ติดบนการ์ดสินค้าทุกชิ้นของร้านเดียวกัน พอมีออเดอร์ไหนในร้าน
+        // ยืนยันสำเร็จ การ์ดสินค้า "ทุกชิ้น" ของร้านนั้นจะโชว์เลขเพิ่มพร้อมกันหมด ดูเหมือน
+        // สินค้าชิ้นอื่นถูกขายไปด้วยทั้งที่จริงๆ ไม่ใช่ (ดูคอมเมนต์เต็มๆ ที่ getListingSalesCount
+        // ใน utils/marketplaceStorage.js) — ตอนนี้การ์ดสินค้าต้องใช้เลขนี้แทนแล้ว
+        const { listingSalesCount } = getListingSalesCount(item.id);
         return {
           id: item.id,
           title: item.title,
@@ -524,6 +532,7 @@ function createWebhookServer(client) {
           imageFocusY: Number(item.imageFocusY ?? 50) || 50,
           sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
           sellerCompletedSales: completedSales,
+          listingSalesCount,
           createdAt: item.createdAt,
         };
       })
@@ -542,6 +551,9 @@ function createWebhookServer(client) {
     // 🆕 [12 ต.ค. 2569] เหมือนกับ endpoint รายการด้านบน — แนบจำนวนขายสำเร็จของร้านนี้
     // ไปด้วย ให้หน้า product detail โชว์เป็นคะแนนความน่าเชื่อถือร้านแทนของเดิมได้
     const { completedSales } = getSellerStats(listing.sellerId);
+    // 🆕 [19 ต.ค. 2569 — hotfix] เหมือนกับ endpoint รายการด้านบน — ส่ง listingSalesCount
+    // (เฉพาะสินค้าชิ้นนี้) แนบไปด้วย ดูคอมเมนต์เต็มๆ ที่ endpoint รายการด้านบน
+    const { listingSalesCount } = getListingSalesCount(listing.id);
     res.json({
       id: listing.id,
       title: listing.title,
@@ -554,6 +566,7 @@ function createWebhookServer(client) {
       imageFocusY: Number(listing.imageFocusY ?? 50) || 50,
       sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
       sellerCompletedSales: completedSales,
+      listingSalesCount,
     });
   });
 
