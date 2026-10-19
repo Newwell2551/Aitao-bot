@@ -117,23 +117,54 @@ const CATEGORY_PREVIEW_STYLES = {
 // ตรงๆ) ตั้งใจเพื่อไม่ให้ไปทับตัวแปรสีกลาง (--accent, --bg ฯลฯ) ของ dashboardShell.js ที่
 // ทุกหน้าแดชบอร์ดใช้ร่วมกัน — ถ้าประกาศทับที่ :root จะทำให้แถบข้างหลัก (sidebar) และหน้าอื่น
 // เปลี่ยนสีไปด้วยโดยไม่ตั้งใจ (คนละไฟล์ แก้ตรงนี้ไม่ควรกระทบที่อื่น)
+//
+// 🆕 [18 ต.ค. 2569 — "รอบ 15" รีดีไซน์ "Luxury Cyber-Dark"] น้องหนาวขอให้รีดีไซน์หน้านี้ใหม่
+// อีกรอบ ตามสเปคที่ให้มาละเอียดมาก (glassmorphism, Discord Blurple + neon emerald/cyan,
+// ตัวบอกขั้นตอนแบบมินิมอล, การ์ดพรีเมียมสำหรับ dropzone/Milo Bot config key ฯลฯ) — หลักการ
+// สำคัญที่ใช้ตลอดรอบนี้: "เปลี่ยนแค่ค่าตัวแปรสี/เอฟเฟกต์ ไม่เปลี่ยนชื่อ class/id ไหนเลย"
+// เพราะเกือบทุก selector ในไฟล์นี้อ้าง var(--mkt-xxx) อยู่แล้ว แค่เปลี่ยนค่าตัวแปรตรงนี้
+// ก็ไหลไปอัปเดตทั้งหน้าอัตโนมัติ (การ์ด/ปุ่ม/แท็บ/input ฯลฯ) โดยไม่ต้องไปแก้ทีละจุด — จุดที่
+// ต้องเพิ่มเอฟเฟกต์เอง (กระจกเบลอ/เรืองแสง) เพราะ backdrop-filter/box-shadow ใส่ผ่านตัวแปร
+// สีตรงๆไม่ได้ ถึงต้องเพิ่มทีละ selector ด้านล่างเป็นจุดๆ แทน
+//   - สีหลักเปลี่ยนเป็น Discord Blurple (#5865f2) ตามที่ขอเป๊ะๆ + เพิ่มตัวแปรใหม่ --mkt-cyan
+//     (neon cyan สำหรับไล่สี/เรืองแสงคู่กับ blurple) และ --mkt-border-neon (เส้นขอบจางๆสีฟ้า
+//     ม่วง ใช้กับกรอบ dropzone/เฟรมพรีวิวให้ดู "ไฮเทค" ขึ้นแทนเส้นขอบขาวเรียบๆเดิม)
+//   - พื้นหลังของกล่อง (--mkt-bg-card ฯลฯ) เปลี่ยนจากสีทึบเป็น rgba โปร่งแสง + เพิ่ม
+//     backdrop-filter: blur(...) ที่ตัวการ์ดจริงๆ (ประกาศผ่านตัวแปรไม่ได้ ต้องใส่ทีละ selector)
+//     ให้ได้เอฟเฟกต์กระจกฝ้า (glassmorphism) ลอยอยู่เหนือพื้นหลังไล่สีเข้มของทั้งหน้า
+//   - พื้นหลังทั้งหน้า (.mkt-page เอง) เปลี่ยนจากสีเรียบของ dashboardShell.js (--bg: #0a0e1a)
+//     เป็นไล่สี "deep space indigo → midnight obsidian" 3 ชั้นซ้อนกัน (radial-gradient ของ
+//     blurple/cyan มุมบน + linear-gradient มืดไล่ลงด้านล่าง) — ทำแค่ใน scope .mkt-page เท่านั้น
+//     เหมือนเดิม ไม่กระทบแถบข้างหลัก/หน้าอื่น
 const MARKETPLACE_STYLE = `
   .mkt-page {
-    --mkt-bg-card: #171a2b;
-    --mkt-bg-card-2: #1d2036;
-    --mkt-bg-sunken: #0d1120;
-    --mkt-border: rgba(255,255,255,0.09);
-    --mkt-border-strong: rgba(255,255,255,0.18);
-    --mkt-text-muted-2: #888db0;
-    --mkt-accent: #7c6ff4;
-    --mkt-accent-hover: #8d82ff;
-    --mkt-accent-soft: rgba(124,111,244,0.16);
-    --mkt-success: #2dd4a8;
-    --mkt-success-soft: rgba(45,212,168,0.14);
+    --mkt-bg-card: rgba(23,27,48,0.55);
+    --mkt-bg-card-2: rgba(16,19,38,0.62);
+    --mkt-bg-sunken: rgba(8,10,21,0.6);
+    --mkt-border: rgba(255,255,255,0.08);
+    --mkt-border-strong: rgba(255,255,255,0.17);
+    --mkt-border-neon: rgba(88,101,242,0.38);
+    --mkt-text-muted-2: #9aa3c9;
+    --mkt-accent: #5865f2;
+    --mkt-accent-hover: #707bff;
+    --mkt-accent-soft: rgba(88,101,242,0.18);
+    --mkt-cyan: #3fd6ff;
+    --mkt-cyan-soft: rgba(63,214,255,0.16);
+    --mkt-success: #2dd9ad;
+    --mkt-success-soft: rgba(45,217,173,0.16);
     --mkt-gold: #f5b942;
+    --mkt-glass-blur: blur(22px);
+
+    position: relative;
+    min-height: 100%;
+    background:
+      radial-gradient(circle at 18% -8%, rgba(88,101,242,0.26), transparent 52%),
+      radial-gradient(circle at 88% 2%, rgba(63,214,255,0.14), transparent 46%),
+      radial-gradient(circle at 46% 115%, rgba(45,217,173,0.07), transparent 52%),
+      linear-gradient(165deg, #05060f 0%, #0a0d20 42%, #05060c 100%);
   }
 
-  .mkt-shell { display: flex; flex-wrap: wrap; align-items: stretch; min-height: 100%; }
+  .mkt-shell { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: stretch; min-height: 100%; }
 
   /* ── แถบเมนูย่อย "Marketplace" — ซ้อนอยู่ข้างในหน้านี้เท่านั้น ไม่ใช่แถบข้างหลักของ
        แดชบอร์ด (อันนั้นยังอยู่ซ้ายสุดเหมือนเดิม ไม่ได้แก้ dashboardShell.js เลย) ไอเดีย
@@ -141,6 +172,8 @@ const MARKETPLACE_STYLE = `
   .mkt-subnav {
     flex: 0 0 208px; width: 208px; box-sizing: border-box; padding: 32px 14px;
     border-right: 1px solid var(--mkt-border); display: flex; flex-direction: column; gap: 3px;
+    background: linear-gradient(180deg, rgba(10,12,24,0.3), rgba(10,12,24,0.08));
+    backdrop-filter: var(--mkt-glass-blur); -webkit-backdrop-filter: var(--mkt-glass-blur);
   }
   .mkt-subnav-label {
     font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
@@ -152,8 +185,11 @@ const MARKETPLACE_STYLE = `
     cursor: pointer; font-family: inherit; text-align: left; width: 100%; transition: background 0.15s, color 0.15s;
   }
   .mkt-subnav-item:hover { background: rgba(255,255,255,0.045); color: var(--text); }
-  .mkt-subnav-item.is-active { background: var(--mkt-accent-soft); color: var(--text); }
-  .mkt-subnav-item.is-active svg { color: var(--mkt-accent); }
+  .mkt-subnav-item.is-active {
+    background: linear-gradient(135deg, var(--mkt-accent-soft), var(--mkt-cyan-soft));
+    color: var(--text); box-shadow: inset 2px 0 0 0 var(--mkt-accent), 0 0 18px -6px rgba(88,101,242,0.55);
+  }
+  .mkt-subnav-item.is-active svg { color: var(--mkt-accent); filter: drop-shadow(0 0 6px rgba(88,101,242,0.65)); }
   .mkt-subnav-item svg { color: var(--mkt-text-muted-2); flex: 0 0 auto; }
   .mkt-subnav-back {
     margin-top: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
@@ -166,13 +202,23 @@ const MARKETPLACE_STYLE = `
   .mkt-top-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .mkt-eyebrow {
     font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--mkt-accent);
+    color: var(--mkt-accent); text-shadow: 0 0 14px rgba(88,101,242,0.55);
   }
-  .mkt-lang-switch { display: flex; gap: 4px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 3px; }
+  .mkt-lang-switch { display: flex; gap: 4px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 3px; backdrop-filter: blur(10px); }
   .mkt-lang-switch .mkt-text-tab { padding: 5px 13px; border-radius: 999px; border-bottom: none; }
-  .mkt-lang-switch .mkt-text-tab[aria-selected="true"] { background: var(--mkt-accent); color: #fff; }
+  .mkt-lang-switch .mkt-text-tab[aria-selected="true"] {
+    background: linear-gradient(135deg, var(--mkt-accent), var(--mkt-cyan)); color: #fff;
+    box-shadow: 0 4px 14px -4px rgba(88,101,242,0.7);
+  }
 
-  .mkt-h1 { font-weight: 800; font-size: 28px; margin: 14px 0 0; color: var(--text); letter-spacing: -0.01em; }
+  /* 🆕 รอบ 15: หัวข้อใหญ่ของทุกแผง ไล่สี blurple→cyan แบบ gradient text ให้ดูพรีเมียมขึ้น
+     (background-clip: text) — มี fallback color ตรงๆไว้เผื่อเบราว์เซอร์เก่าไม่รองรับ */
+  .mkt-h1 {
+    font-weight: 800; font-size: 28px; margin: 14px 0 0; letter-spacing: -0.01em;
+    color: var(--text);
+    background: linear-gradient(100deg, #ffffff 15%, var(--mkt-cyan) 60%, var(--mkt-accent) 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
   .mkt-panel-subtitle { margin: 7px 0 0; max-width: 68ch; font-size: 13.5px; line-height: 1.7; color: var(--text-muted); }
   .mkt-panel-subtitle code { background: var(--mkt-accent-soft); color: var(--mkt-accent); padding: 2px 7px; border-radius: 4px; font-size: 12.5px; }
 
@@ -194,10 +240,15 @@ const MARKETPLACE_STYLE = `
   .mkt-disclosure-detail ul { margin: 6px 0 0; padding-left: 18px; }
   .mkt-disclosure-detail li { margin-bottom: 4px; }
 
-  /* ── การ์ดทั่วไป (Payment settings ฯลฯ) — ตามที่ขอ "subtle card borders and shadows" ── */
+  /* ── การ์ดทั่วไป (Payment settings ฯลฯ) — 🆕 รอบ 15: เปลี่ยนจากการ์ดพื้นทึบเป็นกระจกฝ้า
+       (glassmorphism) ลอยอยู่เหนือพื้นหลังไล่สีของทั้งหน้า — ขอบ/เงาเดิมยังอยู่ (subtle card
+       borders and shadows) แค่เพิ่ม backdrop-filter + เงา inset เส้นไฮไลต์บนให้ดู "ลอย" ── */
   .mkt-card {
-    background: var(--mkt-bg-card); border: 1px solid var(--mkt-border); border-radius: 16px;
-    padding: 26px 28px; box-shadow: 0 10px 28px -16px rgba(0,0,0,0.65); max-width: 640px;
+    background: linear-gradient(165deg, rgba(255,255,255,0.055), rgba(255,255,255,0.01)), var(--mkt-bg-card);
+    backdrop-filter: var(--mkt-glass-blur); -webkit-backdrop-filter: var(--mkt-glass-blur);
+    border: 1px solid var(--mkt-border); border-radius: 20px;
+    padding: 26px 28px; max-width: 640px;
+    box-shadow: 0 24px 56px -28px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.07);
   }
   .mkt-card-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--mkt-text-muted-2); margin-bottom: 6px; }
   .mkt-card h2 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: var(--text); }
@@ -205,12 +256,27 @@ const MARKETPLACE_STYLE = `
 
   .mkt-stat-grid { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 26px; }
   .mkt-stat-card {
-    background: var(--mkt-bg-card); border: 1px solid var(--mkt-border); border-radius: 16px; padding: 20px 22px;
-    flex: 1 1 210px; min-width: 190px; box-shadow: 0 10px 28px -16px rgba(0,0,0,0.65);
+    background: linear-gradient(165deg, rgba(255,255,255,0.055), rgba(255,255,255,0.01)), var(--mkt-bg-card);
+    backdrop-filter: var(--mkt-glass-blur); -webkit-backdrop-filter: var(--mkt-glass-blur);
+    border: 1px solid var(--mkt-border); border-radius: 18px; padding: 20px 22px;
+    flex: 1 1 210px; min-width: 190px;
+    box-shadow: 0 24px 56px -28px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.07);
     display: flex; flex-direction: column; gap: 12px;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
   }
-  .mkt-stat-icon { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; background: var(--mkt-accent-soft); color: var(--mkt-accent); }
-  .mkt-stat-value { font-size: 28px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+  .mkt-stat-card:hover {
+    transform: translateY(-3px); border-color: var(--mkt-border-neon);
+    box-shadow: 0 28px 64px -26px rgba(0,0,0,0.8), 0 0 28px -8px rgba(88,101,242,0.45), inset 0 1px 0 rgba(255,255,255,0.09);
+  }
+  .mkt-stat-icon {
+    width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto; background: linear-gradient(135deg, var(--mkt-accent-soft), var(--mkt-cyan-soft)); color: var(--mkt-accent);
+    box-shadow: 0 0 0 1px rgba(88,101,242,0.22), 0 0 18px -4px rgba(88,101,242,0.55);
+  }
+  .mkt-stat-value {
+    font-size: 28px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1;
+    text-shadow: 0 0 20px rgba(88,101,242,0.3);
+  }
   .mkt-stat-label { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 3px; }
 
   .mkt-shop-strip { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -222,23 +288,31 @@ const MARKETPLACE_STYLE = `
   /* ── แท็บแบบ segmented pill — ใช้ร่วมกันทั้งปุ่มสลับภาษา / ช่องทางรับเงิน / กรองประกาศ
        (เปลี่ยนแค่หน้าตา CSS เท่านั้น ของเดิมที่สลับด้วย aria-selected ผ่าน JS ยังทำงาน
        เหมือนเดิมทุกอย่าง ไม่ต้องแก้ script ใดๆ เลย) */
-  .mkt-tab-row { display: inline-flex; gap: 4px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 4px; }
+  .mkt-tab-row { display: inline-flex; gap: 4px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 4px; backdrop-filter: blur(10px); }
   .mkt-text-tab {
     background: none; border: none; cursor: pointer; font-family: inherit; border-radius: 999px;
     padding: 7px 16px; font-size: 12.5px; font-weight: 700; color: var(--mkt-text-muted-2);
-    border-bottom: none; transition: background 0.15s, color 0.15s;
+    border-bottom: none; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
   }
-  .mkt-text-tab[aria-selected="true"] { background: var(--mkt-accent); color: #fff; }
-  .mkt-text-tab:hover:not([aria-selected="true"]) { color: var(--text); }
+  .mkt-text-tab[aria-selected="true"] {
+    background: linear-gradient(135deg, var(--mkt-accent), var(--mkt-cyan)); color: #fff;
+    box-shadow: 0 4px 16px -4px rgba(88,101,242,0.7), 0 0 14px -4px rgba(63,214,255,0.55);
+  }
+  .mkt-text-tab:hover:not([aria-selected="true"]) { color: var(--text); background: rgba(255,255,255,0.05); }
+  .mkt-text-tab:active { transform: scale(0.96); }
 
   .mkt-pm-field-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; max-width: 420px; }
   .mkt-line-input {
-    flex: 1 1 auto; min-width: 0; box-sizing: border-box; background: var(--mkt-bg-sunken);
-    border: 1px solid var(--mkt-border); border-radius: 10px; color: var(--text); font-family: inherit;
-    font-size: 13.5px; padding: 10px 13px; font-variant-numeric: tabular-nums; transition: border-color 0.15s;
+    flex: 1 1 auto; min-width: 0; box-sizing: border-box; background: rgba(255,255,255,0.035);
+    border: 1.5px solid var(--mkt-border); border-radius: 10px; color: var(--text); font-family: inherit;
+    font-size: 13.5px; padding: 10px 13px; font-variant-numeric: tabular-nums;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
   .mkt-line-input::placeholder { color: var(--mkt-text-muted-2); }
-  .mkt-line-input:focus { outline: none; border-color: var(--mkt-accent); }
+  .mkt-line-input:focus {
+    outline: none; border-color: var(--mkt-accent); background: rgba(88,101,242,0.07);
+    box-shadow: 0 0 0 3px var(--mkt-accent-soft), 0 0 18px -6px rgba(88,101,242,0.55);
+  }
   .mkt-line-input:disabled { opacity: 0.5; cursor: not-allowed; }
   .mkt-btn-text { flex: 0 0 auto; background: none; border: none; color: var(--mkt-accent); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 2px; }
   .mkt-btn-text:hover { color: var(--mkt-accent-hover); }
@@ -261,30 +335,40 @@ const MARKETPLACE_STYLE = `
        — JS ตัวเดิมที่สลับคลาส is-active/is-done ทำงานเหมือนเดิม ไม่ต้องแก้ script เลย
        🆕 ตัดแถวจุดเล็กๆซ้ำซ้อน (mkt-wiz-dot1/2) ที่เคยลอยอยู่เหนือฟอร์มออก เพราะมันไม่เคย
        อัปเดตสถานะจริง (ดีไซน์เก่าค้างบั๊ก) — ตัวบอกขั้นตอนเหลือจุดเดียวชัดๆพอ */
-  .mkt-wiz-stepper { margin: 0 0 28px; }
-  .mkt-wiz-step-badge {
-    display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--mkt-accent); background: var(--mkt-accent-soft); border-radius: 999px;
-    padding: 4px 11px; margin-bottom: 12px;
-  }
-  .mkt-wiz-step-caption { font-size: 12.5px; color: var(--mkt-text-muted-2); margin: 6px 0 16px; }
-  .mkt-progress-rule { display: flex; align-items: center; gap: 10px; max-width: 360px; }
-  .mkt-p-node { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+  /* 🆕 รอบ 15: ตัวบอกขั้นตอน (stepper) ทำใหม่ให้มินิมอลตามสเปค — ซ่อนป้าย "STEP X OF 2" เดิม
+     ที่ดูเป็นกล่องหนาไปทั้งก้อน (JS ด้านล่างยังอัปเดต textContent ของมันตามปกตินะครับ แค่ไม่
+     โชว์ผลให้เห็นเฉยๆ ไม่กระทบ logic) เหลือแค่ "จุดเลขเรืองแสง เชื่อมด้วยเส้นบางๆ" ล้วนๆ
+     ตามที่ขอ ([1] —— [2]) ให้ดูสะอาด ไม่รกตา */
+  .mkt-wiz-stepper { margin: 0 0 30px; }
+  .mkt-wiz-step-badge { display: none; }
+  .mkt-wiz-step-caption { font-size: 12.5px; color: var(--mkt-text-muted-2); margin: 14px 0 0; letter-spacing: 0.01em; }
+  .mkt-progress-rule { display: flex; align-items: center; gap: 14px; max-width: 340px; }
+  .mkt-p-node { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
   .mkt-p-dot {
-    width: 24px; height: 24px; border-radius: 999px; flex: 0 0 auto; display: flex; align-items: center;
-    justify-content: center; font-size: 11px; font-weight: 800; color: var(--mkt-text-muted-2);
-    background: var(--mkt-bg-sunken); border: 1.5px solid var(--mkt-border-strong); transition: all 0.25s;
+    width: 30px; height: 30px; border-radius: 999px; flex: 0 0 auto; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 800; color: var(--mkt-text-muted-2);
+    background: rgba(255,255,255,0.03); border: 1.5px solid rgba(255,255,255,0.15); transition: all 0.3s ease;
   }
-  .mkt-p-node.is-active .mkt-p-dot { background: var(--mkt-accent); border-color: var(--mkt-accent); color: #fff; box-shadow: 0 0 0 4px var(--mkt-accent-soft); }
-  .mkt-p-node.is-done .mkt-p-dot { background: var(--mkt-success); border-color: var(--mkt-success); color: #0d1120; }
+  .mkt-p-node.is-active .mkt-p-dot {
+    background: linear-gradient(135deg, var(--mkt-accent), var(--mkt-cyan)); border-color: transparent; color: #fff;
+    box-shadow: 0 0 0 5px var(--mkt-accent-soft), 0 0 22px -2px rgba(88,101,242,0.75);
+  }
+  .mkt-p-node.is-done .mkt-p-dot {
+    background: linear-gradient(135deg, var(--mkt-success), var(--mkt-cyan)); border-color: transparent; color: #04241c;
+    box-shadow: 0 0 0 4px var(--mkt-success-soft), 0 0 18px -2px rgba(45,217,173,0.65);
+  }
   .mkt-p-node.is-done .mkt-p-dot .mkt-p-num { display: none; }
   .mkt-p-check { display: none; }
   .mkt-p-node.is-done .mkt-p-check { display: block; }
-  .mkt-p-text { font-size: 12px; font-weight: 600; color: var(--mkt-text-muted-2); white-space: nowrap; transition: color 0.2s; }
-  .mkt-p-node.is-active .mkt-p-text { color: var(--text); }
-  .mkt-p-node.is-done .mkt-p-text { color: var(--text-muted); }
-  .mkt-p-fill { flex: 1 1 auto; height: 3px; border-radius: 999px; background: var(--mkt-border); overflow: hidden; }
-  .mkt-p-fill::after { content: ''; display: block; height: 100%; width: 0%; background: var(--mkt-accent); transition: width 0.3s ease; }
+  .mkt-p-text { font-size: 12.5px; font-weight: 700; color: var(--mkt-text-muted-2); white-space: nowrap; transition: color 0.25s ease; letter-spacing: 0.01em; }
+  .mkt-p-node.is-active .mkt-p-text { color: var(--text); text-shadow: 0 0 16px rgba(88,101,242,0.45); }
+  .mkt-p-node.is-done .mkt-p-text { color: var(--mkt-success); }
+  .mkt-p-fill { flex: 1 1 auto; height: 2px; border-radius: 999px; background: rgba(255,255,255,0.09); overflow: visible; position: relative; }
+  .mkt-p-fill::after {
+    content: ''; display: block; height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--mkt-accent), var(--mkt-cyan)); transition: width 0.4s ease;
+    box-shadow: 0 0 10px 1px rgba(63,214,255,0.6);
+  }
   .mkt-p-fill.is-done::after { width: 100%; }
 
   /* ── โครง 50/50 split ตามที่ขอ: ซ้ายพรีวิวลอยตรึง (sticky) / ขวาฟอร์มเลื่อนไปตามหน้า ── */
@@ -292,10 +376,24 @@ const MARKETPLACE_STYLE = `
   .mkt-wiz-preview-pane { position: sticky; top: 24px; }
   .mkt-wiz-form-pane { min-width: 0; }
 
+  /* 🆕 รอบ 15: เฟรมพรีวิวสด — มุมโค้งมากขึ้น + เงาตกกระทบลึกขึ้น + "เรืองแสงรอบกรอบ" บางๆ
+     (ทำด้วย box-shadow ซ้อนหลายชั้นล้วนๆ ไม่ใช้ pseudo-element ลอยแยก กันพลาดไปชนกับ
+     position:sticky ของ .mkt-wiz-preview-pane ด้านบน) ให้ความรู้สึกเหมือนจอลอยอยู่กลางอากาศ */
   .mkt-frame-wrap {
+    position: relative;
     background: linear-gradient(180deg, var(--mkt-bg-card) 0%, var(--mkt-bg-card-2) 100%);
-    border: 1px solid var(--mkt-border-strong); border-radius: 18px; overflow: hidden;
-    box-shadow: 0 20px 44px -18px rgba(0,0,0,0.75); width: 100%;
+    backdrop-filter: var(--mkt-glass-blur); -webkit-backdrop-filter: var(--mkt-glass-blur);
+    border: 1px solid rgba(255,255,255,0.16); border-radius: 22px; overflow: hidden;
+    box-shadow:
+      0 30px 70px -26px rgba(0,0,0,0.8),
+      0 0 0 1px rgba(88,101,242,0.2),
+      0 0 50px -12px rgba(63,214,255,0.4);
+    width: 100%;
+    animation: mktFrameGlow 5s ease-in-out infinite;
+  }
+  @keyframes mktFrameGlow {
+    0%, 100% { box-shadow: 0 30px 70px -26px rgba(0,0,0,0.8), 0 0 0 1px rgba(88,101,242,0.2), 0 0 50px -12px rgba(63,214,255,0.4); }
+    50% { box-shadow: 0 30px 70px -26px rgba(0,0,0,0.8), 0 0 0 1px rgba(63,214,255,0.3), 0 0 60px -10px rgba(88,101,242,0.5); }
   }
   .mkt-live-tag {
     display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
@@ -320,13 +418,16 @@ const MARKETPLACE_STYLE = `
   .mkt-field-pair > .mkt-field { flex: 1 1 auto; min-width: 0; }
 
   .mkt-line-input {
-    flex: 1 1 auto; min-width: 0; box-sizing: border-box; background: var(--mkt-bg-sunken);
-    border: 1.5px solid var(--mkt-border); border-radius: 10px; color: var(--text); font-family: inherit;
+    flex: 1 1 auto; min-width: 0; box-sizing: border-box; background: rgba(255,255,255,0.035);
+    border: 1.5px solid var(--mkt-border); border-radius: 12px; color: var(--text); font-family: inherit;
     font-size: 13.5px; padding: 11px 14px; font-variant-numeric: tabular-nums;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
   .mkt-line-input::placeholder { color: var(--mkt-text-muted-2); }
-  .mkt-line-input:focus { outline: none; border-color: var(--mkt-accent); box-shadow: 0 0 0 3px var(--mkt-accent-soft); }
+  .mkt-line-input:focus {
+    outline: none; border-color: var(--mkt-accent); background: rgba(88,101,242,0.07);
+    box-shadow: 0 0 0 3px var(--mkt-accent-soft), 0 0 20px -6px rgba(88,101,242,0.6);
+  }
   .mkt-line-input:disabled { opacity: 0.5; cursor: not-allowed; }
   textarea.mkt-line-input { resize: vertical; font-family: inherit; min-height: 92px; }
 
@@ -335,15 +436,21 @@ const MARKETPLACE_STYLE = `
        🆕 หมายเหตุสำคัญ: สลับแค่ "หน้าตา/label" กับพรีวิวเท่านั้นนะครับ ตัวเลขที่ส่งไปจริง
        (name="price") ระบบฝั่งเซิร์ฟเวอร์ยังตีความเป็นบาทไทยเสมอ (ดูคอมเมนต์เต็มๆที่ท้ายไฟล์
        นี้/build-notes doc — ตัดสินใจแล้วว่ายังไม่ต่อระบบจ่ายเงินจริงเป็น USD เพราะ PromptPay
-       QR รองรับแต่บาทไทยเท่านั้น) เลยมีข้อความแจ้งเตือนเล็กๆใต้ช่องราคาด้วย ไม่ให้เข้าใจผิด */
-  .mkt-currency-toggle { display: inline-flex; gap: 3px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 3px; flex: 0 0 auto; }
+       QR รองรับแต่บาทไทยเท่านั้น) เลยมีข้อความแจ้งเตือนเล็กๆใต้ช่องราคาด้วย ไม่ให้เข้าใจผิด
+       🆕 รอบ 15: ปุ่มที่กำลังเลือกอยู่เปลี่ยนเป็น "แคปซูลเรืองแสง" ไล่สี blurple→cyan ตามสเปค
+       "vibrant neon underline or glowing capsule background" ที่ขอมา */
+  .mkt-currency-toggle { display: inline-flex; gap: 3px; background: rgba(255,255,255,0.045); border-radius: 999px; padding: 3px; flex: 0 0 auto; backdrop-filter: blur(10px); }
   .mkt-currency-btn {
     background: none; border: none; cursor: pointer; font-family: inherit; border-radius: 999px;
     padding: 4px 11px; font-size: 11.5px; font-weight: 700; color: var(--mkt-text-muted-2);
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
   }
-  .mkt-currency-btn[aria-selected="true"] { background: var(--mkt-accent); color: #fff; }
+  .mkt-currency-btn[aria-selected="true"] {
+    background: linear-gradient(135deg, var(--mkt-accent), var(--mkt-cyan)); color: #fff;
+    box-shadow: 0 4px 16px -4px rgba(88,101,242,0.75), 0 0 16px -4px rgba(63,214,255,0.6);
+  }
   .mkt-currency-btn:hover:not([aria-selected="true"]) { color: var(--text); }
+  .mkt-currency-btn:active { transform: scale(0.94); }
   .mkt-currency-note { font-size: 11px; color: var(--mkt-text-muted-2); margin-top: 8px; line-height: 1.55; }
 
   /* ── custom dropdown ── หน้าตาคุมเองทั้งหมด (ปุ่ม trigger + เมนูลอย) ไม่ใช่ default
@@ -354,43 +461,55 @@ const MARKETPLACE_STYLE = `
   .mkt-custom-select { position: relative; }
   .mkt-select-trigger {
     width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between;
-    gap: 8px; background: var(--mkt-bg-sunken); border: 1.5px solid var(--mkt-border); border-radius: 10px;
+    gap: 8px; background: rgba(255,255,255,0.035); border: 1.5px solid var(--mkt-border); border-radius: 12px;
     color: var(--text); font-family: inherit; font-size: 13.5px; padding: 11px 14px; cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
   .mkt-select-trigger-label.placeholder { color: var(--mkt-text-muted-2); }
   .mkt-select-trigger svg { flex: 0 0 auto; color: var(--mkt-text-muted-2); transition: transform 0.15s; }
   .mkt-select-trigger.is-open svg { transform: rotate(180deg); }
   .mkt-select-trigger:hover { border-color: var(--mkt-border-strong); }
-  .mkt-select-trigger.is-open { border-color: var(--mkt-accent); box-shadow: 0 0 0 3px var(--mkt-accent-soft); }
+  .mkt-select-trigger.is-open { border-color: var(--mkt-accent); box-shadow: 0 0 0 3px var(--mkt-accent-soft), 0 0 18px -6px rgba(88,101,242,0.5); }
   .mkt-select-trigger:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
   .mkt-select-menu {
-    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--mkt-bg-card-2);
-    border: 1px solid var(--mkt-border-strong); border-radius: 12px; box-shadow: 0 18px 38px -14px rgba(0,0,0,0.75);
+    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20;
+    background: linear-gradient(165deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01)), var(--mkt-bg-card-2);
+    backdrop-filter: var(--mkt-glass-blur); -webkit-backdrop-filter: var(--mkt-glass-blur);
+    border: 1px solid var(--mkt-border-strong); border-radius: 14px;
+    box-shadow: 0 22px 44px -16px rgba(0,0,0,0.8), 0 0 24px -10px rgba(88,101,242,0.4);
     padding: 6px; max-height: 240px; overflow-y: auto;
   }
   .mkt-select-option {
     display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
     font-family: inherit; font-size: 13px; color: var(--text); padding: 9px 11px; border-radius: 8px;
+    transition: background 0.15s ease;
   }
-  .mkt-select-option:hover { background: rgba(255,255,255,0.06); }
-  .mkt-select-option.is-selected { background: var(--mkt-accent-soft); color: var(--mkt-accent); font-weight: 700; }
+  .mkt-select-option:hover { background: rgba(255,255,255,0.07); }
+  .mkt-select-option.is-selected { background: linear-gradient(135deg, var(--mkt-accent-soft), var(--mkt-cyan-soft)); color: var(--mkt-accent); font-weight: 700; }
 
-  /* ── dropzone อัปโหลดไฟล์ ── กล่องเส้นประ+ไอคอนก้อนเมฆ แทนปุ่มเลือกไฟล์พื้นฐานของ
-       เบราว์เซอร์ที่โชว์ "เลือกไฟล์ ไม่ได้เลือกไฟล์ใด" (อ่านไม่รู้เรื่อง ไม่สวย) รองรับ
-       ลากไฟล์มาวาง (drag & drop) จริงๆด้วย ไม่ใช่แค่หน้าตา ── */
+  /* ── dropzone อัปโหลดไฟล์ ── 🆕 รอบ 15: รีดีไซน์เป็น "กล่องอัปโหลดของพรีเมียม" ตามสเปค —
+       เส้นประเปลี่ยนจากสีขาวจางๆ เป็นสีฟ้าม่วงเรืองแสง (--mkt-border-neon) + พื้นหลังไล่สีจางๆ
+       ด้านในกล่อง ให้ความรู้สึก "ไฮเทค" มากกว่าเดิม (ของเดิมที่รองรับลากไฟล์มาวางจริงจาก
+       mktInitDropzone() ด้านล่างยังทำงานเหมือนเดิม 100% แก้แค่หน้าตา) ── */
   .mkt-dropzone {
     display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-    gap: 6px; padding: 26px 16px; border-radius: 12px; border: 1.5px dashed var(--mkt-border-strong);
-    background: var(--mkt-bg-sunken); cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    gap: 6px; padding: 28px 16px; border-radius: 14px; border: 1.5px dashed var(--mkt-border-neon);
+    background: radial-gradient(circle at 50% 0%, rgba(88,101,242,0.09), transparent 65%), var(--mkt-bg-sunken);
+    cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   }
-  .mkt-dropzone:hover, .mkt-dropzone.is-dragover { border-color: var(--mkt-accent); background: var(--mkt-accent-soft); }
-  .mkt-dropzone svg { color: var(--mkt-text-muted-2); }
-  .mkt-dropzone:hover svg, .mkt-dropzone.is-dragover svg { color: var(--mkt-accent); }
+  .mkt-dropzone:hover, .mkt-dropzone.is-dragover {
+    border-color: var(--mkt-cyan); background: radial-gradient(circle at 50% 0%, rgba(63,214,255,0.14), transparent 65%), var(--mkt-accent-soft);
+    box-shadow: 0 0 0 1px rgba(63,214,255,0.25), 0 0 26px -6px rgba(63,214,255,0.5);
+  }
+  .mkt-dropzone svg { color: var(--mkt-accent); filter: drop-shadow(0 0 6px rgba(88,101,242,0.4)); transition: color 0.2s ease, filter 0.2s ease; }
+  .mkt-dropzone:hover svg, .mkt-dropzone.is-dragover svg { color: var(--mkt-cyan); filter: drop-shadow(0 0 10px rgba(63,214,255,0.65)); }
   .mkt-dropzone-text { font-size: 12.5px; font-weight: 600; color: var(--text-muted); line-height: 1.5; max-width: 280px; }
   .mkt-dropzone-sub { font-size: 11px; color: var(--mkt-text-muted-2); }
   .mkt-dropzone.is-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
-  .mkt-file-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--mkt-bg-sunken); border: 1px solid var(--mkt-border); }
+  .mkt-file-chip {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.035); border: 1px solid var(--mkt-border);
+  }
   .mkt-file-chip-thumb {
     width: 34px; height: 34px; border-radius: 8px; flex: 0 0 auto; background-size: cover; background-position: center;
     background-color: var(--mkt-bg-card-2); display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--mkt-text-muted-2);
@@ -424,13 +543,50 @@ const MARKETPLACE_STYLE = `
     to { opacity: 1; transform: translateY(0); }
   }
 
+  /* 🆕 [18 ต.ค. 2569 — รอบ 15] การ์ดพรีเมียมของช่อง "รหัสการตั้งค่า Milo Bot" ตามสเปคที่ขอ —
+     "dedicated, premium input card... small Milo Bot avatar/icon next to the label... sleek
+     Paste Key button nested inside the right edge" — avatar ใช้ botAvatarUrl จริงที่ส่งมา
+     (ไม่ใช่ไอคอนสมมติ) ปุ่ม Paste อ่าน clipboard ของผู้ขายจริงด้วย navigator.clipboard
+     (ดู JS ที่เพิ่มใกล้ตัวแปร digitalConfigKeyInput ด้านล่าง) — ถ้าเบราว์เซอร์ไม่ให้สิทธิ์
+     อ่าน clipboard (เช่น Safari บางเวอร์ชัน/ไม่ได้ใช้ HTTPS) ปุ่มจะเงียบๆไม่ทำอะไร ผู้ขายยัง
+     พิมพ์/วางเองด้วย Ctrl+V ปกติได้เหมือนเดิม ไม่มี error โผล่ให้งง */
+  .mkt-milo-card {
+    background: linear-gradient(165deg, rgba(88,101,242,0.12), rgba(63,214,255,0.04)), var(--mkt-bg-sunken);
+    border: 1px solid rgba(88,101,242,0.32); border-radius: 16px; padding: 14px 14px 16px;
+    box-shadow: 0 0 0 1px rgba(88,101,242,0.1), 0 18px 36px -22px rgba(0,0,0,0.65);
+  }
+  .mkt-milo-card-head { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
+  .mkt-milo-avatar {
+    width: 22px; height: 22px; border-radius: 999px; flex: 0 0 auto; object-fit: cover;
+    box-shadow: 0 0 0 2px rgba(88,101,242,0.45), 0 0 14px -2px rgba(63,214,255,0.6);
+  }
+  .mkt-milo-card-label { font-size: 12px; font-weight: 700; color: var(--text); letter-spacing: 0.01em; }
+  .mkt-milo-input-wrap { position: relative; }
+  .mkt-milo-input { width: 100%; padding-right: 96px; }
+  .mkt-paste-btn {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: linear-gradient(135deg, var(--mkt-accent), var(--mkt-cyan)); color: #fff;
+    border: none; border-radius: 999px; padding: 6px 12px; font-size: 11.5px; font-weight: 700;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-family: inherit;
+    box-shadow: 0 6px 16px -6px rgba(88,101,242,0.6);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+  .mkt-paste-btn:hover { transform: translateY(-50%) scale(1.06); filter: brightness(1.08); box-shadow: 0 10px 22px -6px rgba(88,101,242,0.8), 0 0 16px -2px rgba(63,214,255,0.7); }
+  .mkt-paste-btn:active { transform: translateY(-50%) scale(0.95); }
+  .mkt-paste-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
   .mkt-wizard-nav { display: flex; align-items: center; gap: 18px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--mkt-border); }
   .mkt-btn-primary {
-    font-family: inherit; font-size: 13.5px; font-weight: 700; border-radius: 10px; border: none;
-    padding: 12px 26px; cursor: pointer; background: var(--mkt-accent); color: #fff; display: inline-flex;
-    align-items: center; gap: 8px; transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
+    font-family: inherit; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: none;
+    padding: 12px 26px; cursor: pointer; background: linear-gradient(135deg, var(--mkt-accent), var(--mkt-cyan));
+    color: #fff; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 10px 26px -10px rgba(88,101,242,0.6);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
   }
-  .mkt-btn-primary:hover { background: var(--mkt-accent-hover); transform: translateY(-1px); box-shadow: 0 10px 22px -8px rgba(124,111,244,0.6); }
+  .mkt-btn-primary:hover {
+    transform: translateY(-2px) scale(1.015); filter: brightness(1.08);
+    box-shadow: 0 16px 36px -10px rgba(88,101,242,0.75), 0 0 26px -6px rgba(63,214,255,0.6);
+  }
   .mkt-btn-primary:active { transform: scale(0.97) translateY(0); }
   .mkt-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .mkt-btn-link { background: none; border: none; color: var(--mkt-text-muted-2); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 5px; }
@@ -445,10 +601,16 @@ const MARKETPLACE_STYLE = `
   .mkt-listings-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
   .mkt-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); gap: 16px; margin-top: 18px; }
   .mkt-item-card {
-    background: var(--mkt-bg-card); border: 1px solid var(--mkt-border); border-radius: 14px; overflow: hidden;
-    box-shadow: 0 10px 24px -14px rgba(0,0,0,0.6); display: flex; flex-direction: column; transition: border-color 0.15s;
+    background: linear-gradient(165deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)), var(--mkt-bg-card);
+    backdrop-filter: var(--mkt-glass-blur); -webkit-backdrop-filter: var(--mkt-glass-blur);
+    border: 1px solid var(--mkt-border); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 18px 40px -20px rgba(0,0,0,0.7); display: flex; flex-direction: column;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   }
-  .mkt-item-card:hover { border-color: var(--mkt-border-strong); }
+  .mkt-item-card:hover {
+    border-color: var(--mkt-border-neon); transform: translateY(-3px);
+    box-shadow: 0 22px 48px -20px rgba(0,0,0,0.75), 0 0 24px -10px rgba(88,101,242,0.4);
+  }
   .mkt-item-card.is-closed { opacity: 0.62; }
   .mkt-item-thumb { height: 112px; position: relative; background-size: cover; background-position: center; }
   .mkt-item-cat {
@@ -479,7 +641,10 @@ const MARKETPLACE_STYLE = `
     color: var(--mkt-text-muted-2); cursor: pointer; text-decoration: none; font-family: inherit;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
-  .mkt-icon-btn:hover { background: var(--mkt-accent-soft); color: var(--mkt-accent); border-color: var(--mkt-accent); }
+  .mkt-icon-btn:hover {
+    background: var(--mkt-accent-soft); color: var(--mkt-accent); border-color: var(--mkt-accent);
+    box-shadow: 0 0 14px -4px rgba(88,101,242,0.6);
+  }
   .mkt-icon-btn.is-danger:hover { background: rgba(255,154,162,0.12); color: #ff9aa2; border-color: rgba(255,154,162,0.4); }
 
   @media (max-width: 880px) {
@@ -737,8 +902,11 @@ function paymentMethodSectionHtml(seller, user, guildId) {
  *   ประกาศเดิม (null = โหมด "สร้างใหม่" ตามปกติ) — ต้อง resolve imageUrl แล้วก่อนส่งมาที่นี่
  *   (ผ่าน resolveListingAssets ที่ server.js) ฟอร์มจะ pre-fill ทุกช่องด้วยข้อมูลเดิม และ
  *   เปลี่ยน action/ปุ่ม submit ให้ไปทาง route "update" แทน "listings" (สร้างใหม่)
+ * @param {string} botAvatarUrl 🆕 [18 ต.ค. 2569 — รอบ 15] avatar จริงของ Aitao Bot — ใช้แค่
+ *   โชว์เป็นไอคอนเล็กๆข้าง label ของการ์ด "Milo Bot config key" เท่านั้น (ค่าเดียวกับที่ส่งให้
+ *   dashboardShell.js ใช้วาด sidebar อยู่แล้ว ไม่ได้ไปคิวรี่ใหม่/เพิ่ม request ใดๆเลย)
  */
-function sellWizardHtml(categories, canSell, guildId, sellerDisplayName, editingListing) {
+function sellWizardHtml(categories, canSell, guildId, sellerDisplayName, editingListing, botAvatarUrl) {
   const categoryOptionsHtml = Object.entries(categories)
     .map(([value, info]) => `<option value="${escapeHtml(value)}">${escapeHtml(info.label)}</option>`)
     .join('');
@@ -982,9 +1150,20 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName, editing
 
               <!-- 🆕 [15 ต.ค. 2569 — รอบ 11] "รหัสการตั้งค่า Milo Bot" — ผู้ขายกรอกรหัสที่ได้จาก
                    คำสั่ง /milo export-config มาที่นี่ ระบบจะส่งรหัสนี้ให้ผู้ซื้อทาง DM อัตโนมัติ
-                   ทันทีหลังจ่ายเงิน เหมือนไฟล์/ลิงก์ด้านบนเป๊ะๆ -->
-              <div class="mkt-dm-group" id="mkt-digitalfile-miloconfig-group" style="display:none;">
-                <input class="mkt-line-input" type="text" name="digitalConfigKey" id="mkt-digital-config-input" maxlength="120" placeholder="เช่น MILO-SETUP-XXXXXX" ${disabledAttr} />
+                   ทันทีหลังจ่ายเงิน เหมือนไฟล์/ลิงก์ด้านบนเป๊ะๆ
+                   🆕 รอบ 15: ยกระดับเป็น "การ์ดพรีเมียม" ของตัวเอง (.mkt-milo-card) ตามสเปคที่
+                   ขอ — avatar จริงของบอทอยู่ข้าง label + ปุ่ม "📋 Paste Key" ฝังขอบขวาของช่อง
+                   กรอก (อ่าน clipboard ด้วย navigator.clipboard ดู JS mktInitPasteButton
+                   ด้านล่าง) ชื่อ field/id ของ input เดิมทุกตัวไม่เปลี่ยน -->
+              <div class="mkt-dm-group mkt-milo-card" id="mkt-digitalfile-miloconfig-group" style="display:none;">
+                <div class="mkt-milo-card-head">
+                  <img src="${escapeHtml(botAvatarUrl || '')}" alt="" class="mkt-milo-avatar" />
+                  <span class="mkt-milo-card-label" data-i18n="deliveryMethodMiloConfig">Milo Bot config key</span>
+                </div>
+                <div class="mkt-milo-input-wrap">
+                  <input class="mkt-line-input mkt-milo-input" type="text" name="digitalConfigKey" id="mkt-digital-config-input" maxlength="120" placeholder="เช่น MILO-SETUP-XXXXXX" ${disabledAttr} />
+                  <button type="button" class="mkt-paste-btn" id="mkt-digital-config-paste-btn" ${disabledAttr} data-i18n="pasteKeyButtonLabel">📋 Paste Key</button>
+                </div>
                 <div class="mkt-currency-note" data-i18n="digitalConfigKeyNote">Use the /milo export-config command in Discord to get this key, then paste it here. We'll send it to the buyer so they can run /milo import-config right after payment.</div>
               </div>
             </div>
@@ -1059,6 +1238,29 @@ function sellWizardHtml(categories, canSell, guildId, sellerDisplayName, editing
       // 🆕 รอบ 11: ตัวเลือกที่ 3 "รหัสการตั้งค่า Milo Bot" — ช่องกรอก+กลุ่มเดียวกับไฟล์/ลิงก์ด้านบน
       var digitalConfigKeyInput = document.getElementById('mkt-digital-config-input');
       var digitalConfigGroup = document.getElementById('mkt-digitalfile-miloconfig-group');
+
+      // 🆕 [18 ต.ค. 2569 — รอบ 15] ปุ่ม "📋 Paste Key" ของการ์ด Milo Bot config key — กดแล้ว
+      // อ่านค่าจาก clipboard ของผู้ขายเองด้วย navigator.clipboard.readText() มาเติมให้ช่องกรอก
+      // ทันที (ไม่ต้องกด Ctrl+V เอง) — เบราว์เซอร์บางตัว/บาง context (ไม่ใช่ HTTPS, Safari
+      // บางเวอร์ชัน) อาจไม่มี API นี้ หรือผู้ขายกดปฏิเสธสิทธิ์อ่าน clipboard ไว้ — ทั้ง 2 เคส
+      // จับด้วย try/catch แล้วเงียบไว้เฉยๆ (ไม่โชว์ error ให้งง) ผู้ขายยังกด Ctrl+V ลงช่องเอง
+      // ได้ตามปกติเหมือนไม่มีปุ่มนี้อยู่เลย ไม่กระทบอะไร
+      var pasteConfigKeyBtn = document.getElementById('mkt-digital-config-paste-btn');
+      if (pasteConfigKeyBtn && navigator.clipboard && navigator.clipboard.readText) {
+        pasteConfigKeyBtn.addEventListener('click', function () {
+          navigator.clipboard.readText().then(function (text) {
+            if (!text) return;
+            digitalConfigKeyInput.value = text.trim();
+            digitalConfigKeyInput.focus();
+            clearStepError();
+          }).catch(function () {
+            // ผู้ขายไม่ได้ให้สิทธิ์อ่าน clipboard — ปล่อยเฉยๆ ให้พิมพ์/วางเองตามปกติ
+          });
+        });
+      } else if (pasteConfigKeyBtn) {
+        // เบราว์เซอร์นี้ไม่รองรับ Clipboard API เลย — ซ่อนปุ่มไปเฉยๆ (ยังพิมพ์/วางเองได้ปกติ)
+        pasteConfigKeyBtn.style.display = 'none';
+      }
 
       // ── ส่วนต่างๆ ของพรีวิว (สเต็ป 1 = การ์ด, สเต็ป 2 = ดีเทล) ──
       var pcBadge = document.getElementById('mkt-wiz-pc-badge');
@@ -1837,6 +2039,8 @@ function mktI18nScript() {
     // 🆕 [15 ต.ค. 2569 — รอบ 11] ตัวเลือกที่ 3: "รหัสการตั้งค่า Milo Bot" — สำหรับผู้ขายที่ขาย
     // setup ที่สร้างด้วย Milo Bot เอง (เหมือนขายเทมเพลต Canva ให้คนเอาไปแก้ต่อ)
     deliveryMethodMiloConfig: { en: 'Milo Bot config key', th: 'รหัสการตั้งค่า Milo Bot (Milo Bot Configuration Key)' },
+    // 🆕 [18 ต.ค. 2569 — รอบ 15] ปุ่มวางรหัสจาก clipboard บนการ์ด Milo Bot config key
+    pasteKeyButtonLabel: { en: '📋 Paste Key', th: '📋 วางรหัส' },
     digitalLinkNote: {
       en: 'This link will be sent to the buyer automatically as soon as payment is confirmed.',
       th: 'ระบบจะส่งลิงก์นี้ให้ผู้ซื้อทันทีหลังจากการชำระเงินเสร็จสิ้น',
@@ -2083,7 +2287,7 @@ function renderMarketplaceDashboardPage({ guild, user, botAvatarUrl, botName, se
             <h1 class="mkt-h1" style="margin-top:2px;font-size:21px;" data-i18n="${editingListing ? 'editListingHeading' : 'createListingHeading'}">${editingListing ? 'Edit Listing' : 'Create New Listing'}</h1>
           </div>
         </div>
-        ${sellWizardHtml(categories, canSell, guild.id, user.username, editingListing)}
+        ${sellWizardHtml(categories, canSell, guild.id, user.username, editingListing, botAvatarUrl)}
       </div>
 
     </div>

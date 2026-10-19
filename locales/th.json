@@ -959,7 +959,7 @@
       "summary_role_setups": "Role setup: รวม {count} ชุด",
       "summary_builders": "ข้อความ builder: รวม {count} ชุด",
       "success": "✅ **สร้างรหัสเรียบร้อยแล้วครับ — ใช้ได้ครั้งเดียวเท่านั้น:**\n```\n{code}\n```\nรหัสนี้มีสิ่งเหล่านี้รวมอยู่ด้วยครับ:\n{summary}\n\nเอารหัสนี้ไปแปะในช่อง \"รหัสการตั้งค่า Milo Bot (Milo Bot Configuration Key)\" ของฟอร์มลงขายใน Marketplace ได้เลยครับ หรือจะส่งให้ผู้ซื้อตรงๆ ก็ได้ — รหัสนี้ใช้ได้ครั้งเดียวเท่านั้นนะครับ พอมีใครสั่ง `/milo import-config` ด้วยรหัสนี้สำเร็จแล้ว รหัสจะใช้ซ้ำไม่ได้อีก",
-      "panel_intro": "เลือกสิ่งที่จะรวมในรหัสนี้ครับ — ไม่มีอะไรติ๊กไว้ล่วงหน้าเลย ต้องเลือกเองทุกครั้งนะครับ:",
+      "panel_intro": "เลือกสิ่งที่จะรวมในรหัสนี้ครับ:",
       "panel_summary": "ตอนนี้เลือกไว้ — Welcome: {welcome} | Goodbye: {goodbye} | Role setup: {roleSetups} | Builder: {builders}",
       "panel_yes": "✅ เลือกแล้ว",
       "panel_no": "➖ ไม่เลือก",
