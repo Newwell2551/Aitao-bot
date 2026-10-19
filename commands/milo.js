@@ -31,7 +31,7 @@
 
 const {
   SlashCommandBuilder, PermissionFlagsBits, MessageFlags,
-  ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
   StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
 } = require('discord.js');
 const { createTranslator } = require('../utils/i18n');
@@ -162,29 +162,65 @@ module.exports = {
 };
 
 /**
- * สร้างเนื้อหา + components ของ "แผงเลือก" export-config ตาม state ปัจจุบัน
+ * สร้าง embed + components ของ "แผงเลือก" export-config ตาม state ปัจจุบัน
  * เรียกทั้งตอนเปิดแผงครั้งแรก (handleExport) และทุกครั้งที่ผู้ขายกดปุ่ม/เลือก dropdown
  * (handleButton/handleSelectMenu) เพื่อ "วาดแผงใหม่" ให้ตรงกับ state ล่าสุดเสมอ
+ *
+ * 🆕 [18 ต.ค. 2569 รอบ 16] เปลี่ยนจาก plain-text message (content ล้วนๆ) มาเป็น
+ * Discord Embed + ปุ่ม/เมนูที่ไล่สีตามสถานะ (toggle on = เขียว, off = เทา) ตามสเปคที่
+ * น้องหนาวขอ — ให้ความรู้สึก "พรีเมียม" มากขึ้น อ่านง่ายขึ้น ไม่ต้องไล่อ่าน text block
+ * ยาวๆ เพื่อรู้ว่าตัวเองติ๊กอะไรไว้บ้าง (เห็นจาก field ของ embed + สีปุ่มตรงๆ)
+ *
+ * ⚠️ สำคัญ: ต้องส่ง `content: ''` กลับไปด้วยเสมอ (ไม่ใช่แค่ไม่ใส่ content เฉยๆ) เพราะ
+ * `interaction.update()` แก้ไขข้อความแบบ "partial" — ถ้าไม่ส่ง content ไปเลย ข้อความเดิม
+ * (ก่อนจะมี embed) จะค้างโชว์อยู่เหนือ embed ต่อไป กลายเป็นซ้อนกันดูรก
  *
  * @param {(key: string, replacements?: object) => string} t
  * @param {object} state - ดู exportSessions ด้านบนว่า state มีอะไรบ้าง
  * @param {string|null} errorKey - ใส่คีย์ error ถ้าต้องการโชว์แจ้งเตือนต่อท้าย intro (เช่น ยังไม่เลือกอะไรเลยแล้วกดสร้างรหัส)
- * @returns {{ content: string, components: ActionRowBuilder[] }}
+ * @returns {{ content: string, embeds: EmbedBuilder[], components: ActionRowBuilder[] }}
  */
 function buildExportPanel(t, state, errorKey = null) {
-  const lines = [t('milo_config.export.panel_intro')];
-  if (errorKey) lines.push('', t(errorKey));
-  lines.push('', t('milo_config.export.panel_summary', {
-    welcome: state.selWelcome ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
-    goodbye: state.selGoodbye ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
-    roleSetups: state.selRoleSetups.size > 0 ? [...state.selRoleSetups].join(', ') : t('milo_config.export.panel_none'),
-    builders: state.selBuilders.size > 0 ? [...state.selBuilders].join(', ') : t('milo_config.export.panel_none'),
-  }));
+  // คำอธิบายบนสุดของ embed — intro ปกติ + (ถ้ามี) แจ้งเตือน error แบบ blockquote ให้เด่นขึ้น
+  const descriptionLines = [t('milo_config.export.panel_intro')];
+  if (errorKey) descriptionLines.push('', `> ${t(errorKey)}`);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2) // Discord Blurple — สีหลักของทั้งแผง ตามสเปคที่ขอ
+    .setTitle(t('milo_config.export.panel_title'))
+    .setDescription(descriptionLines.join('\n'))
+    .addFields(
+      {
+        name: t('milo_config.export.field_welcome'),
+        value: state.selWelcome ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
+        inline: true,
+      },
+      {
+        name: t('milo_config.export.field_goodbye'),
+        value: state.selGoodbye ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
+        inline: true,
+      },
+      {
+        name: t('milo_config.export.field_role_setups'),
+        value: state.selRoleSetups.size > 0 ? [...state.selRoleSetups].join(', ') : t('milo_config.export.panel_none'),
+        inline: false,
+      },
+      {
+        name: t('milo_config.export.field_builders'),
+        value: state.selBuilders.size > 0 ? [...state.selBuilders].join(', ') : t('milo_config.export.panel_none'),
+        inline: false,
+      },
+    )
+    .setFooter({ text: t('milo_config.export.panel_footer') });
 
   const components = [];
 
   // แถวที่ 1: ปุ่ม toggle welcome/goodbye — โชว์เฉพาะอันที่เซิร์ฟนี้มีตั้งค่าไว้จริงเท่านั้น
   // (ถ้าเซิร์ฟยังไม่ตั้ง welcome เลย ก็ไม่มีอะไรให้ toggle ไม่ต้องโชว์ปุ่มเปล่าๆ ให้งง)
+  // สีปุ่ม: เลือกไว้ (true) = Success (เขียว) + ป้าย 🟢, ไม่เลือก (false) = Secondary (เทา) + ป้าย
+  // ⚫ — ตั้งใจเลือก Secondary แทน Danger (แดง) สำหรับสถานะ "ยังไม่เลือก" เพราะสีแดงควรเก็บไว้
+  // ใช้กับปุ่ม Cancel/ปุ่มทำลายข้อมูลเท่านั้น (ตามแพทเทิร์นเดิมของทั้งบอท) ไม่ใช่สถานะปุ่ม toggle
+  // ปกติ — ไม่อย่างนั้นผู้ขายอาจเข้าใจผิดว่า "ไม่เลือก" แปลว่ามีอะไรผิดพลาด
   const toggleButtons = [];
   if (state.welcome) {
     toggleButtons.push(new ButtonBuilder()
@@ -234,14 +270,17 @@ function buildExportPanel(t, state, errorKey = null) {
     ));
   }
 
-  // แถวสุดท้าย: ปุ่มยืนยัน/ยกเลิก — มีเสมอไม่ว่าจะเลือกอะไรไว้หรือยัง (กดยืนยันแล้วค่อยเช็ค
-  // ว่าเลือกอะไรไว้บ้างไหมอีกที ดู handleButton() กรณี MX.CONFIRM ด้านล่าง)
+  // แถวสุดท้าย (แยกเป็นแถวของตัวเองล้วนๆ ตามสเปค): ปุ่มยืนยัน/ยกเลิก — มีเสมอไม่ว่าจะเลือก
+  // อะไรไว้หรือยัง (กดยืนยันแล้วค่อยเช็คว่าเลือกอะไรไว้บ้างไหมอีกที ดู handleButton()
+  // กรณี MX.CONFIRM ด้านล่าง) — Confirm = Primary (น้ำเงิน) + ✨, Cancel = Danger (แดง) + ✖️
   components.push(new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(MX.CONFIRM).setLabel(t('milo_config.export.panel_btn_confirm')).setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(MX.CANCEL).setLabel(t('milo_config.export.panel_btn_cancel')).setStyle(ButtonStyle.Danger),
   ));
 
-  return { content: lines.join('\n'), components };
+  // content: '' ตั้งใจส่งเป็น string เปล่าเสมอ (ไม่ใช่ปล่อยว่างไว้) — กัน content เก่าค้างซ้อน
+  // กับ embed ตามที่อธิบายไว้ใน docblock ด้านบน
+  return { content: '', embeds: [embed], components };
 }
 
 /**
