@@ -317,8 +317,29 @@
             <span data-i18n="nav.addBot">Add Bot</span>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
+          <!-- 🆕 [19 ต.ค. 2569] ปุ่มเมนูมือถือ (hamburger) — โชว์เฉพาะจอ ≤860px (ดู
+               @media ท้าย public/nav.css) กดแล้ว public/nav.js (ฟังก์ชัน initMobileNav)
+               จะเติม class "is-open" ให้ตัวเองกับ #mobileNavPanel ด้านล่าง -->
+          <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="เปิดเมนู" aria-expanded="false">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+          </button>
         </div>
       </nav>
+
+      <!-- 🆕 [19 ต.ค. 2569] แผงเมนูมือถือ — โชว์ลิงก์ชุดเดียวกับ .center-links ด้านบน
+           (ที่โดนซ่อนบนจอเล็ก) ให้กดได้ครบทุกหน้าแม้บนมือถือ — อยู่นอก <nav> แต่ยังอยู่ใน
+           .site-nav-wrap (position:sticky) เพื่อให้ position:absolute ของแผงนี้ลอยอ้างอิง
+           จากตำแหน่งแถบเมนูพอดี -->
+      <div class="mobile-nav-panel" id="mobileNavPanel">
+        <a href="/" class="nav-link active" data-i18n="nav.home">Home</a>
+        <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
+        <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
+        <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
+        <a href="/commands" class="nav-link" data-i18n="nav.commands">Commands</a>
+        <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+      </div>
     </div>
 
     <!-- 🆕 auth widget (ปุ่ม "Log in" หรือ avatar+เมนู dropdown) — public/nav.js เป็นคนเติม

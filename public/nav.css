@@ -118,6 +118,93 @@
   .site-nav .lang-btn .lang-label { display: none; }
 }
 
+/* 🆕 [19 ต.ค. 2569] ปุ่มเมนูมือถือ (hamburger) + แผงเมนูมือถือ
+   ───────────────────────────────────────────────────────────────────────
+   ที่มา: น้องหนาวถามว่า "เห็นแถบด้านบนไหม ui อะไรต่างๆ หายหมด ต้องทำปุ่ม
+   เฉพาะมือถือไหม" — ตอบว่าใช่ครับ ต้องทำ เพราะด้านบน (@media max-width:860px)
+   สั่งซ่อน .center-links (ลิงก์เมนูกลางทั้ง 6 อัน: Features, Pricing, Commands,
+   Marketplace ฯลฯ) ไปตรงๆ เฉยๆ โดยไม่เคยมีการใส่ทางเลือกอื่นแทนเลย แปลว่าคนที่
+   เข้าเว็บจากมือถือ (จอ ≤860px) จะกดลิงก์พวกนี้ไม่ได้เลยตั้งแต่แรก ไม่ใช่บั๊กใหม่
+   จากการแก้ hero แต่เป็นของเดิมที่ยังไม่เคยทำส่วนทดแทนไว้
+
+   วิธีแก้: เพิ่มปุ่ม "hamburger" (สามขีดกลายเป็นกากบาทตอนเปิด) ไว้มุมขวาของ
+   แถบเมนู โชว์เฉพาะจอ ≤860px กดแล้วจะมีแผงเมนู (.mobile-nav-panel) หล่นลงมา
+   โชว์ลิงก์ชุดเดียวกับ .center-links ให้กดได้ครบทุกหน้า — ใช้ CSS/JS ชุดเดียว
+   กันทุกหน้าเพราะทุกหน้า <link> ไฟล์นี้ไฟล์เดียวอยู่แล้ว (ดูคอมเมนต์หัวไฟล์) */
+
+.site-nav .mobile-menu-btn {
+  display: none; /* ปกติซ่อนไว้ก่อน จะโชว์เฉพาะจอเล็กผ่าน media query ด้านล่างสุด */
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(154, 162, 196, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+/* เส้นขีดทั้ง 3 เส้นของปุ่ม hamburger — ใช้ transform หมุน/ย้ายตำแหน่งตอนเปิด
+   ให้กลายเป็นรูปกากบาท (X) แทนที่จะสลับรูปภาพ เบากว่าและ smooth กว่า */
+.site-nav .mobile-menu-btn .bar {
+  display: block;
+  width: 16px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: #f3f1fb;
+  transition: transform .2s ease, opacity .2s ease;
+}
+.site-nav .mobile-menu-btn.is-open .bar:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.site-nav .mobile-menu-btn.is-open .bar:nth-child(2) { opacity: 0; }
+.site-nav .mobile-menu-btn.is-open .bar:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+/* แผงเมนูที่หล่นลงมาตอนกดปุ่ม hamburger — เกาะอยู่กับ .site-nav-wrap ซึ่งเป็น
+   position:sticky (ทำหน้าที่เป็น containing block ให้ position:absolute ลูกๆ
+   ของมันลอยอ้างอิงจากตัวมันเองพอดี ไม่หลุดไปอ้างอิงจากทั้งหน้าเว็บ) */
+.mobile-nav-panel {
+  display: none; /* ปิดอยู่ก่อน โชว์ตอนมี class is-open (nav.js เป็นคนเติม/ลบ class ให้) */
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 24px;
+  right: 24px;
+  /* ⚠️ [19 ต.ค. 2569] z-index ต้องสูงกว่า .auth-widget-corner (40) ไม่งั้นตอนจอแคบกว่า
+     1320px ที่ auth widget สลับมาเป็น position:static ลอยอยู่ใต้แถบเมนูพอดี (ดูคอมเมนต์
+     .auth-widget-corner ด้านบน) ปุ่ม "Log in"/avatar จะไปซ้อนทับบังลิงก์แรกๆ ในแผงเมนูนี้
+     (เจอบั๊กนี้ตอนทดสอบด้วย Playwright ที่ 390px เลยแก้ไว้ตรงนี้) */
+  z-index: 45;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  background: rgba(15, 20, 36, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.mobile-nav-panel.is-open { display: flex; }
+
+.mobile-nav-panel .nav-link {
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #e5e8fa;
+  text-decoration: none;
+}
+.mobile-nav-panel .nav-link:hover { background: rgba(255, 255, 255, 0.06); }
+.mobile-nav-panel .nav-link.active {
+  color: #f3f1fb;
+  background: rgba(74, 90, 168, 0.25);
+}
+
+@media (max-width: 860px) {
+  .site-nav .mobile-menu-btn { display: flex; }
+}
+
 /* 🆕 [23 ก.ย. 2569 รอบที่ 3] จอที่ไม่ได้กว้างมากๆ (จอแล็ปท็อปทั่วไป 1280/1366 รวมถึงมือถือ/
    แท็บเล็ต) — วงรีเมนูจะกว้างเกือบเต็มจอ (ขอบวงรีชิดกับขอบจอเกือบสนิท เพราะ padding ของ
    .site-nav-wrap แค่ 24px) ทำให้ไม่เหลือที่ว่างพอให้ปุ่ม login แบบ position:fixed ลอยที่มุม
@@ -127,7 +214,15 @@
    ของหน้าเว็บตามที่ขอ */
 @media (max-width: 1320px) {
   .auth-widget-corner {
-    position: static;
+    /* ⚠️ [19 ต.ค. 2569] ใช้ position:relative (ไม่ใช่ static เหมือนเดิม) + z-index ต่ำกว่า
+       .site-nav-wrap (30) ชัดเจน — เหตุผล: ตอนทดสอบเมนูมือถือใหม่ (.mobile-nav-panel)
+       พบว่าถ้าปล่อย position:static ไว้ ปุ่ม "Log in"/avatar จะ "ลอยทับ" บังแผงเมนูมือถือ
+       อยู่เสมอไม่ว่าจะตั้ง z-index เท่าไหร่ก็ตาม เพราะ position:static ไม่สนใจ z-index เลย
+       (ตามสเปก CSS) เลยต้องเปลี่ยนมาใช้ position:relative แทน (ยังอยู่ในโฟลว์ปกติเหมือนเดิม
+       ไม่กระทบ layout) เพื่อให้ z-index เทียบกับ .site-nav-wrap ได้ตรงๆ แล้วตั้งให้ต่ำกว่า
+       เพื่อให้แผงเมนูมือถือ (ลูกของ .site-nav-wrap) ลอยทับอยู่เหนือเสมอตอนเปิด */
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: flex-end;
     max-width: 1080px;

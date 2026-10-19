@@ -203,9 +203,62 @@
       });
   }
 
+  // 🆕 [19 ต.ค. 2569] เมนูมือถือ (hamburger) ───────────────────────────────
+  // จับคู่กับ CSS ใน nav.css (.mobile-menu-btn / .mobile-nav-panel) — ปุ่มกับ
+  // แผงเมนูนี้ต้องมี HTML อยู่ในหน้าแต่ละหน้าอยู่แล้ว (id="mobileMenuBtn" กับ
+  // id="mobileNavPanel" ใน .site-nav-wrap) ฟังก์ชันนี้แค่มาทำให้มันกดได้จริง
+  function initMobileNav() {
+    const btn = document.getElementById('mobileMenuBtn');
+    const panel = document.getElementById('mobileNavPanel');
+    if (!btn || !panel) return; // หน้านี้ไม่มีเมนูมือถือ (ไม่ควรเกิด แต่กันไว้ไม่ error)
+
+    function closeMenu() {
+      panel.classList.remove('is-open');
+      btn.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    function toggleMenu() {
+      const willOpen = !panel.classList.contains('is-open');
+      panel.classList.toggle('is-open', willOpen);
+      btn.classList.toggle('is-open', willOpen);
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    }
+
+    // กดปุ่ม hamburger → เปิด/ปิดแผงเมนู (stopPropagation กันไม่ให้ไปโดน listener
+    // "คลิกนอกแผง → ปิด" ด้านล่างทำงานซ้อนกันจนเปิดแล้วปิดทันทีในคลิกเดียว)
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleMenu();
+    });
+
+    // กดลิงก์ไหนในแผงเมนู → ปิดแผงทันที (กันไม่ให้แผงค้างโชว์อยู่หลังเปลี่ยนหน้า)
+    panel.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', closeMenu);
+    });
+
+    // คลิกที่อื่นนอกแผง/นอกปุ่ม → ปิด (พฤติกรรมมาตรฐานของเมนู dropdown)
+    document.addEventListener('click', function (e) {
+      if (!panel.contains(e.target) && !btn.contains(e.target)) closeMenu();
+    });
+
+    // กด Esc → ปิด
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMenu();
+    });
+
+    // ขยายจอกลับมากว้างเกิน breakpoint (860px) ระหว่างที่แผงเปิดค้างอยู่ (เช่น
+    // หมุนจอ/ย่อ-ขยายหน้าต่าง) → ปิดแผงอัตโนมัติ กันไม่ให้ไปค้างทับ .center-links
+    // ที่กลับมาโชว์ปกติแล้วบนจอกว้าง
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 860) closeMenu();
+    });
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAuthWidget);
+    document.addEventListener('DOMContentLoaded', initMobileNav);
   } else {
     initAuthWidget();
+    initMobileNav();
   }
 })();
