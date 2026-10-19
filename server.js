@@ -130,6 +130,12 @@ const {
   MAX_PRICE_THB,
 } = require('./utils/marketplaceStorage');
 const { generatePromptPayQrBuffer } = require('./utils/promptpayQr');
+// 🆕 [19 ต.ค. 2569] ตรวจสอบสลิปโอนเงินจริงผ่าน EasySlip API (ข้อ 4 "Secure Slip Verification"
+// ที่น้องหนาวขอ) — ⚠️ อ่านคำเตือนเต็มๆ ที่หัวไฟล์ utils/slipVerification.js ก่อนนะครับ ยังไม่มี
+// API key จริงตั้งไว้ใน .env (ต้องไปสมัครเอง ใส่ค่าเป็น EASYSLIP_API_KEY) — ถ้ายังไม่ตั้งคีย์
+// isSlipVerificationConfigured() จะคืน false เสมอ ระบบจะข้ามการตรวจสลิปอัตโนมัติไปเฉยๆ (ไม่
+// บล็อกอะไร) ผู้ซื้อ/ผู้ขายยังใช้ flow เดิม (ปุ่ม "ฉันจ่ายแล้ว" + ผู้ขายกดยืนยันเอง) ได้ปกติทุกอย่าง
+const { isSlipVerificationConfigured, verifySlip } = require('./utils/slipVerification');
 // เก็บรูปปก/ไฟล์ดิจิทัลที่อัปโหลดจากฟอร์มลงขายบนเว็บไว้ถาวรจริงๆ (ดูเหตุผลเต็มๆ ใน
 // คอมเมนต์หัวไฟล์ utils/assetStorage.js — สรุปสั้นๆ: URL ไฟล์แนบ Discord หมดอายุใน ~24 ชม.)
 const { storeBufferPermanently } = require('./utils/assetStorage');
@@ -142,6 +148,11 @@ const { renderServerPickerPage, renderPremiumServerPickerPage, defaultAvatarUrl 
 // ที่นี่ เพราะถ้าวันหน้ามีคนไปแก้สิทธิ์ที่บอทขอตอนเชิญ (invitePermissions ใน help.js)
 // จะได้แก้จุดเดียวแล้วสองที่นี้อัปเดตตามกันอัตโนมัติ ไม่ต้องมาคอยจำว่าต้องแก้ 2 จุด
 const { buildInviteUrl } = require('./commands/help');
+// 🆕 [19 ต.ค. 2569 รอบ 19] applyPendingSkippedForGuild() = ตัว "import ของค้างให้อัตโนมัติ"
+// หลังเซิร์ฟอัปเกรดพรีเมียมสำเร็จ — ของค้างคือ role setup/builder ที่เคยถูกข้ามไปตอน
+// /milo import-config ขณะเซิร์ฟยังเป็นแผนฟรีอยู่ (เกินโควตา/ชนิดไม่รองรับ) ดูคอมเมนต์เต็มๆ
+// ที่ตัวฟังก์ชันใน commands/milo.js และที่ utils/miloConfigStorage.js (ส่วน pending skip)
+const { applyPendingSkippedForGuild } = require('./commands/milo');
 // 🆕 หน้า Premium & Billing จริง (เพิ่ม 19 ก.ย. 2569, ย้ายออกจาก /dashboard ตอนดึกมากของ
 // วันเดียวกัน — น้องหนาวไม่อยากให้หน้าจ่ายเงินอยู่ในแดชบอร์ด รู้สึกซ้ำกับหน้า Pricing)
 // ให้เลือกจ่ายได้ 2 ทางจากหน้าเว็บ (บัตรเครดิต / PromptPay QR) จุดเข้าใหม่คือปุ่ม
@@ -507,6 +518,10 @@ function createWebhookServer(client) {
           subcategory: item.subcategory,
           type: item.type,
           imageUrl,
+          // 🆕 [19 ต.ค. 2569] ส่งจุดโฟกัสแนวตั้งของรูปปกออกไปด้วย (ดีฟอลต์ 50 = กึ่งกลาง)
+          // ให้หน้า public/marketplace.html ใช้ตั้ง background-position ตรงกับที่ผู้ขายลาก
+          // เลือกไว้จริงๆ ตอนลงขาย (ดู utils/renderMarketplaceDashboard.js mktInitCoverReposition)
+          imageFocusY: Number(item.imageFocusY ?? 50) || 50,
           sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
           sellerCompletedSales: completedSales,
           createdAt: item.createdAt,
@@ -536,6 +551,7 @@ function createWebhookServer(client) {
       subcategory: listing.subcategory,
       type: listing.type,
       imageUrl,
+      imageFocusY: Number(listing.imageFocusY ?? 50) || 50,
       sellerName: seller?.displayName || 'ผู้ขายไม่ระบุชื่อ',
       sellerCompletedSales: completedSales,
     });
@@ -651,6 +667,90 @@ function createWebhookServer(client) {
     await marketplaceCommand.notifyBuyerMarkedPaid(client, updatedOrder);
 
     res.json({ ok: true, buyerMarkedPaidAt: updatedOrder.buyerMarkedPaidAt });
+  });
+
+  // 🆕 [19 ต.ค. 2569] multer เฉพาะสำหรับอัปโหลดรูปสลิปโอนเงิน (field name "slip") — แยกจาก
+  // marketplaceUpload ของฟอร์มลงขายสินค้า (ด้านล่างไฟล์นี้) เพราะคนละ route/field กัน เก็บเป็น
+  // Buffer ในหน่วยความจำชั่วคราวเหมือนกัน (ไม่เขียนลงดิสก์) จำกัดไว้ 8MB พอสำหรับรูปสลิป/
+  // สกรีนช็อตแอปธนาคารทั่วไป (เล็กกว่าลิมิต 20MB ของฟอร์มลงขาย เพราะรูปสลิปไม่ควรใหญ่ขนาดนั้น)
+  const slipUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+
+  // 🆕 [19 ต.ค. 2569] POST /api/marketplace/orders/:id/verify-slip — ข้อ 4 "Secure Slip
+  // Verification" ที่น้องหนาวขอ: ผู้ซื้ออัปโหลดรูปสลิปโอนเงินจริง ระบบส่งไปตรวจผ่าน EasySlip
+  // API (utils/slipVerification.js) เทียบยอดเงิน+บัญชีผู้รับกับที่คาดไว้ (ราคาสินค้า + เลข
+  // พร้อมเพย์ของผู้ขาย) — ผ่านจริงถึงจะ "ยืนยันอัตโนมัติ" (ไม่ต้องรอผู้ขายกดปุ่มเองอีกต่อไป)
+  // ส่งของให้ผู้ซื้อทันที + DM ผู้ขายด้วย embed "Payment Verified" ใหม่
+  //
+  // ⚠️ เส้นทางนี้ "ไม่บังคับ" ถ้ายังไม่ได้ตั้ง EASYSLIP_API_KEY ใน .env (ดูคำเตือนที่
+  // utils/slipVerification.js) — ตอบ { ok:false, reason:'not_configured' } กลับไปเฉยๆ ให้
+  // ฝั่งหน้าเว็บ fallback ไปใช้ปุ่ม "✅ ฉันจ่ายแล้ว" (mark-paid ด้านบน) + รอผู้ขายยืนยันเองแทน
+  // เหมือนเดิมทุกอย่าง ไม่กระทบระบบเดิมเลย
+  //
+  // ไม่ใช้ requireAuth ห่อ (เหตุผลเดียวกับ /buy, /mark-paid ด้านบน) เช็ค req.session.user
+  // ตรงๆ แล้วตอบ 401 เป็น JSON แทน
+  app.post('/api/marketplace/orders/:id/verify-slip', (req, res, next) => {
+    slipUpload.single('slip')(req, res, (error) => {
+      if (error) {
+        console.warn('[marketplace verify-slip] อัปโหลดรูปสลิปไม่สำเร็จ:', error.message);
+        const message = error.code === 'LIMIT_FILE_SIZE' ? 'That file is larger than the 8MB limit.' : 'Could not read the uploaded slip image. Please try again.';
+        return res.status(400).json({ ok: false, reason: 'upload_failed', message });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ ok: false, reason: 'not_logged_in' });
+    }
+
+    if (!isSlipVerificationConfigured()) {
+      // ยังไม่ตั้ง API key — ไม่ใช่ error ของผู้ซื้อเลย แค่ฟีเจอร์นี้ยังไม่เปิดใช้งานจริง
+      return res.json({ ok: false, reason: 'not_configured' });
+    }
+
+    const order = getOrder(String(req.params.id || '').toUpperCase());
+    if (!order) {
+      return res.status(404).json({ ok: false, reason: 'order_not_found' });
+    }
+    if (order.buyerId !== req.session.user.id) {
+      return res.status(403).json({ ok: false, reason: 'not_your_order' });
+    }
+    if (order.status === 'confirmed') {
+      return res.json({ ok: true, reason: 'already_confirmed' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ ok: false, reason: 'missing_file' });
+    }
+
+    const seller = getSeller(order.sellerId);
+    const method = getSellerPaymentMethod(seller);
+    if (method !== 'promptpay') {
+      // ตรวจสลิปอัตโนมัติได้แค่ช่องทาง PromptPay เท่านั้น (มีเลขบัญชีให้เทียบแน่ๆ) — ผู้ขาย
+      // ที่ใช้ลิงก์รับเงินสากล (PayPal.me ฯลฯ) ยังใช้ flow เดิม (ผู้ขายยืนยันเอง) เหมือนเดิม
+      return res.json({ ok: false, reason: 'unsupported_payment_method' });
+    }
+
+    let result;
+    try {
+      result = await verifySlip({
+        imageBuffer: req.file.buffer,
+        filename: req.file.originalname,
+        expectedAmountThb: order.priceThb,
+        expectedPromptPayId: seller.promptpayId,
+      });
+    } catch (error) {
+      console.error(`[marketplace verify-slip] ตรวจสลิปออร์เดอร์ ${order.id} พัง:`, error);
+      return res.status(500).json({ ok: false, reason: 'request_failed' });
+    }
+
+    if (!result.ok) {
+      console.log(`[marketplace verify-slip] ออร์เดอร์ ${order.id} ตรวจสลิปไม่ผ่าน: ${result.reason}`);
+      return res.json({ ok: false, reason: result.reason });
+    }
+
+    const marketplaceCommand = client.commands.get('marketplace');
+    const outcome = await marketplaceCommand.handleSlipVerifiedOrder(client, order);
+    console.log(`[marketplace verify-slip] ออร์เดอร์ ${order.id} ตรวจสลิปผ่าน API แล้ว ยืนยันอัตโนมัติ (ผู้ซื้อ ${req.session.user.username})`);
+    res.json({ ok: true, reason: 'verified', ...outcome });
   });
 
   // 🆕 [12 ต.ค. 2569] POST /api/marketplace/reports — ผู้ซื้อกดส่งรายงานผู้ขาย/ประกาศ
@@ -1282,7 +1382,7 @@ function createWebhookServer(client) {
           // ใช้ PAYMENT_LINK_PATTERN/MAX_PAYMENT_LINK_LENGTH ตัวเดียวกับช่องทางรับเงิน (รอบ 4)
           // เพราะเป็นกฎเดียวกันเป๊ะๆ: ต้องเป็น https:// เท่านั้น ไม่เกิน 300 ตัวอักษร
           if (!PAYMENT_LINK_PATTERN.test(digitalLinkRaw) || digitalLinkRaw.length > MAX_PAYMENT_LINK_LENGTH) {
-            return fail('Please enter a valid https:// link for the system/template customers will receive.');
+            return fail('Please enter a valid https:// link for the Discord Server Template customers will receive.');
           }
         } else if (deliveryMethod === 'miloconfig') {
           if (!MILO_CONFIG_KEY_PATTERN.test(digitalConfigKeyRaw)) {
@@ -1312,6 +1412,10 @@ function createWebhookServer(client) {
           digitalLinkUrl: type === 'digital' && deliveryMethod === 'link' ? digitalLinkRaw : null,
           digitalConfigKey: type === 'digital' && deliveryMethod === 'miloconfig' ? digitalConfigKeyRaw : null,
           imageUrl: imageRef,
+          // 🆕 [19 ต.ค. 2569] จุดโฟกัสแนวตั้งของรูปปก (0-100%) จากฟีเจอร์ "ลากเพื่อเลือกจุด
+          // โฟกัส" ในฟอร์ม — <input type="hidden" name="imageFocusY"> ไม่มีรูปก็ส่งมาไม่เป็นไร
+          // (createListing() มี clampFocusY() ดูแล fallback 50 อยู่แล้ว)
+          imageFocusY: body.imageFocusY,
         });
       } catch (error) {
         console.error('[dashboard marketplace] สร้างประกาศขายจากเว็บไม่สำเร็จ:', error);
@@ -1387,7 +1491,7 @@ function createWebhookServer(client) {
       if (type === 'digital') {
         if (deliveryMethod === 'link') {
           if (!PAYMENT_LINK_PATTERN.test(digitalLinkRaw) || digitalLinkRaw.length > MAX_PAYMENT_LINK_LENGTH) {
-            return fail('Please enter a valid https:// link for the system/template customers will receive.');
+            return fail('Please enter a valid https:// link for the Discord Server Template customers will receive.');
           }
         } else if (deliveryMethod === 'miloconfig') {
           if (!MILO_CONFIG_KEY_PATTERN.test(digitalConfigKeyRaw)) {
@@ -1418,6 +1522,10 @@ function createWebhookServer(client) {
           digitalLinkUrl: type === 'digital' && deliveryMethod === 'link' ? digitalLinkRaw : null,
           digitalConfigKey: type === 'digital' && deliveryMethod === 'miloconfig' ? digitalConfigKeyRaw : null,
           imageUrl: imageRef,
+          // 🆕 [19 ต.ค. 2569] ไม่ได้ลากปรับใหม่ตอนแก้ไข (เช่นไม่ได้อัปโหลดรูปใหม่เลย) ก็ยังส่ง
+          // ค่าเดิมของ hidden input กลับมาอยู่ดี (ดู sellWizardHtml() เติมค่าเดิมให้ตอนโหลดฟอร์ม
+          // แก้ไข) ไม่ต้อง fallback เป็น existing.imageFocusY เองตรงนี้
+          imageFocusY: body.imageFocusY,
         });
       } catch (error) {
         console.error('[dashboard marketplace] แก้ไขประกาศขายจากเว็บไม่สำเร็จ:', error);
@@ -1965,6 +2073,24 @@ async function handleStripeEvent(event, client) {
       });
       console.log(`[webhook] guild ${guildId} สมัครพรีเมียมสำเร็จ (checkout.session.completed)`);
 
+      // ── 🆕 [รอบ 19] import "ของค้าง" (role setup/builder ที่เคยถูกข้ามไว้ตอน
+      // /milo import-config ขณะเซิร์ฟนี้ยังเป็นแผนฟรี) ให้อัตโนมัติทันทีที่เพิ่งอัปเกรด
+      // พรีเมียมสำเร็จ — ครอบด้วย try/catch ของตัวเอง กันพังแล้วลาม (ถ้าจุดนี้ throw ขึ้นมา
+      // ไม่ควรทำให้ webhook ทั้งเส้น (ปลดล็อกพรีเมียม + DM แจ้งเตือน) พังตามไปด้วย — เซิร์ฟ
+      // ยังได้พรีเมียมปกติ แค่ของค้างจะยังรอ apply รอบหน้า (เรียกซ้ำได้เสมอ ไม่มีผลข้างเคียง)
+      let resumedMiloItems = null;
+      try {
+        resumedMiloItems = await applyPendingSkippedForGuild(guildId);
+        if (resumedMiloItems) {
+          console.log(
+            `[webhook] guild ${guildId} มีของค้างจาก /milo import-config ถูก import ให้อัตโนมัติ ` +
+            `(role setup ${resumedMiloItems.roleSetups.length} ชุด, builder ${resumedMiloItems.builderDrafts.length} ชุด)`
+          );
+        }
+      } catch (resumeError) {
+        console.error('[webhook] applyPendingSkippedForGuild (checkout.session.completed) ไม่สำเร็จ:', resumeError.message);
+      }
+
       // ── 🆕 [แคมเปญโค้ดส่วนลดพ่อค้าแม่ค้า] เช็คว่า session นี้ใช้โค้ดส่วนลดไหม ──────
       // completeRedemption() คืน null เงียบๆ ถ้า session นี้ "ไม่ใช่" การใช้โค้ด
       // (สมัครราคาเต็มปกติผ่านปุ่มสมัครธรรมดา) — ไม่ต้องเช็ค session.id เองก่อนเรียก
@@ -2050,8 +2176,26 @@ async function handleStripeEvent(event, client) {
             actionButton: null, // DM ไม่ต้องมีปุ่ม แค่โชว์การ์ดสวยๆ พอ
           });
 
+          const dmComponents = [new TextDisplayBuilder().setContent(congratsText), card];
+
+          // 🆕 [รอบ 19] ถ้ามีของค้างจาก /milo import-config ถูก import ให้อัตโนมัติไปแล้ว
+          // (resumedMiloItems ไม่ null — เช็คไว้ด้านบนก่อนถึงตรงนี้) ต่อข้อความบอกไว้ใน
+          // DM เดียวกันเลย (ไม่แยกส่งเป็น DM ที่ 2 — กันโดน Discord rate-limit DM ถี่เกินไป
+          // และผู้ใช้อ่านรวดเดียวจบง่ายกว่า) ใช้ TextDisplay บล็อกที่ 2 ต่อท้าย card
+          if (resumedMiloItems && (resumedMiloItems.roleSetups.length > 0 || resumedMiloItems.builderDrafts.length > 0)) {
+            const resumeLines = [t('milo_config.resume.dm_header')];
+            if (resumedMiloItems.roleSetups.length > 0) {
+              resumeLines.push(t('milo_config.resume.dm_role_setups', { names: resumedMiloItems.roleSetups.join(', ') }));
+            }
+            if (resumedMiloItems.builderDrafts.length > 0) {
+              resumeLines.push(t('milo_config.resume.dm_builders', { names: resumedMiloItems.builderDrafts.join(', ') }));
+            }
+            resumeLines.push('', t('milo_config.resume.dm_warning'));
+            dmComponents.push(new TextDisplayBuilder().setContent(resumeLines.join('\n')));
+          }
+
           await user.send({
-            components: [new TextDisplayBuilder().setContent(congratsText), card],
+            components: dmComponents,
             flags: MessageFlags.IsComponentsV2,
           });
         } catch (dmError) {
@@ -2134,6 +2278,24 @@ async function handleStripeEvent(event, client) {
       //   (2) invoice.billing_reason === 'subscription_create' → เป็น invoice "ใบแรก" ของ
       //       subscription นี้เท่านั้น (ไม่ใช่ invoice ต่ออายุรอบถัดๆ ไป ซึ่งไม่ต้องแจ้งซ้ำ)
       if (subscription.collection_method === 'send_invoice' && invoice.billing_reason === 'subscription_create') {
+        // ── 🆕 [รอบ 19] import "ของค้าง" (ของที่ถูกข้ามไว้ตอน /milo import-config ขณะ
+        // เซิร์ฟยังฟรีอยู่) ให้อัตโนมัติเหมือนกับทาง checkout.session.completed ด้านบน —
+        // ต้องทำซ้ำที่นี่ด้วย เพราะเส้นทาง PromptPay นี้ "ไม่" ยิง checkout.session.completed
+        // เลย (ดูคอมเมนต์ยาวด้านบนตรง "ไม่ต้องทำซ้ำตรงนี้" — อันนั้นพูดถึง DM/ค่าคอมเท่านั้น
+        // แต่ของค้างของ /milo ยังไงก็ต้อง resume ทุกเส้นทางที่ทำให้เซิร์ฟกลายเป็นพรีเมียม)
+        let resumedMiloItems = null;
+        try {
+          resumedMiloItems = await applyPendingSkippedForGuild(guildId);
+          if (resumedMiloItems) {
+            console.log(
+              `[webhook] guild ${guildId} มีของค้างจาก /milo import-config ถูก import ให้อัตโนมัติ (ทาง PromptPay) ` +
+              `(role setup ${resumedMiloItems.roleSetups.length} ชุด, builder ${resumedMiloItems.builderDrafts.length} ชุด)`
+            );
+          }
+        } catch (resumeError) {
+          console.error('[webhook] applyPendingSkippedForGuild (ทาง PromptPay) ไม่สำเร็จ:', resumeError.message);
+        }
+
         // ── 🆕 [แคมเปญโค้ดส่วนลด — ทาง PromptPay] เครดิตค่าคอมผู้ขาย (ถ้าสมัครด้วยโค้ด) ──
         // completeRedemption(subscription.id) คืน null เงียบๆ ถ้า subscription นี้ "ไม่ใช่"
         // การใช้โค้ด (ไม่มี pending ให้เจอ เพราะ POST /premium/:guildId/checkout ไม่เรียก
@@ -2175,8 +2337,25 @@ async function handleStripeEvent(event, client) {
               t,
               actionButton: null,
             });
+
+            const dmComponents = [new TextDisplayBuilder().setContent(congratsText), card];
+
+            // 🆕 [รอบ 19] ต่อข้อความของค้างที่ import ให้อัตโนมัติ เหมือนกับทาง
+            // checkout.session.completed ด้านบนเป๊ะๆ (ดูคอมเมนต์เต็มๆ ที่นั่น)
+            if (resumedMiloItems && (resumedMiloItems.roleSetups.length > 0 || resumedMiloItems.builderDrafts.length > 0)) {
+              const resumeLines = [t('milo_config.resume.dm_header')];
+              if (resumedMiloItems.roleSetups.length > 0) {
+                resumeLines.push(t('milo_config.resume.dm_role_setups', { names: resumedMiloItems.roleSetups.join(', ') }));
+              }
+              if (resumedMiloItems.builderDrafts.length > 0) {
+                resumeLines.push(t('milo_config.resume.dm_builders', { names: resumedMiloItems.builderDrafts.join(', ') }));
+              }
+              resumeLines.push('', t('milo_config.resume.dm_warning'));
+              dmComponents.push(new TextDisplayBuilder().setContent(resumeLines.join('\n')));
+            }
+
             await user.send({
-              components: [new TextDisplayBuilder().setContent(congratsText), card],
+              components: dmComponents,
               flags: MessageFlags.IsComponentsV2,
             });
           } catch (dmError) {

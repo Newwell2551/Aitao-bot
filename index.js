@@ -220,6 +220,20 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
+    // milo_export_ = ปุ่มในแผงเลือก /milo export-config (toggle welcome/goodbye,
+    // ยืนยัน/ยกเลิก) — mirror ws_/wgs_ ข้างบนเป๊ะๆ ดู commands/milo.js ส่วน MX/handleButton()
+    if (interaction.customId.startsWith('milo_export_')) {
+      const miloCommand = client.commands.get('milo');
+      try {
+        await miloCommand.handleButton(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนกดปุ่มนี้', flags: MessageFlags.Ephemeral });
+        }
+      }
+    }
+
     // premium_ = ปุ่มใน /premium (premium_subscribe, premium_manage)
     // handleButton ของ premium.js เรียก deferReply() เองข้างในแล้ว เพราะงั้นถ้า error
     // เกิดขึ้นหลัง defer ต้องเช็ค interaction.deferred ก่อน reply ซ้ำ (เหมือนจุดอื่นๆ)
@@ -271,20 +285,6 @@ client.on('interactionCreate', async interaction => {
       const marketplaceCommand = client.commands.get('marketplace');
       try {
         await marketplaceCommand.handleButton(interaction);
-      } catch (error) {
-        console.error(error);
-        if (!interaction.replied && !interaction.deferred) {
-          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนกดปุ่มนี้', flags: MessageFlags.Ephemeral });
-        }
-      }
-    }
-
-    // 🆕 [รอบ 14] milo_export_ = ปุ่มในแผงเลือก /milo export-config (toggle welcome/goodbye,
-    // ยืนยันสร้างรหัส, ยกเลิก) — ดู commands/milo.js ส่วน MX / handleButton()
-    if (interaction.customId.startsWith('milo_export_')) {
-      const miloCommand = client.commands.get('milo');
-      try {
-        await miloCommand.handleButton(interaction);
       } catch (error) {
         console.error(error);
         if (!interaction.replied && !interaction.deferred) {
@@ -447,6 +447,20 @@ client.on('interactionCreate', async interaction => {
       }
       return;
     }
+    // milo_export_ = StringSelectMenu ในแผงเลือก /milo export-config (เลือก role setup/
+    // builder draft ที่จะรวม) — mirror wgs_ ข้างบนเป๊ะๆ ดู commands/milo.js ส่วน MX/handleSelectMenu()
+    if (interaction.customId.startsWith('milo_export_')) {
+      const miloCommand = client.commands.get('milo');
+      try {
+        await miloCommand.handleSelectMenu(interaction);
+      } catch (error) {
+        console.error(error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', flags: MessageFlags.Ephemeral });
+        }
+      }
+      return;
+    }
     // fonts_ = StringSelectMenu ใน /fonts (เลือกฟอนต์ที่จะลบ)
     if (interaction.customId.startsWith('fonts_')) {
       const fontsCommand = client.commands.get('fonts');
@@ -464,20 +478,6 @@ client.on('interactionCreate', async interaction => {
       const builderCommand = client.commands.get('builder');
       try {
         await builderCommand.handleSelectMenu(interaction);
-      } catch (error) {
-        console.error(error);
-        if (!interaction.replied && !interaction.deferred) {
-          await interaction.reply({ content: 'เกิดข้อผิดพลาดตอนเลือกเมนู', flags: MessageFlags.Ephemeral });
-        }
-      }
-    }
-
-    // 🆕 [รอบ 14] milo_export_ = dropdown ในแผงเลือก /milo export-config (เลือก role setup /
-    // builder draft ที่จะรวม) — ดู commands/milo.js ส่วน MX / handleSelectMenu()
-    if (interaction.customId.startsWith('milo_export_')) {
-      const miloCommand = client.commands.get('milo');
-      try {
-        await miloCommand.handleSelectMenu(interaction);
       } catch (error) {
         console.error(error);
         if (!interaction.replied && !interaction.deferred) {

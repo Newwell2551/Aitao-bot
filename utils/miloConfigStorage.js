@@ -133,4 +133,97 @@ function markUsed(code, usedByGuildId) {
   return true;
 }
 
-module.exports = { createExport, getExport, markUsed, generateUniqueCode };
+// ─────────────────────────────────────────────────────────────────────────
+// 🆕 [19 ต.ค. 2569 รอบ 19] "ของที่ข้ามไปตอน import" (pending skipped items) — ตามที่
+// น้องหนาวขอ: ตอนผู้ซื้อกด /milo import-config ขณะเซิร์ฟยังเป็นแผนฟรีอยู่ บาง role
+// setup/builder ในรหัสจะถูก "ข้าม" ไปเพราะเกินโควตา/ชนิดไม่รองรับ (ดู commands/milo.js
+// ส่วน handleImport) — เดิมของพวกนี้หายไปเฉยๆ ผู้ซื้อต้องไปขอรหัส export ใหม่จากผู้ขาย
+// เองถ้าอยากได้ของที่ถูกข้ามไป หลังจากอัปเกรดพรีเมียมแล้ว ซึ่งดูไม่แฟร์เลย (จ่ายเงินซื้อรหัส
+// ไปแล้ว ของในรหัสควรได้ครบทุกชิ้นตอนพร้อมใช้งานจริง ไม่ใช่ให้ไปขอซ้ำ)
+//
+// แนวทางที่ทำ: เก็บ "ของดิบ" (setup/draft object เต็มๆ ที่ยังไม่ตัดโควตา) ที่ถูกข้ามไว้ต่อ
+// guildId (ไม่ใช่ต่อรหัส — เผื่อ import หลายรหัสติดกันตอนยังฟรีอยู่ ของจะสะสมรวมกันไว้)
+// แล้วพอมี webhook แจ้งว่าเซิร์ฟนี้อัปเกรดพรีเมียมสำเร็จ (ดู server.js เคส
+// checkout.session.completed / invoice.payment_succeeded) จะเรียก
+// applyPendingSkippedForGuild() ใน commands/milo.js ให้ import ของที่ค้างไว้ "อัตโนมัติ"
+// ให้ครบทันที ไม่ต้องให้ผู้ซื้อทำอะไรเพิ่มเลย
+//
+// ไฟล์แยกต่างหากจาก milo-configs.json ด้านบน (คนละ key space — อันนี้ key เป็น guildId
+// อันบน key เป็นรหัส MILO-XXXX — แยกไฟล์ชัดเจนกว่าปนกันไฟล์เดียว อ่าน/debug ง่ายกว่า)
+const PENDING_FILE = path.join(__dirname, '..', 'data', 'milo-pending-skips.json');
+
+function _readPending() {
+  try {
+    if (!fs.existsSync(PENDING_FILE)) return {};
+    return JSON.parse(fs.readFileSync(PENDING_FILE, 'utf8'));
+  } catch (e) {
+    console.error('[miloConfigStorage] อ่านไฟล์ pending skip ไม่ได้:', e.message);
+    return {};
+  }
+}
+
+function _writePending(data) {
+  try {
+    fs.mkdirSync(path.dirname(PENDING_FILE), { recursive: true });
+    fs.writeFileSync(PENDING_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[miloConfigStorage] เขียนไฟล์ pending skip ไม่ได้:', e.message);
+  }
+}
+
+/**
+ * ดึงรายการ "ของที่ข้ามไว้" ของเซิร์ฟนี้ (ถ้ามี)
+ * @param {string} guildId
+ * @returns {{ roleSetups: object[], builderDrafts: object[], fromCodes: string[], importedBy: string|null, updatedAt: string }|null}
+ */
+function getPendingSkipped(guildId) {
+  const all = _readPending();
+  return all[guildId] ?? null;
+}
+
+/**
+ * บันทึก (สะสม) ของที่ถูกข้ามไปตอน import ครั้งนี้ — เรียกเฉพาะตอนมีของถูกข้ามจริงๆ
+ * เท่านั้น (ดู commands/milo.js — handleImport ไม่ต้องเรียกถ้า skipped ว่างเปล่า)
+ *
+ * ถ้าเซิร์ฟนี้มีของค้างจากรอบก่อนอยู่แล้ว (import หลายรหัสติดกันตอนยังฟรีอยู่) จะ "เติม"
+ * เข้าไปในรายการเดิม ไม่ใช่เขียนทับ — กันของจากรหัสแรกหายไปตอน import รหัสที่ 2 ตามมา
+ *
+ * @param {string} guildId
+ * @param {{ roleSetups?: object[], builderDrafts?: object[], fromCode: string, importedBy: string }} skipped
+ */
+function appendPendingSkipped(guildId, { roleSetups = [], builderDrafts = [], fromCode, importedBy }) {
+  if (roleSetups.length === 0 && builderDrafts.length === 0) return; // ไม่มีอะไรข้าม ไม่ต้องเขียนไฟล์เปล่าๆ
+
+  const all = _readPending();
+  const existing = all[guildId] ?? { roleSetups: [], builderDrafts: [], fromCodes: [], importedBy: null };
+
+  all[guildId] = {
+    roleSetups: [...existing.roleSetups, ...roleSetups],
+    builderDrafts: [...existing.builderDrafts, ...builderDrafts],
+    // fromCodes: เก็บไว้เป็น audit trail เฉยๆ ว่ารหัสไหนบ้างที่มีของค้างอยู่ตรงนี้ (เผื่อ
+    // ต้องสืบย้อนหลังว่าของชิ้นไหนมาจากรหัสไหน) ไม่ซ้ำรหัสเดิมถ้ามีอยู่แล้ว
+    fromCodes: existing.fromCodes.includes(fromCode) ? existing.fromCodes : [...existing.fromCodes, fromCode],
+    // importedBy: จำไว้แค่ "คนล่าสุด" ที่ import (ใช้ตอน apply ภายหลังเป็น createdBy
+    // สำรอง ถ้าของชิ้นนั้นไม่มี createdBy ติดมาด้วยเอง)
+    importedBy: importedBy ?? existing.importedBy,
+    updatedAt: new Date().toISOString(),
+  };
+  _writePending(all);
+}
+
+/**
+ * ล้างรายการของที่ข้ามไว้ของเซิร์ฟนี้ทิ้งทั้งหมด — เรียก "หลัง" apply สำเร็จแล้วเท่านั้น
+ * (ดู commands/milo.js — applyPendingSkippedForGuild) กันของหาย ถ้า apply ระหว่างทางพัง
+ * @param {string} guildId
+ */
+function clearPendingSkipped(guildId) {
+  const all = _readPending();
+  if (!(guildId in all)) return;
+  delete all[guildId];
+  _writePending(all);
+}
+
+module.exports = {
+  createExport, getExport, markUsed, generateUniqueCode,
+  getPendingSkipped, appendPendingSkipped, clearPendingSkipped,
+};

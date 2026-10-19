@@ -961,9 +961,13 @@
       "success": "✅ **สร้างรหัสเรียบร้อยแล้วครับ — ใช้ได้ครั้งเดียวเท่านั้น:**\n```\n{code}\n```\nรหัสนี้มีสิ่งเหล่านี้รวมอยู่ด้วยครับ:\n{summary}\n\nเอารหัสนี้ไปแปะในช่อง \"รหัสการตั้งค่า Milo Bot (Milo Bot Configuration Key)\" ของฟอร์มลงขายใน Marketplace ได้เลยครับ หรือจะส่งให้ผู้ซื้อตรงๆ ก็ได้ — รหัสนี้ใช้ได้ครั้งเดียวเท่านั้นนะครับ พอมีใครสั่ง `/milo import-config` ด้วยรหัสนี้สำเร็จแล้ว รหัสจะใช้ซ้ำไม่ได้อีก",
       "panel_intro": "เลือกสิ่งที่จะรวมในรหัสนี้ครับ:",
       "panel_summary": "ตอนนี้เลือกไว้ — Welcome: {welcome} | Goodbye: {goodbye} | Role setup: {roleSetups} | Builder: {builders}",
-      "panel_yes": "เลือกไว้",
-      "panel_no": "ไม่ได้เลือก",
-      "panel_none": "ไม่มี",
+      "panel_yes": "🟢 เลือกไว้",
+      "panel_no": "⚫ ไม่ได้เลือก",
+      "panel_none": "⚫ ไม่มี",
+      "panel_btn_welcome_on": "🟢 การ์ด Welcome",
+      "panel_btn_welcome_off": "⚫ การ์ด Welcome",
+      "panel_btn_goodbye_on": "🟢 การ์ด Goodbye",
+      "panel_btn_goodbye_off": "⚫ การ์ด Goodbye",
       "panel_select_role_setups_placeholder": "📁 เลือก role setup ที่จะรวมไปด้วย (เลือกได้หลายอัน ไม่เลือกก็ได้)",
       "panel_select_builders_placeholder": "🔍 เลือกข้อความ builder ที่จะรวมไปด้วย (เลือกได้หลายอัน ไม่เลือกก็ได้)",
       "panel_btn_confirm": "✨ สร้างรหัส",
@@ -976,9 +980,7 @@
       "field_goodbye": "การ์ด Goodbye",
       "field_role_setups": "Role setup",
       "field_builders": "ข้อความ Builder",
-      "panel_footer": "🔒 รหัสใช้ได้ครั้งเดียว • เฉพาะ Administrator เท่านั้นครับ",
-      "panel_btn_welcome": "การ์ด Welcome",
-      "panel_btn_goodbye": "การ์ด Goodbye"
+      "panel_footer": "🔒 รหัสใช้ได้ครั้งเดียว • เฉพาะ Administrator เท่านั้นครับ"
     },
     "import": {
       "invalid_code": "❌ ไม่พบรหัสนี้ครับ เช็คดูอีกรอบว่าพิมพ์/ก๊อปมาถูกไหม แล้วลองใหม่นะครับ",
@@ -989,9 +991,15 @@
       "item_goodbye": "• การ์ด goodbye — ไปที่ `/goodbye-setup` แล้วเลือกห้องเพื่อเปิดใช้งานในเซิร์ฟนี้ได้เลยครับ",
       "item_role_setups": "• Role setup ที่ import มา: {names}",
       "item_builders": "• ข้อความ builder ที่ import มา: {names}",
-      "skipped_tier_notice": "⚠️ มี {count} รายการจากรหัสนี้ที่ข้ามไปครับ เพราะเซิร์ฟนี้เป็นแผนฟรีอยู่ (ชนิด role setup ที่ไม่รองรับ หรือเกินโควตา) อัปเกรดผ่าน `/premium` เพื่อ import ได้ครบทุกรายการนะครับ",
+      "skipped_tier_notice": "⚠️ มี {count} รายการจากรหัสนี้ที่ข้ามไปครับ เพราะเซิร์ฟนี้เป็นแผนฟรีอยู่ (ชนิด role setup ที่ไม่รองรับ หรือเกินโควตา) — ไม่ต้องขอรหัสใหม่นะครับ ระบบจำไว้ให้แล้ว พออัปเกรดพรีเมียมผ่าน `/premium` เมื่อไหร่ ของที่ข้ามไปจะถูก import ให้อัตโนมัติทันทีครบทุกรายการ",
       "warning_roles_channels": "⚠️ **สำคัญ:** ปุ่ม/เมนู/reaction รับยศ หรือปุ่มยศ/ปุ่มลิงก์ห้องที่อยู่ในข้อความ builder ยังอ้างอิงยศ/ห้องของเซิร์ฟ **ผู้ขาย** อยู่ครับ จะยังใช้งานไม่ได้จนกว่าจะไปกำหนดยศ/ห้องของเซิร์ฟนี้เองใหม่ผ่าน `/role-setup edit` หรือ `/builder edit`",
       "warning_channel": "⚠️ ห้องที่จะโพสต์การ์ด welcome/goodbye ตั้งใจไม่ย้ายมาด้วยนะครับ — ไปเลือกห้องของเซิร์ฟนี้เองผ่าน `/welcome-setup` / `/goodbye-setup` ได้เลยครับ"
+    },
+    "resume": {
+      "dm_header": "🎁 **อีกเรื่อง!** ตอนที่เซิร์ฟนี้ยังเป็นแผนฟรี มีของจากรหัสตั้งค่า Milo Bot ที่เคย import ไว้ แต่โดนข้ามไปเพราะเกินโควตา — ตอนนี้อัปเกรดพรีเมียมแล้ว ระบบ import ให้ครบอัตโนมัติเรียบร้อยแล้วครับ:",
+      "dm_role_setups": "• Role setup ที่ import ให้เพิ่ม: {names}",
+      "dm_builders": "• ข้อความ builder ที่ import ให้เพิ่ม: {names}",
+      "dm_warning": "⚠️ ของชุดนี้ก็เหมือนกันครับ — ปุ่ม/เมนู/reaction รับยศ หรือปุ่มยศ/ปุ่มลิงก์ห้อง ยังอ้างอิงยศ/ห้องของเซิร์ฟผู้ขายอยู่ ไปกำหนดยศ/ห้องของเซิร์ฟนี้เองใหม่ผ่าน `/role-setup edit` หรือ `/builder edit` ก่อนใช้งานจริงนะครับ"
     }
   }
 }

@@ -42,7 +42,10 @@ const { loadWelcomeConfig, saveWelcomeConfig } = require('../utils/welcomeStorag
 const { loadGoodbyeConfig, saveGoodbyeConfig } = require('../utils/goodbyeStorage');
 const { listSetups, saveSetup, setupExists } = require('../utils/roleSetupStorage');
 const { listDrafts, saveDraft, draftExists } = require('../utils/builderStorage');
-const { createExport, getExport, markUsed } = require('../utils/miloConfigStorage');
+const {
+  createExport, getExport, markUsed,
+  getPendingSkipped, appendPendingSkipped, clearPendingSkipped,
+} = require('../utils/miloConfigStorage');
 
 // โควตาฝั่งผู้ซื้อตอน import ถ้าเซิร์ฟยังเป็นแผนฟรี — ใช้ค่าเดียวกับที่ /role-setup new และ
 // /builder new เช็คอยู่แล้ว (commands/role-setup.js / commands/builder.js) เพื่อไม่ให้
@@ -216,6 +219,11 @@ module.exports = {
   // 'milo_export_' (ดูคอมเมนต์ที่ MX ด้านบน และส่วน isButton()/isStringSelectMenu() ใน index.js)
   handleButton,
   handleSelectMenu,
+
+  // 🆕 [19 ต.ค. 2569 รอบ 19] "ของค้าง" ที่ถูกข้ามไว้ตอน import ขณะเซิร์ฟยังเป็นแผนฟรี —
+  // เรียกจาก server.js ตอนได้รับ webhook ว่าเซิร์ฟนี้อัปเกรดพรีเมียมสำเร็จ (ดูคอมเมนต์
+  // เต็มๆ ที่ฟังก์ชันด้านล่าง)
+  applyPendingSkippedForGuild,
 };
 
 /**
@@ -540,6 +548,12 @@ async function handleImport(interaction, guildId, t) {
 
   const imported = { welcome: false, goodbye: false, roleSetups: [], builderDrafts: [] };
   const skipped = { roleSetups: 0, builderDrafts: 0 };
+  // 🆕 [รอบ 19] เก็บ "ของดิบ" (object เต็มๆ ที่ยังไม่โดนตัดโควตา) ของรายการที่ถูกข้ามไว้
+  // แยกออกมาต่างหากจาก skipped ด้านบน (ตัวนั้นแค่นับจำนวนไว้โชว์ในข้อความตอบกลับเฉยๆ) —
+  // เอาไว้บันทึกลง pending-skip cache (utils/miloConfigStorage.js) หลัง apply สำเร็จ
+  // เพื่อให้ applyPendingSkippedForGuild() เอาไป import ให้อัตโนมัติทีหลังตอนอัปเกรดพรีเมียม
+  const skippedRoleSetupObjs = [];
+  const skippedBuilderObjs = [];
 
   try {
     // ── welcome / goodbye: เขียนทับของเดิมในเซิร์ฟนี้ตรงๆ ได้เลย (มีได้แค่ชุดเดียว/เซิร์ฟ
@@ -563,8 +577,12 @@ async function handleImport(interaction, guildId, t) {
       : Math.max(0, FREE_ROLE_SETUP_LIMIT - listSetups(guildId).length);
 
     for (const setup of bundle.roleSetups) {
-      if (!premium && setup.type !== 'reaction') { skipped.roleSetups++; continue; }
-      if (roleSetupSlotsLeft <= 0) { skipped.roleSetups++; continue; }
+      // ⚠️ เก็บ `setup` ตัวเต็มๆ (ยังไม่ตัด reactions/ยังไม่เปลี่ยนชื่อ) ไว้ใน
+      // skippedRoleSetupObjs เสมอตอนข้าม — ไม่ใช่ตัวที่โดนตัดโควตาแล้ว เพราะตอน apply
+      // ทีหลัง (หลังอัปเกรดพรีเมียม) จะไม่มีโควตาจำกัดอีกต่อไป ต้องได้ของเต็มๆ ครบเหมือน
+      // ตอน export จริงๆ ไม่ใช่แบบตัดแล้ว
+      if (!premium && setup.type !== 'reaction') { skipped.roleSetups++; skippedRoleSetupObjs.push(setup); continue; }
+      if (roleSetupSlotsLeft <= 0) { skipped.roleSetups++; skippedRoleSetupObjs.push(setup); continue; }
 
       let config = setup.config;
       if (!premium && setup.type === 'reaction' && Array.isArray(config?.reactions) && config.reactions.length > FREE_REACTION_LIMIT) {
@@ -596,7 +614,7 @@ async function handleImport(interaction, guildId, t) {
       : Math.max(0, FREE_BUILDER_LIMIT - listDrafts(guildId).length);
 
     for (const draft of bundle.builderDrafts) {
-      if (builderSlotsLeft <= 0) { skipped.builderDrafts++; continue; }
+      if (builderSlotsLeft <= 0) { skipped.builderDrafts++; skippedBuilderObjs.push(draft); continue; }
       const newName = resolveUniqueName(draftExists, guildId, draft.name, 50);
       saveDraft(guildId, newName, {
         ...draft,
@@ -619,6 +637,17 @@ async function handleImport(interaction, guildId, t) {
   // apply สำเร็จแล้วเท่านั้นถึงล็อกรหัสว่าใช้ไปแล้ว (ใช้ได้ครั้งเดียวจริง)
   markUsed(code, guildId);
 
+  // 🆕 [รอบ 19] ถ้ามีของถูกข้ามไปจริง (เซิร์ฟนี้ยังแผนฟรีอยู่) บันทึกไว้เป็น "ของค้าง"
+  // ของเซิร์ฟนี้ — เรียก "หลัง" markUsed() เสมอ (ไม่ใช่ก่อน) เพราะถึงตรงนี้แปลว่า apply
+  // ส่วนที่ import ได้สำเร็จแน่นอนแล้ว ไม่ต้องกังวลเรื่อง error กลางทางอีก ดูคอมเมนต์เต็มๆ
+  // ที่ appendPendingSkipped() ใน utils/miloConfigStorage.js ว่าทำไมต้องเก็บแบบนี้
+  appendPendingSkipped(guildId, {
+    roleSetups: skippedRoleSetupObjs,
+    builderDrafts: skippedBuilderObjs,
+    fromCode: code,
+    importedBy: userId,
+  });
+
   // ── สรุปผลให้ผู้ซื้อเห็นชัดๆ ว่า import อะไรไปบ้าง + คำเตือนสำคัญเรื่องยศ/ห้อง
   const lines = [t('milo_config.import.success_header')];
   if (imported.welcome) lines.push(t('milo_config.import.item_welcome'));
@@ -640,4 +669,70 @@ async function handleImport(interaction, guildId, t) {
   }
 
   return interaction.reply({ content: lines.join('\n'), flags: MessageFlags.Ephemeral });
+}
+
+/**
+ * 🆕 [19 ต.ค. 2569 รอบ 19] "เก็บของที่ค้างให้" — เรียกจาก server.js ทุกครั้งที่ webhook
+ * แจ้งว่าเซิร์ฟนี้ "เพิ่งอัปเกรดเป็นพรีเมียมสำเร็จ" (ทั้งทางปุ่มสมัครในดิสคอร์ด/Checkout
+ * Session และทางหน้าเว็บ PromptPay ที่จ่ายใบแรกสำเร็จ — ดู case 'checkout.session.completed'
+ * กับ case 'invoice.payment_succeeded' ใน server.js)
+ *
+ * ทำงานคล้าย handleImport() ด้านบนส่วน role setups/builder drafts เป๊ะๆ แต่ต่างกันตรงที่
+ * "ไม่มีโควตามาเช็คเลย" (เซิร์ฟนี้เป็นพรีเมียมแล้วตอนฟังก์ชันนี้ถูกเรียก) — import ของที่
+ * ค้างไว้ "ทั้งหมด" รวดเดียว ไม่ต้องข้ามอะไรอีก
+ *
+ * ปลอดภัยเรียกซ้ำได้เสมอ (idempotent) — ถ้าเซิร์ฟนี้ไม่มีของค้างอยู่เลย (ไม่เคย import
+ * ตอนฟรี หรือ apply ไปหมดแล้วจากการเรียกครั้งก่อน) จะคืน null เฉยๆ ไม่ทำอะไรต่อ ไม่ throw
+ *
+ * @param {string} guildId
+ * @returns {{ roleSetups: string[], builderDrafts: string[] }|null} null = ไม่มีของค้าง
+ *   ให้ apply เลย — มีของ (ไม่ null) = ชื่อที่ import สำเร็จแล้วจริงๆ (หลังกันชื่อชนแล้ว)
+ */
+async function applyPendingSkippedForGuild(guildId) {
+  const pending = getPendingSkipped(guildId);
+  if (!pending || (pending.roleSetups.length === 0 && pending.builderDrafts.length === 0)) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const appliedRoleSetups = [];
+  const appliedBuilderDrafts = [];
+
+  // ── role setups: เหมือน handleImport() ทุกอย่าง ยกเว้นไม่มีการเช็ค premium/โควตาเลย
+  // (เซิร์ฟนี้พรีเมียมแล้วแน่ๆ ตอนฟังก์ชันนี้ถูกเรียก) — ยังต้องกันชื่อชนกับของที่มีอยู่
+  // ในเซิร์ฟนี้ ณ ตอนนี้อยู่ดี (เผื่อผู้ซื้อสร้าง/import อย่างอื่นเพิ่มระหว่างรอค้างไว้)
+  for (const setup of pending.roleSetups) {
+    const newName = resolveUniqueName(setupExists, guildId, setup.name, 50);
+    saveSetup(guildId, newName, {
+      ...setup,
+      name: newName,
+      lastPostedAt: null,
+      createdBy: pending.importedBy,
+      createdAt: now,
+      updatedBy: pending.importedBy,
+      updatedAt: now,
+    });
+    appliedRoleSetups.push(newName);
+  }
+
+  // ── builder drafts: เหมือนกัน
+  for (const draft of pending.builderDrafts) {
+    const newName = resolveUniqueName(draftExists, guildId, draft.name, 50);
+    saveDraft(guildId, newName, {
+      ...draft,
+      name: newName,
+      createdBy: pending.importedBy,
+      createdAt: now,
+      updatedBy: pending.importedBy,
+      updatedAt: now,
+    });
+    appliedBuilderDrafts.push(newName);
+  }
+
+  // ล้างของค้างทิ้งทั้งหมด "หลัง" apply ครบทุกชิ้นแล้วเท่านั้น (ถ้า apply ชิ้นกลางๆ throw
+  // ขึ้นมาเฉยๆ — ไม่น่าเกิดเพราะ saveSetup/saveDraft ไม่ throw ตามปกติ — ของที่เหลือจะยัง
+  // ค้างอยู่ในไฟล์ ให้ลองใหม่ได้อีกครั้งทีหลัง ไม่หายไปเงียบๆ)
+  clearPendingSkipped(guildId);
+
+  return { roleSetups: appliedRoleSetups, builderDrafts: appliedBuilderDrafts };
 }
