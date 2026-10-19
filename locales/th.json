@@ -969,7 +969,7 @@
       "panel_btn_goodbye_on": "🟢 การ์ด Goodbye",
       "panel_btn_goodbye_off": "⚫ การ์ด Goodbye",
       "panel_select_role_setups_placeholder": "📁 เลือก role setup ที่จะรวมไปด้วย (เลือกได้หลายอัน ไม่เลือกก็ได้)",
-      "panel_select_builders_placeholder": "🧩 เลือกข้อความ builder ที่จะรวมไปด้วย (เลือกได้หลายอัน ไม่เลือกก็ได้)",
+      "panel_select_builders_placeholder": "🔍 เลือกข้อความ builder ที่จะรวมไปด้วย (เลือกได้หลายอัน ไม่เลือกก็ได้)",
       "panel_btn_confirm": "✨ สร้างรหัส",
       "panel_btn_cancel": "✖️ ยกเลิก",
       "panel_error_nothing_selected": "⚠️ เลือกอย่างน้อย 1 อย่างก่อนนะครับ ค่อยกด \"สร้างรหัส\"",

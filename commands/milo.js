@@ -190,6 +190,13 @@ function buildExportPanel(t, state, errorKey = null) {
     .setTitle(t('milo_config.export.panel_title'))
     .setDescription(descriptionLines.join('\n'))
     .addFields(
+      // 🆕 [19 ต.ค. 2569 รอบ 17] จัด field เป็นกริด 2x2 ตามที่น้องหนาวขอ (เดิม Role setup/
+      // Builder เป็น inline:false เต็มแถว เลยโชว์ซ้อนกันเป็นแถวยาว 2 แถว ไม่ใช่ 2x2) —
+      // ⚠️ Discord จัดแถว field inline ให้เองอัตโนมัติสูงสุด 3 อัน/แถว ถ้าใส่ inline:true
+      // รวด 4 อันจะได้ 3+1 ไม่ใช่ 2+2 ตามที่ต้องการ ต้องแทรก "field คั่นที่มองไม่เห็น"
+      // (name/value เป็นแค่ zero-width space '​' + inline:false) ไว้ตรงกลางเพื่อตัดแถว
+      // บังคับให้ field หลังจากนี้ขึ้นแถวใหม่ — เป็นเทคนิคมาตรฐานที่บอท Discord ทั่วไปใช้กัน
+      // ทำกริด 2 คอลัมน์แบบนี้
       {
         name: t('milo_config.export.field_welcome'),
         value: state.selWelcome ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
@@ -200,15 +207,16 @@ function buildExportPanel(t, state, errorKey = null) {
         value: state.selGoodbye ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
         inline: true,
       },
+      { name: '​', value: '​', inline: false }, // field คั่น มองไม่เห็น — ตัดขึ้นแถวใหม่
       {
         name: t('milo_config.export.field_role_setups'),
         value: state.selRoleSetups.size > 0 ? [...state.selRoleSetups].join(', ') : t('milo_config.export.panel_none'),
-        inline: false,
+        inline: true,
       },
       {
         name: t('milo_config.export.field_builders'),
         value: state.selBuilders.size > 0 ? [...state.selBuilders].join(', ') : t('milo_config.export.panel_none'),
-        inline: false,
+        inline: true,
       },
     )
     .setFooter({ text: t('milo_config.export.panel_footer') });

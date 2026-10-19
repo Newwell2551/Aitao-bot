@@ -969,7 +969,7 @@
       "panel_btn_goodbye_on": "🟢 Goodbye card",
       "panel_btn_goodbye_off": "⚫ Goodbye card",
       "panel_select_role_setups_placeholder": "📁 Pick role setup(s) to include (optional)",
-      "panel_select_builders_placeholder": "🧩 Pick builder message(s) to include (optional)",
+      "panel_select_builders_placeholder": "🔍 Pick builder message(s) to include (optional)",
       "panel_btn_confirm": "✨ Create code",
       "panel_btn_cancel": "✖️ Cancel",
       "panel_error_nothing_selected": "⚠️ Pick at least one item above before creating the code.",
