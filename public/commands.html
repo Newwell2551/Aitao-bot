@@ -159,6 +159,20 @@
   <script src="/js/site-lang.js"></script>
 </head>
 <body>
+  <!-- 🆕 [19 ต.ค. 2569 รอบ 2] ลิ้นชักเมนูมือถือ — ดูคอมเมนต์เต็มใน index.html -->
+  <div class="mobile-nav-backdrop" id="mobileNavBackdrop"></div>
+  <div class="mobile-nav-drawer" id="mobileNavDrawer">
+    <div class="mobile-nav-drawer-brand">
+      <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+      <span>Milo Bot</span>
+    </div>
+    <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
+    <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
+    <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
+    <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
+    <a href="/commands" class="nav-link active" data-i18n="nav.commands">Commands</a>
+    <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+  </div>
 
   <div class="site-nav-wrap">
     <nav class="site-nav">
@@ -184,7 +198,7 @@
           <span data-i18n="nav.addBot">Add Bot</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
-        <!-- 🆕 [19 ต.ค. 2569] ปุ่มเมนูมือถือ (hamburger) — ดูคอมเมนต์เต็มใน index.html -->
+        <!-- 🆕 [19 ต.ค. 2569 รอบ 2] ปุ่มเมนูมือถือ (hamburger) — ดูคอมเมนต์เต็มใน index.html -->
         <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="เปิดเมนู" aria-expanded="false">
           <span class="bar"></span>
           <span class="bar"></span>
@@ -192,16 +206,6 @@
         </button>
       </div>
     </nav>
-
-    <!-- 🆕 [19 ต.ค. 2569] แผงเมนูมือถือ — ดูคอมเมนต์เต็มใน index.html -->
-    <div class="mobile-nav-panel" id="mobileNavPanel">
-      <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
-      <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
-      <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
-      <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
-      <a href="/commands" class="nav-link active" data-i18n="nav.commands">Commands</a>
-      <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
-    </div>
   </div>
 
   <div class="auth-widget-corner">

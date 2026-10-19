@@ -118,7 +118,7 @@
   .site-nav .lang-btn .lang-label { display: none; }
 }
 
-/* 🆕 [19 ต.ค. 2569] ปุ่มเมนูมือถือ (hamburger) + แผงเมนูมือถือ
+/* 🆕 [19 ต.ค. 2569] ปุ่มเมนูมือถือ (hamburger) + ลิ้นชักเมนูมือถือ (drawer)
    ───────────────────────────────────────────────────────────────────────
    ที่มา: น้องหนาวถามว่า "เห็นแถบด้านบนไหม ui อะไรต่างๆ หายหมด ต้องทำปุ่ม
    เฉพาะมือถือไหม" — ตอบว่าใช่ครับ ต้องทำ เพราะด้านบน (@media max-width:860px)
@@ -127,10 +127,20 @@
    เข้าเว็บจากมือถือ (จอ ≤860px) จะกดลิงก์พวกนี้ไม่ได้เลยตั้งแต่แรก ไม่ใช่บั๊กใหม่
    จากการแก้ hero แต่เป็นของเดิมที่ยังไม่เคยทำส่วนทดแทนไว้
 
-   วิธีแก้: เพิ่มปุ่ม "hamburger" (สามขีดกลายเป็นกากบาทตอนเปิด) ไว้มุมขวาของ
-   แถบเมนู โชว์เฉพาะจอ ≤860px กดแล้วจะมีแผงเมนู (.mobile-nav-panel) หล่นลงมา
-   โชว์ลิงก์ชุดเดียวกับ .center-links ให้กดได้ครบทุกหน้า — ใช้ CSS/JS ชุดเดียว
-   กันทุกหน้าเพราะทุกหน้า <link> ไฟล์นี้ไฟล์เดียวอยู่แล้ว (ดูคอมเมนต์หัวไฟล์) */
+   🔁 [19 ต.ค. 2569 รอบ 2] รอบแรกทำเป็น "แผงหล่นลงมาใต้แถบเมนู" (dropdown) แต่เจอ
+   บั๊กปุ่ม "Log in"/avatar (.auth-widget-corner) ไปลอยทับบังแผงอยู่เรื่อยๆ เพราะ
+   แผงนั้นซ้อนอยู่ใน stacking context ของ .site-nav-wrap (position:sticky) ทำให้
+   z-index สู้ .auth-widget-corner ไม่ได้ตรงๆ สักที — น้องหนาวเลยเสนอให้เปลี่ยนไป
+   เป็น "ลิ้นชัก (drawer) เลื่อนออกจากขอบซ้ายจอ แนวตั้ง" แทน ซึ่งแก้ปัญหาได้ตรงจุด
+   กว่ามาก เพราะ:
+     1) ลิ้นชัก + ฉากหลังมืด (.mobile-nav-backdrop) ถูกวางเป็นลูกตัวแรกสุดของ
+        <body> เลยในทุกหน้า (ไม่ได้ซ้อนอยู่ใน .site-nav-wrap/.hero อีกต่อไป) เลย
+        ไม่มีทางโดน stacking context ของอย่างอื่นบังได้เลย ไม่ต้องมานั่งไล่ z-index
+        แข่งกับ .auth-widget-corner อีก
+     2) ฉากหลังมืดคลุมเต็มจอกันพื้นหลังเว็บไม่ให้มารบกวนสายตาด้วย เป็นแพทเทิร์น
+        เมนูมือถือมาตรฐานที่คนคุ้นเคยอยู่แล้ว (เช่น เมนูแอปมือถือทั่วไป)
+   ปุ่ม hamburger (สามขีดกลายเป็นกากบาทตอนเปิด) ยังอยู่ที่เดิมในแถบเมนู กดแล้วสั่ง
+   เปิด/ปิดลิ้นชักนี้แทนที่จะเปิดแผง dropdown เหมือนรอบแรก */
 
 .site-nav .mobile-menu-btn {
   display: none; /* ปกติซ่อนไว้ก่อน จะโชว์เฉพาะจอเล็กผ่าน media query ด้านล่างสุด */
@@ -161,42 +171,67 @@
 .site-nav .mobile-menu-btn.is-open .bar:nth-child(2) { opacity: 0; }
 .site-nav .mobile-menu-btn.is-open .bar:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
-/* แผงเมนูที่หล่นลงมาตอนกดปุ่ม hamburger — เกาะอยู่กับ .site-nav-wrap ซึ่งเป็น
-   position:sticky (ทำหน้าที่เป็น containing block ให้ position:absolute ลูกๆ
-   ของมันลอยอ้างอิงจากตัวมันเองพอดี ไม่หลุดไปอ้างอิงจากทั้งหน้าเว็บ) */
-.mobile-nav-panel {
-  display: none; /* ปิดอยู่ก่อน โชว์ตอนมี class is-open (nav.js เป็นคนเติม/ลบ class ให้) */
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 24px;
-  right: 24px;
-  /* ⚠️ [19 ต.ค. 2569] z-index ต้องสูงกว่า .auth-widget-corner (40) ไม่งั้นตอนจอแคบกว่า
-     1320px ที่ auth widget สลับมาเป็น position:static ลอยอยู่ใต้แถบเมนูพอดี (ดูคอมเมนต์
-     .auth-widget-corner ด้านบน) ปุ่ม "Log in"/avatar จะไปซ้อนทับบังลิงก์แรกๆ ในแผงเมนูนี้
-     (เจอบั๊กนี้ตอนทดสอบด้วย Playwright ที่ 390px เลยแก้ไว้ตรงนี้) */
-  z-index: 45;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px;
-  background: rgba(15, 20, 36, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
+/* ฉากหลังมืดครึ่งโปร่งใส คลุมเต็มจอตอนลิ้นชักเปิดอยู่ — คลิกตรงไหนก็ได้บนฉากนี้
+   (nav.js ดักฟัง click) จะปิดลิ้นชักทันที เหมือนเมนูแอปมือถือทั่วไป */
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 15, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+  z-index: 90; /* สูงกว่าทุกอย่างในหน้าเว็บ (รวม .auth-widget-corner ที่ z-index:40) แน่นอน
+                  เพราะอยู่เป็นลูกตัวแรกสุดของ body ไม่ได้ซ้อนอยู่ใน stacking context ไหนเลย */
+}
+.mobile-nav-backdrop.is-open { opacity: 1; pointer-events: auto; }
+
+/* ลิ้นชักเมนูมือถือ — เลื่อนเข้า/ออกจากขอบซ้ายจอด้วย transform:translateX (ลื่นกว่า
+   การขยับ left/width เพราะ browser ใช้ GPU ช่วยเรนเดอร์ transform ได้) สูงเต็มจอ
+   (100dvh กันปัญหาแถบ address bar มือถือบังส่วนล่าง — เบราว์เซอร์เก่าที่ไม่รู้จัก
+   dvh จะ fallback ไปใช้ 100vh ที่ประกาศไว้ก่อนหน้าแทนอัตโนมัติ) */
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: min(78vw, 300px);
+  background: rgba(13, 17, 32, 0.98);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
+  z-index: 95; /* สูงกว่า .mobile-nav-backdrop (90) อีกที ให้ลิ้นชักลอยเหนือฉากหลังมืด */
+  display: flex;
+  flex-direction: column;
+  padding: 18px 14px;
+  transform: translateX(-100%);
+  transition: transform .25s ease;
+  overflow-y: auto;
 }
-.mobile-nav-panel.is-open { display: flex; }
+.mobile-nav-drawer.is-open { transform: translateX(0); }
 
-.mobile-nav-panel .nav-link {
-  padding: 11px 12px;
+.mobile-nav-drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px 18px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.mobile-nav-drawer-brand img { width: 26px; height: 26px; border-radius: 999px; object-fit: cover; }
+.mobile-nav-drawer-brand span { font-size: 15px; font-weight: 700; color: #f3f1fb; }
+
+.mobile-nav-drawer .nav-link {
+  padding: 13px 12px;
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   color: #e5e8fa;
   text-decoration: none;
 }
-.mobile-nav-panel .nav-link:hover { background: rgba(255, 255, 255, 0.06); }
-.mobile-nav-panel .nav-link.active {
+.mobile-nav-drawer .nav-link:hover { background: rgba(255, 255, 255, 0.06); }
+.mobile-nav-drawer .nav-link.active {
   color: #f3f1fb;
   background: rgba(74, 90, 168, 0.25);
 }
@@ -214,15 +249,7 @@
    ของหน้าเว็บตามที่ขอ */
 @media (max-width: 1320px) {
   .auth-widget-corner {
-    /* ⚠️ [19 ต.ค. 2569] ใช้ position:relative (ไม่ใช่ static เหมือนเดิม) + z-index ต่ำกว่า
-       .site-nav-wrap (30) ชัดเจน — เหตุผล: ตอนทดสอบเมนูมือถือใหม่ (.mobile-nav-panel)
-       พบว่าถ้าปล่อย position:static ไว้ ปุ่ม "Log in"/avatar จะ "ลอยทับ" บังแผงเมนูมือถือ
-       อยู่เสมอไม่ว่าจะตั้ง z-index เท่าไหร่ก็ตาม เพราะ position:static ไม่สนใจ z-index เลย
-       (ตามสเปก CSS) เลยต้องเปลี่ยนมาใช้ position:relative แทน (ยังอยู่ในโฟลว์ปกติเหมือนเดิม
-       ไม่กระทบ layout) เพื่อให้ z-index เทียบกับ .site-nav-wrap ได้ตรงๆ แล้วตั้งให้ต่ำกว่า
-       เพื่อให้แผงเมนูมือถือ (ลูกของ .site-nav-wrap) ลอยทับอยู่เหนือเสมอตอนเปิด */
-    position: relative;
-    z-index: 1;
+    position: static;
     display: flex;
     justify-content: flex-end;
     max-width: 1080px;

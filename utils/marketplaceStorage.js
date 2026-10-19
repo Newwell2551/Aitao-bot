@@ -525,6 +525,24 @@ function getSellerStats(sellerId) {
 }
 
 /**
+ * 🆕 [19 ต.ค. 2569 — hotfix] นับยอดขายสำเร็จ "เฉพาะสินค้าชิ้นนี้ชิ้นเดียว" (ไม่รวมสินค้าอื่น
+ * ของร้านเดียวกัน) — ต่างจาก getSellerStats() ด้านบนตรงที่ getSellerStats นับรวมทุกสินค้า
+ * ของร้านนั้นเป็นก้อนเดียว (ไว้ใช้เป็นคะแนนความน่าเชื่อถือร้านโดยรวม ถูกต้องแล้ว) แต่พอเอา
+ * ตัวเลขนั้นไปโชว์เป็นป้าย "ขายแล้ว N" ติดบน "การ์ดสินค้าแต่ละชิ้น" บนหน้า marketplace.html
+ * (public/marketplace.html, buildListingCardHtml) กลับกลายเป็นบั๊ก: พอร้านไหนขายสินค้า
+ * ชิ้นหนึ่งสำเร็จ การ์ดสินค้า "ทุกชิ้น" ของร้านนั้นจะโชว์เลขเพิ่มพร้อมกันหมด ทำให้ดูเหมือน
+ * สินค้าชิ้นอื่นถูกซื้อไปด้วยทั้งที่จริงๆ ไม่ใช่ — ฟังก์ชันนี้แก้ตรงนั้น กรอง order ด้วย
+ * listingId (ไม่ใช่ sellerId) ก่อนนับ ให้ได้ตัวเลขที่ตรงกับสินค้าชิ้นนั้นจริงๆ
+ * @param {string} listingId
+ */
+function getListingSalesCount(listingId) {
+  const data = readAll();
+  const listingOrders = Object.values(data.orders).filter((order) => order.listingId === listingId);
+  const listingSalesCount = listingOrders.filter((order) => order.status === 'confirmed').length;
+  return { listingSalesCount };
+}
+
+/**
  * บันทึกพิกัดข้อความ "รอยืนยันรับเงิน" ที่โพสต์แจ้งผู้ขาย — ไว้แก้ข้อความเดิมตอนกด
  * ยืนยันแล้ว (เหมือน syncCodeReportMessage ของระบบ referral)
  * @param {string} orderId
@@ -665,6 +683,7 @@ module.exports = {
   createOrder,
   getOrder,
   getSellerStats,
+  getListingSalesCount,
   saveOrderNotifyMessage,
   confirmOrder,
   markOrderBuyerPaid,
