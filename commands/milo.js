@@ -94,6 +94,63 @@ const MX = {
 // locale key ใหม่ (ไอคอนสื่อความหมายได้เลยโดยไม่ต้องแปล)
 const ROLE_SETUP_TYPE_EMOJI = { menu: '📋', button: '🔘', reaction: '👍' };
 
+// 🆕 [19 ต.ค. 2569 รอบ 18] อิโมจิ custom ของแผง export-config — น้องหนาวส่งมาให้โดยตรง 2 ชุด:
+//
+// 1) MILO_STATUS_EMOJI_ID — ใช้ ID เดียวกันเป๊ะๆ กับอิโมจิ custom ที่การ์ด #referral-earnings
+//    ใช้แทนสถานะ "เปิดใช้งาน/ปิดใช้งาน" (ดู CUSTOM_EMOJI_IDS.status ใน
+//    utils/referralReportChannel.js) — ใช้แค่ตอน "เลือกไว้แล้ว" เท่านั้น (ตอนยังไม่เลือกใช้
+//    ⚫ Unicode ธรรมดา ตามที่น้องหนาวส่งตัวอย่างมาให้ดู ไม่ใช่สลับอิโมจิ custom ไปมาทั้ง 2 สถานะ
+//    แบบที่ทำไว้รอบก่อน)
+// 2) FIELD_EMOJI — อิโมจิ custom แยกตามหัวข้อแต่ละ field (Welcome/Goodbye/Role setup/Builder)
+//    น้องหนาวส่งมาเป็นทั้ง ID ล้วนๆ (ตัวเลขยาว) และ "ชื่ออิโมจิ" (ไม่ใช่ ID) ปนกัน — เพราะ
+//    discord เวลาก๊อปข้อความที่มีอิโมจิ custom ไปวางเป็นข้อความธรรมดา บางทีจะกลายเป็นแค่
+//    `:ชื่ออิโมจิ:` ไม่ติด ID มาด้วย เลยต้องรองรับค้นหาได้ทั้ง 2 แบบ (ดู resolveEmoji() ด้านล่าง)
+//
+// ⚠️ ตั้งใจไม่แก้ไฟล์ utils/referralReportChannel.js เลยสักบรรทัด (ไม่ import ข้ามไฟล์ด้วย) กัน
+// กระทบฟีเจอร์ referral ที่ใช้งานอยู่จริงโดยไม่จำเป็น — เขียนฟังก์ชันค้นหาอิโมจิแยกไว้ในไฟล์นี้เอง
+const MILO_STATUS_EMOJI_ID = '1546199668793282560'; // ใช้ตอน "เลือกไว้" เท่านั้น (ไม่เลือก = ⚫ เฉยๆ)
+const FIELD_EMOJI = {
+  welcome: '1548426058318217287',          // ID ล้วนๆ
+  goodbye: '466459bluebearoctopusplushie', // ชื่ออิโมจิ (ไม่ใช่ ID)
+  roleSetups: '414069winterheartblue',     // ชื่ออิโมจิ (ไม่ใช่ ID)
+  builders: '355581winterribbon',          // ชื่ออิโมจิ (ไม่ใช่ ID)
+};
+
+/**
+ * หาอิโมจิ custom สำหรับใช้ในข้อความ/embed (title/description/field) — รองรับทั้งค้นด้วย ID
+ * (ถ้า `idOrName` เป็นตัวเลขล้วนๆ) และค้นด้วยชื่ออิโมจิตรงๆ (ถ้าไม่ใช่ตัวเลขล้วน — เผื่อกรณี
+ * ได้แค่ `:ชื่อ:` มาไม่มี ID ติดมาด้วย) หาไม่เจอทั้ง 2 แบบ (บอทยังไม่เข้าเซิร์ฟที่มีอิโมจินั้น
+ * หรือมีการลบอิโมจิไปแล้ว) คืนค่า fallback Unicode แทนเงียบๆ ไม่ error
+ * @param {import('discord.js').Client} client
+ * @param {string} idOrName
+ * @param {string} fallback อิโมจิ Unicode สำรอง
+ * @returns {string}
+ */
+function resolveEmoji(client, idOrName, fallback) {
+  const emoji = /^\d+$/.test(idOrName)
+    ? client?.emojis?.cache?.get(idOrName)
+    : client?.emojis?.cache?.find(e => e.name === idOrName);
+  if (!emoji) return fallback;
+  return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+}
+
+/**
+ * เหมือน resolveEmoji() แต่คืนค่าเป็น object สำหรับ ButtonBuilder.setEmoji() โดยเฉพาะ — เพราะ
+ * setEmoji() ไม่รับ format string `<:name:id>` ต้องเป็น object `{ id, name, animated }` (custom)
+ * หรือ `{ name: 'อิโมจิ' }` (Unicode fallback) แทน
+ * @param {import('discord.js').Client} client
+ * @param {string} idOrName
+ * @param {string} fallback
+ * @returns {{ id?: string, name: string, animated?: boolean }}
+ */
+function resolveButtonEmoji(client, idOrName, fallback) {
+  const emoji = /^\d+$/.test(idOrName)
+    ? client?.emojis?.cache?.get(idOrName)
+    : client?.emojis?.cache?.find(e => e.name === idOrName);
+  if (!emoji) return { name: fallback };
+  return { id: emoji.id, name: emoji.name, animated: emoji.animated };
+}
+
 /**
  * หาชื่อที่ไม่ชนกับของเดิมในเซิร์ฟปลายทาง — ถ้าชื่อเดิมไม่ชนใช้ได้เลย ถ้าชนจะต่อท้าย
  * " (2)", " (3)", ... ไปจนกว่าจะไม่ชน (ตัดชื่อเดิมให้สั้นลงเผื่อจำเป็น กัน "ชื่อ+ส่วนต่อท้าย"
@@ -175,15 +232,34 @@ module.exports = {
  * `interaction.update()` แก้ไขข้อความแบบ "partial" — ถ้าไม่ส่ง content ไปเลย ข้อความเดิม
  * (ก่อนจะมี embed) จะค้างโชว์อยู่เหนือ embed ต่อไป กลายเป็นซ้อนกันดูรก
  *
+ * 🆕 [19 ต.ค. 2569 รอบ 18] รับ `client` เพิ่ม เพื่อ resolve อิโมจิ custom ที่น้องหนาวส่งมา —
+ * อิโมจิประจำหัวข้อแต่ละ field (FIELD_EMOJI) ต่อท้ายชื่อ field เสมอ + อิโมจิสถานะ
+ * (MILO_STATUS_EMOJI_ID) โชว์เฉพาะตอน "เลือกไว้" เท่านั้น ตอนยังไม่เลือกใช้ ⚫ Unicode ธรรมดา
+ * ตามตัวอย่างที่น้องหนาวส่งมาให้ดูเป๊ะๆ (ดูคอมเมนต์ที่ FIELD_EMOJI/MILO_STATUS_EMOJI_ID ด้านบน)
+ *
  * @param {(key: string, replacements?: object) => string} t
  * @param {object} state - ดู exportSessions ด้านบนว่า state มีอะไรบ้าง
+ * @param {import('discord.js').Client} client - ใช้หาอิโมจิ custom (resolveEmoji/resolveButtonEmoji)
  * @param {string|null} errorKey - ใส่คีย์ error ถ้าต้องการโชว์แจ้งเตือนต่อท้าย intro (เช่น ยังไม่เลือกอะไรเลยแล้วกดสร้างรหัส)
  * @returns {{ content: string, embeds: EmbedBuilder[], components: ActionRowBuilder[] }}
  */
-function buildExportPanel(t, state, errorKey = null) {
+function buildExportPanel(t, state, client, errorKey = null) {
   // คำอธิบายบนสุดของ embed — intro ปกติ + (ถ้ามี) แจ้งเตือน error แบบ blockquote ให้เด่นขึ้น
   const descriptionLines = [t('milo_config.export.panel_intro')];
   if (errorKey) descriptionLines.push('', `> ${t(errorKey)}`);
+
+  // อิโมจิสถานะ "เลือกไว้" — โชว์เฉพาะตอนติ๊กแล้วเท่านั้น (ตามตัวอย่างที่น้องหนาวส่งมา) ตอน
+  // ยังไม่เลือกใช้ ⚫ Unicode ธรรมดาตรงๆ ไปเลย ไม่ต้อง resolve อะไร
+  const yesEmoji = resolveEmoji(client, MILO_STATUS_EMOJI_ID, '🟢');
+  const noEmoji = '⚫';
+
+  // อิโมจิประจำหัวข้อแต่ละ field — ต่อท้ายชื่อ field เสมอไม่ว่าจะเลือกไว้หรือไม่ (ของตกแต่ง
+  // อย่างเดียว ไม่เกี่ยวกับสถานะเลือก/ไม่เลือก) ถ้าหาไม่เจอ (บอทไม่ได้อยู่ในเซิร์ฟที่มีอิโมจินั้น)
+  // ใช้อิโมจิ Unicode สำรองที่ความหมายใกล้เคียงแทน ไม่ปล่อยว่าง
+  const welcomeFieldEmoji = resolveEmoji(client, FIELD_EMOJI.welcome, '🎉');
+  const goodbyeFieldEmoji = resolveEmoji(client, FIELD_EMOJI.goodbye, '👋');
+  const roleSetupsFieldEmoji = resolveEmoji(client, FIELD_EMOJI.roleSetups, '🎭');
+  const buildersFieldEmoji = resolveEmoji(client, FIELD_EMOJI.builders, '🧩');
 
   const embed = new EmbedBuilder()
     .setColor(0x5865F2) // Discord Blurple — สีหลักของทั้งแผง ตามสเปคที่ขอ
@@ -198,24 +274,28 @@ function buildExportPanel(t, state, errorKey = null) {
       // บังคับให้ field หลังจากนี้ขึ้นแถวใหม่ — เป็นเทคนิคมาตรฐานที่บอท Discord ทั่วไปใช้กัน
       // ทำกริด 2 คอลัมน์แบบนี้
       {
-        name: t('milo_config.export.field_welcome'),
-        value: state.selWelcome ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
+        name: `${t('milo_config.export.field_welcome')} ${welcomeFieldEmoji}`,
+        value: `${state.selWelcome ? yesEmoji : noEmoji} ${state.selWelcome ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no')}`,
         inline: true,
       },
       {
-        name: t('milo_config.export.field_goodbye'),
-        value: state.selGoodbye ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no'),
+        name: `${t('milo_config.export.field_goodbye')} ${goodbyeFieldEmoji}`,
+        value: `${state.selGoodbye ? yesEmoji : noEmoji} ${state.selGoodbye ? t('milo_config.export.panel_yes') : t('milo_config.export.panel_no')}`,
         inline: true,
       },
       { name: '​', value: '​', inline: false }, // field คั่น มองไม่เห็น — ตัดขึ้นแถวใหม่
       {
-        name: t('milo_config.export.field_role_setups'),
-        value: state.selRoleSetups.size > 0 ? [...state.selRoleSetups].join(', ') : t('milo_config.export.panel_none'),
+        name: `${t('milo_config.export.field_role_setups')} ${roleSetupsFieldEmoji}`,
+        value: state.selRoleSetups.size > 0
+          ? `${yesEmoji} ${[...state.selRoleSetups].join(', ')}`
+          : `${noEmoji} ${t('milo_config.export.panel_none')}`,
         inline: true,
       },
       {
-        name: t('milo_config.export.field_builders'),
-        value: state.selBuilders.size > 0 ? [...state.selBuilders].join(', ') : t('milo_config.export.panel_none'),
+        name: `${t('milo_config.export.field_builders')} ${buildersFieldEmoji}`,
+        value: state.selBuilders.size > 0
+          ? `${yesEmoji} ${[...state.selBuilders].join(', ')}`
+          : `${noEmoji} ${t('milo_config.export.panel_none')}`,
         inline: true,
       },
     )
@@ -225,21 +305,27 @@ function buildExportPanel(t, state, errorKey = null) {
 
   // แถวที่ 1: ปุ่ม toggle welcome/goodbye — โชว์เฉพาะอันที่เซิร์ฟนี้มีตั้งค่าไว้จริงเท่านั้น
   // (ถ้าเซิร์ฟยังไม่ตั้ง welcome เลย ก็ไม่มีอะไรให้ toggle ไม่ต้องโชว์ปุ่มเปล่าๆ ให้งง)
-  // สีปุ่ม: เลือกไว้ (true) = Success (เขียว) + ป้าย 🟢, ไม่เลือก (false) = Secondary (เทา) + ป้าย
-  // ⚫ — ตั้งใจเลือก Secondary แทน Danger (แดง) สำหรับสถานะ "ยังไม่เลือก" เพราะสีแดงควรเก็บไว้
-  // ใช้กับปุ่ม Cancel/ปุ่มทำลายข้อมูลเท่านั้น (ตามแพทเทิร์นเดิมของทั้งบอท) ไม่ใช่สถานะปุ่ม toggle
-  // ปกติ — ไม่อย่างนั้นผู้ขายอาจเข้าใจผิดว่า "ไม่เลือก" แปลว่ามีอะไรผิดพลาด
+  // สีปุ่ม: เลือกไว้ (true) = Success (เขียว), ไม่เลือก (false) = Secondary (เทา) — ตั้งใจเลือก
+  // Secondary แทน Danger (แดง) สำหรับสถานะ "ยังไม่เลือก" เพราะสีแดงควรเก็บไว้ใช้กับปุ่ม Cancel/
+  // ปุ่มทำลายข้อมูลเท่านั้น (ตามแพทเทิร์นเดิมของทั้งบอท) ไม่ใช่สถานะปุ่ม toggle ปกติ — ไม่อย่างนั้น
+  // ผู้ขายอาจเข้าใจผิดว่า "ไม่เลือก" แปลว่ามีอะไรผิดพลาด
+  // 🆕 [รอบ 18] ไอคอนปุ่มใช้ .setEmoji() แยกจาก label (แพทเทิร์นเดียวกับปุ่ม "ข้อกำหนด"/
+  // "Payment" ใน utils/referralReportChannel.js) แทนการฝังอิโมจิไว้ในข้อความ label ตรงๆ —
+  // เลือกไว้ (true) = อิโมจิ custom ของสถานะ (MILO_STATUS_EMOJI_ID), ไม่เลือก (false) = ⚫
+  // Unicode ธรรมดา (ไม่ต้อง resolve อะไร) ตรงกับที่โชว์ใน field ของ embed ด้านบนเป๊ะๆ
   const toggleButtons = [];
   if (state.welcome) {
     toggleButtons.push(new ButtonBuilder()
       .setCustomId(MX.TOGGLE_WELCOME)
-      .setLabel(state.selWelcome ? t('milo_config.export.panel_btn_welcome_on') : t('milo_config.export.panel_btn_welcome_off'))
+      .setLabel(t('milo_config.export.panel_btn_welcome'))
+      .setEmoji(state.selWelcome ? resolveButtonEmoji(client, MILO_STATUS_EMOJI_ID, '🟢') : { name: '⚫' })
       .setStyle(state.selWelcome ? ButtonStyle.Success : ButtonStyle.Secondary));
   }
   if (state.goodbye) {
     toggleButtons.push(new ButtonBuilder()
       .setCustomId(MX.TOGGLE_GOODBYE)
-      .setLabel(state.selGoodbye ? t('milo_config.export.panel_btn_goodbye_on') : t('milo_config.export.panel_btn_goodbye_off'))
+      .setLabel(t('milo_config.export.panel_btn_goodbye'))
+      .setEmoji(state.selGoodbye ? resolveButtonEmoji(client, MILO_STATUS_EMOJI_ID, '🟢') : { name: '⚫' })
       .setStyle(state.selGoodbye ? ButtonStyle.Success : ButtonStyle.Secondary));
   }
   if (toggleButtons.length > 0) components.push(new ActionRowBuilder().addComponents(...toggleButtons));
@@ -317,7 +403,7 @@ async function handleExport(interaction, guildId, t) {
   exportSessions.set(sessionKey(guildId, interaction.user.id), state);
 
   return interaction.reply({
-    ...buildExportPanel(t, state),
+    ...buildExportPanel(t, state, interaction.client),
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -340,12 +426,12 @@ async function handleButton(interaction) {
 
   if (interaction.customId === MX.TOGGLE_WELCOME) {
     state.selWelcome = !state.selWelcome;
-    return interaction.update(buildExportPanel(t, state));
+    return interaction.update(buildExportPanel(t, state, interaction.client));
   }
 
   if (interaction.customId === MX.TOGGLE_GOODBYE) {
     state.selGoodbye = !state.selGoodbye;
-    return interaction.update(buildExportPanel(t, state));
+    return interaction.update(buildExportPanel(t, state, interaction.client));
   }
 
   if (interaction.customId === MX.CANCEL) {
@@ -360,7 +446,7 @@ async function handleButton(interaction) {
     // ไม่ติ๊กอะไรไว้เลยแล้วกดสร้างรหัส — ไม่สร้างรหัสเปล่าๆ ทิ้งไว้ในระบบ โชว์แจ้งเตือนแล้ว
     // วาดแผงเดิมกลับให้เลือกต่อได้เลย (ไม่ต้องสั่งคำสั่งใหม่)
     if (nothingSelected) {
-      return interaction.update(buildExportPanel(t, state, 'milo_config.export.panel_error_nothing_selected'));
+      return interaction.update(buildExportPanel(t, state, interaction.client, 'milo_config.export.panel_error_nothing_selected'));
     }
 
     // กรองเอาเฉพาะชื่อที่เลือกไว้จาก snapshot ตอนเปิดแผง (ไม่ query storage ใหม่ — กันกรณี
@@ -416,12 +502,12 @@ async function handleSelectMenu(interaction) {
   // อันนั้นมาให้ทุกครั้ง ไม่ใช่แค่ส่วนที่เปลี่ยน
   if (interaction.customId === MX.SELECT_ROLE_SETUPS) {
     state.selRoleSetups = new Set(interaction.values);
-    return interaction.update(buildExportPanel(t, state));
+    return interaction.update(buildExportPanel(t, state, interaction.client));
   }
 
   if (interaction.customId === MX.SELECT_BUILDERS) {
     state.selBuilders = new Set(interaction.values);
-    return interaction.update(buildExportPanel(t, state));
+    return interaction.update(buildExportPanel(t, state, interaction.client));
   }
 }
 

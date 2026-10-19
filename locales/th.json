@@ -961,13 +961,9 @@
       "success": "✅ **สร้างรหัสเรียบร้อยแล้วครับ — ใช้ได้ครั้งเดียวเท่านั้น:**\n```\n{code}\n```\nรหัสนี้มีสิ่งเหล่านี้รวมอยู่ด้วยครับ:\n{summary}\n\nเอารหัสนี้ไปแปะในช่อง \"รหัสการตั้งค่า Milo Bot (Milo Bot Configuration Key)\" ของฟอร์มลงขายใน Marketplace ได้เลยครับ หรือจะส่งให้ผู้ซื้อตรงๆ ก็ได้ — รหัสนี้ใช้ได้ครั้งเดียวเท่านั้นนะครับ พอมีใครสั่ง `/milo import-config` ด้วยรหัสนี้สำเร็จแล้ว รหัสจะใช้ซ้ำไม่ได้อีก",
       "panel_intro": "เลือกสิ่งที่จะรวมในรหัสนี้ครับ:",
       "panel_summary": "ตอนนี้เลือกไว้ — Welcome: {welcome} | Goodbye: {goodbye} | Role setup: {roleSetups} | Builder: {builders}",
-      "panel_yes": "🟢 เลือกไว้",
-      "panel_no": "⚫ ไม่ได้เลือก",
-      "panel_none": "⚫ ไม่มี",
-      "panel_btn_welcome_on": "🟢 การ์ด Welcome",
-      "panel_btn_welcome_off": "⚫ การ์ด Welcome",
-      "panel_btn_goodbye_on": "🟢 การ์ด Goodbye",
-      "panel_btn_goodbye_off": "⚫ การ์ด Goodbye",
+      "panel_yes": "เลือกไว้",
+      "panel_no": "ไม่ได้เลือก",
+      "panel_none": "ไม่มี",
       "panel_select_role_setups_placeholder": "📁 เลือก role setup ที่จะรวมไปด้วย (เลือกได้หลายอัน ไม่เลือกก็ได้)",
       "panel_select_builders_placeholder": "🔍 เลือกข้อความ builder ที่จะรวมไปด้วย (เลือกได้หลายอัน ไม่เลือกก็ได้)",
       "panel_btn_confirm": "✨ สร้างรหัส",
@@ -980,7 +976,9 @@
       "field_goodbye": "การ์ด Goodbye",
       "field_role_setups": "Role setup",
       "field_builders": "ข้อความ Builder",
-      "panel_footer": "🔒 รหัสใช้ได้ครั้งเดียว • เฉพาะ Administrator เท่านั้นครับ"
+      "panel_footer": "🔒 รหัสใช้ได้ครั้งเดียว • เฉพาะ Administrator เท่านั้นครับ",
+      "panel_btn_welcome": "การ์ด Welcome",
+      "panel_btn_goodbye": "การ์ด Goodbye"
     },
     "import": {
       "invalid_code": "❌ ไม่พบรหัสนี้ครับ เช็คดูอีกรอบว่าพิมพ์/ก๊อปมาถูกไหม แล้วลองใหม่นะครับ",
