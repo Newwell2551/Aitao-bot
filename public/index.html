@@ -106,7 +106,22 @@
       ::view-transition-new(root) { animation: none !important; }
     }
     @media (prefers-reduced-motion: no-preference) {
-      body { animation: pageEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+      /* 🆕 [20 ต.ค. 2569 รอบ 4] เปลี่ยน fill-mode จาก "both" เป็น "backwards" —
+         เจอบั๊กที่ซ่อนอยู่นานแล้วระหว่างทำแถบเมนูมือถือแบบลอยติดขอบล่างจอ (bottom
+         nav bar): "both" สั่งให้ body "ค้าง" ใช้ค่า transform ของคีย์เฟรมสุดท้าย
+         (translateY(0)) ไปตลอดหลังอนิเมชันจบแล้วด้วย แม้ค่านั้นจะมองด้วยตาไม่เห็น
+         การขยับเลยก็ตาม (เพราะเป็น 0px) — แต่ในทาง CSS การมี transform ค้างอยู่
+         (ไม่ใช่ "none" จริงๆ) จะทำให้ body กลายเป็นจุดอ้างอิงตำแหน่งใหม่ให้ลูกๆ
+         ที่ตั้ง position:fixed ไว้ (เช่นแถบเมนูมือถือ, ปุ่ม login/avatar) แทนที่จะ
+         อิงกับหน้าจอ (viewport) ตรงๆ แบบที่ position:fixed ควรทำ ผลคือพอเลื่อนหน้า
+         เว็บลง แถบ/ปุ่มพวกนั้นจะ "เลื่อนหายไปพร้อมเนื้อหา" แทนที่จะลอยค้างอยู่กับที่
+         (บั๊กนี้น่าจะกระทบปุ่ม login/avatar แบบ position:fixed มาตั้งนานแล้วด้วยซ้ำ
+         เพียงแต่ไม่มีใครสังเกตเพราะปุ่มอยู่สูงใกล้ขอบบนอยู่แล้ว) — เปลี่ยนเป็น
+         "backwards" แก้ได้เพราะยังคงกันปัญหา "เห็นข้อความโผล่วับก่อนอนิเมชันเริ่ม"
+         เหมือนเดิม (ส่วน backwards ของ fill-mode) แต่พอจบอนิเมชันแล้ว body จะกลับไป
+         ใช้สไตล์ปกติที่ไม่มี transform เลยจริงๆ (ไม่ใช่ "ค้าง" ไว้) หน้าตาตอนจบ
+         อนิเมชันเหมือนเดิมทุกอย่าง (opacity:1 ไม่ขยับ) มองด้วยตาไม่ต่างกันเลย */
+      body { animation: pageEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
     }
     @keyframes pageEnter {
       from { opacity: 0; transform: translateY(10px); }

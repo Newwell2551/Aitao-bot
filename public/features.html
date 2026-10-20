@@ -87,7 +87,12 @@
       ::view-transition-new(root) { animation: none !important; }
     }
     @media (prefers-reduced-motion: no-preference) {
-      body { animation: pageEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+      /* 🆕 [20 ต.ค. 2569 รอบ 4] เปลี่ยน fill-mode "both" → "backwards" — แก้บั๊ก
+         ที่ทำให้ลูกๆ ซึ่งตั้ง position:fixed ไว้ (แถบเมนูมือถือ/ปุ่ม login) เลื่อน
+         หายไปพร้อมเนื้อหาตอนสกรอลหน้าเว็บ แทนที่จะลอยค้างกับจอ อธิบายเต็มๆ ไว้ที่
+         index.html จุดเดียวกันนี้แล้วครับ (ไฟล์เดียวกัน หน้าตาตอนจบอนิเมชันเหมือนเดิม
+         ทุกอย่าง ไม่มีอะไรเปลี่ยนที่ตาเห็น) */
+      body { animation: pageEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
     }
     @keyframes pageEnter {
       from { opacity: 0; transform: translateY(10px); }
