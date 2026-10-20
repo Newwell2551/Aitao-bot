@@ -200,8 +200,10 @@
 
   </style>
   <!-- 🆕 [21 ก.ย. 2569] navbar (โครง+สไตล์) ใช้ไฟล์กลางร่วมกับทุกหน้าแล้ว ดูคอมเมนต์
-       หัวไฟล์ nav.css -->
-  <link rel="stylesheet" href="/nav.css">
+       หัวไฟล์ nav.css
+       🆕 [19 ต.ค. 2569] "?v=3" ต่อท้าย = cache-busting กันเบราว์เซอร์แคชไฟล์เก่าค้างไว้
+       (อธิบายละเอียดเต็มๆ ไว้ที่ index.html จุดเดียวกันนี้แล้วครับ) -->
+  <link rel="stylesheet" href="/nav.css?v=3">
   <!-- 🆕 [22 ก.ย. 2569] ซ่อน scrollbar เดิมของเบราว์เซอร์ + ดีไซน์แถบเลื่อนเล็กๆ
        เป็นสไตล์ของเราเอง (ดูคอมเมนต์หัวไฟล์ scrollbar.css) -->
   <link rel="stylesheet" href="/scrollbar.css">
@@ -356,6 +358,6 @@
 
   <!-- 🆕 [21 ก.ย. 2569] สคริปต์ auth widget (ปุ่ม login/avatar มุมขวาบน) — ใช้ไฟล์
        กลางร่วมกับทุกหน้า ดูคอมเมนต์หัวไฟล์ public/nav.js -->
-  <script src="/nav.js" defer></script>
+  <script src="/nav.js?v=3" defer></script>
 </body>
 </html>

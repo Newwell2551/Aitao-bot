@@ -298,8 +298,10 @@
     .report-evidence-remove { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 999px; border: none; background: rgba(5,7,15,0.9); color: #f3f1fb; display: flex; align-items: center; justify-content: center; cursor: pointer; }
   </style>
   <!-- 🆕 [21 ก.ย. 2569] navbar (โครง+สไตล์) ใช้ไฟล์กลางร่วมกับทุกหน้าแล้ว ดูคอมเมนต์
-       หัวไฟล์ nav.css -->
-  <link rel="stylesheet" href="/nav.css">
+       หัวไฟล์ nav.css
+       🆕 [19 ต.ค. 2569] "?v=3" ต่อท้าย = cache-busting กันเบราว์เซอร์แคชไฟล์เก่าค้างไว้
+       (อธิบายละเอียดเต็มๆ ไว้ที่ index.html จุดเดียวกันนี้แล้วครับ) -->
+  <link rel="stylesheet" href="/nav.css?v=3">
   <!-- 🆕 [22 ก.ย. 2569] ซ่อน scrollbar เดิมของเบราว์เซอร์ + ดีไซน์แถบเลื่อนเล็กๆ
        เป็นสไตล์ของเราเอง (ดูคอมเมนต์หัวไฟล์ scrollbar.css) -->
   <link rel="stylesheet" href="/scrollbar.css">
@@ -1579,6 +1581,6 @@
   // (หลัง <div id="productGrid">) เลย DOM พร้อมแล้วตอนบรรทัดนี้รัน ไม่ต้องรอ DOMContentLoaded
   loadMarketplaceListings();
 </script>
-<script src="/nav.js" defer></script>
+<script src="/nav.js?v=3" defer></script>
 </body>
 </html>
