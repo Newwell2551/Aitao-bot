@@ -203,73 +203,20 @@
       });
   }
 
-  // 🆕 [19 ต.ค. 2569 รอบ 2] เมนูมือถือ (hamburger → ลิ้นชักเลื่อนจากขอบซ้าย) ──
-  // จับคู่กับ CSS ใน nav.css (.mobile-menu-btn / .mobile-nav-drawer /
-  // .mobile-nav-backdrop) — ทั้ง 3 อย่างต้องมี HTML อยู่ในหน้าแต่ละหน้าอยู่แล้ว
-  // (id="mobileMenuBtn", id="mobileNavDrawer" เป็นลูกตัวแรกๆ ของ <body>,
-  // id="mobileNavBackdrop" อยู่ก่อนหน้านั้น) ฟังก์ชันนี้แค่มาทำให้มันกดได้จริง
+  // 🆕 [19 ต.ค. 2569 รอบ 2] เมนูมือถือเวอร์ชันแรก: ปุ่มแฮมเบอร์เกอร์กดเปิด/ปิด
+  // ลิ้นชักเลื่อนจากขอบซ้าย (เคยมีฟังก์ชัน initMobileNav() ทำหน้าที่นี้อยู่ตรงนี้)
   //
-  // 🔁 เปลี่ยนจากรอบแรก (แผง dropdown หล่นลงมาใต้แถบเมนู #mobileNavPanel) เพราะ
-  // เจอบั๊กปุ่ม login ลอยทับแผง — ดูคำอธิบายเต็มๆ ที่คอมเมนต์หัวบล็อก CSS ใน
-  // nav.css ตรง .mobile-nav-backdrop/.mobile-nav-drawer
-  function initMobileNav() {
-    const btn = document.getElementById('mobileMenuBtn');
-    const drawer = document.getElementById('mobileNavDrawer');
-    const backdrop = document.getElementById('mobileNavBackdrop');
-    if (!btn || !drawer || !backdrop) return; // หน้านี้ไม่มีเมนูมือถือ (ไม่ควรเกิด แต่กันไว้ไม่ error)
-
-    function closeMenu() {
-      drawer.classList.remove('is-open');
-      backdrop.classList.remove('is-open');
-      btn.classList.remove('is-open');
-      btn.setAttribute('aria-expanded', 'false');
-      // คืนค่าการเลื่อนหน้าเว็บพื้นหลังให้เลื่อนได้ตามปกติ (ดูเหตุผลที่ toggleMenu())
-      document.body.style.overflow = '';
-    }
-    function toggleMenu() {
-      const willOpen = !drawer.classList.contains('is-open');
-      drawer.classList.toggle('is-open', willOpen);
-      backdrop.classList.toggle('is-open', willOpen);
-      btn.classList.toggle('is-open', willOpen);
-      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-      // ตอนลิ้นชักเปิดอยู่ ล็อกไม่ให้หน้าเว็บพื้นหลังเลื่อนตามนิ้วไปด้วย (ปัญหา
-      // "เลื่อนลิ้นชักแล้วพื้นหลังเลื่อนตาม" ที่เมนูมือถือแบบ overlay ทั่วไปมักเจอ)
-      document.body.style.overflow = willOpen ? 'hidden' : '';
-    }
-
-    // กดปุ่ม hamburger → เปิด/ปิดลิ้นชัก (stopPropagation กันไม่ให้ไปโดน listener
-    // "คลิกฉากหลัง → ปิด" ด้านล่างทำงานซ้อนกันจนเปิดแล้วปิดทันทีในคลิกเดียว)
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      toggleMenu();
-    });
-
-    // กดลิงก์ไหนในลิ้นชัก → ปิดทันที (กันไม่ให้ลิ้นชักค้างโชว์อยู่หลังเปลี่ยนหน้า)
-    drawer.querySelectorAll('a').forEach(function (a) {
-      a.addEventListener('click', closeMenu);
-    });
-
-    // กดฉากหลังมืด → ปิด (พฤติกรรมมาตรฐานของเมนู overlay ทั่วไป)
-    backdrop.addEventListener('click', closeMenu);
-
-    // กด Esc → ปิด
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeMenu();
-    });
-
-    // ขยายจอกลับมากว้างเกิน breakpoint (860px) ระหว่างที่ลิ้นชักเปิดค้างอยู่ (เช่น
-    // หมุนจอ/ย่อ-ขยายหน้าต่าง) → ปิดอัตโนมัติ กันไม่ให้ค้างทับ .center-links ที่
-    // กลับมาโชว์ปกติแล้วบนจอกว้าง
-    window.addEventListener('resize', function () {
-      if (window.innerWidth > 860) closeMenu();
-    });
-  }
+  // 🔁 [20 ต.ค. 2569 รอบ 3] ตัดออกทั้งหมดแล้วครับ เพราะน้องหนาวขอให้เมนูมือถือ
+  // "อยู่ขอบซ้ายจอตลอดเวลา เห็นเลย ไม่ต้องกดเปิด" (ไม่ใช่กดปุ่มแล้วค่อยเลื่อนออกมา
+  // แบบเดิม) — พอไม่มี "เปิด/ปิด" ให้สั่งอีกแล้ว ก็ไม่ต้องมี JavaScript มาคอยฟัง
+  // click/toggle อะไรเลย ปล่อยให้ public/nav.css จัดการโชว์แถบเมนู (.mobile-nav-rail)
+  // ด้วย @media query อย่างเดียวพอ (ดูคอมเมนต์เต็มๆ ที่หัวบล็อก .mobile-nav-rail
+  // ใน nav.css) — ลิงก์ในแถบก็เป็น <a href="..."> ธรรมดา กดแล้วพาไปหน้านั้นเองอยู่
+  // แล้วโดยไม่ต้องพึ่ง JS ช่วยเลยด้วยซ้ำ โค้ดฝั่งนี้เลยง่ายขึ้นเยอะครับ
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAuthWidget);
-    document.addEventListener('DOMContentLoaded', initMobileNav);
   } else {
     initAuthWidget();
-    initMobileNav();
   }
 })();

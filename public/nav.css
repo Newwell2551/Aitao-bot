@@ -118,126 +118,146 @@
   .site-nav .lang-btn .lang-label { display: none; }
 }
 
-/* 🆕 [19 ต.ค. 2569] ปุ่มเมนูมือถือ (hamburger) + ลิ้นชักเมนูมือถือ (drawer)
+/* 🆕 [20 ต.ค. 2569] แถบเมนูมือถือแบบ "อยู่ขอบซ้ายตลอด" (permanent rail)
    ───────────────────────────────────────────────────────────────────────
-   ที่มา: น้องหนาวถามว่า "เห็นแถบด้านบนไหม ui อะไรต่างๆ หายหมด ต้องทำปุ่ม
-   เฉพาะมือถือไหม" — ตอบว่าใช่ครับ ต้องทำ เพราะด้านบน (@media max-width:860px)
-   สั่งซ่อน .center-links (ลิงก์เมนูกลางทั้ง 6 อัน: Features, Pricing, Commands,
-   Marketplace ฯลฯ) ไปตรงๆ เฉยๆ โดยไม่เคยมีการใส่ทางเลือกอื่นแทนเลย แปลว่าคนที่
-   เข้าเว็บจากมือถือ (จอ ≤860px) จะกดลิงก์พวกนี้ไม่ได้เลยตั้งแต่แรก ไม่ใช่บั๊กใหม่
-   จากการแก้ hero แต่เป็นของเดิมที่ยังไม่เคยทำส่วนทดแทนไว้
+   ที่มา: รอบก่อนทำเป็นปุ่มแฮมเบอร์เกอร์กดเปิด/ปิดลิ้นชักเลื่อนจากขอบซ้าย (ประวัติ
+   เต็มๆ อยู่ด้านล่างสุดของคอมเมนต์นี้) แต่น้องหนาวบอกว่ายังไม่ตรงกับที่ขอ เพราะ
+   ต้อง "กดเปิดก่อนถึงเห็นเมนู" ก็ยังเท่ากับมีแถบเปล่าๆ ค้างอยู่ด้านบนตลอด (ที่ว่าง
+   ไว้ให้ปุ่มกด) — ของจริงที่น้องหนาวอยากได้คือ "เมนูอยู่ขอบซ้ายจอ เห็นอยู่ตลอดเวลา
+   เลย ไม่ต้องกดเปิด" ส่วนปุ่ม login/avatar ให้ลอยอยู่มุมขวาบนเหมือนเดิม
 
-   🔁 [19 ต.ค. 2569 รอบ 2] รอบแรกทำเป็น "แผงหล่นลงมาใต้แถบเมนู" (dropdown) แต่เจอ
-   บั๊กปุ่ม "Log in"/avatar (.auth-widget-corner) ไปลอยทับบังแผงอยู่เรื่อยๆ เพราะ
-   แผงนั้นซ้อนอยู่ใน stacking context ของ .site-nav-wrap (position:sticky) ทำให้
-   z-index สู้ .auth-widget-corner ไม่ได้ตรงๆ สักที — น้องหนาวเลยเสนอให้เปลี่ยนไป
-   เป็น "ลิ้นชัก (drawer) เลื่อนออกจากขอบซ้ายจอ แนวตั้ง" แทน ซึ่งแก้ปัญหาได้ตรงจุด
-   กว่ามาก เพราะ:
-     1) ลิ้นชัก + ฉากหลังมืด (.mobile-nav-backdrop) ถูกวางเป็นลูกตัวแรกสุดของ
-        <body> เลยในทุกหน้า (ไม่ได้ซ้อนอยู่ใน .site-nav-wrap/.hero อีกต่อไป) เลย
-        ไม่มีทางโดน stacking context ของอย่างอื่นบังได้เลย ไม่ต้องมานั่งไล่ z-index
-        แข่งกับ .auth-widget-corner อีก
-     2) ฉากหลังมืดคลุมเต็มจอกันพื้นหลังเว็บไม่ให้มารบกวนสายตาด้วย เป็นแพทเทิร์น
-        เมนูมือถือมาตรฐานที่คนคุ้นเคยอยู่แล้ว (เช่น เมนูแอปมือถือทั่วไป)
-   ปุ่ม hamburger (สามขีดกลายเป็นกากบาทตอนเปิด) ยังอยู่ที่เดิมในแถบเมนู กดแล้วสั่ง
-   เปิด/ปิดลิ้นชักนี้แทนที่จะเปิดแผง dropdown เหมือนรอบแรก */
+   เลยเปลี่ยนจาก "ลิ้นชักเลื่อนเข้า-ออก" (.mobile-nav-drawer เดิม) มาเป็น "แถบเมนู
+   แนวตั้งถาวร" (.mobile-nav-rail) แทน — ต่างจากเดิมตรงไหนบ้าง:
+     1) ไม่มีปุ่มแฮมเบอร์เกอร์ให้กดแล้ว (ตัดออกทั้ง CSS/HTML/JS เลย) เพราะไม่มี
+        "เปิด/ปิด" ให้สั่งอีกต่อไป — มันโผล่อยู่ตรงนั้นตลอดเวลาที่จอ ≤860px
+     2) ไม่มีฉากหลังมืด (.mobile-nav-backdrop เดิม) แล้วเหมือนกัน เพราะฉากหลังมืด
+        มีไว้ "บังเนื้อหาตอนลิ้นชักเปิดค้างอยู่" เฉยๆ — พอไม่มีการเปิด/ปิดก็ไม่ต้องมี
+     3) สำคัญที่สุด: .site-nav-wrap (วงรีเมนูด้านบนเดิมทั้งก้อน — โลโก้/เมนูกลาง/
+        ปุ่มสลับภาษา/ปุ่ม Add Bot) ถูกซ่อนไปเลยที่จอ ≤860px (ดู @media ด้านล่าง)
+        แทนที่ด้วยแถบซ้ายนี้ล้วนๆ ไม่เหลือแถบว่างๆ ด้านบนอีกต่อไปแล้วจริงๆ
+     4) เนื้อหาทั้งหน้า (ทุกอย่างใน <body>) ต้องเลื่อนออกจากขอบซ้ายเท่ากับความกว้าง
+        ของแถบนี้ ไม่งั้นแถบจะไปบังเนื้อหาทับ (ดู "body { padding-left }" ด้านล่าง)
+     5) ปุ่มสลับภาษา (.lang-btn) กับปุ่ม "Add Bot" (.add-bot-btn) ที่เดิมอยู่ในวงรี
+        บน ตอนนี้มี "สำเนาที่ 2" มาอยู่ในแถบซ้ายนี้ด้วย (ดูใน HTML แต่ละหน้า) —
+        เพราะปุ่มตัวเดิมอยู่ใน .site-nav-wrap ที่ถูกซ่อนไปแล้วตอนจอเล็ก ย้าย DOM
+        เดิมข้ามไปแถบซ้ายตรงๆ ด้วย CSS อย่างเดียวทำไม่ได้ (คนละ parent กัน) เลย
+        เขียนปุ่มสำรองไว้ในแถบซ้ายแทนทั้งคู่ ⚠️ ผลคือต้องแก้ public/js/site-lang.js
+        เพิ่มเล็กน้อยด้วย (เดิมรองรับปุ่มสลับภาษาได้แค่ปุ่มเดียวต่อหน้า ใช้
+        document.querySelector เลือกตัวแรกที่เจอ ตอนนี้มี 2 ปุ่มพร้อมกันต่อหน้า
+        เลยเปลี่ยนไปใช้ querySelectorAll วนลูปทั้งคู่ กดปุ่มไหนก็ได้ sync กันหมด
+        — ดูคอมเมนต์เต็มๆ ในไฟล์นั้น)
 
-.site-nav .mobile-menu-btn {
+   ⚠️ ประวัติแบบเก่า (เผื่ออ่านคอมมิตเก่าแล้วงง — ตอนนี้เลิกใช้ทั้งหมดแล้ว):
+   รอบแรกเป็น "แผง dropdown หล่นลงมาใต้แถบเมนู" เจอบั๊ก .auth-widget-corner ลอยทับ
+   (ปัญหา z-index/stacking context) รอบ 2 เปลี่ยนเป็น "ลิ้นชักเลื่อนจากขอบซ้าย กด
+   แฮมเบอร์เกอร์เปิด/ปิด" แก้บั๊กทับกันได้แล้ว แต่ยังไม่ตรงกับที่ขอ (ยังมีแถบบนให้กด
+   อยู่ดี) รอบนี้ (รอบ 3) เลยทำให้อยู่ถาวรไปเลย ไม่ต้องกดอะไรทั้งนั้น */
+
+.mobile-nav-rail {
   display: none; /* ปกติซ่อนไว้ก่อน จะโชว์เฉพาะจอเล็กผ่าน media query ด้านล่างสุด */
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  border: 1px solid rgba(154, 162, 196, 0.3);
-  background: rgba(255, 255, 255, 0.04);
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 5px;
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-
-/* เส้นขีดทั้ง 3 เส้นของปุ่ม hamburger — ใช้ transform หมุน/ย้ายตำแหน่งตอนเปิด
-   ให้กลายเป็นรูปกากบาท (X) แทนที่จะสลับรูปภาพ เบากว่าและ smooth กว่า */
-.site-nav .mobile-menu-btn .bar {
-  display: block;
-  width: 16px;
-  height: 1.5px;
-  border-radius: 999px;
-  background: #f3f1fb;
-  transition: transform .2s ease, opacity .2s ease;
-}
-.site-nav .mobile-menu-btn.is-open .bar:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
-.site-nav .mobile-menu-btn.is-open .bar:nth-child(2) { opacity: 0; }
-.site-nav .mobile-menu-btn.is-open .bar:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
-
-/* ฉากหลังมืดครึ่งโปร่งใส คลุมเต็มจอตอนลิ้นชักเปิดอยู่ — คลิกตรงไหนก็ได้บนฉากนี้
-   (nav.js ดักฟัง click) จะปิดลิ้นชักทันที เหมือนเมนูแอปมือถือทั่วไป */
-.mobile-nav-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(5, 7, 15, 0.6);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .2s ease;
-  z-index: 90; /* สูงกว่าทุกอย่างในหน้าเว็บ (รวม .auth-widget-corner ที่ z-index:40) แน่นอน
-                  เพราะอยู่เป็นลูกตัวแรกสุดของ body ไม่ได้ซ้อนอยู่ใน stacking context ไหนเลย */
-}
-.mobile-nav-backdrop.is-open { opacity: 1; pointer-events: auto; }
-
-/* ลิ้นชักเมนูมือถือ — เลื่อนเข้า/ออกจากขอบซ้ายจอด้วย transform:translateX (ลื่นกว่า
-   การขยับ left/width เพราะ browser ใช้ GPU ช่วยเรนเดอร์ transform ได้) สูงเต็มจอ
-   (100dvh กันปัญหาแถบ address bar มือถือบังส่วนล่าง — เบราว์เซอร์เก่าที่ไม่รู้จัก
-   dvh จะ fallback ไปใช้ 100vh ที่ประกาศไว้ก่อนหน้าแทนอัตโนมัติ) */
-.mobile-nav-drawer {
   position: fixed;
   top: 0;
   left: 0;
   height: 100vh;
-  height: 100dvh;
-  width: min(78vw, 300px);
+  height: 100dvh; /* กัน address bar มือถือบังด้านล่าง เบราว์เซอร์เก่าไม่รู้จัก dvh จะ fallback ไปใช้ 100vh ด้านบนแทนอัตโนมัติ */
+  width: 78px;
   background: rgba(13, 17, 32, 0.98);
   border-right: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
-  z-index: 95; /* สูงกว่า .mobile-nav-backdrop (90) อีกที ให้ลิ้นชักลอยเหนือฉากหลังมืด */
+  z-index: 50; /* ลอยเหนือเนื้อหาทุกอย่างในหน้าเว็บแน่นอน (วางเป็นลูกตัวแรกสุดของ
+                  body ด้วย ไม่ซ้อนอยู่ใน stacking context ไหนเลย) ไม่ต้องสูงเท่า
+                  .auth-widget-corner (z-index:40 — ดูด้านล่างของไฟล์นี้) ก็ได้
+                  เพราะคนละโซนกันชัดเจน (ซ้ายสุด vs ขวาสุด) ไม่มีทางทับกัน */
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 6px;
+  overflow-y: auto; /* จอเตี้ยมากๆ จนลิงก์ล้น ให้เลื่อนในแถบนี้ได้เอง ไม่ดันหน้าเว็บ */
+}
+
+.mobile-nav-rail-brand {
   display: flex;
   flex-direction: column;
-  padding: 18px 14px;
-  transform: translateX(-100%);
-  transition: transform .25s ease;
-  overflow-y: auto;
-}
-.mobile-nav-drawer.is-open { transform: translateX(0); }
-
-.mobile-nav-drawer-brand {
-  display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 6px 10px 18px;
-  margin-bottom: 8px;
+  gap: 4px;
+  width: 100%;
+  padding-bottom: 10px;
+  margin-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.mobile-nav-drawer-brand img { width: 26px; height: 26px; border-radius: 999px; object-fit: cover; }
-.mobile-nav-drawer-brand span { font-size: 15px; font-weight: 700; color: #f3f1fb; }
+.mobile-nav-rail-brand img { width: 26px; height: 26px; border-radius: 999px; object-fit: cover; }
 
-.mobile-nav-drawer .nav-link {
-  padding: 13px 12px;
+/* ลิงก์เมนู (Home/Features/.../Dashboard) ในแถบซ้าย — ใช้ class .nav-link ตัวเดียวกับ
+   ที่วงรีด้านบนใช้ (ข้อความ/data-i18n ชุดเดียวกัน) แต่อยู่คนละ container (.mobile-nav-rail
+   ไม่ใช่ .center-links) เลยไม่โดนสไตล์ของวงรีด้านบนทับ — ประกาศสไตล์ของตัวเองใหม่หมด
+   ตรงนี้ ให้เรียงเป็นแถวตั้ง เต็มความกว้างแถบ ตัวอักษรเล็ก กลางแถบ (แถบแคบ 78px ไม่พอ
+   ให้ตัวอักษรขนาดปกติเหมือนวงรีด้านบน) */
+.mobile-nav-rail .nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  padding: 9px 2px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 10.5px;
   font-weight: 600;
-  color: #e5e8fa;
+  line-height: 1.25;
+  color: #c3c8e6;
   text-decoration: none;
 }
-.mobile-nav-drawer .nav-link:hover { background: rgba(255, 255, 255, 0.06); }
-.mobile-nav-drawer .nav-link.active {
+.mobile-nav-rail .nav-link:hover { background: rgba(255, 255, 255, 0.06); }
+.mobile-nav-rail .nav-link.active {
   color: #f3f1fb;
   background: rgba(74, 90, 168, 0.25);
 }
 
+/* 🆕 กล่องรวมปุ่มสลับภาษา + ปุ่ม Add Bot "สำเนาที่ 2" ในแถบซ้าย (อธิบายเหตุผลที่ต้อง
+   มีสำเนาไว้ในคอมเมนต์หัวบล็อกนี้ ข้อ 5 ด้านบน) — คั่นด้วยเส้นบางๆ ให้ดูเป็นกลุ่ม
+   แยกจากลิงก์เมนูข้างบน ปุ่มเดิม (.lang-btn/.add-bot-btn) เป็นทรงยาวแนวนอน (pill)
+   ไม่พอดีกับแถบแคบ 78px เลยเขียนสไตล์ใหม่ทับเฉพาะตอนอยู่ใน .mobile-nav-rail ให้เป็น
+   ทรงตั้ง (ตัวอักษรเรียงซ้อนกัน) แทน กว้างเท่าปุ่มลิงก์เมนูด้านบน */
+.mobile-nav-rail-utility {
+  width: 100%;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mobile-nav-rail .lang-btn,
+.mobile-nav-rail .add-bot-btn {
+  height: auto;
+  width: 100%;
+  padding: 8px 2px;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
+/* กฎ .site-nav .lang-btn .lang-label { display:none; } ด้านบนของไฟล์นี้ ใช้กับปุ่ม
+   สลับภาษา "ตัวเดิม" ที่อยู่ในวงรีด้านบน (.site-nav) เท่านั้น — ปุ่มสำเนาในแถบซ้าย
+   นี้อยู่คนละ container (.mobile-nav-rail) เลยไม่โดนกฎนั้น ป้าย EN/TH จะโชว์ตามปกติ
+   (ตั้งใจให้โชว์ด้วย เพราะแถบซ้ายมีพื้นที่พอ และช่วยให้รู้ว่าปุ่มนี้คือภาษาอะไร) */
+
 @media (max-width: 860px) {
-  .site-nav .mobile-menu-btn { display: flex; }
+  .mobile-nav-rail { display: flex; }
+
+  /* 🆕 ซ่อนวงรีเมนูด้านบนทั้งแถบไปเลยที่จอ ≤860px (โลโก้/เมนูกลาง/ปุ่มสลับภาษา/
+     ปุ่ม Add Bot ของเดิมทั้งหมด) เพราะย้ายไปอยู่แถบซ้ายกันหมดแล้ว (ดูด้านบน) —
+     เหลือแค่ปุ่ม login/avatar (.auth-widget-corner) ลอยอยู่มุมขวาบนแยกเดี่ยวๆ
+     ตามที่ขอ (ดูกฎของมันด้านล่างไฟล์นี้ ในบล็อก @media (max-width:1320px)) */
+  .site-nav-wrap { display: none; }
+
+  /* ดันเนื้อหาทั้งหน้าออกจากขอบซ้ายเท่ากับความกว้างแถบเมนู (78px) กันไม่ให้แถบ
+     ไปบังเนื้อหาทับ — ทุกไฟล์ HTML มี * { box-sizing: border-box; } ประกาศไว้
+     อยู่แล้ว (เช็คแล้วครบทั้ง 5 หน้า) เลขนี้เลยไม่ทำให้หน้าเว็บกว้างเกิน viewport
+     จนเลื่อนซ้าย-ขวาได้ (ถ้าไม่มี box-sizing:border-box จะเกิดปัญหานั้นได้) */
+  body { padding-left: 78px; }
 }
 
 /* 🆕 [23 ก.ย. 2569 รอบที่ 3] จอที่ไม่ได้กว้างมากๆ (จอแล็ปท็อปทั่วไป 1280/1366 รวมถึงมือถือ/
@@ -255,6 +275,29 @@
     max-width: 1080px;
     margin: 8px auto 0;
     padding: 0 24px;
+  }
+}
+
+/* 🆕 [20 ต.ค. 2569] ที่จอ ≤860px (มือถือ) ให้ .auth-widget-corner กลับไปลอยตรึง
+   มุมขวาบนของจอแบบ position:fixed เหมือนจอกว้าง >1320px เดิม (ไม่ใช่ position:static
+   ที่ตกลงมาอยู่ใต้วงรีเมนูแบบช่วง 861–1320px ด้านบน) เพราะตอนนี้ไม่มีวงรีเมนูให้ตก
+   ลงไปอยู่ใต้อีกแล้ว (.site-nav-wrap ถูกซ่อนไปทั้งแถบตอน ≤860px — ดูบล็อกด้านบน
+   ของไฟล์นี้) เลยไม่มีอะไรให้ชนกันแบบที่กฎ ≤1320px กลัวไว้
+
+   ⚠️ ต้องประกาศบล็อกนี้ "หลัง" บล็อก @media (max-width:1320px) ด้านบนเสมอ ห้าม
+   ย้ายขึ้นไปก่อน — เพราะจอ ≤860px เข้าเงื่อนไข ≤1320px ด้วยเหมือนกัน (860 น้อยกว่า
+   1320) ทั้งสองกฎจึงมี specificity เท่ากัน (.auth-widget-corner เฉยๆ) กฎไหนอยู่
+   "หลังสุด" ในไฟล์นี้จะเป็นผู้ชนะ (หลักการ CSS cascade: specificity เท่ากัน ตัดสิน
+   ด้วยลำดับในไฟล์) */
+@media (max-width: 860px) {
+  .auth-widget-corner {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: block;
+    max-width: none;
+    margin: 0;
+    padding: 0;
   }
 }
 

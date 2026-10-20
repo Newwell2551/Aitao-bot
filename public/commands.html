@@ -156,17 +156,15 @@
 
   <!-- 🆕 [19 ต.ค. 2569] "?v=3" ต่อท้าย = cache-busting กันเบราว์เซอร์แคชไฟล์เก่าค้างไว้
        (อธิบายละเอียดเต็มๆ ไว้ที่ index.html จุดเดียวกันนี้แล้วครับ) -->
-  <link rel="stylesheet" href="/nav.css?v=3">
+  <link rel="stylesheet" href="/nav.css?v=4">
   <link rel="stylesheet" href="/scrollbar.css">
   <script src="/js/site-lang.js"></script>
 </head>
 <body>
-  <!-- 🆕 [19 ต.ค. 2569 รอบ 2] ลิ้นชักเมนูมือถือ — ดูคอมเมนต์เต็มใน index.html -->
-  <div class="mobile-nav-backdrop" id="mobileNavBackdrop"></div>
-  <div class="mobile-nav-drawer" id="mobileNavDrawer">
-    <div class="mobile-nav-drawer-brand">
+  <!-- 🆕 [20 ต.ค. 2569 รอบ 3] แถบเมนูมือถือถาวรฝั่งซ้าย — ดูคอมเมนต์เต็มใน index.html -->
+  <div class="mobile-nav-rail" id="mobileNavRail">
+    <div class="mobile-nav-rail-brand">
       <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
-      <span>Milo Bot</span>
     </div>
     <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
     <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
@@ -174,6 +172,17 @@
     <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
     <a href="/commands" class="nav-link active" data-i18n="nav.commands">Commands</a>
     <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+
+    <div class="mobile-nav-rail-utility">
+      <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+        <span class="lang-label">EN</span>
+      </button>
+      <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+         class="add-bot-btn pill-btn primary" target="_blank" rel="noopener">
+        <span data-i18n="nav.addBot">Add Bot</span>
+      </a>
+    </div>
   </div>
 
   <div class="site-nav-wrap">
@@ -200,12 +209,8 @@
           <span data-i18n="nav.addBot">Add Bot</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
-        <!-- 🆕 [19 ต.ค. 2569 รอบ 2] ปุ่มเมนูมือถือ (hamburger) — ดูคอมเมนต์เต็มใน index.html -->
-        <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="เปิดเมนู" aria-expanded="false">
-          <span class="bar"></span>
-          <span class="bar"></span>
-          <span class="bar"></span>
-        </button>
+        <!-- 🆕 [20 ต.ค. 2569 รอบ 3] ปุ่มแฮมเบอร์เกอร์เดิมตัดออกแล้ว — เมนูมือถือเปลี่ยน
+             เป็นแถบถาวรฝั่งซ้ายแทน ดูคอมเมนต์เต็มใน index.html -->
       </div>
     </nav>
   </div>
@@ -456,6 +461,6 @@
 
   </div>
 
-  <script src="/nav.js?v=3" defer></script>
+  <script src="/nav.js?v=4" defer></script>
 </body>
 </html>

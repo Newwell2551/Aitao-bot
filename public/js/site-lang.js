@@ -80,14 +80,23 @@
   var currentLang = getSavedLang();
   var changeListeners = [];
 
+  // 🆕 [20 ต.ค. 2569] แก้จาก document.querySelector('.lang-btn') (เลือกได้ "ตัว
+  // แรกที่เจอ" ตัวเดียวเท่านั้น) มาเป็น document.querySelectorAll(...) + วนลูป
+  // อัปเดตทุกตัว — เพราะตอนนี้แต่ละหน้ามีปุ่มสลับภาษา 2 ตัวพร้อมกันแล้ว (ตัวเดิม
+  // ในวงรีเมนูด้านบน สำหรับจอกว้าง >860px + ตัวสำเนาในแถบเมนูมือถือซ้ายจอ
+  // .mobile-nav-rail สำหรับจอ ≤860px — ดูคอมเมนต์ที่ public/nav.css หัวบล็อก
+  // .mobile-nav-rail) ถ้าไม่แก้ตรงนี้ ปุ่มตัวที่ 2 จะค้างโชว์ EN/TH ผิดภาษาตลอด
+  // เพราะไม่มีใครไปอัปเดตป้ายให้มันเลย
   function updateLangButton(lang) {
-    var btn = document.querySelector('.lang-btn');
-    if (!btn) return;
-    var label = btn.querySelector('.lang-label');
-    if (label) label.textContent = lang === 'th' ? 'TH' : 'EN';
+    var btns = document.querySelectorAll('.lang-btn');
     var hint = lang === 'th' ? 'Switch to English' : 'สลับเป็นภาษาไทย';
-    btn.setAttribute('title', hint);
-    btn.setAttribute('aria-label', hint);
+    for (var i = 0; i < btns.length; i++) {
+      var btn = btns[i];
+      var label = btn.querySelector('.lang-label');
+      if (label) label.textContent = lang === 'th' ? 'TH' : 'EN';
+      btn.setAttribute('title', hint);
+      btn.setAttribute('aria-label', hint);
+    }
   }
 
   function applyLang(lang) {
@@ -148,10 +157,15 @@
     setLang(currentLang === 'th' ? 'en' : 'th');
   }
 
+  // 🆕 [20 ต.ค. 2569] เหตุผลเดียวกับ updateLangButton() ด้านบน — ต้องผูก click
+  // ให้ "ทุกปุ่ม" ที่เจอ (querySelectorAll + วนลูป) ไม่ใช่แค่ตัวแรก ไม่งั้นปุ่ม
+  // สำเนาในแถบเมนูมือถือจะกดไม่ติดเลย (ไม่มี event listener ผูกไว้ให้)
   function init() {
     applyLang(currentLang);
-    var btn = document.querySelector('.lang-btn');
-    if (btn) btn.addEventListener('click', toggleLang);
+    var btns = document.querySelectorAll('.lang-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', toggleLang);
+    }
   }
 
   if (document.readyState === 'loading') {
