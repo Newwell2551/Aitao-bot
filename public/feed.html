@@ -184,12 +184,42 @@
     }
   </style>
 
-  <link rel="stylesheet" href="/nav.css?v=3">
+  <link rel="stylesheet" href="/nav.css?v=4">
   <link rel="stylesheet" href="/scrollbar.css">
 </head>
 <body>
 
-  <div class="nav-wrap">
+  <!-- 🔧 [21 ต.ค. 2569 — แก้บั๊ก] 2 จุดที่หน้านี้พลาดไปตอนสร้างครั้งแรก เพราะตอนนั้นใช้
+       โค้ดต้นแบบคนละเวอร์ชันกับหน้าอื่นๆ (เมนูมือถือเพิ่งเปลี่ยนจากปุ่มแฮมเบอร์เกอร์มา
+       เป็นแถบถาวรขอบซ้าย .mobile-nav-rail ไปแล้วตอนนั้น แต่หน้านี้ไม่รู้เรื่อง):
+         1) div ครอบเมนูเปลี่ยนจาก class="nav-wrap" (ไม่มีอยู่จริงใน nav.css เลย ทำให้
+            แถบเมนูไม่ได้ตำแหน่ง/สไตล์ใดๆ) → class="site-nav-wrap" (ตัวจริงที่ nav.css
+            ผูกสไตล์ไว้ให้ ใช้ร่วมกับทุกหน้า)
+         2) เพิ่มแถบเมนูมือถือถาวร .mobile-nav-rail เข้ามา (เดิมหน้านี้มีแต่ปุ่มแฮมเบอร์เกอร์
+            ที่กดแล้วไม่มีอะไรเกิดขึ้นเลย เพราะ nav.js หาลิ้นชัก #mobileNavDrawer ไม่เจอ
+            ในหน้านี้ — ตอนนี้ตัดปุ่มนั้นออก ใช้แถบถาวรเหมือนหน้าอื่นแทน ดูคอมเมนต์เต็มๆ
+            ที่ public/index.html จุดเดียวกัน) -->
+  <div class="mobile-nav-rail" id="mobileNavRail">
+    <div class="mobile-nav-rail-brand">
+      <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
+    </div>
+    <a href="/" class="nav-link">Home</a>
+    <a href="/features" class="nav-link">Features</a>
+    <a href="/pricing" class="nav-link">Pricing</a>
+    <a href="/marketplace" class="nav-link">Marketplace</a>
+    <a href="/feed" class="nav-link active">Feed</a>
+    <a href="/commands" class="nav-link">Commands</a>
+    <a href="/dashboard" class="nav-link">Dashboard</a>
+
+    <div class="mobile-nav-rail-utility">
+      <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
+         class="add-bot-btn pill-btn primary" target="_blank" rel="noopener">
+        <span>Add Bot</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-wrap">
     <nav class="site-nav">
       <a href="/" class="brand plain">
         <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
@@ -210,9 +240,6 @@
           <span>Add Bot</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
-        <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu" aria-expanded="false">
-          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
-        </button>
       </div>
     </nav>
   </div>
@@ -609,6 +636,6 @@
     }).catch(function () { feedLoad(); });
   </script>
 
-  <script src="/nav.js?v=3" defer></script>
+  <script src="/nav.js?v=4" defer></script>
 </body>
 </html>
