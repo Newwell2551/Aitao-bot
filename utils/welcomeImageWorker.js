@@ -191,6 +191,37 @@ async function generateWelcomeGif(config) {
     if (config.avatarEnabled && avatarImg) drawAvatar(ctx, avatarImg, config, canvasW, canvasH);
     await drawAllTextBlocks(ctx, config, canvasW, canvasH);
 
+    // 🔍 [24 ต.ค. 2569 — debug ชั่วคราว] น้องหนาวเจอบั๊ก "รูปโปรไฟล์ในการ์ด GIF สีซีด/
+    // กลายเป็นขาวดำ" เกิดกับทุกคู่รูป+พื้นหลัง (ไม่ใช่เฉพาะรูปใดรูปหนึ่ง) แต่ลอง simulate
+    // ในแซนด์บ็อกซ์แล้วไม่เจอบั๊ก — เลยต้องวัดค่าสีจริงจากของจริงบน Railway แทนการเดา
+    // ใส่ log 2 จุดไว้ที่เฟรมแรกเท่านั้น (ไม่กระทบความเร็ว ทำแค่ครั้งเดียวต่อ 1 การ์ด):
+    //   1) สีของรูป avatar "ก่อน" compositing ใดๆ (เช็คว่าภาพที่โหลดมาเองซีดอยู่แล้วไหม)
+    //   2) สีบน canvas "หลัง" compositing แต่ "ก่อน" เข้ารหัส GIF (เช็คว่า compositing ทำให้ซีดไหม)
+    // พอมีคนเข้าเซิร์ฟจริงรอบหน้า ให้ดู Railway Logs หา "[debug-avatar-color]" แล้วส่งมาให้ดูได้เลย
+    // ⚠️ ลบ block นี้ทิ้งได้เลยหลังจากหาสาเหตุเจอแล้ว ไม่ใช่โค้ดถาวร
+    if (i === 0 && config.avatarEnabled && avatarImg) {
+      try {
+        const probeCanvas = createCanvas(avatarImg.width, avatarImg.height);
+        const probeCtx    = probeCanvas.getContext('2d');
+        probeCtx.drawImage(avatarImg, 0, 0);
+        const rawPx = probeCtx.getImageData(
+          Math.floor(avatarImg.width / 2), Math.floor(avatarImg.height / 2), 1, 1
+        ).data;
+
+        const ax = Math.round((config.avatarX / 100) * canvasW);
+        const ay = Math.round((config.avatarY / 100) * canvasH);
+        const compositedPx = ctx.getImageData(ax, ay, 1, 1).data;
+
+        console.log(
+          `[debug-avatar-color] ก่อน composite (จากรูป avatar ตรงๆ, ${avatarImg.width}x${avatarImg.height}): ` +
+          `rgb(${rawPx[0]},${rawPx[1]},${rawPx[2]}) | หลัง composite (จุดกึ่งกลาง avatar บน canvas): ` +
+          `rgb(${compositedPx[0]},${compositedPx[1]},${compositedPx[2]})`
+        );
+      } catch (e) {
+        console.log('[debug-avatar-color] เก็บค่าสีไม่สำเร็จ:', e.message);
+      }
+    }
+
     encoder.setDelay((delays[originalIndex] ?? 100) * GIF_FRAME_STEP);
     encoder.addFrame(ctx.getImageData(0, 0, canvasW, canvasH).data);
   }
@@ -198,6 +229,22 @@ async function generateWelcomeGif(config) {
   encoder.finish();
   const gifBuffer = encoder.out.getData();
   const sizeMB    = gifBuffer.length / 1024 / 1024;
+
+  // 🔍 [24 ต.ค. 2569 — debug ชั่วคราว] จุดที่ 3: สีหลัง "เข้ารหัส GIF" เสร็จแล้ว (ถอดกลับมาดู
+  // เฟรมแรกด้วย sharp) — เทียบกับ 2 จุดด้านบน ถ้าจุดนี้ซีดแต่ 2 จุดบนปกติ แปลว่าบั๊กอยู่ที่
+  // ขั้นตอนเข้ารหัส GIF (gif-encoder-2) แน่นอน ไม่ใช่โค้ดวาดภาพของเรา
+  if (config.avatarEnabled && avatarImg) {
+    try {
+      const ax = Math.round((config.avatarX / 100) * canvasW);
+      const ay = Math.round((config.avatarY / 100) * canvasH);
+      const decoded = await sharp(gifBuffer, { page: 0 }).raw().toBuffer({ resolveWithObject: true });
+      const idx = (ay * decoded.info.width + ax) * decoded.info.channels;
+      const finalPx = [decoded.data[idx], decoded.data[idx + 1], decoded.data[idx + 2]];
+      console.log(`[debug-avatar-color] หลังเข้ารหัส GIF เสร็จ (ถอดกลับมาอ่าน): rgb(${finalPx[0]},${finalPx[1]},${finalPx[2]})`);
+    } catch (e) {
+      console.log('[debug-avatar-color] อ่านค่าสีจาก GIF ที่เข้ารหัสแล้วไม่สำเร็จ:', e.message);
+    }
+  }
 
   console.log(
     `[worker] output: ${framePngs.length} เฟรม, ${sizeMB.toFixed(2)} MB` +
