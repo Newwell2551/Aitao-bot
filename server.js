@@ -33,10 +33,14 @@ const express = require('express');
 const session = require('express-session');
 // 🆕 [11 ต.ค. 2569] multer = ตัวช่วยอ่าน <form enctype="multipart/form-data"> (ฟอร์มที่มี
 // ไฟล์แนบ) — express เองอ่าน multipart ไม่ได้ ต้องพึ่ง library แยกเสมอ ใช้ memoryStorage()
-// (เก็บไฟล์ไว้ใน RAM ชั่วคราวเป็น Buffer ไม่เขียนลงดิสก์เลย) เพราะ Railway ไม่มีดิสก์ถาวร
-// (redeploy ทีไฟล์ที่เขียนไว้หายหมด) — ใช้แค่หน้า Marketplace ตอนนี้ (ฟอร์มลงขายสินค้า
-// ที่มีรูปปก/ไฟล์ดิจิทัลแนบมาด้วย) ดูคอมเมนต์เต็มๆ ที่จุดสร้าง marketplaceUpload ด้านล่าง
+// (เก็บไฟล์ไว้ใน RAM ชั่วคราวเป็น Buffer ไม่เขียนลงดิสก์ตรงๆ) — เดิมใช้แค่หน้า Marketplace
+// (ฟอร์มลงขายสินค้าที่มีรูปปก/ไฟล์ดิจิทัลแนบมาด้วย) 🆕 [21 ต.ค. 2569] ตอนนี้หน้า Fonts ก็ใช้ด้วย
+// (ฟอร์มอัปโหลดไฟล์ฟอนต์ .ttf/.otf) ดูคอมเมนต์เต็มๆ ที่จุดสร้าง multer instance ของแต่ละหน้า
 const multer = require('multer');
+// 🆕 [21 ต.ค. 2569] GlobalFonts — ใช้ตอนหน้า Fonts เว็บอัปโหลดฟอนต์ใหม่ ต้อง "ทดลอง register"
+// ทันทีเหมือนที่ /fonts upload ใน Discord ทำ เพื่อเช็คว่าไฟล์ที่อัปมาเป็นไฟล์ฟอนต์ใช้งานได้จริง
+// ไหม (กันนามสกุลหลอก) — ดูคอมเมนต์อ้างอิง commands/fonts.js ที่จุดใช้งานด้านล่าง
+const { GlobalFonts } = require('@napi-rs/canvas');
 const { TextDisplayBuilder, MessageFlags, ChannelType } = require('discord.js');
 const stripe = require('./utils/stripeClient');
 const { setGuildTier, getGuildTier, setSubscriptionInfo, getSubscriptionInfo, isPremiumGuild } = require('./utils/tierManager');
@@ -69,14 +73,31 @@ const { syncCodeReportMessage } = require('./utils/referralReportChannel');
 const { renderOverviewPage } = require('./utils/renderOverview');
 const { renderComingSoonPage, NAV_ITEMS } = require('./utils/dashboardShell');
 const { loadWelcomeConfig, saveWelcomeConfig } = require('./utils/welcomeStorage');
-const { loadGoodbyeConfig } = require('./utils/goodbyeStorage');
-const { getGuildFonts } = require('./utils/fontStorage');
-const { listSetups } = require('./utils/roleSetupStorage');
-const { listDrafts } = require('./utils/builderStorage');
+// 🆕 [21 ต.ค. 2569] saveGoodbyeConfig เพิ่มเข้ามา — ของเดิมมีแค่ loadGoodbyeConfig (ใช้แค่
+// อ่านไปทำพรีวิวในหน้า Overview) ตอนนี้หน้า Goodbye Card ของจริงต้อง "บันทึก" ได้ด้วยแล้ว
+const { loadGoodbyeConfig, saveGoodbyeConfig } = require('./utils/goodbyeStorage');
+// 🆕 [21 ต.ค. 2569] เพิ่ม saveGuildFont/deleteGuildFontById/MAX_FONTS_PER_GUILD เข้ามาด้วย —
+// ของเดิมมีแค่ getGuildFonts (อ่านอย่างเดียว ใช้ตอนทำเมนูเลือกฟอนต์ในหน้าการ์ด) ตอนนี้หน้า
+// Fonts ของจริงต้องอัปโหลด/ลบได้ด้วยแล้ว
+const { getGuildFonts, saveGuildFont, deleteGuildFontById, MAX_FONTS_PER_GUILD } = require('./utils/fontStorage');
+// 🆕 เพิ่ม saveSetup/deleteSetup/setupExists เข้ามา — หน้า Role Setup ของจริงต้องสร้าง/ลบ/
+// เช็กชื่อซ้ำได้ด้วย (setupExists ใช้เช็กชื่อซ้ำเหมือน /role-setup new ใน Discord เป๊ะๆ)
+const { listSetups, saveSetup, deleteSetup, setupExists } = require('./utils/roleSetupStorage');
+// 🆕 เพิ่ม saveDraft/deleteDraftFromStorage เข้ามา — หน้า Message Builder ของจริงต้อง
+// บันทึก/ลบ draft ได้ด้วย
+const { listDrafts, loadDraft, draftExists, saveDraft, deleteDraftFromStorage } = require('./utils/builderStorage');
 const { generateMemberCardImage } = require('./utils/generateMemberCardImage');
 // 🆕 หน้า Welcome Card จริง (task #16) — ตัวแก้ไขการ์ดต้อนรับบนเว็บ คู่ขนานกับคำสั่ง
 // /welcome-setup ใน Discord ดูเหตุผล/สคีมาละเอียดทุก field ในคอมเมนต์หัวไฟล์นั้น
 const { renderWelcomeCardPage } = require('./utils/renderWelcomeCard');
+// 🆕 [21 ต.ค. 2569] หน้า Goodbye Card จริง — คู่ขนานกับคำสั่ง /goodbye-setup (ดูคอมเมนต์หัวไฟล์
+// utils/renderGoodbyeCard.js สำหรับ 2 จุดที่สคีมาต่างจาก Welcome Card)
+const { renderGoodbyeCardPage } = require('./utils/renderGoodbyeCard');
+// 🆕 หน้า Fonts / Role Setup / Message Builder จริง — ดูคอมเมนต์หัวไฟล์แต่ละไฟล์สำหรับขอบเขต
+// ที่ทำเต็มรูปแบบ vs ขอบเขตที่ยังต้องพึ่งคำสั่งใน Discord อยู่บางส่วน
+const { renderFontsPage } = require('./utils/renderFonts');
+const { renderRoleSetupPage } = require('./utils/renderRoleSetup');
+const { renderMessageBuilderListPage, renderMessageBuilderEditorPage } = require('./utils/renderMessageBuilder');
 // resolveCustomEmojis แปลง :ชื่ออิโมจิ: ที่พิมพ์ในกล่องข้อความ เป็น <:ชื่อ:id> จริง ก่อน
 // บันทึก — เรียกตอน save เท่านั้น (ตัวเดียวกับที่ /welcome-setup เรียกตอนกด "บันทึก")
 const { resolveCustomEmojis } = require('./utils/resolveCustomEmojis');
@@ -1161,32 +1182,500 @@ function createWebhookServer(client) {
     res.json({ ok: true });
   });
 
-  // 🚧 หน้า "เร็วๆ นี้" ชั่วคราวของอีก 4 หน้าที่ยังไม่ได้สร้างจริง (task #17-22 — Welcome Card
-  // มี route จริงแล้วด้านบน, Premium ก็มี route จริงแล้วเช่นกันตั้งแต่ 19 ก.ย. 2569
-  // (ดู GET /dashboard/:guildId/premium ด้านล่าง) และตอนนี้ Language ก็มี route จริงแล้ว
-  // เช่นกัน (23 ก.ย. 2569 — ดูด้านล่างบล็อกนี้) จึงตัดออกจากลิสต์นี้ทั้งสามแล้ว) กันไม่ให้เมนู
-  // sidebar/เช็กลิสต์ของหน้า Overview กดแล้วเจอ 404 เฉยๆ ระหว่างที่ยังทยอยสร้างทีละหน้าตามแผน
-  // — แต่ละเส้นทางในนี้จะถูกแทนที่ด้วย route จริงทีละหน้าเรื่อยๆ ต่อจากนี้ (ลบออกจากลิสต์นี้
-  // ทันทีที่หน้านั้นมีของจริง)
-  const COMING_SOON_PAGES = [
-    { path: 'goodbye', key: 'goodbye', label: 'Goodbye Card' },
-    { path: 'fonts', key: 'fonts', label: 'Fonts' },
-    { path: 'roles', key: 'roles', label: 'Role Setup' },
-    { path: 'builder', key: 'builder', label: 'Message Builder' },
-  ];
-  for (const page of COMING_SOON_PAGES) {
-    app.get(`/dashboard/:guildId/${page.path}`, requireAuth, requireGuildAccess, (req, res) => {
-      const guild = client.guilds.cache.get(req.params.guildId);
-      res.send(renderComingSoonPage({
-        pageLabel: page.label,
-        activeKey: page.key,
-        guild: { id: req.params.guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
-        user: req.session.user,
-        botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
-        botName: client.user.username,
-      }));
-    });
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [21 ต.ค. 2569] หน้า Goodbye Card ของจริง — 3 route เหมือน Welcome Card เป๊ะๆ (เปิดหน้า
+  // แก้ไข / พรีวิวสด / บันทึกจริง) ดูคอมเมนต์หัวไฟล์ utils/renderGoodbyeCard.js สำหรับ 2 จุดที่
+  // สคีมาต่างจาก Welcome Card (farewellText ไม่ใช่ greetingText, ไม่มี {user})
+  // ─────────────────────────────────────────────────────────────────────
+
+  // ค่าเริ่มต้นเดียวกับ DEFAULT_CONFIG ใน commands/goodbye-setup.js เป๊ะๆ (คัดลอกมาเพราะไฟล์
+  // นั้นไม่ได้ export ค่านี้ออกมาให้ใช้ร่วมเหมือนกัน — เหตุผลเดียวกับ WELCOME_DEFAULT_CONFIG ด้านบน)
+  const GOODBYE_DEFAULT_CONFIG = {
+    enabled: false,
+    channelId: null,
+    backgroundUrl: null,
+    overlayOpacity: 50,
+    avatarEnabled: true,
+    avatarX: 50,
+    avatarY: 33,
+    avatarRadius: 19,
+    textBlocks: [{ id: 'tb_default', content: 'Goodbye {username} 👋', x: 50, y: 72, size: 12, bold: false, fontStyle: 'default' }],
+    farewellText: '{username} has left the server 👋',
+  };
+  // ⚠️ เหตุผลเดียวกับ cloneWelcomeDefaultConfig() ด้านบน — ห้าม spread ตื้นๆ ตรงๆ เด็ดขาด
+  function cloneGoodbyeDefaultConfig() {
+    return { ...GOODBYE_DEFAULT_CONFIG, textBlocks: GOODBYE_DEFAULT_CONFIG.textBlocks.map((b) => ({ ...b })) };
   }
+
+  function normalizeLoadedGoodbyeConfig(saved, guildId) {
+    const base = cloneGoodbyeDefaultConfig();
+    const textBlocks = (Array.isArray(saved.textBlocks) && saved.textBlocks.length > 0 ? saved.textBlocks : base.textBlocks)
+      .map((b) => ({ ...b, fontStyle: normalizeFontStyleForPreview(b.fontStyle, guildId) }));
+    return { ...base, ...saved, textBlocks };
+  }
+
+  app.get('/dashboard/:guildId/goodbye', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const saved = loadGoodbyeConfig(guildId);
+    const config = saved ? normalizeLoadedGoodbyeConfig(saved, guildId) : cloneGoodbyeDefaultConfig();
+
+    const channels = guild.channels.cache
+      .filter((c) => c.type === ChannelType.GuildText)
+      .map((c) => ({ id: c.id, name: c.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+
+    const customFonts = getGuildFonts(guildId).map((f) => ({ id: f.id, label: f.originalName || f.family }));
+
+    res.send(renderGoodbyeCardPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      config,
+      channels,
+      customFonts,
+      isPremium: isPremiumGuild(guildId),
+    }));
+  });
+
+  // ❗ field ชื่อ farewellText (ไม่ใช่ greetingText) — ตัวเดียวที่ต่างจาก sanitizeWelcomeDraft
+  function sanitizeGoodbyeDraft(body, fallback) {
+    const b = body && typeof body === 'object' ? body : {};
+    const clampInt = (raw, min, max, def) => {
+      const n = parseInt(raw, 10);
+      if (Number.isNaN(n)) return def;
+      return Math.max(min, Math.min(max, n));
+    };
+    const rawBlocks = Array.isArray(b.textBlocks) && b.textBlocks.length > 0 ? b.textBlocks : fallback.textBlocks;
+    const textBlocks = rawBlocks.slice(0, 12).map((blk, i) => ({
+      id: typeof blk?.id === 'string' && blk.id ? blk.id.slice(0, 80) : `tb_${i}`,
+      content: typeof blk?.content === 'string' ? blk.content.slice(0, 500) : '',
+      x: clampInt(blk?.x, 0, 100, 50),
+      y: clampInt(blk?.y, 0, 100, 50),
+      size: clampInt(blk?.size, 4, 25, 10),
+      bold: Boolean(blk?.bold),
+      fontStyle: typeof blk?.fontStyle === 'string' && blk.fontStyle ? blk.fontStyle.slice(0, 80) : 'default',
+    }));
+    return {
+      enabled: Boolean(b.enabled),
+      channelId: typeof b.channelId === 'string' && b.channelId ? b.channelId : null,
+      backgroundUrl: typeof b.backgroundUrl === 'string' && b.backgroundUrl.trim() ? b.backgroundUrl.trim().slice(0, 2000) : null,
+      overlayOpacity: clampInt(b.overlayOpacity, 0, 100, fallback.overlayOpacity),
+      avatarEnabled: b.avatarEnabled !== undefined ? Boolean(b.avatarEnabled) : fallback.avatarEnabled,
+      avatarX: clampInt(b.avatarX, 0, 100, fallback.avatarX),
+      avatarY: clampInt(b.avatarY, 0, 100, fallback.avatarY),
+      avatarRadius: clampInt(b.avatarRadius, 5, 45, fallback.avatarRadius),
+      textBlocks,
+      farewellText: typeof b.farewellText === 'string' ? b.farewellText.slice(0, 2000) : fallback.farewellText,
+    };
+  }
+
+  app.post('/dashboard/:guildId/goodbye/preview', requireAuth, requireGuildAccess, express.json({ limit: '512kb' }), async (req, res) => {
+    const { guildId } = req.params;
+    const draft = sanitizeGoodbyeDraft(req.body, cloneGoodbyeDefaultConfig());
+    try {
+      const previewUser = await client.users.fetch(req.session.user.id);
+      const guildFonts = getGuildFonts(guildId);
+      const customFonts = guildFonts.map((f) => ({ id: f.id, family: f.family, path: f.path }));
+      const previewConfig = {
+        ...draft,
+        textBlocks: draft.textBlocks.map((block) => ({
+          ...block,
+          content: (block.content || '').replace('{username}', previewUser.username),
+        })),
+        customFonts,
+      };
+      const result = await generateMemberCardImage(previewUser, previewConfig);
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-store');
+      res.send(result.buffer);
+    } catch (err) {
+      console.error(`[dashboard] พรีวิวการ์ดบอกลา (ระหว่างแก้ไข ยังไม่บันทึก) ของเซิร์ฟ ${guildId} ไม่สำเร็จ:`, err);
+      res.status(500).send('Failed to render preview.');
+    }
+  });
+
+  function validateGoodbyeConfig(body, { guildId }) {
+    const draft = sanitizeGoodbyeDraft(body, cloneGoodbyeDefaultConfig());
+    const errors = [];
+
+    if (draft.channelId) {
+      const channel = client.guilds.cache.get(guildId)?.channels.cache.get(draft.channelId);
+      if (!channel || channel.type !== ChannelType.GuildText) {
+        errors.push('The selected channel is not valid — please pick a text channel from the list.');
+      }
+    }
+
+    if (draft.backgroundUrl) {
+      let validUrl = false;
+      try { new URL(draft.backgroundUrl); validUrl = true; } catch { /* invalid URL */ }
+      if (!validUrl || !/\.(png|jpe?g|webp|gif)(?:[?#]|$)/i.test(draft.backgroundUrl)) {
+        errors.push('Background URL must be a direct link ending in .png, .jpg, .webp or .gif.');
+      } else if (/\.gif(?:[?#]|$)/i.test(draft.backgroundUrl) && !isPremiumGuild(guildId)) {
+        errors.push('Animated .gif backgrounds require Premium — upgrade from the Premium page, or use a .png/.jpg/.webp instead.');
+      }
+    }
+
+    if (errors.length > 0) return { ok: false, errors };
+    return { ok: true, config: draft };
+  }
+
+  app.post('/dashboard/:guildId/goodbye', requireAuth, requireGuildAccess, express.json({ limit: '512kb' }), (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const result = validateGoodbyeConfig(req.body, { guildId });
+    if (!result.ok) {
+      return res.status(400).json({ errors: result.errors });
+    }
+    const config = result.config;
+    config.farewellText = resolveCustomEmojis(config.farewellText, guild);
+    config.textBlocks = config.textBlocks.map((block) => ({ ...block, content: resolveCustomEmojis(block.content, guild) }));
+    saveGoodbyeConfig(guildId, config);
+    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) บันทึกการ์ดบอกลาของเซิร์ฟ ${guildId} แล้ว`);
+    res.json({ ok: true });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [21 ต.ค. 2569] หน้า Fonts ของจริง — 4 route: ดูแกลเลอรี่ / เสิร์ฟไฟล์ฟอนต์ (สำหรับ
+  // @font-face ของเบราว์เซอร์) / อัปโหลดจริง / ลบจริง ใช้ ext/size/validate logic เดียวกับ
+  // คำสั่ง /fonts upload ใน Discord เป๊ะๆ (ยืนยันจาก commands/fonts.js ก่อนเขียน ไม่ได้เดา)
+  // ─────────────────────────────────────────────────────────────────────
+  const FONT_ALLOWED_EXTENSIONS = ['.ttf', '.otf'];
+  const FONT_MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8MB — เท่ากับ MAX_FONT_SIZE_BYTES ใน commands/fonts.js
+  const fontUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: FONT_MAX_SIZE_BYTES } });
+
+  app.get('/dashboard/:guildId/fonts', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const customFonts = getGuildFonts(guildId).map((f) => ({ id: f.id, family: f.family, originalName: f.originalName, uploadedAt: f.uploadedAt }));
+
+    // ?uploaded=1 / ?deleted=1 / ?error=... มาจาก redirect หลัง POST ด้านล่าง (ฟอร์มธรรมดา
+    // ไม่มี JS — ตามธรรมเนียมเดียวกับหน้า Language) โชว์แบนเนอร์แค่ครั้งเดียวตอน redirect มา
+    const notice = {};
+    if (req.query.uploaded === '1') notice.uploaded = true;
+    else if (req.query.deleted === '1') notice.deleted = true;
+    else if (typeof req.query.error === 'string') notice.error = req.query.error.slice(0, 200);
+
+    res.send(renderFontsPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      customFonts,
+      maxFonts: MAX_FONTS_PER_GUILD,
+      notice,
+    }));
+  });
+
+  // 🆕 เสิร์ฟไฟล์ฟอนต์จริงกลับไปให้เบราว์เซอร์ (สำหรับ @font-face ในหน้า Fonts เท่านั้น — ไม่ได้
+  // ใช้จุดอื่น) ต้อง requireAuth+requireGuildAccess เหมือนกันทุก route ของแดชบอร์ด กันคนนอก
+  // ที่ไม่มีสิทธิ์จัดการเซิร์ฟนี้โหลดไฟล์ฟอนต์ที่เซิร์ฟอื่นอัปโหลดไว้ไปใช้ฟรีๆ
+  app.get('/dashboard/:guildId/fonts/:fontId/file', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, fontId } = req.params;
+    const font = getGuildFonts(guildId).find((f) => f.id === fontId);
+    if (!font) return res.status(404).send('Font not found.');
+    res.set('Cache-Control', 'private, max-age=3600'); // แคชฝั่งเบราว์เซอร์ได้ (ไฟล์ฟอนต์ไม่เปลี่ยนบ่อย) แต่ private เพราะต้องผ่านสิทธิ์ก่อน
+    res.sendFile(font.path);
+  });
+
+  app.post('/dashboard/:guildId/fonts/upload', requireAuth, requireGuildAccess, (req, res) => {
+    fontUpload.single('font')(req, res, (multerErr) => {
+      const { guildId } = req.params;
+      if (multerErr) {
+        // multerErr.code === 'LIMIT_FILE_SIZE' ส่วนใหญ่ — ข้อความทั่วๆไปพอ ไม่ต้องแยกเคสละเอียด
+        return res.redirect(`/dashboard/${guildId}/fonts?error=${encodeURIComponent('File is too large (max 8MB) or upload failed.')}`);
+      }
+      const file = req.file;
+      if (!file) {
+        return res.redirect(`/dashboard/${guildId}/fonts?error=${encodeURIComponent('Please choose a .ttf or .otf file first.')}`);
+      }
+      const lowerName = file.originalname.toLowerCase();
+      const hasAllowedExtension = FONT_ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+      if (!hasAllowedExtension) {
+        return res.redirect(`/dashboard/${guildId}/fonts?error=${encodeURIComponent('Only .ttf or .otf files are allowed.')}`);
+      }
+      const ext = lowerName.slice(lowerName.lastIndexOf('.'));
+
+      // บันทึกไฟล์ก่อน แล้ว "ทดลอง register" ทันที เหมือน /fonts upload ใน Discord เป๊ะๆ
+      // (ดูคอมเมนต์อ้างอิง commands/fonts.js บรรทัด ~170 ที่ยืนยัน pattern นี้) กันไฟล์ที่ตั้ง
+      // นามสกุลหลอกเป็น .ttf/.otf แต่ข้างในไม่ใช่ไฟล์ฟอนต์จริง
+      const saveResult = saveGuildFont(guildId, file.buffer, ext, file.originalname);
+      if (!saveResult.ok) {
+        return res.redirect(`/dashboard/${guildId}/fonts?error=${encodeURIComponent(`This server already has ${MAX_FONTS_PER_GUILD} fonts saved — delete one first.`)}`);
+      }
+      try {
+        GlobalFonts.registerFromPath(saveResult.path, saveResult.family);
+      } catch (error) {
+        console.error('[dashboard] ไฟล์ฟอนต์ที่อัปโหลดผ่านเว็บ register ไม่สำเร็จ (อาจไม่ใช่ไฟล์ฟอนต์จริง):', error.message);
+        deleteGuildFontById(guildId, saveResult.id);
+        return res.redirect(`/dashboard/${guildId}/fonts?error=${encodeURIComponent("That file doesn't look like a valid font — please try a different .ttf/.otf file.")}`);
+      }
+      console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) อัปโหลดฟอนต์ "${file.originalname}" ให้เซิร์ฟ ${guildId} แล้ว`);
+      res.redirect(`/dashboard/${guildId}/fonts?uploaded=1`);
+    });
+  });
+
+  app.post('/dashboard/:guildId/fonts/:fontId/delete', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, fontId } = req.params;
+    const removed = deleteGuildFontById(guildId, fontId);
+    if (removed) {
+      console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) ลบฟอนต์ "${removed.originalName}" ของเซิร์ฟ ${guildId} แล้ว`);
+    }
+    res.redirect(`/dashboard/${guildId}/fonts?deleted=1`);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [21 ต.ค. 2569] หน้า Role Setup ของจริง — ดูคอมเมนต์หัวไฟล์ utils/renderRoleSetup.js
+  // สำหรับขอบเขตที่ทำเต็มรูปแบบ vs ที่ยังต้องพึ่ง Discord (`/role-setup edit <name>`)
+  // ค่าคงที่ gating ทั้งหมดนี้ copy มาจาก commands/role-setup.js ตรงๆ ไม่ได้เดา
+  // ─────────────────────────────────────────────────────────────────────
+  const FREE_ROLE_SETUP_LIMIT = 1;
+
+  app.get('/dashboard/:guildId/roles', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const setups = listSetups(guildId);
+
+    const notice = {};
+    if (typeof req.query.created === 'string') notice.created = req.query.created.slice(0, 80);
+    else if (req.query.deleted === '1') notice.deleted = true;
+    else if (typeof req.query.error === 'string') notice.error = req.query.error.slice(0, 200);
+
+    res.send(renderRoleSetupPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      setups,
+      isPremium: isPremiumGuild(guildId),
+      freeLimit: FREE_ROLE_SETUP_LIMIT,
+      notice,
+    }));
+  });
+
+  // 🆕 สร้างชุดใหม่ — validate + config เริ่มต้นตามประเภท เหมือน /role-setup new ใน Discord
+  // เป๊ะๆ (ยืนยันจากโค้ดจริงก่อนเขียน — ดูคอมเมนต์หัวไฟล์ renderRoleSetup.js) ส่งกลับเป็น JSON
+  // (ไม่ redirect ตรงๆ) เพราะฝั่งหน้าเว็บเป็นโมดัล AJAX ไม่ใช่ฟอร์มธรรมดาแบบหน้า Fonts/Language
+  app.post('/dashboard/:guildId/roles/create', requireAuth, requireGuildAccess, express.json({ limit: '64kb' }), (req, res) => {
+    const { guildId } = req.params;
+    const userId = req.session.user.id;
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 80) : '';
+    const type = req.body?.type;
+
+    if (!name) return res.status(400).json({ error: 'Please enter a name.' });
+    if (name.includes(':')) return res.status(400).json({ error: 'Name cannot contain a colon ( : ).' });
+    if (type !== 'menu' && type !== 'button' && type !== 'reaction') {
+      return res.status(400).json({ error: `Unsupported type: ${type}` });
+    }
+    // 🔒 ฟรี: สร้างได้แค่ type "reaction" เท่านั้น — ตรงกับ /role-setup new ใน Discord เป๊ะๆ
+    if (!isPremiumGuild(guildId) && type !== 'reaction') {
+      return res.status(403).json({ error: 'Menu and Button setups require Premium — upgrade from the Premium page, or choose Reaction.' });
+    }
+    if (setupExists(guildId, name)) {
+      return res.status(409).json({ error: `A role setup named "${name}" already exists — pick a different name.` });
+    }
+    // 🔒 Quota gating: ฟรีจำกัด 1 ชุด/เซิร์ฟ — ตรงกับ FREE_ROLE_SETUP_LIMIT ใน Discord เป๊ะๆ
+    if (!isPremiumGuild(guildId) && listSetups(guildId).length >= FREE_ROLE_SETUP_LIMIT) {
+      return res.status(403).json({ error: `Free servers can have ${FREE_ROLE_SETUP_LIMIT} role setup — delete it or upgrade to Premium for more.` });
+    }
+
+    const now = new Date().toISOString();
+    // ค่าเริ่มต้นของ config ตามประเภท — copy มาจาก commands/role-setup.js บรรทัด ~1224 ตรงๆ
+    const config = type === 'button'
+      ? { buttons: [], maxRoles: null }
+      : type === 'reaction'
+        ? { reactions: [], postedMessageId: null }
+        : { minValues: 0, maxValues: 1, roles: [], placeholder: null };
+    saveSetup(guildId, name, { name, type, blocks: [], accentColor: null, lastPostedAt: null, config, createdBy: userId, createdAt: now, updatedBy: userId, updatedAt: now });
+    console.log(`[dashboard] ${req.session.user.username} (${userId}) สร้าง role setup "${name}" (${type}) ให้เซิร์ฟ ${guildId} แล้ว — ยังต้องไปเพิ่มยศผ่าน Discord`);
+    res.json({ ok: true, name });
+  });
+
+  app.post('/dashboard/:guildId/roles/:name/delete', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, name } = req.params;
+    const removed = deleteSetup(guildId, name);
+    if (removed) {
+      console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) ลบ role setup "${name}" ของเซิร์ฟ ${guildId} แล้ว`);
+    }
+    res.redirect(`/dashboard/${guildId}/roles?deleted=1`);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [21 ต.ค. 2569] หน้า Message Builder ของจริง — ดูคอมเมนต์หัวไฟล์ utils/renderMessageBuilder.js
+  // สำหรับขอบเขตที่ทำเต็มรูปแบบ vs ที่ยังต้องพึ่ง Discord ค่าคงที่ gating (FREE_BUILDER_LIMIT,
+  // containsMention regex, createFreeTierBlocks skeleton) copy มาจาก commands/builder.js ตรงๆ
+  // ─────────────────────────────────────────────────────────────────────
+  const FREE_BUILDER_LIMIT = 1;
+  const BUILDER_EDITABLE_TYPES = new Set(['text', 'separator', 'gallery', 'section_button']);
+
+  // ❗ เหตุผลด้านความปลอดภัย (ไม่ใช่แค่ดีไซน์): block ชนิดที่เว็บยังแก้ไม่ได้ (section,
+  // section_role_button, section_channel_button) ต้อง "ห้ามรับค่าจาก client ตรงๆ" เด็ดขาด —
+  // ถ้ายอมรับ field ดิบๆ จาก request body จะเปิดช่องให้ POST ปลอม (ข้าม UI) ยัด roleId ปุ่มติด
+  // ยศที่ไม่ควรแก้ได้จากเว็บ เข้าไปในปุ่มได้ (เช่นสวมรอยเป็นยศที่สูงเกินสิทธิ์) ฟังก์ชันนี้เลย
+  // "ยืมค่าฟิลด์เดิมจาก draft ที่บันทึกไว้แล้วเท่านั้น" สำหรับ block ชนิดที่แก้ไม่ได้ ไม่สนใจ
+  // field อะไรที่ client ส่งมาเลยสักตัว (เปลี่ยนได้แค่ลำดับ/ลบทิ้งเท่านั้น ไม่ใช่เนื้อหา)
+  function sanitizeBuilderBlocks(rawBlocks, existingBlocks) {
+    const existingById = new Map((existingBlocks || []).map((b) => [b.id, b]));
+    const clamp = (s, max) => (typeof s === 'string' ? s.slice(0, max) : '');
+    const out = [];
+    for (const raw of Array.isArray(rawBlocks) ? rawBlocks : []) {
+      if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || typeof raw.type !== 'string') continue;
+
+      if (!BUILDER_EDITABLE_TYPES.has(raw.type)) {
+        // บล็อกชนิดที่เว็บแก้ไม่ได้ — อนุญาตแค่ "มีอยู่แล้วจริง" เท่านั้น (เลื่อนลำดับ/ลบได้
+        // แต่เนื้อหาเป็นของเดิมเป๊ะๆ เสมอ ไม่รับ field ใหม่จาก client เลย)
+        const existing = existingById.get(raw.id);
+        if (existing && existing.type === raw.type) out.push(existing);
+        continue;
+      }
+
+      if (raw.type === 'text') {
+        out.push({ id: clamp(raw.id, 80), type: 'text', content: clamp(raw.content, 4000) });
+      } else if (raw.type === 'separator') {
+        out.push({ id: clamp(raw.id, 80), type: 'separator', divider: raw.divider !== false, spacing: raw.spacing === 'large' ? 'large' : 'small' });
+      } else if (raw.type === 'gallery') {
+        const items = Array.isArray(raw.items) ? raw.items.slice(0, 10).map((it) => ({
+          url: clamp(it?.url, 2000),
+          description: clamp(it?.description, 200),
+          spoiler: Boolean(it?.spoiler),
+        })) : [];
+        out.push({ id: clamp(raw.id, 80), type: 'gallery', items });
+      } else if (raw.type === 'section_button') {
+        out.push({ id: clamp(raw.id, 80), type: 'section_button', text: clamp(raw.text, 1000), buttonLabel: clamp(raw.buttonLabel, 80), buttonUrl: clamp(raw.buttonUrl, 2000) });
+      }
+    }
+    return out;
+  }
+
+  // ❗ เหมือน containsMention() ใน commands/builder.js เป๊ะๆ (copy มาตรงๆ) — ฟรีห้ามมี
+  // mention คน/ยศ/ช่อง/@everyone/@here ในข้อความ กันเอาไปใช้แทนระบบประกาศแบบเต็มที่สงวนพรีเมียม
+  function containsMention(text) {
+    if (!text) return false;
+    return /<@[!&]?\d+>|<#\d+>|@everyone|@here/.test(text);
+  }
+
+  // ตรวจ "โครงสร้างล็อกตายตัว 2 บล็อก" (text + gallery) ของเซิร์ฟ Free + ห้าม mention ในทุก
+  // field ข้อความที่แก้ได้ — ตรงกับ /builder ใน Discord เป๊ะๆ (resolveBuilderPanelPayload +
+  // containsMention ที่เรียกตอนแก้ title/description ของ Simple Panel)
+  function validateFreeBuilderBlocks(blocks) {
+    if (blocks.length !== 2 || blocks[0].type !== 'text' || blocks[1].type !== 'gallery') {
+      return 'Free drafts are locked to a 2-block layout (text + images) — upgrade to Premium to add, remove or reorder blocks.';
+    }
+    if (containsMention(blocks[0].content)) {
+      return "Free drafts can't mention users, roles or channels — remove the mention or upgrade to Premium.";
+    }
+    return null;
+  }
+
+  app.get('/dashboard/:guildId/builder', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const drafts = listDrafts(guildId);
+
+    const notice = {};
+    if (req.query.deleted === '1') notice.deleted = true;
+    else if (typeof req.query.error === 'string') notice.error = req.query.error.slice(0, 200);
+
+    res.send(renderMessageBuilderListPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      drafts,
+      isPremium: isPremiumGuild(guildId),
+      freeLimit: FREE_BUILDER_LIMIT,
+      notice,
+    }));
+  });
+
+  app.post('/dashboard/:guildId/builder/create', requireAuth, requireGuildAccess, express.urlencoded({ extended: false }), (req, res) => {
+    const { guildId } = req.params;
+    const userId = req.session.user.id;
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 80) : '';
+
+    if (!name || name.includes(':')) {
+      return res.redirect(`/dashboard/${guildId}/builder?error=${encodeURIComponent('Please enter a valid name (no colons).')}`);
+    }
+    if (draftExists(guildId, name)) {
+      return res.redirect(`/dashboard/${guildId}/builder?error=${encodeURIComponent(`A draft named "${name}" already exists.`)}`);
+    }
+    if (!isPremiumGuild(guildId) && listDrafts(guildId).length >= FREE_BUILDER_LIMIT) {
+      return res.redirect(`/dashboard/${guildId}/builder?error=${encodeURIComponent(`Free servers can have ${FREE_BUILDER_LIMIT} draft — delete it or upgrade to Premium for more.`)}`);
+    }
+
+    const now = new Date().toISOString();
+    // ฟรี: preload skeleton 2 บล็อก (text + gallery ว่างๆ) — ตรงกับ createFreeTierBlocks()
+    // ใน commands/builder.js เป๊ะๆ ส่วนพรีเมียมเริ่มจาก blocks ว่างเปล่า (เพิ่มเองได้อิสระ)
+    const blocks = isPremiumGuild(guildId)
+      ? []
+      : [
+          { id: `b_${Date.now()}_1`, type: 'text', content: '' },
+          { id: `b_${Date.now()}_2`, type: 'gallery', items: [] },
+        ];
+    saveDraft(guildId, name, { name, blocks, accentColor: null, createdBy: userId, createdAt: now, updatedBy: userId, updatedAt: now });
+    console.log(`[dashboard] ${req.session.user.username} (${userId}) สร้าง builder draft "${name}" ให้เซิร์ฟ ${guildId} แล้ว`);
+    res.redirect(`/dashboard/${guildId}/builder/${encodeURIComponent(name)}`);
+  });
+
+  app.get('/dashboard/:guildId/builder/:name', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, name } = req.params;
+    const guild = client.guilds.cache.get(guildId);
+    const draft = loadDraft(guildId, name);
+    if (!draft) return res.status(404).send('This draft was not found — it may have been deleted.');
+
+    res.send(renderMessageBuilderEditorPage({
+      guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      draft,
+      isPremium: isPremiumGuild(guildId),
+    }));
+  });
+
+  app.post('/dashboard/:guildId/builder/:name', requireAuth, requireGuildAccess, express.json({ limit: '512kb' }), (req, res) => {
+    const { guildId, name } = req.params;
+    const existing = loadDraft(guildId, name);
+    if (!existing) return res.status(404).json({ errors: ['This draft was not found — it may have been deleted.'] });
+
+    const isPremium = isPremiumGuild(guildId);
+    const blocks = sanitizeBuilderBlocks(req.body?.blocks, existing.blocks);
+    const accentColor = typeof req.body?.accentColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(req.body.accentColor) ? req.body.accentColor : null;
+
+    if (!isPremium) {
+      const err = validateFreeBuilderBlocks(blocks);
+      if (err) return res.status(403).json({ errors: [err] });
+    }
+
+    const guild = client.guilds.cache.get(guildId);
+    const resolvedBlocks = blocks.map((b) => {
+      if (b.type === 'text') return { ...b, content: resolveCustomEmojis(b.content, guild) };
+      if (b.type === 'section_button') return { ...b, text: resolveCustomEmojis(b.text, guild) };
+      return b;
+    });
+
+    saveDraft(guildId, name, {
+      ...existing,
+      blocks: resolvedBlocks,
+      accentColor,
+      updatedBy: req.session.user.id,
+      updatedAt: new Date().toISOString(),
+    });
+    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) บันทึก builder draft "${name}" ของเซิร์ฟ ${guildId} แล้ว`);
+    res.json({ ok: true });
+  });
+
+  app.post('/dashboard/:guildId/builder/:name/delete', requireAuth, requireGuildAccess, (req, res) => {
+    const { guildId, name } = req.params;
+    deleteDraftFromStorage(guildId, name);
+    console.log(`[dashboard] ${req.session.user.username} (${req.session.user.id}) ลบ builder draft "${name}" ของเซิร์ฟ ${guildId} แล้ว`);
+    res.redirect(`/dashboard/${guildId}/builder?deleted=1`);
+  });
+
+  // 🆕 [21 ต.ค. 2569] จบแล้วครับ — ทุกหน้าของแดชบอร์ด (Overview/Welcome/Goodbye/Fonts/Roles/
+  // Builder/Language/Premium/Marketplace) มี route จริงหมดแล้ว ไม่มีหน้า "เร็วๆ นี้" เหลืออีก
+  // (renderComingSoonPage() ใน dashboardShell.js ยังเก็บไว้เผื่ออนาคตมีหน้าใหม่ต้องรอสร้าง)
 
   // ─────────────────────────────────────────────────────────────────────
   // 🆕 [23 ก.ย. 2569] หน้า Language จริงในแดชบอร์ด — เลือกภาษาที่บอทตอบกลับในเซิร์ฟนี้ได้

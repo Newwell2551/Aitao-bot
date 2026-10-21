@@ -126,11 +126,15 @@ function renderWelcomeCardPage({ guild, user, botAvatarUrl, botName, config, cha
           </div>
 
           <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:18px 20px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:0.04em;text-transform:uppercase;">Overlay darkness</div>
               <span id="overlayOpacityReadout" style="font-size:12px;color:var(--text);font-weight:600;">50%</span>
             </div>
-            <input type="range" id="overlayOpacityInput" min="0" max="100" oninput="onOverlayOpacityInput()" style="width:100%;accent-color:var(--accent);" />
+            <!-- 🆕 [21 ต.ค. 2569] สไลเดอร์แคปซูลเรืองแสง (.capsule-range จาก dashboardShell.js)
+                 แทนสไลเดอร์เปล่าๆ ของเบราว์เซอร์เดิม — ลูกบิดสีขาวมีแสงฟ้า (--blurple) ล้อมรอบ
+                 ตามสเปค "modern Discord UI sliders" ค่า --range-pct อัปเดตผ่าน JS ทุกครั้งที่ลาก
+                 (ดู updateOverlaySliderFill() ด้านล่าง) ไม่งั้นแถบสีจะไม่ขยับตามค่าจริง -->
+            <input type="range" id="overlayOpacityInput" class="capsule-range" min="0" max="100" oninput="onOverlayOpacityInput()" />
           </div>
 
           <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:18px 20px;">
@@ -282,7 +286,14 @@ function renderWelcomeCardPage({ guild, user, botAvatarUrl, botName, config, cha
     var v = clampInt(document.getElementById('overlayOpacityInput').value, 0, 100, draft.overlayOpacity);
     draft.overlayOpacity = v;
     document.getElementById('overlayOpacityReadout').textContent = v + '%';
+    updateOverlaySliderFill(v);
     schedulePreviewRefresh();
+  }
+  // 🆕 อัปเดตตัวแปร CSS --range-pct ของตัวสไลเดอร์ ให้แถบสี .capsule-range (ดู dashboardShell.js)
+  // ไล่สีตามค่าจริงพอดี — ต้องเรียกเองทุกครั้งที่ค่าเปลี่ยน เพราะ CSS custom property ไม่ผูกกับ
+  // ค่า <input type=range> ให้อัตโนมัติ (ต่างจาก --webkit-appearance ปกติที่เบราว์เซอร์จัดการเอง)
+  function updateOverlaySliderFill(v) {
+    document.getElementById('overlayOpacityInput').style.setProperty('--range-pct', v + '%');
   }
   function clampInt(raw, min, max, fallback) {
     var n = parseInt(raw, 10);
@@ -323,24 +334,51 @@ function renderWelcomeCardPage({ guild, user, botAvatarUrl, botName, config, cha
     return div.innerHTML;
   }
 
+  // 🆕 หา "ชื่อที่โชว์" ของฟอนต์จาก value จริง (เช่น 'kanit' หรือ 'customFont:font_123') ไว้ใช้
+  // ทำ badge บนหัวการ์ด layer — ถ้าหาไม่เจอเลย (เผื่อข้อมูลเพี้ยน) fallback เป็นค่า default เสมอ
+  function fontLabelFor(value) {
+    for (var i = 0; i < BASE_FONTS.length; i++) if (BASE_FONTS[i].value === value) return BASE_FONTS[i].label;
+    for (var j = 0; j < CUSTOM_FONTS.length; j++) if (('customFont:' + CUSTOM_FONTS[j].id) === value) return CUSTOM_FONTS[j].label;
+    return 'Default (Mali / Fredoka)';
+  }
+
+  // 🆕 [21 ต.ค. 2569 — "Layer List View" overhaul] เปลี่ยนจากกล่องเทาซ้อนกล่องเทา (เดิมแต่ละ
+  // บล็อกข้อความเป็นกล่อง var(--bg) ซ้อนอยู่ในกล่อง var(--bg-card) อีกที มองแล้วตาลาย) เป็น
+  // "แถว layer" เดียวแบบ Figma/Canva: แถวบนสุดเป็นแถบหัว (ไอคอนตัวอักษร + badge ชื่อฟอนต์ +
+  // badge "Bold" ถ้าติ๊กไว้ + ปุ่มเลื่อนลำดับ/ลบ) ตัวข้อความอยู่ตรงกลางเด่นๆ และแถวควบคุมค่า
+  // ตัวเลข/ฟอนต์อยู่ล่างสุดแยกชัดเจน ไม่ซ้อนกล่องกันแล้ว ปุ่มลบเปลี่ยนเป็นไอคอนถังขยะนีออนแดง
+  // (.neon-trash จาก dashboardShell.js) ตามสเปค ส่วนฟังก์ชันการทำงานทั้งหมด (เพิ่ม/ลบ/ทำซ้ำ/
+  // เลื่อนลำดับ/แก้ค่า) เหมือนเดิมทุกประการ แค่เปลี่ยนหน้าตาเฉยๆ
+  var TEXT_LAYER_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 6h14M12 6v13M9 19h6" stroke="#9aa2c4" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  var TRASH_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-.8 12.1a1.5 1.5 0 0 1-1.5 1.4H9.3a1.5 1.5 0 0 1-1.5-1.4L7 7h10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   function blockRowHtml(b, index, total) {
+    var boldBadge = b.bold ? '<span class="pill-badge" style="background:rgba(244,184,96,0.14);border-color:rgba(244,184,96,0.35);color:#f4b860;">Bold</span>' : '';
     return (
-      '<div class="wc-block-row" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:12px;">' +
-        '<div style="display:flex;gap:8px;align-items:flex-start;">' +
-          '<textarea rows="2" oninput="updateBlockField(\\'' + b.id + '\\',\\'content\\',this.value)" style="flex:1 1 auto;min-width:0;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12.5px;padding:6px 8px;resize:vertical;font-family:inherit;">' + escapeText(b.content) + '</textarea>' +
-          '<div style="display:flex;flex-direction:column;gap:4px;flex:0 0 auto;">' +
-            '<button type="button" title="Move up" onclick="moveBlock(\\'' + b.id + '\\',-1)" ' + (index === 0 ? 'disabled' : '') + ' style="background:none;border:1px solid var(--border);border-radius:3px;width:24px;height:22px;color:var(--text-muted);cursor:pointer;font-size:11px;">&uarr;</button>' +
-            '<button type="button" title="Move down" onclick="moveBlock(\\'' + b.id + '\\',1)" ' + (index === total - 1 ? 'disabled' : '') + ' style="background:none;border:1px solid var(--border);border-radius:3px;width:24px;height:22px;color:var(--text-muted);cursor:pointer;font-size:11px;">&darr;</button>' +
-          '</div>' +
+      '<div class="layer-row" style="padding:12px 14px;">' +
+
+        // ── แถบหัว layer: ไอคอน + ชื่อฟอนต์ + Bold badge + ปุ่มเลื่อน/ลบ ──
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          TEXT_LAYER_ICON +
+          '<span class="pill-badge" id="fontBadge_' + b.id + '">' + escapeText(fontLabelFor(b.fontStyle)) + '</span>' +
+          boldBadge +
+          '<div style="flex:1 1 auto;"></div>' +
+          '<button type="button" title="Move up" onclick="moveBlock(\\'' + b.id + '\\',-1)" ' + (index === 0 ? 'disabled' : '') + ' style="background:none;border:1px solid var(--glass-border);border-radius:5px;width:24px;height:22px;color:var(--text-muted);cursor:pointer;font-size:11px;">&uarr;</button>' +
+          '<button type="button" title="Move down" onclick="moveBlock(\\'' + b.id + '\\',1)" ' + (index === total - 1 ? 'disabled' : '') + ' style="background:none;border:1px solid var(--glass-border);border-radius:5px;width:24px;height:22px;color:var(--text-muted);cursor:pointer;font-size:11px;">&darr;</button>' +
+          '<button type="button" title="Delete this text layer" onclick="deleteBlock(\\'' + b.id + '\\')" class="neon-trash" style="width:26px;height:24px;">' + TRASH_ICON + '</button>' +
         '</div>' +
-        '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">' +
-          '<select onchange="updateBlockField(\\'' + b.id + '\\',\\'fontStyle\\',this.value)" style="height:30px;border-radius:3px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);font-size:11.5px;padding:0 6px;flex:1 1 140px;">' + fontOptionsHtml(b.fontStyle) + '</select>' +
-          '<button type="button" onclick="toggleBlockBold(\\'' + b.id + '\\')" style="width:32px;height:30px;border-radius:3px;flex:0 0 auto;font-size:11px;font-weight:700;' + (b.bold ? 'background:rgba(124,131,253,0.18);border:1px solid var(--accent);color:var(--accent);' : 'background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);') + '">B</button>' +
-          '<label style="font-size:10px;color:var(--text-muted);">Size<input type="number" min="4" max="25" value="' + b.size + '" oninput="updateBlockField(\\'' + b.id + '\\',\\'size\\',this.value)" style="width:46px;height:30px;margin-left:4px;border-radius:3px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);font-size:11.5px;padding:0 6px;" /></label>' +
-          '<label style="font-size:10px;color:var(--text-muted);">X<input type="number" min="0" max="100" value="' + b.x + '" oninput="updateBlockField(\\'' + b.id + '\\',\\'x\\',this.value)" style="width:46px;height:30px;margin-left:4px;border-radius:3px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);font-size:11.5px;padding:0 6px;" /></label>' +
-          '<label style="font-size:10px;color:var(--text-muted);">Y<input type="number" min="0" max="100" value="' + b.y + '" oninput="updateBlockField(\\'' + b.id + '\\',\\'y\\',this.value)" style="width:46px;height:30px;margin-left:4px;border-radius:3px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);font-size:11.5px;padding:0 6px;" /></label>' +
-          '<button type="button" title="Duplicate" onclick="duplicateBlock(\\'' + b.id + '\\')" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:3px;height:30px;padding:0 8px;color:var(--text-muted);cursor:pointer;font-size:11px;">Duplicate</button>' +
-          '<button type="button" title="Delete" onclick="deleteBlock(\\'' + b.id + '\\')" style="background:none;border:1px solid rgba(229,103,122,0.4);border-radius:3px;height:30px;padding:0 8px;color:#e5677a;cursor:pointer;font-size:11px;">Delete</button>' +
+
+        // ── เนื้อข้อความ — เด่นตรงกลาง อ่านง่ายกว่าเดิม (ไม่มีกล่องซ้อนกล่องแล้ว) ──
+        '<textarea rows="2" oninput="updateBlockField(\\'' + b.id + '\\',\\'content\\',this.value)" style="width:100%;margin-top:10px;background:rgba(0,0,0,0.18);border:1px solid var(--glass-border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 9px;resize:vertical;font-family:inherit;">' + escapeText(b.content) + '</textarea>' +
+
+        // ── แถวควบคุมค่า — ฟอนต์/ตัวหนา/ขนาด/ตำแหน่ง/ทำซ้ำ แยกชัดจากเนื้อข้อความด้านบน ──
+        '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center;">' +
+          '<select onchange="updateBlockField(\\'' + b.id + '\\',\\'fontStyle\\',this.value)" style="height:30px;border-radius:5px;background:rgba(0,0,0,0.18);border:1px solid var(--glass-border);color:var(--text);font-size:11.5px;padding:0 6px;flex:1 1 140px;">' + fontOptionsHtml(b.fontStyle) + '</select>' +
+          '<button type="button" onclick="toggleBlockBold(\\'' + b.id + '\\')" style="width:32px;height:30px;border-radius:5px;flex:0 0 auto;font-size:11px;font-weight:700;' + (b.bold ? 'background:rgba(124,131,253,0.18);border:1px solid var(--accent);color:var(--accent);' : 'background:rgba(0,0,0,0.18);border:1px solid var(--glass-border);color:var(--text-muted);') + '">B</button>' +
+          '<label style="font-size:10px;color:var(--text-muted);">Size<input type="number" min="4" max="25" value="' + b.size + '" oninput="updateBlockField(\\'' + b.id + '\\',\\'size\\',this.value)" style="width:46px;height:30px;margin-left:4px;border-radius:5px;background:rgba(0,0,0,0.18);border:1px solid var(--glass-border);color:var(--text);font-size:11.5px;padding:0 6px;" /></label>' +
+          '<label style="font-size:10px;color:var(--text-muted);">X<input type="number" min="0" max="100" value="' + b.x + '" oninput="updateBlockField(\\'' + b.id + '\\',\\'x\\',this.value)" style="width:46px;height:30px;margin-left:4px;border-radius:5px;background:rgba(0,0,0,0.18);border:1px solid var(--glass-border);color:var(--text);font-size:11.5px;padding:0 6px;" /></label>' +
+          '<label style="font-size:10px;color:var(--text-muted);">Y<input type="number" min="0" max="100" value="' + b.y + '" oninput="updateBlockField(\\'' + b.id + '\\',\\'y\\',this.value)" style="width:46px;height:30px;margin-left:4px;border-radius:5px;background:rgba(0,0,0,0.18);border:1px solid var(--glass-border);color:var(--text);font-size:11.5px;padding:0 6px;" /></label>' +
+          '<button type="button" title="Duplicate" onclick="duplicateBlock(\\'' + b.id + '\\')" style="margin-left:auto;background:none;border:1px solid var(--glass-border);border-radius:5px;height:30px;padding:0 8px;color:var(--text-muted);cursor:pointer;font-size:11px;">Duplicate</button>' +
         '</div>' +
       '</div>'
     );
@@ -362,9 +400,17 @@ function renderWelcomeCardPage({ guild, user, botAvatarUrl, botName, config, cha
     if (field === 'size') b[field] = clampInt(rawValue, 4, 25, b.size);
     else if (field === 'x' || field === 'y') b[field] = clampInt(rawValue, 0, 100, b[field]);
     else b[field] = rawValue;
+    // 🆕 สลับฟอนต์ — อัปเดตแค่ badge ชื่อฟอนต์บนหัว layer ตรงๆ ผ่าน DOM (ไม่ต้อง renderBlocks()
+    // ทั้งชุด) ยังคงหลักการเดิมคือไม่ re-render เต็มรูปแบบตอนพิมพ์/เลือกค่า กัน textarea ที่
+    // กำลังโฟกัสอยู่หลุด (ดูคอมเมนต์เดิมด้านบน — อันนี้คือจุดเดียวที่ต้องแก้ DOM เพิ่มเพราะ
+    // badge เป็นของใหม่ที่เพิ่งเพิ่มเข้ามาตอนทำ Layer List View)
+    if (field === 'fontStyle') {
+      var badgeEl = document.getElementById('fontBadge_' + id);
+      if (badgeEl) badgeEl.textContent = fontLabelFor(rawValue);
+    }
     schedulePreviewRefresh();
     // ไม่ re-render ทั้งชุดตอนพิมพ์ข้อความ/ตัวเลข กัน textarea/input ที่กำลังโฟกัสอยู่หลุด —
-    // re-render เต็มรูปแบบแค่ตอนโครงสร้างเปลี่ยน (เพิ่ม/ลบ/ทำซ้ำ/เลื่อนลำดับ/สลับฟอนต์/ตัวหนา)
+    // re-render เต็มรูปแบบแค่ตอนโครงสร้างเปลี่ยน (เพิ่ม/ลบ/ทำซ้ำ/เลื่อนลำดับ/ตัวหนา)
   }
   function toggleBlockBold(id) {
     var b = findBlock(id);
@@ -476,6 +522,7 @@ function renderWelcomeCardPage({ guild, user, botAvatarUrl, botName, config, cha
   document.getElementById('avatarRadiusInput').value = draft.avatarRadius;
   document.getElementById('overlayOpacityInput').value = draft.overlayOpacity;
   document.getElementById('overlayOpacityReadout').textContent = draft.overlayOpacity + '%';
+  updateOverlaySliderFill(draft.overlayOpacity);
   document.getElementById('greetingTextInput').value = draft.greetingText;
   updateBackgroundThumb();
   renderEnabledToggle();

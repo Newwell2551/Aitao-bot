@@ -184,14 +184,19 @@ function renderSidebar({ guild, user, activeKey, botAvatarUrl, botName }) {
  * @param {string} opts.botName
  * @param {string} opts.bodyHtml        เนื้อหาฝั่งขวาทั้งหมด (แต่ละหน้าประกอบเอง)
  * @param {string} [opts.extraStyle]    CSS เพิ่มเติมเฉพาะหน้านั้นๆ (ใส่ต่อท้าย <style> กลาง)
+ * @param {string} [opts.extraHead]     🆕 [21 ต.ค. 2569] HTML เพิ่มเติมใน <head> เฉพาะหน้านั้นๆ
+ *   (เช่น <link> โหลด Google Fonts จริง) — ใส่เป็น head แยกต่างหากจาก extraStyle เพราะ @import
+ *   ใน <style> ต้องอยู่ "บรรทัดแรกสุด" ของ stylesheet เท่านั้นตามสเปค CSS (ใส่ต่อท้ายแบบ
+ *   extraStyle จะถูกเบราว์เซอร์ที่เข้มงวดเมินทิ้งเงียบๆ) ใช้ <link> ผ่าน head ตรงๆ แทนปลอดภัยกว่า
  */
-function renderDashboardLayout({ title, guild, user, activeKey, botAvatarUrl, botName, bodyHtml, extraStyle }) {
+function renderDashboardLayout({ title, guild, user, activeKey, botAvatarUrl, botName, bodyHtml, extraStyle, extraHead }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(title)}</title>
+${extraHead || ''}
 <style>
   /* ── ตัวแปรสี ── ก๊อปมาจาก public/index.html เป๊ะๆ เหมือนกับ renderServerPicker.js */
   :root {
@@ -205,11 +210,132 @@ function renderDashboardLayout({ title, guild, user, activeKey, botAvatarUrl, bo
     --accent-hover: #5f65e0;
     --gold: #f4b860;
     --teal: #52c7c0;
+    /* 🆕 [21 ต.ค. 2569] ชุดสีเสริมสำหรับธีม "เกมมิ่งพรีเมียม" (Roblox Premium / Discord Dev
+       Portal) — ใช้เฉพาะจุดที่อยากได้แสงนีออนเน้นพิเศษ ไม่ได้มาแทน --accent เดิม (สีหลักของ
+       ทั้งเว็บยังเป็น --accent #7c83fd เหมือนเดิมทุกที่ กัน sidebar/ปุ่มเดิมเปลี่ยนสีไปโดยไม่ตั้งใจ) */
+    --blurple: #5865f2;      /* สี Discord ของจริง — ใช้แค่จุดเน้นพิเศษ (เช่น simulator ข้อความ) */
+    --neon-cyan: #5ad1e6;    /* ใช้กับสถานะ "ยังไม่เสร็จ/รอดำเนินการ" ให้ดูมีชีวิตชีวา ไม่ใช่สีเตือน */
+    --neon-pink: #ff5c7a;    /* ใช้เฉพาะปุ่ม/ไอคอนลบเท่านั้น (destructive) */
+    --glass-bg: rgba(19, 26, 46, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.1);
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', sans-serif; background: var(--bg); color: var(--text); }
   a { text-decoration: none; }
   .nav-item:hover { background: rgba(124,131,253,0.08) !important; }
+
+  /* ───────────────────────────────────────────────────────────────────────
+     🆕 ชุด class กลาง "ธีมเกมมิ่งพรีเมียม" — ใช้ร่วมกันได้ทุกหน้าของแดชบอร์ด
+     (Overview / Welcome Card / Goodbye Card / Fonts / Role Setup / Message Builder)
+     เขียนไว้ที่เดียวตรงนี้ แก้ทีเดียวทุกหน้าได้ผลตรงกัน ไม่ต้องก๊อปซ้ำทีละไฟล์
+     ─────────────────────────────────────────────────────────────────────── */
+
+  /* การ์ดกระจกโปร่งแสง (glassmorphism) — ใช้แทนกล่องพื้นหลังทึบธรรมดาตรงไหนที่อยากได้ลุค
+     "พรีเมียม" เป็นพิเศษ (เช่น การ์ดเช็กลิสต์ของ Overview) ไม่ได้บังคับใช้ทุกกล่องในเว็บ
+     เพราะกล่องฟอร์มทั่วไป (เช่นในหน้า Welcome Card) ยังใช้ --bg-card ทึบแบบเดิมอยู่ ชัดเจน
+     อ่านง่ายกว่าสำหรับฟอร์มที่มีตัวอักษร/ช่องกรอกเยอะๆ */
+  .glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  /* แถวในลิสต์แบบ "layer" (คล้าย Figma/Canva layer panel) — ใช้กับรายการที่กดแก้ไข/ลบได้
+     ทีละแถว เช่น ข้อความบนการ์ด (Welcome/Goodbye Card), รายการฟอนต์, รายการ draft ของ Builder */
+  .layer-row {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .layer-row:hover { background: rgba(255,255,255,0.065); border-color: rgba(124,131,253,0.4); }
+
+  /* ป้าย badge เล็กๆ บอกชื่อฟอนต์/ประเภท — ดูเหมือน tag ในโปรแกรมออกแบบจริงๆ */
+  .pill-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+    padding: 3px 9px; border-radius: 999px;
+    background: rgba(124,131,253,0.14); border: 1px solid rgba(124,131,253,0.3); color: #c9cdfb;
+    white-space: nowrap;
+  }
+
+  /* ปุ่ม/ไอคอน "ลบ" แบบนีออนแดง — ใช้แทนปุ่มลบสีเทาธรรมดาตรงจุดที่อยากเน้นว่าลบถาวร */
+  .neon-trash {
+    color: var(--neon-pink);
+    background: none;
+    border: 1px solid rgba(255,92,122,0.35);
+    border-radius: 7px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 0 3px rgba(255,92,122,0.55));
+    transition: background .15s ease, filter .15s ease;
+  }
+  .neon-trash:hover { background: rgba(255,92,122,0.12); filter: drop-shadow(0 0 6px rgba(255,92,122,0.85)); }
+
+  /* จุดไฟนีออนฟ้า — ใช้บอกสถานะ "ยังไม่เสร็จ/รอทำ" แทนช่องว่างเฉยๆ ให้ดูมีชีวิตชีวาแบบเกม
+     (ส่วนสถานะ "เสร็จแล้ว" ยังใช้ --accent ทึบตามปกติ ไม่ต้องเรืองแสง เพราะไม่ต้องการความสนใจ
+     แล้ว — เน้นแสงไว้ที่ "สิ่งที่ยังต้องทำ" ตามหลัก mission dashboard ของเกม) */
+  .neon-pending-dot {
+    box-shadow: 0 0 0 1px rgba(90,209,230,0.55), 0 0 9px 2px rgba(90,209,230,0.55);
+    border-color: rgba(90,209,230,0.75) !important;
+  }
+
+  /* สไลเดอร์แคปซูลเรืองแสง (ใช้แทน <input type=range> เปล่าๆ ของเบราว์เซอร์) — ไล่สีแถบ
+     ด้วย CSS custom property --range-pct (คำนวณฝั่ง JS ของแต่ละหน้าเอง ดูฟังก์ชัน
+     updateCapsuleRangeFill() ที่ก๊อปมาใช้ได้ในหน้าที่มีสไลเดอร์นี้) */
+  .capsule-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+      var(--blurple) 0%, var(--blurple) var(--range-pct, 50%),
+      rgba(255,255,255,0.1) var(--range-pct, 50%), rgba(255,255,255,0.1) 100%);
+    outline: none;
+    cursor: pointer;
+  }
+  .capsule-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px; border-radius: 999px;
+    background: #fff; border: none; cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(88,101,242,0.28), 0 0 10px 2px rgba(88,101,242,0.75);
+  }
+  .capsule-range::-moz-range-track { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.1); }
+  .capsule-range::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 999px; background: #fff; border: none; cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(88,101,242,0.28), 0 0 10px 2px rgba(88,101,242,0.75);
+  }
+
+  /* ล็อกแบบเบลอ+ป้ายทอง — ใช้ครอบตัวเลือก/การ์ดที่สงวนไว้เฉพาะเซิร์ฟ Premium เท่านั้น
+     (ใส่ class "premium-lock" ที่ตัว wrapper แล้วใส่ ".premium-lock-badge" เป็นลูกข้างใน) */
+  .premium-lock { position: relative; }
+  .premium-lock::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(10,14,26,0.4);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    border-radius: inherit;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .premium-lock-badge {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 3;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(90deg,#f4b860,#e2a04e);
+    color: #0a0e1a; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 999px;
+    box-shadow: 0 0 18px 3px rgba(244,184,96,0.6);
+    white-space: nowrap;
+  }
+
+  /* กรอบจำลองข้อความแชท Discord (ใช้ในหน้า Message Builder ฝั่งพรีวิว + สไลด์ Overview) */
+  .discord-sim { background: #313338; border-radius: 8px; }
+  .discord-sim-blurple-bar { border-left: 4px solid var(--blurple); }
+
   ${extraStyle || ''}
 </style>
 </head>

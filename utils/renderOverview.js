@@ -46,16 +46,24 @@ const CROWN_ICON = (color) => `<svg width="13" height="13" viewBox="0 0 24 24" f
  * @param {{label:string, done:boolean, href:string, optional?:boolean}} item
  */
 function checklistRowHtml(item) {
+  // 🆕 [21 ต.ค. 2569 — "Mission Dashboard" overhaul] ช่องติ๊กข้อที่ "ยังไม่เสร็จ" เปลี่ยนจาก
+  // กรอบว่างเฉยๆ เป็นจุดเรืองแสงสีฟ้านีออน (.neon-pending-dot จาก dashboardShell.js) ให้ความรู้สึก
+  // เหมือนภารกิจในเกมที่ "กำลังรอทำอยู่" — ส่วนข้อที่เสร็จแล้วยังใช้ --accent ทึบเหมือนเดิม
+  // (ไม่ต้องเรืองแสง เพราะไม่ต้องดึงความสนใจแล้ว) ทั้งแถวครอบด้วย .glass-card+.layer-row ให้
+  // เป็นการ์ดกระจกแยกชิ้นแทนเส้นแบ่งเฉยๆ แบบเดิม ตามสเปค glassmorphic cards ที่ขอมา
   const boxHtml = item.done
-    ? `<span style="width:16px;height:16px;border-radius:4px;background:var(--accent);flex:0 0 auto;display:flex;align-items:center;justify-content:center;">${CHECK_ICON}</span>`
-    : `<span style="width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);flex:0 0 auto;"></span>`;
+    ? `<span style="width:17px;height:17px;border-radius:999px;background:var(--accent);flex:0 0 auto;display:flex;align-items:center;justify-content:center;opacity:0.85;">${CHECK_ICON}</span>`
+    : `<span class="neon-pending-dot" style="width:17px;height:17px;border-radius:999px;border:1.5px solid var(--border);flex:0 0 auto;"></span>`;
   const labelStyle = item.done
-    ? 'font-size:13.5px;font-weight:500;color:#6d7597;text-decoration:line-through;flex:1 1 auto;'
-    : 'font-size:13.5px;font-weight:500;color:var(--text);flex:1 1 auto;';
+    ? 'font-size:13.5px;font-weight:500;color:#6d7597;text-decoration:line-through;flex:1 1 auto;opacity:0.75;'
+    : 'font-size:13.5px;font-weight:600;color:var(--text);flex:1 1 auto;';
   const optionalTag = item.optional
     ? `<span style="font-size:10px;font-weight:700;color:var(--text-muted);background:rgba(154,162,196,0.12);border-radius:999px;padding:2px 7px;flex:0 0 auto;">Optional</span>`
     : '';
-  return `<a href="${escapeHtml(item.href)}" class="checklist-item" style="display:flex;align-items:center;gap:10px;padding:5px 6px;border-radius:4px;">
+  // ความ "dim" ของแถวที่เสร็จแล้ว — ลดความสว่างของตัวการ์ดเองด้วย (ไม่ใช่แค่ตัวหนังสือ) ให้เห็น
+  // ชัดตั้งแต่แรกเหลือบมองว่าอันไหนทำแล้ว/อันไหนรอทำอยู่ โดยไม่ต้องอ่านตัวหนังสือก่อน
+  const rowOpacity = item.done ? 'opacity:0.7;' : '';
+  return `<a href="${escapeHtml(item.href)}" class="checklist-item glass-card layer-row" style="display:flex;align-items:center;gap:10px;padding:10px 12px;${rowOpacity}">
     ${boxHtml}
     <span style="${labelStyle}">${escapeHtml(item.label)}</span>
     ${optionalTag}
@@ -184,7 +192,15 @@ function renderOverviewPage({ guild, user, botAvatarUrl, botName, tier, checklis
       'linear-gradient(135deg, #2c2312 0%, #453419 55%, #5c4620 100%)');
 
   const slidesHtml = [welcomeSlide, rolesSlide, fontsSlide, builderSlide, goodbyeSlide, premiumSlide].join('');
-  const dotsHtml = [0, 1, 2, 3, 4, 5].map((i) => `<span id="carousel-dot-${i}" onclick="event.stopPropagation(); showCarouselSlide(${i})" style="width:6px;height:6px;border-radius:999px;background:${i === 0 ? 'var(--accent)' : 'var(--border)'};cursor:pointer;"></span>`).join('');
+  // 🆕 จุด pagination แบบ "minimalist" ตามสเปค — จุดที่กำลังเปิดอยู่ขยายเป็นแคปซูลเล็กๆ (ไม่ใช่
+  // จุดกลมเฉยๆ) และเรืองแสงจางๆ ด้วย --accent ให้ดูพรีเมียมขึ้น ส่วนจุดอื่นยังเป็นจุดกลมเล็กจางๆ
+  const dotsHtml = [0, 1, 2, 3, 4, 5].map((i) => {
+    const active = i === 0;
+    const style = active
+      ? 'width:18px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 8px 1.5px rgba(124,131,253,0.75);cursor:pointer;transition:all .2s ease;'
+      : 'width:6px;height:6px;border-radius:999px;background:var(--border);cursor:pointer;transition:all .2s ease;';
+    return `<span id="carousel-dot-${i}" onclick="event.stopPropagation(); showCarouselSlide(${i})" style="${style}"></span>`;
+  }).join('');
 
   // href ของแต่ละสไลด์ (กดตัว carousel เอง — ไม่ใช่จุด — พาไปหน้าฟีเจอร์นั้นจริง)
   const carouselHrefs = checklistItems.map((i) => i.href);
@@ -209,7 +225,10 @@ function renderOverviewPage({ guild, user, botAvatarUrl, botName, tier, checklis
           ${tierPillHtml}
         </div>
 
-        <div id="setupChecklist" style="margin-top:28px;background:var(--bg-card);border:1px solid var(--border);border-radius:5px;overflow:hidden;">
+        <!-- 🆕 [21 ต.ค. 2569] กรอบรวม "Mission Dashboard" — เปลี่ยนจากกล่องทึบ --bg-card
+             ธรรมดา เป็นการ์ดกระจก glass-card ขอบโค้ง 16px + shadow นุ่มๆ ให้ดูลอยขึ้นมาจากพื้น
+             หลังแทนที่จะแบนราบเหมือนเดิม (ตามสเปค "modern gaming Mission Dashboard") -->
+        <div id="setupChecklist" class="glass-card" style="margin-top:28px;border-radius:16px;overflow:hidden;box-shadow:0 18px 44px rgba(0,0,0,0.38);">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;">
             <div style="display:flex;align-items:center;gap:10px;">
               <div style="font-size:15px;font-weight:600;color:var(--text);">Get started with Aitao Bot</div>
@@ -221,11 +240,13 @@ function renderOverviewPage({ guild, user, botAvatarUrl, botName, tier, checklis
             </button>
           </div>
 
-          <div id="checklistDivider" style="height:1px;background:var(--border);"></div>
+          <div id="checklistDivider" style="height:1px;background:var(--glass-border);"></div>
 
           <div id="checklistBody" style="display:flex;flex-wrap:wrap;">
-            <div style="flex:1 1 320px;padding:24px 28px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;">
-              <div id="checklistCarousel" onclick="carouselClick()" onmouseenter="pauseCarouselAutoplay()" onmouseleave="startCarouselAutoplay()" style="width:100%;height:300px;border-radius:5px;cursor:pointer;position:relative;overflow:hidden;">
+            <div style="flex:1 1 320px;padding:24px 28px;border-right:1px solid var(--glass-border);display:flex;flex-direction:column;align-items:center;">
+              <!-- 🆕 กรอบพรีวิวกลาง — เปลี่ยนจากกล่องเทาแบนๆ เป็นการ์ดสีม่วงน้ำเงินเข้ม #131A2E
+                   (ตรงกับ --bg-card เป๊ะอยู่แล้ว) มุมโค้ง 12px + drop shadow ให้ดูลอยเด่นขึ้นมา -->
+              <div id="checklistCarousel" onclick="carouselClick()" onmouseenter="pauseCarouselAutoplay()" onmouseleave="startCarouselAutoplay()" style="width:100%;height:300px;border-radius:12px;cursor:pointer;position:relative;overflow:hidden;background:#131a2e;box-shadow:0 14px 34px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.05);">
                 ${slidesHtml}
               </div>
               <div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:16px;">
@@ -233,8 +254,8 @@ function renderOverviewPage({ guild, user, botAvatarUrl, botName, tier, checklis
               </div>
             </div>
 
-            <div style="flex:0 0 262px;padding:28px 18px;display:flex;flex-direction:column;justify-content:center;">
-              <div id="checklistItems" style="display:flex;flex-direction:column;gap:18px;">
+            <div style="flex:0 0 278px;padding:28px 18px;display:flex;flex-direction:column;justify-content:center;gap:10px;">
+              <div id="checklistItems" style="display:flex;flex-direction:column;gap:10px;">
                 ${checklistHtml}
               </div>
             </div>
@@ -266,7 +287,19 @@ function renderOverviewPage({ guild, user, botAvatarUrl, botName, tier, checklis
       var slide = document.getElementById('carousel-slide-' + k);
       var dot = document.getElementById('carousel-dot-' + k);
       if (slide) slide.style.display = (k === i) ? (slide.dataset.flex === '1' ? 'flex' : 'block') : 'none';
-      if (dot) dot.style.background = (k === i) ? 'var(--accent)' : 'var(--border)';
+      // 🆕 จุด pagination ตอนนี้เป็นแคปซูลเรืองแสงตอน active (ไม่ใช่แค่เปลี่ยนสีกลมๆ เหมือนเดิม)
+      // ต้องสลับทั้ง width/box-shadow ไม่ใช่แค่ background อย่างเดียวแล้ว
+      if (dot) {
+        if (k === i) {
+          dot.style.width = '18px';
+          dot.style.background = 'var(--accent)';
+          dot.style.boxShadow = '0 0 8px 1.5px rgba(124,131,253,0.75)';
+        } else {
+          dot.style.width = '6px';
+          dot.style.background = 'var(--border)';
+          dot.style.boxShadow = 'none';
+        }
+      }
     }
     carouselIndex = i;
   }
