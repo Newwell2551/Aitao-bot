@@ -195,10 +195,25 @@
                   body ด้วย ไม่ซ้อนอยู่ใน stacking context ไหนเลย) */
   flex-direction: row; /* เดิมเป็น column (เรียงลิงก์แนวตั้งในแถบซ้าย) ตอนนี้เรียง
                            แนวนอนเป็นแถวเดียวกันแทน เหมือนแถบ tab เมนูล่างของแอป */
-  justify-content: space-around;
+  /* 🔧 [21 ต.ค. 2569 — แก้บั๊ก] เพิ่มลิงก์ "Feed" เข้าไปเป็นเมนูที่ 7 ของแถบล่างนี้
+     (เดิมมี 6: Home/Features/Pricing/Marketplace/Commands/Dashboard) ด้วย
+     justify-content:space-around + flex:1 เดิม 7 ช่องมันบีบตัวอักษรแน่นเกินไปจน
+     อ่านยาก/ดูไม่สวยบนจอมือถือ (น้องหนาวส่งภาพมาให้ดู ยืนยันว่าแน่นจริง) — เปลี่ยน
+     มาให้แต่ละแท็บมีความกว้างคงที่พอให้ข้อความอยู่บรรทัดเดียวสบายๆ (ไม่บีบ/ไม่ตัดคำ)
+     แล้วให้ทั้งแถบเลื่อนซ้าย-ขวาได้แทน (overflow-x:auto) ถ้าแท็บรวมกันกว้างเกินจอ —
+     แพทเทิร์นเดียวกับแถบ tab เมนูล่างของแอปมือถือทั่วไปที่มีหลายแท็บ (เช่น Twitter/X,
+     Discord) ซ่อนแถบเลื่อน (scrollbar) ไว้ให้ดูสะอาดตา เหลือแค่ตัวเนื้อหาเลื่อนได้จริง */
+  justify-content: flex-start; /* 🔧 เดิม space-around — เปลี่ยนเพราะตอนนี้แท็บมี
+                                   ความกว้างคงที่ (ไม่ใช่ flex:1 แบ่งเท่ากันแล้ว) ให้
+                                   เรียงชิดซ้ายแล้วปล่อยให้ล้นขวาไปเลื่อนดูแทน */
   align-items: center;
-  padding: 0;
+  padding: 0 2px;
+  overflow-x: auto; /* 🔧 ใหม่ — เลื่อนซ้าย-ขวาได้ถ้าแท็บรวมกันกว้างเกินจอ */
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch; /* เลื่อนลื่นบน iOS Safari */
+  scrollbar-width: none; /* ซ่อนแถบเลื่อนบน Firefox */
 }
+.mobile-nav-rail::-webkit-scrollbar { display: none; } /* ซ่อนแถบเลื่อนบน Chrome/Safari */
 
 /* 🆕 โลโก้แบรนด์ — เดิมเป็นหัวแถบซ้าย ตอนนี้ย้ายไปลอยเดี่ยวๆ มุมซ้ายบนของจอแทน
    (ใช้ position:fixed แยกตัวเองออกจากแถว flex ของ .mobile-nav-rail ด้านล่างจอ
@@ -241,14 +256,19 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  flex: 1 1 0;
+  flex: 0 0 auto; /* 🔧 เดิม "1 1 0" (แบ่งความกว้างเท่ากันทุกแท็บ บีบแน่นเกินไปตอนมี
+                      7 แท็บ) เปลี่ยนเป็นความกว้างคงที่ตาม min-width ด้านล่างแทน
+                      ให้ตัวอักษรอยู่บรรทัดเดียวสบายๆ ไม่บีบ ส่วนที่ล้นจอไปก็เลื่อน
+                      ดูได้ (ดู overflow-x:auto ที่ .mobile-nav-rail ด้านบน) */
+  min-width: 74px;
   gap: 4px;
-  padding: 6px 2px;
-  font-size: 11px;
+  padding: 8px 10px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 1.15;
   color: #9aa2c4;
   text-decoration: none;
+  white-space: nowrap; /* 🔧 ใหม่ — กันคำยาวๆ อย่าง "Marketplace" ตัดขึ้นบรรทัดใหม่ */
   position: relative; /* ให้จุดไฟเรืองแสงใต้แท็บที่ active (::after ด้านล่าง) อิงตำแหน่งจากตัวนี้ */
 }
 .mobile-nav-rail .nav-link:hover { color: #c3c8e6; }

@@ -29,9 +29,13 @@
 // (กัน XSS แบบเดียวกัน + ไอคอนเซิร์ฟหน้าตาเหมือนกันทุกหน้า สีโมโนแกรมเซิร์ฟเดิมคงที่)
 const { escapeHtml, defaultAvatarUrl, serverIconHtml } = require('./renderServerPicker');
 
-// ── รายการเมนู 9 อัน (เพิ่ม Marketplace เข้ามาแล้ว 11 ต.ค. 2569 — ของเดิมตัดออกเพราะยังไม่
-// อยู่ในสโคป ตอนนี้น้องหนาวขอให้ลงขาย/จัดการร้านทำบนเว็บได้เลย ไม่ต้องกลับไปพิมพ์คำสั่งใน
-// ดิสคอร์ด เลยเพิ่มกลับเข้ามา — ฟีดชุมชนยังไม่ทำ ยังอยู่นอกสโคปเหมือนเดิม) ────────────────
+// ── รายการเมนู (เหลือ 3 อัน หลัง [24 ต.ค. 2569 — ตัดแดชบอร์ด]) ──────────────────────
+// 🆕 [24 ต.ค. 2569] ตัด Welcome Card / Goodbye Card / Fonts / Role Setup / Message
+// Builder ออกจากเมนูข้างแล้วนะครับ — หน้าเว็บของ 5 อันนี้ถูกตัดออกทั้งหมด (ยังตั้งค่าได้
+// ปกติผ่านคำสั่งสแลชในดิสคอร์ด: /welcome-setup, /goodbye-setup, /fonts, /role-setup,
+// /builder) เลยไม่ต้องมีลิงก์ในแดชบอร์ดอีกต่อไป เหลือแค่ Overview (ดูสถานะอย่างเดียว),
+// Marketplace (ยังเป็นหน้าเว็บจริง), Language (ยังเป็นหน้าเว็บจริง เหมือนเดิม — ไม่ได้อยู่
+// ในของที่ขอให้ตัดรอบนี้ ถ้าอยากตัดด้วยบอกได้ครับ)
 // hrefSuffix ต่อท้าย "/dashboard/:guildId" เสมอ (ช่องว่าง = หน้า Overview เอง)
 // ไอคอน SVG ก๊อปมาจาก Main.dc.html/Overview.dc.html เป๊ะๆ แค่เปลี่ยน stroke/fill เป็นตัวแปรสี
 const NAV_ITEMS = [
@@ -40,36 +44,6 @@ const NAV_ITEMS = [
     label: 'Overview',
     hrefSuffix: '',
     renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="${c}" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="${c}" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="${c}" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="${c}" stroke-width="1.8"/></svg>`,
-  },
-  {
-    key: 'welcome',
-    label: 'Welcome Card',
-    hrefSuffix: '/welcome',
-    renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="${c}" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" stroke="${c}" stroke-width="1.5"/><path d="M4 16l5-4 4 3 3-2.5 4 3.5" stroke="${c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  },
-  {
-    key: 'goodbye',
-    label: 'Goodbye Card',
-    hrefSuffix: '/goodbye',
-    renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4h7a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H9" stroke="${c}" stroke-width="1.7" stroke-linecap="round"/><path d="M4 12h9" stroke="${c}" stroke-width="1.7" stroke-linecap="round"/><path d="M10 8l4 4-4 4" stroke="${c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  },
-  {
-    key: 'fonts',
-    label: 'Fonts',
-    hrefSuffix: '/fonts',
-    renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="3" stroke="${c}" stroke-width="1.7"/><text x="7.2" y="16.5" font-size="10" font-weight="700" fill="${c}" font-family="-apple-system, sans-serif">Aa</text></svg>`,
-  },
-  {
-    key: 'roles',
-    label: 'Role Setup',
-    hrefSuffix: '/roles',
-    renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="${c}" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="${c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  },
-  {
-    key: 'builder',
-    label: 'Message Builder',
-    hrefSuffix: '/builder',
-    renderIcon: (c) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="9" height="6" rx="1.5" stroke="${c}" stroke-width="1.7"/><rect x="4" y="14" width="6" height="6" rx="1.5" stroke="${c}" stroke-width="1.7"/><rect x="13" y="12" width="7" height="8" rx="1.5" stroke="${c}" stroke-width="1.7"/></svg>`,
   },
   // 🆕 [11 ต.ค. 2569] Marketplace กลับมาแล้วครับ — หน้านี้พาไปตั้งเลขพร้อมเพย์ ลงขาย
   // สินค้า/บริการ และดู-ปิด-เปิดประกาศของตัวเองทั้งหมดบนเว็บ (ดู utils/renderMarketplaceDashboard.js)
