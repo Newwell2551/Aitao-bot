@@ -162,6 +162,9 @@ const { isSlipVerificationConfigured, verifySlip } = require('./utils/slipVerifi
 // คอมเมนต์หัวไฟล์ utils/assetStorage.js — สรุปสั้นๆ: URL ไฟล์แนบ Discord หมดอายุใน ~24 ชม.)
 const { storeBufferPermanently } = require('./utils/assetStorage');
 const { renderMarketplaceDashboardPage } = require('./utils/renderMarketplaceDashboard');
+// 🆕 [21 ต.ค. 2569] หน้า "Marketplace Feed" (public/feed.html) — ฟีดงาน/บริการข้ามเซิร์ฟ
+// ดูคอมเมนต์หัวไฟล์ utils/feedStorage.js สำหรับสเกมา + เหตุผลของทุกจุดที่ตัดสินใจเอง
+const feedStorage = require('./utils/feedStorage');
 // 🆕 หน้า Server Picker (การ์ดกริดเลือกเซิร์ฟหลัง login) — แยกไว้คนละไฟล์เพราะเป็น
 // โค้ดสร้าง HTML ล้วนๆ ยาวๆ ไม่อยากให้ server.js (ที่จัดการ route) ยาวเทอะทะเกินไป
 // ดูคำอธิบายเต็มๆ ในไฟล์นั้นเลย
@@ -851,6 +854,118 @@ function createWebhookServer(client) {
     );
 
     res.json({ ok: true, reportId: report.id, notified: notifyResult.posted });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [21 ต.ค. 2569] Marketplace Feed API — 4 เส้นทาง ให้หน้าเว็บ public/feed.html
+  // (static HTML เหมือน marketplace.html — เหตุผลเดียวกับคอมเมนต์ที่ /api/me ด้านบน)
+  // เรียกดึง/สร้าง/โหวต/ปิดโพสต์ได้จริง ไม่ใช่ mock data
+  //
+  // ไม่ผูกกับเซิร์ฟไหนเลย (ต่างจาก /dashboard/:guildId/* ทั้งหมด) เพราะ Feed เป็นฟีเจอร์
+  // "ระดับบัญชีผู้ใช้ดิสคอร์ด" ข้ามเซิร์ฟ — ใครก็ได้ที่ login ผ่านเว็บนี้แล้วโพสต์ได้เลย
+  // ไม่ต้องมีเซิร์ฟ/ไม่ต้องเชิญบอทเข้าเซิร์ฟตัวเองก่อนด้วยซ้ำ
+  // ─────────────────────────────────────────────────────────────────────
+
+  // แปลงรหัสประเทศ ISO 3166-1 alpha-2 (เช่น "TH") เป็นอิโมจิธงชาติ — เทคนิคมาตรฐาน:
+  // อิโมจิธงคือตัวอักษร "Regional Indicator Symbol" 2 ตัวต่อกัน แต่ละตัวคือ A-Z บวก
+  // offset คงที่ 127397 (0x1F1E6 - 'A'.charCodeAt(0)) — ไม่ใช่การเดา เป็นมาตรฐาน Unicode
+  function flagEmojiFor(countryCode) {
+    if (!countryCode || countryCode.length !== 2) return null;
+    const codePoints = [...countryCode.toUpperCase()].map((c) => 127397 + c.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+  }
+
+  // แปลง post object ที่เก็บในไฟล์ → รูปแบบที่ส่งให้หน้าเว็บใช้ได้เลย (คำนวณคะแนนโหวต,
+  // ธงชาติ, และ "โหวตของฉัน" ถ้า login อยู่ — ไม่ส่ง votes object ดิบๆ ออกไปเลย กันเผย
+  // รายชื่อ user ID ทุกคนที่เคยโหวตโพสต์นี้ออกสู่สาธารณะโดยไม่จำเป็น)
+  function serializePost(post, viewerUserId) {
+    return {
+      id: post.id,
+      authorId: post.authorId, // ใช้แค่เทียบ "เป็นโพสต์ของฉันเองไหม" ฝั่งเบราว์เซอร์ — ไม่ใช่ข้อมูลลับ (Discord user ID มองเห็นได้อยู่แล้วทุกที่ในแอพดิสคอร์ด)
+      authorUsername: post.authorUsername,
+      authorAvatarUrl: post.authorAvatarUrl,
+      type: post.type,
+      title: post.title,
+      description: post.description,
+      tags: post.tags,
+      priceAmount: post.priceAmount,
+      priceCurrency: post.priceCurrency,
+      mediaUrl: post.mediaUrl,
+      country: post.country,
+      countryFlag: flagEmojiFor(post.country),
+      urgent: post.urgent,
+      score: feedStorage.scoreOf(post.votes),
+      myVote: viewerUserId ? (post.votes[viewerUserId] || 0) : 0,
+      createdAt: post.createdAt,
+      isMine: viewerUserId === post.authorId,
+    };
+  }
+
+  // GET /api/feed/posts — รายการโพสต์ active ทั้งหมด (ให้ทุกคนดูได้ ไม่ต้อง login — เหมือน
+  // GET /api/marketplace/listings) กรองด้วย ?type=hiring|gigs ได้ (ไม่ใส่ = เอาหมด) ส่ง
+  // "trending" (แท็กฮิตจริง) + "topContributors" (ผู้โพสต์คะแนนรวมสูงสุดจริง) แนบไปด้วยใน
+  // คำตอบเดียวกันเลย ไม่ต้องให้หน้าเว็บยิง request แยกอีกรอบ (ดูคอมเมนต์หัวไฟล์
+  // utils/feedStorage.js ข้อ 2 ว่าทำไม topContributors ไม่ใช่ "Verified")
+  app.get('/api/feed/posts', (req, res) => {
+    const type = req.query.type === 'hiring' || req.query.type === 'gigs' ? req.query.type : null;
+    const viewerUserId = req.session.user?.id || null;
+    const posts = feedStorage.listActivePosts({ type }).map((p) => serializePost(p, viewerUserId));
+    res.json({
+      posts,
+      trending: feedStorage.computeTrendingTags(8),
+      topContributors: feedStorage.computeTopContributors(5),
+    });
+  });
+
+  // POST /api/feed/posts — สร้างโพสต์ใหม่ (ต้อง login ก่อนเท่านั้น — เช็ค req.session.user
+  // ตรงๆ แล้วตอบ 401 เป็น JSON แทน requireAuth เหตุผลเดียวกับ /buy ด้านบน)
+  app.post('/api/feed/posts', express.json({ limit: '32kb' }), (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/feed')}` });
+    }
+    try {
+      const post = feedStorage.createPost({
+        ...req.body,
+        authorId: req.session.user.id,
+        authorUsername: req.session.user.username,
+        authorAvatarUrl: req.session.user.avatar || defaultAvatarUrl(req.session.user.id),
+      });
+      console.log(`[feed] ${req.session.user.username} (${req.session.user.id}) โพสต์ "${post.title}" (${post.id}) ลง Feed แล้ว`);
+      res.json({ post: serializePost(post, req.session.user.id) });
+    } catch (error) {
+      // createPost() โยน Error ข้อความไทยอ่านรู้เรื่องมาให้ตรงๆ อยู่แล้ว (validate ทุกช่อง
+      // ในนั้น) ส่งข้อความนั้นกลับไปให้หน้าเว็บโชว์ตรงๆ ได้เลย ไม่ต้องแปลซ้ำ
+      res.status(400).json({ error: 'invalid_post', message: error.message });
+    }
+  });
+
+  // POST /api/feed/posts/:id/vote — โหวตขึ้น/ลง (ต้อง login) body: { direction: 1 | -1 }
+  app.post('/api/feed/posts/:id/vote', express.json({ limit: '2kb' }), (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/feed')}` });
+    }
+    const direction = Number(req.body?.direction);
+    if (direction !== 1 && direction !== -1) {
+      return res.status(400).json({ error: 'invalid_direction' });
+    }
+    const result = feedStorage.votePost(String(req.params.id).toUpperCase(), req.session.user.id, direction);
+    if (!result) {
+      return res.status(404).json({ error: 'post_not_found' });
+    }
+    res.json(result);
+  });
+
+  // POST /api/feed/posts/:id/close — ปิดโพสต์ของตัวเอง (ต้อง login + ต้องเป็นเจ้าของโพสต์
+  // เท่านั้น — เช็คสิทธิ์อยู่ข้างใน feedStorage.closePost() แล้ว)
+  app.post('/api/feed/posts/:id/close', (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/feed')}` });
+    }
+    const ok = feedStorage.closePost(String(req.params.id).toUpperCase(), req.session.user.id);
+    if (!ok) {
+      return res.status(404).json({ error: 'post_not_found_or_not_yours' });
+    }
+    res.json({ ok: true });
   });
 
   // ─────────────────────────────────────────────────────────────────────
