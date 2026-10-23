@@ -567,6 +567,85 @@
           featuredShops: 'Featured Shops',
         },
       },
+      // 🆕 [23 ต.ค. 2569] feed — น้องหนาวขอให้หน้า Feed สลับภาษาได้ด้วยเหมือน
+      // marketplace ครับ แปลครบทุกจุดที่เป็น "โครงหน้า/UI คงที่" (หัวข้อ, แถบนำทาง
+      // ซ้าย, แท็บ, ไซด์บาร์ขวา, ป็อปอัปโพสต์ใหม่) รวมถึงข้อความที่ render ผ่าน
+      // JavaScript (badge "Hiring/Gig", ปุ่ม Contact, ข้อความตอน empty/error) ด้วย
+      // — ไม่เหมือน marketplace ที่ข้อความ JS-render ส่วนลึก (การ์ดสินค้าสมมติ)
+      // ไม่ได้แปล เพราะที่นี่การ์ดเป็นโพสต์จริงที่ขึ้นทันทีตั้งแต่โหลดหน้า ถ้าไม่แปล
+      // ส่วนนี้ด้วย ภาษาจะ "โชว์ไทยแว้บเดียวแล้วเด้งกลับอังกฤษ" ทันทีที่ดึงข้อมูลจาก
+      // API เสร็จ ดูไม่เป็นมืออาชีพ — ดูการเรียก SiteLang.t(...) ใน public/feed.html
+      // ว่าใช้คีย์กลุ่มนี้ตรงไหนบ้าง
+      //
+      // ⚠️ ของที่ "ตั้งใจไม่แปล" (ตัดสินใจเองพร้อมเหตุผล เหมือนแพทเทิร์น
+      // marketplace): ชื่อประเทศในดรอปดาวน์ (FEED_COUNTRIES ใน feed.html — เป็น
+      // ชื่อประเทศสากล ไม่ใช่ UI ข้อความ) และป้ายเวลา "ago/just now" ของ timeAgo()
+      // (ยังเป็นอังกฤษเสมอ ไม่ว่าจะสลับภาษาไหน — เพราะ t() ตอนนี้ไม่รองรับ
+      // placeholder แทนค่าตัวเลขแบบที่ utils/i18n.js ฝั่งบอททำได้ ถ้าอยากได้เพิ่ม
+      // ทีหลังบอกได้เลยครับ ทำเพิ่มได้)
+      feed: {
+        _meta: {
+          title: 'Milo Bot — Feed',
+          description: 'Marketplace Feed — the hiring & gigs hub for Discord creators. Post what you need, find your next client, and connect directly.',
+        },
+        heading: 'Marketplace Feed',
+        subheading: "Find Discord creators to hire, or post what you're available for. Real posts, real people — no fake listings.",
+        rail: {
+          newPost: 'New Post',
+          allPosts: 'All posts',
+          myPosts: 'My posts',
+        },
+        tabs: {
+          all: '🌐 All',
+          hiring: '🔍 Looking for Talent',
+          gigs: '💼 Available for Hire',
+        },
+        sideRight: {
+          topContributors: 'Top Contributors',
+          trendingTags: 'Trending Tags',
+          urgentHiring: '🔥 Urgent Hiring',
+          noScoredPosts: 'No scored posts yet.',
+          noTagsYet: 'No tags yet.',
+          noUrgentPosts: 'No urgent posts right now.',
+        },
+        empty: {
+          scopeMineLoggedIn: 'You haven\'t posted anything yet — click "New Post" to get started.',
+          scopeMineLoggedOut: 'Log in to see your own posts here.',
+          noPosts: 'No posts here yet — be the first to post!',
+        },
+        loadError: "Couldn't load the feed — try refreshing.",
+        card: {
+          hiringBadge: 'Hiring',
+          gigBadge: 'Gig',
+          contact: '💬 Contact',
+          closePost: 'Close post',
+          closeConfirm: 'Close this post? It will be removed from the feed.',
+        },
+        modal: {
+          title: 'New Feed Post',
+          subtitlePrefix: 'Posting as',
+          subtitleSuffix: 'Be honest — this feed is read by real creators looking for real work.',
+          typeHiring: '🔍 Looking for Talent',
+          typeGigs: '💼 Available for Hire',
+          labelTitle: 'Title',
+          titlePlaceholder: 'e.g. Need a welcome-card designer for my server',
+          labelDescription: 'Description',
+          descriptionPlaceholder: 'Describe what you need or what you offer…',
+          labelTags: 'Tags (comma-separated, up to 5 — no #)',
+          tagsPlaceholder: 'BotDev, ServerDesign, WelcomeCards',
+          labelPrice: 'Price (optional)',
+          pricePlaceholder: 'Leave empty if negotiable',
+          labelCurrency: 'Currency',
+          labelMedia: 'Work sample image URL (optional)',
+          mediaPlaceholder: 'https://… (must be a direct image link)',
+          labelCountry: 'Country (optional, self-reported)',
+          countryNotSpecified: 'Not specified',
+          urgentLabel: 'Mark as urgent hiring',
+          cancel: 'Cancel',
+          submit: 'Post to Feed',
+          submitting: 'Posting…',
+        },
+      },
     },
     th: {
       nav: {
@@ -914,6 +993,70 @@
           viewPlans: 'ดูแพ็กเกจ &rarr;',
           topRanking: 'อันดับยอดนิยม',
           featuredShops: 'ร้านค้าแนะนำ',
+        },
+      },
+      // 🆕 [23 ต.ค. 2569] feed — คู่กับฝั่ง en ด้านบน (ดูคอมเมนต์เหตุผลเต็มๆ ที่นั่น)
+      feed: {
+        _meta: {
+          title: 'Milo Bot — ฟีด',
+          description: 'ฟีด Marketplace ของ Milo Bot — ศูนย์กลางหางาน/หาคนทำงานของครีเอเตอร์สาย Discord โพสต์สิ่งที่คุณต้องการ หาลูกค้ารายต่อไป และติดต่อกันได้ตรงๆ',
+        },
+        heading: 'ฟีด Marketplace',
+        subheading: 'ค้นหาครีเอเตอร์ Discord มารับงาน หรือโพสต์บอกว่าคุณรับงานอะไรได้บ้าง — โพสต์จริง คนจริง ไม่มีประกาศปลอม',
+        rail: {
+          newPost: 'โพสต์ใหม่',
+          allPosts: 'โพสต์ทั้งหมด',
+          myPosts: 'โพสต์ของฉัน',
+        },
+        tabs: {
+          all: '🌐 ทั้งหมด',
+          hiring: '🔍 กำลังหาคนทำงาน',
+          gigs: '💼 รับงาน',
+        },
+        sideRight: {
+          topContributors: 'ผู้ใช้ยอดนิยม',
+          trendingTags: 'แท็กที่กำลังมาแรง',
+          urgentHiring: '🔥 ด่วน! กำลังหาคน',
+          noScoredPosts: 'ยังไม่มีโพสต์ที่มีคะแนนเลยครับ',
+          noTagsYet: 'ยังไม่มีแท็กเลยครับ',
+          noUrgentPosts: 'ตอนนี้ยังไม่มีโพสต์ด่วนเลยครับ',
+        },
+        empty: {
+          scopeMineLoggedIn: 'คุณยังไม่ได้โพสต์อะไรเลย — กดปุ่ม "โพสต์ใหม่" เพื่อเริ่มได้เลยครับ',
+          scopeMineLoggedOut: 'เข้าสู่ระบบเพื่อดูโพสต์ของตัวเองที่นี่ครับ',
+          noPosts: 'ยังไม่มีโพสต์ตรงนี้เลย เป็นคนแรกที่โพสต์ได้เลยครับ',
+        },
+        loadError: 'โหลดฟีดไม่สำเร็จ — ลองรีเฟรชอีกครั้งครับ',
+        card: {
+          hiringBadge: 'กำลังหาคน',
+          gigBadge: 'รับงาน',
+          contact: '💬 ติดต่อ',
+          closePost: 'ปิดโพสต์',
+          closeConfirm: 'ปิดโพสต์นี้ไหมครับ? โพสต์จะถูกลบออกจากฟีด',
+        },
+        modal: {
+          title: 'โพสต์ใหม่ลงฟีด',
+          subtitlePrefix: 'โพสต์ในชื่อ',
+          subtitleSuffix: 'พูดตามจริงนะครับ — ฟีดนี้มีครีเอเตอร์ตัวจริงเข้ามาดูเพื่อหางาน/หาคนทำงานจริงๆ',
+          typeHiring: '🔍 กำลังหาคนทำงาน',
+          typeGigs: '💼 รับงาน',
+          labelTitle: 'หัวข้อ',
+          titlePlaceholder: 'เช่น ต้องการนักออกแบบการ์ดต้อนรับให้เซิร์ฟเวอร์',
+          labelDescription: 'รายละเอียด',
+          descriptionPlaceholder: 'อธิบายว่าคุณต้องการอะไร หรือรับทำอะไรได้บ้าง…',
+          labelTags: 'แท็ก (คั่นด้วยจุลภาค ได้สูงสุด 5 แท็ก — ไม่ต้องใส่ #)',
+          tagsPlaceholder: 'BotDev, ServerDesign, WelcomeCards',
+          labelPrice: 'ราคา (ไม่บังคับ)',
+          pricePlaceholder: 'เว้นว่างไว้ถ้าต่อรองราคาได้',
+          labelCurrency: 'สกุลเงิน',
+          labelMedia: 'ลิงก์รูปตัวอย่างงาน (ไม่บังคับ)',
+          mediaPlaceholder: 'https://… (ต้องเป็นลิงก์รูปภาพตรงๆ)',
+          labelCountry: 'ประเทศ (ไม่บังคับ, ระบุเอง)',
+          countryNotSpecified: 'ไม่ระบุ',
+          urgentLabel: 'ตั้งเป็นงานด่วน',
+          cancel: 'ยกเลิก',
+          submit: 'โพสต์ลงฟีด',
+          submitting: 'กำลังโพสต์…',
         },
       },
     },

@@ -460,24 +460,43 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     }
   }
 
-  const descriptionLines =
-    `**${listing.title}**\n` +
-    `ราคา: **${formatThb(order.priceThb)}**\n` +
-    `ผู้ซื้อ: ${buyerInfo?.username || 'ไม่ทราบชื่อ'}\n\n` +
-    (method === 'promptpay'
-      ? 'ระบบโชว์ QR อันเดียวกันนี้ให้ผู้ซื้อเห็นบนหน้าเว็บแล้ว (แนบมาให้ดูอ้างอิงด้วยเฉยๆ ' +
-        'ไม่ต้องส่งต่อให้ใคร) รอเงินเข้าบัญชีพร้อมเพย์ของคุณจริง แล้วกด ' +
-        '**"✅ ยืนยันได้รับเงินแล้ว"** ด้านล่างทันทีที่เห็นเงินเข้าครับ'
-      : `ผู้ซื้อเห็นลิงก์รับเงินของคุณ (${seller.paymentLink}) บนหน้าเว็บแล้ว และต้องจ่ายเอง ` +
-        `ให้ตรงยอด **${formatThb(order.priceThb)}** ตามช่องทางนั้น — รอเงินเข้าจริงก่อน แล้วกด ` +
-        '**"✅ ยืนยันได้รับเงินแล้ว"** ด้านล่างทันทีที่เห็นเงินเข้าครับ (ลิงก์นี้ไม่มียอดเงิน ' +
-        'ฝังอยู่ในตัวแบบ QR นะครับ ต้องเช็คยอดเองว่าตรงกับที่นี่)');
+  // 🆕 [23 ต.ค. 2569] ปรับ embed ใหม่ตามที่น้องหนาวขอ — เดิมเป็นพารากราฟยาวอ่านยาก
+  // (ชื่อสินค้า/ราคา/ผู้ซื้อ ปนกับคำอธิบายขั้นตอนเป็นก้อนเดียว) เปลี่ยนมาใช้
+  // embed.addFields() แทน ซึ่งเป็นวิธี "มาตรฐาน" ของ Discord สำหรับโชว์ข้อมูลแบบ
+  // คีย์-ค่า (key-value) ให้อ่านเป็นช่องๆ ชัดเจน ไม่ต้องไล่อ่านทั้งพารากราฟ — แพทเทิร์น
+  // เดียวกับ embed รายงานที่ handleReport ใช้ด้านบน (ดูบรรทัด ~600)
+  //
+  // 🔑 จุดที่น้องหนาวถามว่า "โอนเงินจากแอคเคาท์อะไร" — บอทไม่รู้ว่าเงินโอนมาจาก
+  // บัญชีธนาคารไหน (การสแกน QR จ่ายเงินเกิดนอกระบบดิสคอร์ดทั้งหมด บอทมองไม่เห็น)
+  // แต่สิ่งที่ตรวจสอบได้แน่ๆ 100% คือ "บัญชีดิสคอร์ดไหนเป็นคนกดซื้อ" — ใช้ mention
+  // `<@id>` + เลข ID ดิบกำกับไว้ด้วย (รูปแบบเดียวกับ embed รายงานผู้ขายด้านบน) เพราะ
+  // mention ปลอมแปลงไม่ได้เลย (ผูกกับ Discord ID จริงที่ login ผ่าน OAuth2 มา ไม่ใช่
+  // แค่ชื่อที่พิมพ์เอง) ต่างจากข้อความชื่อธรรมดาที่เปลี่ยนได้ตลอดเวลา
+  const buyerLine = buyerInfo?.id ? `<@${buyerInfo.id}> (${buyerInfo.id})` : 'ไม่ทราบตัวตน';
+  const orderTimeText = new Date(order.createdAt).toLocaleString('th-TH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Bangkok',
+  });
+
+  const instructionText = method === 'promptpay'
+    ? 'สแกน QR ด้านล่าง → รอเงินเข้าบัญชีพร้อมเพย์ของคุณจริง → กด **"✅ ยืนยันได้รับเงินแล้ว"**'
+    : `ผู้ซื้อจ่ายผ่านลิงก์ของคุณเอง (${seller.paymentLink}) ไม่มี QR ให้ดู ต้องเช็คยอดเองว่าเข้าตรงกับ **${formatThb(order.priceThb)}** → แล้วกด **"✅ ยืนยันได้รับเงินแล้ว"**`;
 
   const embed = new EmbedBuilder()
     .setTitle('🛒 มีคนซื้อสินค้าของคุณ!')
     .setColor(0x4b8f87)
-    .setDescription(descriptionLines)
-    .setFooter({ text: `รหัสออร์เดอร์ ${order.id}` });
+    .addFields(
+      { name: '🛍️ สินค้า', value: listing.title },
+      { name: '💰 ยอดเงิน', value: formatThb(order.priceThb), inline: true },
+      { name: '🔑 รหัสออเดอร์', value: `\`${order.id}\``, inline: true },
+      { name: '🙋 ผู้ซื้อ (บัญชีดิสคอร์ด)', value: buyerLine, inline: true },
+      { name: '🕒 เวลาสั่งซื้อ', value: orderTimeText, inline: true },
+    )
+    .setDescription(instructionText)
+    // รหัสออเดอร์เดียวกันนี้ผู้ซื้อก็เห็นอยู่หน้าเว็บตอนจ่ายเงินด้วย (public/marketplace.html
+    // #payOrderId) — ใส่ไว้ใน footer กันลืมว่าใช้อ้างอิงคุยกับผู้ซื้อได้ถ้ามีปัญหา
+    .setFooter({ text: 'รหัสออเดอร์นี้ ผู้ซื้อก็เห็นเหมือนกันบนหน้าเว็บ — ใช้อ้างอิงคุยกันได้ถ้ามีปัญหา' });
 
   if (method === 'promptpay') {
     embed.setImage(`attachment://promptpay-${order.id}.png`);

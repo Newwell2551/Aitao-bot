@@ -27,11 +27,19 @@
          (หมวดหมู่สินค้า) ที่มีอยู่แล้วในเว็บนี้
       2) ไม่มีระบบค้นหา/กรองแท็กแบบเจาะลึก (สเปกไม่ได้ขอ) — มีแค่สลับ
          Hiring/Gigs ตามสเปกข้อ 2 เท่านั้น ถ้าอยากได้ค้นหา/กรองเพิ่ม บอกได้เลย
-      3) ไม่มีระบบแปลภาษา (data-i18n/site-lang.js) เหมือน marketplace.html —
-         หน้านี้เป็นภาษาอังกฤษล้วน ตามค่าเริ่มต้นของหน้าอื่นๆ ส่วนใหญ่ในเว็บ (index/
-         features/pricing/commands ก็เป็นอังกฤษล้วนเหมือนกัน มีแค่ marketplace.html
-         หน้าเดียวที่แปลไว้) — เพิ่มทีหลังได้ถ้าต้องการ แต่เป็นงานแยกต่างหาก (ต้อง
-         เพิ่ม key ใน en.json/th.json ด้วย)
+      3) [🆕 23 ต.ค. 2569 — แก้แล้ว] ตอนแรกหน้านี้ไม่มีระบบแปลภาษาเลย น้องหนาวขอให้
+         เพิ่มปุ่มสลับ EN/TH เหมือนหน้าอื่น — ตอนนี้ผูกกับ public/js/site-lang.js
+         แล้วครบทั้งหน้า (ดูคีย์ feed.* ในไฟล์นั้น) **รวมถึงข้อความที่ render ผ่าน
+         JavaScript ด้วย** (badge "Hiring/Gig", ปุ่ม Contact/Close post, ข้อความ
+         ตอน empty/error) ไม่ใช่แค่ข้อความนิ่งๆ บนหน้าเท่านั้น เพราะโพสต์ในฟีดนี้
+         เป็นของจริงที่ดึงจาก API ทันทีตั้งแต่โหลดหน้า ถ้าแปลแค่ข้อความนิ่งๆ
+         ภาษาจะโชว์ไทยแว้บเดียวแล้วเด้งกลับอังกฤษทันทีที่ดึงข้อมูลเสร็จ (ดูฟังก์ชัน
+         renderPosts()/renderSidebar()/postCardHtml() ด้านล่าง ที่เปลี่ยนไปเรียก
+         SiteLang.t() แทนการเขียนข้อความอังกฤษตรงๆ ในสตริง)
+         ⚠️ ของที่ตั้งใจไม่แปล (เหตุผลเดียวกับที่ marketplace.html ตัดบางจุดไป):
+         ชื่อประเทศในดรอปดาวน์ FEED_COUNTRIES (ชื่อสากล ไม่ใช่ UI ข้อความ) และ
+         ป้ายเวลาของ timeAgo() ("just now"/"Xh ago" ฯลฯ — ยังเป็นอังกฤษเสมอ เพราะ
+         SiteLang.t() ตอนนี้ยังไม่รองรับแทนค่าตัวเลขแบบ placeholder)
       4) ไม่มี footer (ตามแพทเทิร์นเดียวกับ marketplace.html — "ไม่มี Footer ใน
          หน้านี้เช่นกัน")
     ═══════════════════════════════════════════════════════════════════════
@@ -186,6 +194,8 @@
 
   <link rel="stylesheet" href="/nav.css?v=4">
   <link rel="stylesheet" href="/scrollbar.css">
+  <!-- 🆕 [23 ต.ค. 2569] ปุ่มสลับภาษา EN/TH ใช้งานได้จริงแล้ว (ดู public/js/site-lang.js) -->
+  <script src="/js/site-lang.js"></script>
 </head>
 <body>
 
@@ -203,18 +213,24 @@
     <div class="mobile-nav-rail-brand">
       <img src="/images/avatar-icon.jpg" alt="Milo Bot" />
     </div>
-    <a href="/" class="nav-link">Home</a>
-    <a href="/features" class="nav-link">Features</a>
-    <a href="/pricing" class="nav-link">Pricing</a>
-    <a href="/marketplace" class="nav-link">Marketplace</a>
-    <a href="/feed" class="nav-link active">Feed</a>
-    <a href="/commands" class="nav-link">Commands</a>
-    <a href="/dashboard" class="nav-link">Dashboard</a>
+    <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
+    <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
+    <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
+    <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
+    <a href="/feed" class="nav-link active" data-i18n="nav.feed">Feed</a>
+    <a href="/commands" class="nav-link" data-i18n="nav.commands">Commands</a>
+    <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
 
     <div class="mobile-nav-rail-utility">
+      <!-- 🆕 [23 ต.ค. 2569] ปุ่มสลับภาษา (ดูคอมเมนต์ข้อ 4 ของ public/js/site-lang.js
+           ว่าทำไมต้องมี class="lang-btn" กับ class="lang-label" ข้างในเป๊ะๆ) -->
+      <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+        <span class="lang-label">EN</span>
+      </button>
       <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
          class="add-bot-btn pill-btn primary" target="_blank" rel="noopener">
-        <span>Add Bot</span>
+        <span data-i18n="nav.addBot">Add Bot</span>
       </a>
     </div>
   </div>
@@ -226,18 +242,22 @@
         <span>Milo Bot</span>
       </a>
       <div class="center-links">
-        <a href="/" class="nav-link">Home</a>
-        <a href="/features" class="nav-link">Features</a>
-        <a href="/pricing" class="nav-link">Pricing</a>
-        <a href="/marketplace" class="nav-link">Marketplace</a>
-        <a href="/feed" class="nav-link active">Feed</a>
-        <a href="/commands" class="nav-link">Commands</a>
-        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/" class="nav-link" data-i18n="nav.home">Home</a>
+        <a href="/features" class="nav-link" data-i18n="nav.features">Features</a>
+        <a href="/pricing" class="nav-link" data-i18n="nav.pricing">Pricing</a>
+        <a href="/marketplace" class="nav-link" data-i18n="nav.marketplace">Marketplace</a>
+        <a href="/feed" class="nav-link active" data-i18n="nav.feed">Feed</a>
+        <a href="/commands" class="nav-link" data-i18n="nav.commands">Commands</a>
+        <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
       </div>
       <div class="right-actions">
+        <button type="button" class="lang-btn pill-btn" title="สลับเป็นภาษาไทย">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="#c3c8e6" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="3.4" ry="8.2" stroke="#c3c8e6" stroke-width="1.6"/><path d="M3.8 12h16.4" stroke="#c3c8e6" stroke-width="1.6"/></svg>
+          <span class="lang-label">EN</span>
+        </button>
         <a href="https://discord.com/oauth2/authorize?client_id=1515911957713125426&scope=bot%20applications.commands&permissions=268815440"
            class="add-bot-btn pill-btn primary plain" target="_blank" rel="noopener">
-          <span>Add Bot</span>
+          <span data-i18n="nav.addBot">Add Bot</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#0a0e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
       </div>
@@ -250,8 +270,8 @@
 
   <div class="feed-shell">
     <div style="margin-bottom:20px;">
-      <div style="font-size:24px;font-weight:800;color:#fff;">Marketplace Feed</div>
-      <div style="font-size:13px;color:var(--feed-text-muted);margin-top:4px;">Find Discord creators to hire, or post what you're available for. Real posts, real people — no fake listings.</div>
+      <div style="font-size:24px;font-weight:800;color:#fff;" data-i18n="feed.heading">Marketplace Feed</div>
+      <div style="font-size:13px;color:var(--feed-text-muted);margin-top:4px;" data-i18n="feed.subheading">Find Discord creators to hire, or post what you're available for. Real posts, real people — no fake listings.</div>
     </div>
 
     <div class="feed-grid">
@@ -260,16 +280,16 @@
       <div class="feed-rail-left">
         <button type="button" class="feed-post-btn" id="feedOpenPostBtn">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
-          New Post
+          <span data-i18n="feed.rail.newPost">New Post</span>
         </button>
         <div class="feed-glass" style="padding:10px;">
           <button type="button" class="feed-rail-item active" data-scope="all" onclick="feedSetScope('all')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 12h16M4 6h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            All posts
+            <span data-i18n="feed.rail.allPosts">All posts</span>
           </button>
           <button type="button" class="feed-rail-item" data-scope="mine" onclick="feedSetScope('mine')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            My posts
+            <span data-i18n="feed.rail.myPosts">My posts</span>
           </button>
         </div>
       </div>
@@ -277,9 +297,9 @@
       <!-- ═══════════ CENTER: tabs + feed ═══════════ -->
       <div class="feed-center">
         <div class="feed-tabs">
-          <button type="button" class="feed-tab active" data-type="" onclick="feedSetType('')">🌐 All</button>
-          <button type="button" class="feed-tab" data-type="hiring" onclick="feedSetType('hiring')">🔍 Looking for Talent</button>
-          <button type="button" class="feed-tab" data-type="gigs" onclick="feedSetType('gigs')">💼 Available for Hire</button>
+          <button type="button" class="feed-tab active" data-type="" onclick="feedSetType('')" data-i18n="feed.tabs.all">🌐 All</button>
+          <button type="button" class="feed-tab" data-type="hiring" onclick="feedSetType('hiring')" data-i18n="feed.tabs.hiring">🔍 Looking for Talent</button>
+          <button type="button" class="feed-tab" data-type="gigs" onclick="feedSetType('gigs')" data-i18n="feed.tabs.gigs">💼 Available for Hire</button>
         </div>
 
         <div id="feedPostsContainer"></div>
@@ -288,16 +308,16 @@
       <!-- ═══════════ RIGHT RAIL: Discovery hub ═══════════ -->
       <div class="feed-rail-right">
         <div class="feed-glass">
-          <div class="feed-rail-title">Top Contributors</div>
-          <div id="feedTopContributors"><div class="feed-rail-empty">No scored posts yet.</div></div>
+          <div class="feed-rail-title" data-i18n="feed.sideRight.topContributors">Top Contributors</div>
+          <div id="feedTopContributors"><div class="feed-rail-empty" data-i18n="feed.sideRight.noScoredPosts">No scored posts yet.</div></div>
         </div>
         <div class="feed-glass">
-          <div class="feed-rail-title">Trending Tags</div>
-          <div id="feedTrendingTags"><div class="feed-rail-empty">No tags yet.</div></div>
+          <div class="feed-rail-title" data-i18n="feed.sideRight.trendingTags">Trending Tags</div>
+          <div id="feedTrendingTags"><div class="feed-rail-empty" data-i18n="feed.sideRight.noTagsYet">No tags yet.</div></div>
         </div>
         <div class="feed-glass">
-          <div class="feed-rail-title">🔥 Urgent Hiring</div>
-          <div id="feedUrgentPosts"><div class="feed-rail-empty">No urgent posts right now.</div></div>
+          <div class="feed-rail-title" data-i18n="feed.sideRight.urgentHiring">🔥 Urgent Hiring</div>
+          <div id="feedUrgentPosts"><div class="feed-rail-empty" data-i18n="feed.sideRight.noUrgentPosts">No urgent posts right now.</div></div>
         </div>
       </div>
 
@@ -307,35 +327,39 @@
   <!-- ═══════════ Create post modal ═══════════ -->
   <div class="feed-modal-overlay" id="feedModalOverlay">
     <div class="feed-modal">
-      <h2>New Feed Post</h2>
-      <p class="sub">Posting as <span id="feedModalAsUser">—</span>. Be honest — this feed is read by real creators looking for real work.</p>
+      <h2 data-i18n="feed.modal.title">New Feed Post</h2>
+      <!-- 🆕 [23 ต.ค. 2569] แยกข้อความก่อน/หลังชื่อผู้โพสต์เป็น 2 span ที่มี data-i18n
+           คนละตัว เพราะ <span id="feedModalAsUser"> ตรงกลางเป็นชื่อผู้ใช้จริงที่
+           เซ็ตด้วย JS (.textContent) — ถ้าเผื่อครอบ data-i18n-html ไว้ที่ <p> ทั้งก้อน
+           ตอนสลับภาษาจะเขียนทับชื่อผู้ใช้ที่ตั้งไว้ด้วย .innerHTML ของคำแปลใหม่ทันที -->
+      <p class="sub"><span data-i18n="feed.modal.subtitlePrefix">Posting as</span> <span id="feedModalAsUser">—</span>. <span data-i18n="feed.modal.subtitleSuffix">Be honest — this feed is read by real creators looking for real work.</span></p>
 
       <div class="feed-modal-error" id="feedModalError"></div>
 
       <div class="feed-type-switcher">
-        <button type="button" id="feedTypeHiringBtn" onclick="feedModalSetType('hiring')">🔍 Looking for Talent</button>
-        <button type="button" id="feedTypeGigsBtn" onclick="feedModalSetType('gigs')">💼 Available for Hire</button>
+        <button type="button" id="feedTypeHiringBtn" onclick="feedModalSetType('hiring')" data-i18n="feed.modal.typeHiring">🔍 Looking for Talent</button>
+        <button type="button" id="feedTypeGigsBtn" onclick="feedModalSetType('gigs')" data-i18n="feed.modal.typeGigs">💼 Available for Hire</button>
       </div>
 
       <div class="feed-field">
-        <label>Title</label>
-        <input type="text" id="feedFieldTitle" maxlength="80" placeholder="e.g. Need a welcome-card designer for my server" />
+        <label data-i18n="feed.modal.labelTitle">Title</label>
+        <input type="text" id="feedFieldTitle" maxlength="80" placeholder="e.g. Need a welcome-card designer for my server" data-i18n-placeholder="feed.modal.titlePlaceholder" />
       </div>
       <div class="feed-field">
-        <label>Description</label>
-        <textarea id="feedFieldDescription" maxlength="600" placeholder="Describe what you need or what you offer…"></textarea>
+        <label data-i18n="feed.modal.labelDescription">Description</label>
+        <textarea id="feedFieldDescription" maxlength="600" placeholder="Describe what you need or what you offer…" data-i18n-placeholder="feed.modal.descriptionPlaceholder"></textarea>
       </div>
       <div class="feed-field">
-        <label>Tags (comma-separated, up to 5 — no #)</label>
-        <input type="text" id="feedFieldTags" maxlength="160" placeholder="BotDev, ServerDesign, WelcomeCards" />
+        <label data-i18n="feed.modal.labelTags">Tags (comma-separated, up to 5 — no #)</label>
+        <input type="text" id="feedFieldTags" maxlength="160" placeholder="BotDev, ServerDesign, WelcomeCards" data-i18n-placeholder="feed.modal.tagsPlaceholder" />
       </div>
       <div class="feed-field-row">
         <div class="feed-field">
-          <label>Price (optional)</label>
-          <input type="number" id="feedFieldPrice" min="0" step="1" placeholder="Leave empty if negotiable" />
+          <label data-i18n="feed.modal.labelPrice">Price (optional)</label>
+          <input type="number" id="feedFieldPrice" min="0" step="1" placeholder="Leave empty if negotiable" data-i18n-placeholder="feed.modal.pricePlaceholder" />
         </div>
         <div class="feed-field" style="max-width:110px;">
-          <label>Currency</label>
+          <label data-i18n="feed.modal.labelCurrency">Currency</label>
           <select id="feedFieldCurrency">
             <option value="THB">THB (฿)</option>
             <option value="USD">USD ($)</option>
@@ -343,23 +367,26 @@
         </div>
       </div>
       <div class="feed-field">
-        <label>Work sample image URL (optional)</label>
-        <input type="text" id="feedFieldMedia" placeholder="https://… (must be a direct image link)" />
+        <label data-i18n="feed.modal.labelMedia">Work sample image URL (optional)</label>
+        <input type="text" id="feedFieldMedia" placeholder="https://… (must be a direct image link)" data-i18n-placeholder="feed.modal.mediaPlaceholder" />
       </div>
       <div class="feed-field">
-        <label>Country (optional, self-reported)</label>
+        <label data-i18n="feed.modal.labelCountry">Country (optional, self-reported)</label>
+        <!-- 🆕 [23 ต.ค. 2569] ตั้งใจไม่แปล option รายชื่อประเทศ (FEED_COUNTRIES ที่
+             เติมด้วย JS ด้านล่าง) เพราะเป็นชื่อสากล ไม่ใช่ UI ข้อความ — แปลแค่ตัวเลือก
+             แรก "Not specified" ที่เขียนตรงนี้ตัวเดียว -->
         <select id="feedFieldCountry">
-          <option value="">Not specified</option>
+          <option value="" data-i18n="feed.modal.countryNotSpecified">Not specified</option>
         </select>
       </div>
       <div class="feed-checkbox-row" id="feedUrgentRow" style="display:none;">
         <input type="checkbox" id="feedFieldUrgent" />
-        <label for="feedFieldUrgent" style="margin:0;color:inherit;cursor:pointer;">Mark as urgent hiring</label>
+        <label for="feedFieldUrgent" style="margin:0;color:inherit;cursor:pointer;" data-i18n="feed.modal.urgentLabel">Mark as urgent hiring</label>
       </div>
 
       <div class="feed-modal-actions">
-        <button type="button" class="feed-modal-cancel" onclick="feedCloseModal()">Cancel</button>
-        <button type="button" class="feed-modal-submit" id="feedModalSubmitBtn" onclick="feedSubmitPost()">Post to Feed</button>
+        <button type="button" class="feed-modal-cancel" onclick="feedCloseModal()" data-i18n="feed.modal.cancel">Cancel</button>
+        <button type="button" class="feed-modal-submit" id="feedModalSubmitBtn" onclick="feedSubmitPost()" data-i18n="feed.modal.submit">Post to Feed</button>
       </div>
     </div>
   </div>
@@ -406,10 +433,16 @@
         : '';
       var tags = post.tags.map(function (t) { return '<span class="feed-tag-chip">#' + escapeHtml(t) + '</span>'; }).join('');
       var price = priceLabel(post);
+      // 🆕 [23 ต.ค. 2569] badge "Hiring/Gig" กับปุ่ม Contact/Close post ใช้
+      // SiteLang.t() แทนเขียนอังกฤษตรงๆ แล้ว เพื่อให้สลับภาษาแล้วตรงกับ UI ส่วนอื่น
+      // ของหน้า (ดูคอมเมนต์เหตุผลเต็มๆ ที่ <head> ของไฟล์นี้ และคอมเมนต์ feed.* ใน
+      // public/js/site-lang.js) — ใช้ (window.SiteLang && ...) || 'ค่า fallback'
+      // กันพังกรณี site-lang.js โหลดไม่ทัน/พัง (fail-safe เดียวกับหลักการอื่นในเว็บนี้)
+      var t = function (key, fallback) { return (window.SiteLang && window.SiteLang.t(key)) || fallback; };
       var priceHtml = price ? '<div><span class="feed-price-badge">' + escapeHtml(price) + '</span>' + (post.urgent ? '<span class="feed-urgent-badge">🔥 Urgent</span>' : '') + '</div>'
         : (post.urgent ? '<div><span class="feed-urgent-badge">🔥 Urgent</span></div>' : '');
       var flag = post.countryFlag ? post.countryFlag + ' ' : '';
-      var closeBtn = post.isMine ? '<button type="button" class="feed-close-btn" onclick="feedClosePost(\'' + post.id + '\')">Close post</button>' : '';
+      var closeBtn = post.isMine ? '<button type="button" class="feed-close-btn" onclick="feedClosePost(\'' + post.id + '\')">' + escapeHtml(t('feed.card.closePost', 'Close post')) + '</button>' : '';
 
       return (
         '<div class="feed-glass feed-card" data-post-id="' + post.id + '">' +
@@ -419,7 +452,7 @@
               '<div class="feed-card-author">' + escapeHtml(post.authorUsername) + '</div>' +
               '<div class="feed-card-meta">' + flag + timeAgo(post.createdAt) + '</div>' +
             '</div>' +
-            '<span class="feed-card-type-badge ' + post.type + '">' + (post.type === 'hiring' ? 'Hiring' : 'Gig') + '</span>' +
+            '<span class="feed-card-type-badge ' + post.type + '">' + escapeHtml(post.type === 'hiring' ? t('feed.card.hiringBadge', 'Hiring') : t('feed.card.gigBadge', 'Gig')) + '</span>' +
           '</div>' +
           media +
           '<div class="feed-card-title">' + escapeHtml(post.title) + '</div>' +
@@ -437,7 +470,7 @@
               '</button>' +
             '</div>' +
             '<div style="display:flex;align-items:center;">' +
-              '<a class="feed-contact-btn" href="https://discord.com/users/' + encodeURIComponent(post.authorId) + '" target="_blank" rel="noopener">💬 Contact</a>' +
+              '<a class="feed-contact-btn" href="https://discord.com/users/' + encodeURIComponent(post.authorId) + '" target="_blank" rel="noopener">' + escapeHtml(t('feed.card.contact', '💬 Contact')) + '</a>' +
               closeBtn +
             '</div>' +
           '</div>' +
@@ -451,9 +484,12 @@
       if (feedState.scope === 'mine') list = list.filter(function (p) { return p.isMine; });
 
       if (list.length === 0) {
+        // 🆕 [23 ต.ค. 2569] ข้อความ empty-state 3 แบบนี้ใช้ SiteLang.t() แทนเขียน
+        // อังกฤษตรงๆ แล้ว (เหตุผลเดียวกับ postCardHtml() ด้านบน)
+        var t0 = function (key, fallback) { return (window.SiteLang && window.SiteLang.t(key)) || fallback; };
         var msg = feedState.scope === 'mine'
-          ? (feedState.me ? "You haven't posted anything yet — click \"New Post\" to get started." : 'Log in to see your own posts here.')
-          : 'No posts here yet — be the first to post!';
+          ? (feedState.me ? t0('feed.empty.scopeMineLoggedIn', 'You haven\'t posted anything yet — click "New Post" to get started.') : t0('feed.empty.scopeMineLoggedOut', 'Log in to see your own posts here.'))
+          : t0('feed.empty.noPosts', 'No posts here yet — be the first to post!');
         container.innerHTML = '<div class="feed-glass feed-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -461,9 +497,15 @@
     }
 
     function renderSidebar(data) {
+      // 🆕 [23 ต.ค. 2569] ข้อความ empty-state ของไซด์บาร์ขวาทั้ง 3 กล่อง ใช้
+      // SiteLang.t() แทนเขียนอังกฤษตรงๆ แล้ว (เหตุผลเดียวกับ postCardHtml() ด้านบน
+      // — ไม่งั้นพอ feedLoad() ดึงข้อมูลเสร็จ ข้อความไทยที่เห็นแว้บแรกจะถูกเขียนทับ
+      // กลับเป็นอังกฤษทันที)
+      var t = function (key, fallback) { return (window.SiteLang && window.SiteLang.t(key)) || fallback; };
+
       var topEl = document.getElementById('feedTopContributors');
       if (data.topContributors.length === 0) {
-        topEl.innerHTML = '<div class="feed-rail-empty">No scored posts yet.</div>';
+        topEl.innerHTML = '<div class="feed-rail-empty">' + escapeHtml(t('feed.sideRight.noScoredPosts', 'No scored posts yet.')) + '</div>';
       } else {
         topEl.innerHTML = data.topContributors.map(function (c) {
           return '<div class="feed-contributor-row"><img src="' + escapeHtml(c.authorAvatarUrl) + '" alt="" />' +
@@ -474,17 +516,17 @@
 
       var tagsEl = document.getElementById('feedTrendingTags');
       if (data.trending.length === 0) {
-        tagsEl.innerHTML = '<div class="feed-rail-empty">No tags yet.</div>';
+        tagsEl.innerHTML = '<div class="feed-rail-empty">' + escapeHtml(t('feed.sideRight.noTagsYet', 'No tags yet.')) + '</div>';
       } else {
-        tagsEl.innerHTML = data.trending.map(function (t) {
-          return '<span class="feed-hashtag-chip" onclick="feedFilterByTag(\'' + escapeHtml(t.tag).replace(/'/g, "\\'") + '\')">#' + escapeHtml(t.tag) + '<span style="color:var(--feed-text-dim);">' + t.count + '</span></span>';
+        tagsEl.innerHTML = data.trending.map(function (tg) {
+          return '<span class="feed-hashtag-chip" onclick="feedFilterByTag(\'' + escapeHtml(tg.tag).replace(/'/g, "\\'") + '\')">#' + escapeHtml(tg.tag) + '<span style="color:var(--feed-text-dim);">' + tg.count + '</span></span>';
         }).join('');
       }
 
       var urgentEl = document.getElementById('feedUrgentPosts');
       var urgent = data.posts.filter(function (p) { return p.urgent; }).slice(0, 5);
       if (urgent.length === 0) {
-        urgentEl.innerHTML = '<div class="feed-rail-empty">No urgent posts right now.</div>';
+        urgentEl.innerHTML = '<div class="feed-rail-empty">' + escapeHtml(t('feed.sideRight.noUrgentPosts', 'No urgent posts right now.')) + '</div>';
       } else {
         urgentEl.innerHTML = urgent.map(function (p) {
           return '<div class="feed-urgent-row"><a href="#" onclick="feedScrollToPost(event,\'' + p.id + '\')">' + escapeHtml(p.title) + '</a></div>';
@@ -520,10 +562,15 @@
       var url = '/api/feed/posts' + (feedState.type ? '?type=' + feedState.type : '');
       fetch(url).then(function (r) { return r.json(); }).then(function (data) {
         feedState.posts = data.posts;
+        // 🆕 [23 ต.ค. 2569] เก็บ data ล่าสุดไว้ใช้ตอน onChange ของ SiteLang ด้านล่าง
+        // (ต้อง render ไซด์บาร์ใหม่ตอนสลับภาษา แต่ renderSidebar() ต้องมี data
+        // ไว้ใช้ — ไม่อยากยิง fetch() ซ้ำแค่เพราะสลับภาษา เลยเก็บแคชไว้ในตัวแปรนี้)
+        feedState.lastApiData = data;
         renderPosts();
         renderSidebar(data);
       }).catch(function () {
-        document.getElementById('feedPostsContainer').innerHTML = '<div class="feed-glass feed-empty">Couldn\'t load the feed — try refreshing.</div>';
+        var t = function (key, fallback) { return (window.SiteLang && window.SiteLang.t(key)) || fallback; };
+        document.getElementById('feedPostsContainer').innerHTML = '<div class="feed-glass feed-empty">' + escapeHtml(t('feed.loadError', "Couldn't load the feed — try refreshing.")) + '</div>';
       });
     }
 
@@ -539,7 +586,8 @@
     }
 
     function feedClosePost(postId) {
-      if (!confirm('Close this post? It will be removed from the feed.')) return;
+      var t = function (key, fallback) { return (window.SiteLang && window.SiteLang.t(key)) || fallback; };
+      if (!confirm(t('feed.card.closeConfirm', 'Close this post? It will be removed from the feed.'))) return;
       fetch('/api/feed/posts/' + postId + '/close', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (result) {
         if (result.ok) { feedState.posts = feedState.posts.filter(function (p) { return p.id !== postId; }); renderPosts(); }
       });
@@ -587,14 +635,17 @@
         urgent: document.getElementById('feedFieldUrgent').checked,
       };
 
+      // 🆕 [23 ต.ค. 2569] ข้อความปุ่ม "Posting…"/"Post to Feed" ตอน toggle ด้วย JS
+      // ใช้ SiteLang.t() แทนเขียนอังกฤษตรงๆ แล้ว (เหตุผลเดียวกับฟังก์ชันอื่นด้านบน)
+      var t = function (key, fallback) { return (window.SiteLang && window.SiteLang.t(key)) || fallback; };
       var btn = document.getElementById('feedModalSubmitBtn');
-      btn.disabled = true; btn.textContent = 'Posting…';
+      btn.disabled = true; btn.textContent = t('feed.modal.submitting', 'Posting…');
 
       fetch('/api/feed/posts', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       }).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
         .then(function (res) {
-          btn.disabled = false; btn.textContent = 'Post to Feed';
+          btn.disabled = false; btn.textContent = t('feed.modal.submit', 'Post to Feed');
           if (!res.ok) {
             errEl.textContent = res.data.message || 'Could not create the post.';
             errEl.style.display = 'block';
@@ -604,7 +655,7 @@
           feedLoad();
         })
         .catch(function () {
-          btn.disabled = false; btn.textContent = 'Post to Feed';
+          btn.disabled = false; btn.textContent = t('feed.modal.submit', 'Post to Feed');
           errEl.textContent = 'Network error — please try again.';
           errEl.style.display = 'block';
         });
@@ -634,6 +685,19 @@
       }
       feedLoad();
     }).catch(function () { feedLoad(); });
+
+    // 🆕 [23 ต.ค. 2569] เวลามีคนกดสลับภาษา site-lang.js จะอัปเดต element ที่มี
+    // data-i18n ให้เองอัตโนมัติ (นิ่งๆ บนหน้า) แต่การ์ดโพสต์/ไซด์บาร์ขวาที่สร้างด้วย
+    // JS ผ่าน innerHTML (ไม่มี data-i18n ให้เกาะ) จะไม่ถูกแก้ตามเอง — ต้อง render
+    // ใหม่เองตรงนี้ ดูตัวอย่างแพทเทิร์นเดียวกันที่ public/features.html (บอกไว้ใน
+    // คอมเมนต์หัวไฟล์ public/js/site-lang.js ข้อ 5) — ใช้ feedState.lastApiData ที่
+    // แคชไว้ตอน feedLoad() แทนการยิง fetch() ซ้ำแค่เพราะสลับภาษา
+    if (window.SiteLang) {
+      window.SiteLang.onChange(function () {
+        renderPosts();
+        if (feedState.lastApiData) renderSidebar(feedState.lastApiData);
+      });
+    }
   </script>
 
   <script src="/nav.js?v=4" defer></script>
