@@ -26,6 +26,7 @@
  * (ปุ่ม "✅ ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — ดู handleButton ด้านล่าง)
  */
 
+const path = require('path');
 const {
   SlashCommandBuilder,
   MessageFlags,
@@ -57,7 +58,6 @@ const {
   saveOrderNotifyMessage,
   confirmOrder,
 } = require('../utils/marketplaceStorage');
-const { generatePromptPayQrBuffer } = require('../utils/promptpayQr');
 // 🆕 [11 ต.ค. 2569] เก็บรูป/ไฟล์แนบที่คนลงขายผ่านคำสั่งนี้ไว้ "ถาวรจริงๆ" แบบเดียวกับที่
 // หน้าเว็บ Dashboard ใหม่ใช้ (ดู utils/renderMarketplaceDashboard.js) แทนที่จะเก็บ
 // attachment.url ตรงๆ แบบเดิม (URL ของ Discord หมดอายุใน ~24 ชม. — ของเดิมเคยมีบั๊กนี้
@@ -66,6 +66,16 @@ const { storeImagePermanently } = require('../utils/assetStorage');
 
 // ปุ่ม "ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — customId รูปแบบ mkt_confirm_<orderId>
 const CONFIRM_BUTTON_PREFIX = 'mkt_confirm_';
+
+// 🆕 [25 ต.ค. 2569] แบนเนอร์รูปสำหรับ DM แจ้งออเดอร์ — น้องหนาวส่งรูปมาเองให้ใช้ตรงนี้
+// (ตัวละคร Milo + ข้อความ "Milo bot") แพทเทิร์นเดียวกับ BANNER_FILENAME/BANNER_PATH ใน
+// utils/referralReportChannel.js: แยกค่าคงที่ "ชื่อไฟล์ตอนแนบ" (BANNER_FILENAME) ออกจาก
+// "ที่อยู่ไฟล์จริงบนดิสก์" (BANNER_PATH) เพราะต้องใช้ 2 ค่านี้คนละจุด — BANNER_PATH ใช้ตอน
+// สร้าง AttachmentBuilder (ต้องรู้ว่าไฟล์จริงอยู่ไหน) ส่วน BANNER_FILENAME ใช้ตอนอ้างอิงใน
+// embed.setImage() ด้วย syntax พิเศษ `attachment://<ชื่อไฟล์>` (Discord ผูกรูปที่แนบมากับ
+// ข้อความเข้ากับ embed ด้วยชื่อไฟล์ ไม่ใช่ path จริงบนเครื่องเรา)
+const ORDER_BANNER_FILENAME = 'milo-marketplace-order-banner.png';
+const ORDER_BANNER_PATH = path.join(__dirname, '..', 'assets', 'marketplace-order-banner.png');
 
 function formatThb(amount) {
   return `฿${Number(amount).toLocaleString('th-TH')}`;
@@ -425,11 +435,14 @@ async function handleSetPaymentLink(interaction) {
 
 /**
  * 🆕 เรียกจาก server.js ตอนผู้ซื้อกดปุ่ม "ซื้อ" บนหน้าเว็บสำเร็จ (สร้าง order ไว้แล้ว) —
- * สร้าง QR PromptPay ของผู้ขาย + DM แจ้งผู้ขายพร้อมปุ่มยืนยันรับเงิน
+ * DM แจ้งผู้ขายพร้อมปุ่มยืนยันรับเงิน
  *
- * ⚠️ เหมือน postPayoutQrForCode ของระบบ referral เป๊ะๆ — QR นี้แค่ "ช่วยให้จ่ายเร็วขึ้น"
- * (ยอดเงินฝังอยู่ในตัว QR ตามมาตรฐาน Thai QR Payment) บอทไม่ได้โอนเงินให้อัตโนมัติ ผู้ซื้อ
- * ยังต้องสแกนจ่ายเองด้วยแอปธนาคาร และผู้ขายต้องกดยืนยันเองว่าได้รับเงินแล้วจริง
+ * ⚠️ [25 ต.ค. 2569] เดิมฟังก์ชันนี้สร้าง QR PromptPay ขึ้นมาอีกชุดแล้วแนบไปใน DM นี้ด้วย —
+ * น้องหนาวให้เอาออก เพราะ QR นั้น "ไม่มีประโยชน์กับผู้ขายเลย" QR คือของที่ให้ "ผู้ซื้อ" สแกน
+ * จ่ายเงิน (ผู้ซื้อเห็น QR อยู่แล้วบนหน้าเว็บตอนกดจ่าย — ดู server.js เส้นทาง
+ * /api/marketplace/buy ที่สร้าง QR อีกชุดแยกไว้ให้ผู้ซื้อโดยเฉพาะ) ส่วนผู้ขายแค่รอเงินเข้า
+ * บัญชีแล้วกดปุ่มยืนยันเฉยๆ ไม่ต้องสแกนอะไรเลย เลยตัดการสร้าง/แนบ QR ในนี้ทิ้งทั้งหมด
+ * (ลบ import generatePromptPayQrBuffer ที่หัวไฟล์ไปด้วยเลย เพราะไม่ได้ใช้ในไฟล์นี้อีกแล้ว)
  *
  * @param {import('discord.js').Client} client
  * @param {object} order ออบเจกต์ order จาก createOrder()
@@ -445,24 +458,12 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     return { notified: false, reason: 'no_payment_method' };
   }
 
-  // 🆕 [12 ต.ค. 2569] แยก 2 เส้นทางตามช่องทางรับเงินของผู้ขาย — "promptpay" สร้าง QR
-  // เหมือนเดิมทุกอย่าง ส่วน "link" ไม่มี QR ให้สร้าง (ลิงก์รับเงินของผู้ขายเองไม่มียอดเงิน
-  // ฝังอยู่ในตัวแบบ QR ได้ — ผู้ขายต้องดูยอดจากในข้อความนี้เอง) ดู hasPaymentMethodSet/
-  // getSellerPaymentMethod ใน utils/marketplaceStorage.js
+  // ยังต้องรู้ "ช่องทางรับเงิน" อยู่นะครับ (promptpay/link) เพราะข้อความคำแนะนำขั้นตอนถัดไป
+  // (instructionText ด้านล่าง) ใช้ถ้อยคำต่างกันตามช่องทาง — แค่ไม่ต้องสร้าง QR เองในนี้แล้ว
   const method = getSellerPaymentMethod(seller);
-  let qrBuffer = null;
-  if (method === 'promptpay') {
-    try {
-      qrBuffer = await generatePromptPayQrBuffer(seller.promptpayId, order.priceThb);
-    } catch (error) {
-      console.warn(`[marketplace] สร้าง QR รับเงินให้ออร์เดอร์ ${order.id} ไม่สำเร็จ:`, error);
-      return { notified: false, reason: 'qr_generation_failed' };
-    }
-  }
 
-  // 🆕 [23 ต.ค. 2569 รอบ 2] ปรับหน้าตาอีกรอบตามภาพตัวอย่างที่น้องหนาวส่งมา (การ์ดรายงานยอด
-  // ของระบบ /referral ใน utils/referralReportChannel.js → buildReportEmbed()) อยากให้
-  // DM แจ้งออเดอร์มีสไตล์ "กล่องๆ" แบบเดียวกัน เลยยกเทคนิคจากไฟล์นั้นมาใช้ตรงนี้เป๊ะๆ 3 อย่าง:
+  // 🆕 [23 ต.ค. 2569 รอบ 2] สไตล์ "กล่องๆ" ยกเทคนิคมาจากการ์ดรายงานยอดของระบบ /referral
+  // (utils/referralReportChannel.js → buildReportEmbed()) 3 อย่าง:
   //
   //   1. "กล่องเทา" รอบตัวเลข/ข้อความสั้นๆ — Discord เองไม่มีปุ่ม "ใส่กรอบ" ให้ตรงๆ แต่ถ้าเอา
   //      ค่าของ field ไปใส่ใน code block (ครอบด้วย ```) Discord จะเรนเดอร์เป็นกล่องพื้นเทา
@@ -476,13 +477,16 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
   //   3. Footer สไตล์ "╰ ꒰ ... ꒱ ╯" — ก็อปฟอร์แมตตัวหนังสือมาจากการ์ด /referral ตรงๆ เพื่อให้
   //      ทุกข้อความที่บอทส่งมีลายเซ็นแบรนด์เดียวกันทั้งระบบ (สลับแค่ข้อความในนั้นให้ตรงบริบท)
   //
-  // ⚠️ สิ่งที่ "ไม่" ยกมาจากการ์ด /referral: รูปแบนเนอร์ประดับ (milo-partner-banner.png) กับ
-  // อิโมจิ custom ของเซิร์ฟ Milo Support (CUSTOM_EMOJI_IDS) — ไม่หยิบมาเพราะ (ก) DM ออเดอร์นี้
-  // มี "รูป QR" เป็นรูปหลักอยู่แล้วตอนช่องทางเป็น promptpay ถ้าใส่แบนเนอร์ทับเข้าไปอีกจะรก/
-  // แย่งความสนใจจาก QR ที่ต้องสแกนจริง และ (ข) อิโมจิ custom นั้นผูกกับเซิร์ฟเฉพาะ อาจจะหา
-  // ไม่เจอเลยถ้าบอทไม่ได้อยู่เซิร์ฟนั้น (resolveEmojiById คืนค่า fallback เงียบๆ ก็จริง แต่
-  // ไม่มีประโยชน์ที่จะพึ่งมันตรงนี้) เลยใช้อิโมจิ Unicode ธรรมดาแทนทั้งหมด เหมือนที่ไฟล์นี้
-  // ใช้อยู่เดิมทุกจุด — ถ้าอยากได้แบนเนอร์ประดับด้วย บอกได้เลยนะครับ ค่อยทำเพิ่มทีหลัง
+  // 💡 เรื่อง "ขยายกล่องให้ความยาวเท่ากัน" ที่น้องหนาวลองทำ (เติมช่องว่างต่อท้ายข้อความ) —
+  // ไม่หยิบมาใช้นะครับ เพราะ (ก) แต่ละกล่องใน Discord คือ field แยกกันอิสระ ไม่ได้แชร์ความ
+  // กว้างกัน กล่องจะยาวตามความยาวของ "บรรทัดที่ยาวที่สุด" ในกล่องนั้นเอง การเติมช่องว่างคงที่
+  // (เช่น 15-17-9 ตัว) ไม่ได้การันตีว่าจะออกมาเท่ากันเป๊ะๆ เพราะความกว้างจริงขึ้นกับความยาว
+  // ของตัวอักษรข้างในด้วย (เลข/อังกฤษ/ไทยกว้างไม่เท่ากัน) (ข) ลองเทียบกับภาพตัวอย่างการ์ด
+  // /referral ที่น้องหนาวส่งมาเองดูได้เลยครับ — กล่อง "Active" กับกล่อง "250" ก็ยาวไม่เท่ากัน
+  // อยู่แล้ว เป็นเรื่องปกติของดีไซน์นี้ ไม่ใช่บั๊ก เลยตัดส่วนนี้ออกให้ครับ ง่ายกว่าและพังยากกว่า
+  //
+  // 🆕 [25 ต.ค. 2569] สีกับไอคอน/คำบางจุดปรับตามที่น้องหนาวส่งโค้ดตัวอย่างมาให้แล้วครับ —
+  // เขียวนีออน, ไอคอนแต่ละช่องใหม่ (🪙🔑👑⏱️✨), หัวข้อเติมคำว่า "สั่ง" เป็น "มีคนสั่งซื้อ...")
   //
   // 🔑 จุดที่น้องหนาวถามว่า "โอนเงินจากแอคเคาท์อะไร" — บอทไม่รู้ว่าเงินโอนมาจาก
   // บัญชีธนาคารไหน (การสแกน QR จ่ายเงินเกิดนอกระบบดิสคอร์ดทั้งหมด บอทมองไม่เห็น)
@@ -497,36 +501,39 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     timeZone: 'Asia/Bangkok',
   });
 
+  // ⚠️ ข้อความแนะนำขั้นตอนเดิมเคยบอกว่า "สแกน QR ด้านล่าง" — ตอนนี้ตัด QR ออกจาก DM นี้แล้ว
+  // (ผู้ซื้อสแกนจากหน้าเว็บไปแล้วตั้งแต่ก่อนข้อความนี้จะถูกส่งด้วยซ้ำ) เลยเปลี่ยนคำใหม่ให้ตรง
+  // ความจริง: ผู้ขายแค่ "รอเงินเข้า" แล้วเช็คยอดเอง ไม่ต้องสแกนอะไรทั้งนั้น
   const instructionText = method === 'promptpay'
-    ? 'สแกน QR ด้านล่าง → รอเงินเข้าบัญชีพร้อมเพย์ของคุณจริง → กด **"✅ ยืนยันได้รับเงินแล้ว"**'
-    : `ผู้ซื้อจ่ายผ่านลิงก์ของคุณเอง (${seller.paymentLink}) ไม่มี QR ให้ดู ต้องเช็คยอดเองว่าเข้าตรงกับ **${formatThb(order.priceThb)}** → แล้วกด **"✅ ยืนยันได้รับเงินแล้ว"**`;
+    ? `รอเงินเข้าบัญชีพร้อมเพย์ของคุณ (ผู้ซื้อสแกน QR จ่ายจากหน้าเว็บไปแล้ว) → เช็คยอดให้ตรงกับ **${formatThb(order.priceThb)}** → แล้วกด **"✅ ยืนยันได้รับเงินแล้ว"**`
+    : `ผู้ซื้อจ่ายผ่านลิงก์ของคุณเอง (${seller.paymentLink}) → เช็คยอดเองว่าเข้าตรงกับ **${formatThb(order.priceThb)}** → แล้วกด **"✅ ยืนยันได้รับเงินแล้ว"**`;
 
   const embed = new EmbedBuilder()
-    .setColor(0x4b8f87)
-    .setTitle('🛒 มีคนซื้อสินค้าของคุณ!')
+    .setColor(0x2ecc71) // 🆕 เขียวนีออนตามที่น้องหนาวขอ
+    .setTitle('🛒 มีคนสั่งซื้อสินค้าของคุณ!')
     .setDescription(`สินค้า: **${listing.title}**`)
     .addFields(
       // ── แถว 1: ยอดเงิน | รหัสออเดอร์ (ทั้งคู่เป็นตัวเลข/ตัวอักษรล้วนๆ ใส่กล่องได้) ──
-      { name: '・💰 ยอดเงิน', value: `\`\`\`\n${formatThb(order.priceThb)}\n\`\`\``, inline: true },
+      { name: '🪙 ยอดเงิน', value: `\`\`\`\n${formatThb(order.priceThb)}\n\`\`\``, inline: true },
       {
-        name: '・🔑 รหัสออเดอร์ (ผู้ซื้อเห็นเหมือนกัน)',
+        name: '🔑 รหัสออเดอร์ (ผู้ซื้อเห็นเหมือนกัน)',
         value: `\`\`\`\n${order.id}\n\`\`\``,
         inline: true,
       },
       // field ล่องหนบังคับตัดบรรทัดใหม่ก่อนแถวถัดไป (ดูคอมเมนต์เทคนิคด้านบน จุดที่ 2)
       { name: '​', value: '​', inline: false },
       // ── แถว 2: ผู้ซื้อ (มี mention กดได้จริง ใส่กล่องไม่ได้) | เวลาสั่งซื้อ ──
-      { name: '・🙋 ผู้ซื้อ (บัญชีดิสคอร์ด)', value: buyerLine, inline: true },
-      { name: '・🕒 เวลาสั่งซื้อ', value: `\`\`\`\n${orderTimeText}\n\`\`\``, inline: true },
+      { name: '👑 ผู้ซื้อ (บัญชีดิสคอร์ด)', value: buyerLine, inline: true },
+      { name: '⏱️ เวลาสั่งซื้อ', value: `\`\`\`\n${orderTimeText}\n\`\`\``, inline: true },
       // ช่องคำแนะนำขั้นตอนถัดไป แยกเป็น field เต็มแถวต่างหาก (ไม่ใส่กล่อง เพราะมีตัวหนา **...**
       // ปนอยู่ — code block จะทำให้ตัวหนาไม่ขึ้นเป็นตัวหนาจริง กลายเป็นดอกจันดิบๆแทน)
-      { name: '👉 ขั้นตอนต่อไป', value: instructionText, inline: false },
+      { name: '✨ ขั้นตอนต่อไปสำหรับคุณ', value: instructionText, inline: false },
     )
+    // 🆕 [25 ต.ค. 2569] แบนเนอร์รูป Milo bot ที่น้องหนาวส่งมา — แทนที่ตำแหน่งที่เคยเป็น QR
+    // เดิม (ดู ORDER_BANNER_FILENAME/ORDER_BANNER_PATH ที่ประกาศไว้หัวไฟล์ — แพทเทิร์นเดียว
+    // กับแบนเนอร์การ์ด /referral) โชว์เหมือนกันทุกครั้งไม่ว่าช่องทางรับเงินจะเป็นแบบไหน
+    .setImage(`attachment://${ORDER_BANNER_FILENAME}`)
     .setFooter({ text: '╰ ꒰ Milo Bot · Marketplace Order ꒱ ╯' });
-
-  if (method === 'promptpay') {
-    embed.setImage(`attachment://promptpay-${order.id}.png`);
-  }
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -539,7 +546,7 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     const sellerUser = await client.users.fetch(order.sellerId);
     const message = await sellerUser.send({
       embeds: [embed],
-      files: method === 'promptpay' ? [new AttachmentBuilder(qrBuffer, { name: `promptpay-${order.id}.png` })] : [],
+      files: [new AttachmentBuilder(ORDER_BANNER_PATH, { name: ORDER_BANNER_FILENAME })],
       components: [row],
     });
     saveOrderNotifyMessage(order.id, message.channelId, message.id);
