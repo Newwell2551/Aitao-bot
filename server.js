@@ -127,6 +127,16 @@ const {
   MAX_PAYMENT_LINK_LENGTH,
   MILO_CONFIG_KEY_PATTERN,
   MAX_PRICE_THB,
+  // 🆕 [1 พ.ย. 2569] ระบบ "พิพาท/ตรวจสอบ" แทนตู้เซฟกลาง — ดูเหตุผลเต็มๆ ที่หัวไฟล์
+  // utils/renderAdminReportsDashboard.js (สรุปสั้นๆ: ไม่ทำ escrow เพราะน้องหนาวยังไม่
+  // บรรลุนิติภาวะ ทำระบบนี้แทน — เจ้าของบอทตรวจเอง ตัดสินเอง ไม่มีบอทตัดสินอัตโนมัติ)
+  listReports,
+  getReport,
+  resolveReport,
+  reopenReport,
+  suspendSeller,
+  unsuspendSeller,
+  isSellerSuspended,
 } = require('./utils/marketplaceStorage');
 const { generatePromptPayQrBuffer } = require('./utils/promptpayQr');
 // 🆕 [19 ต.ค. 2569] ตรวจสอบสลิปโอนเงินจริงผ่าน EasySlip API (ข้อ 4 "Secure Slip Verification"
@@ -139,6 +149,9 @@ const { isSlipVerificationConfigured, verifySlip } = require('./utils/slipVerifi
 // คอมเมนต์หัวไฟล์ utils/assetStorage.js — สรุปสั้นๆ: URL ไฟล์แนบ Discord หมดอายุใน ~24 ชม.)
 const { storeBufferPermanently } = require('./utils/assetStorage');
 const { renderMarketplaceDashboardPage } = require('./utils/renderMarketplaceDashboard');
+// 🆕 [1 พ.ย. 2569] หน้า Admin · Marketplace Reports (/admin/marketplace-reports) — ดูคอมเมนต์
+// เต็มๆ หัวไฟล์นั้นว่าทำไมฟีเจอร์นี้มาแบบนี้ (ระบบพิพาท/ตรวจสอบ ไม่ใช่ตู้เซฟกลาง)
+const { renderAdminReportsDashboardPage } = require('./utils/renderAdminReportsDashboard');
 // 🆕 [21 ต.ค. 2569] หน้า "Marketplace Feed" (public/feed.html) — ฟีดงาน/บริการข้ามเซิร์ฟ
 // ดูคอมเมนต์หัวไฟล์ utils/feedStorage.js สำหรับสเกมา + เหตุผลของทุกจุดที่ตัดสินใจเอง
 const feedStorage = require('./utils/feedStorage');
@@ -599,6 +612,14 @@ function createWebhookServer(client) {
       return res.status(409).json({ error: 'seller_not_ready' });
     }
 
+    // 🆕 [1 พ.ย. 2569] ไม่ควรเกิดจริงเหมือนกัน เพราะ suspendSeller() ปิดประกาศ "active" ทุกชิ้น
+    // ของร้านที่ถูกระงับไปแล้วตั้งแต่ตอนระงับ (listing.status จะไม่เป็น 'active' อีก เช็คผ่าน
+    // ด่านแรกไปแล้วตั้งแต่บรรทัด listing.status !== 'active' ด้านบน) — กันไว้อีกชั้นเผื่อ
+    // ข้อมูลเพี้ยน/มี race condition แปลกๆ เกิดขึ้นจริง
+    if (isSellerSuspended(listing.sellerId)) {
+      return res.status(409).json({ error: 'seller_suspended' });
+    }
+
     // 🆕 [12 ต.ค. 2569] แยก 2 เส้นทางตามช่องทางรับเงินของผู้ขาย — เดิมมีแค่ PromptPay
     // ทางเดียว (คนต่างชาติใช้ไม่ได้เลย เพราะเป็นระบบจ่ายเงินของไทยล้วนๆ) ตอนนี้ผู้ขายเลือก
     // ได้ว่าจะใช้ PromptPay หรือลิงก์รับเงินสากลของตัวเอง (PayPal.me/Stripe Payment Link
@@ -831,6 +852,114 @@ function createWebhookServer(client) {
     );
 
     res.json({ ok: true, reportId: report.id, notified: notifyResult.posted });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 🆕 [1 พ.ย. 2569] หน้า Admin · Marketplace Reports — เจ้าของบอทคนเดียวเข้าได้ (requireOwner
+  // ด้านบน) ไว้ตรวจรายงานที่มีคนร้องเรียนจาก Marketplace แล้วตัดสินเอง: ยกเลิกรายงาน (ไม่มีมูล)
+  // หรือยืนยันว่าละเมิดจริง (ระงับทั้งร้านทันที) — ดูเหตุผลเต็มๆ ที่หัวไฟล์
+  // utils/renderAdminReportsDashboard.js ว่าทำไมฟีเจอร์นี้มาแทนที่ระบบ "ตู้เซฟกลาง" (escrow)
+  // ที่น้องหนาวเคยถามถึง (สภา LLM Council เคยสรุปว่าไม่ควรทำ เพราะน้องหนาวยังไม่บรรลุนิติภาวะ)
+  //
+  // GET แค่อ่าน/กรอง ไม่แก้ข้อมูลอะไร — ปลอดภัยที่จะไม่ใส่ requireOwner พลาดแล้วมีคนมากดเล่น
+  // ซ้ำๆ ได้ (ไม่เหมือน POST 3 ตัวด้านล่างที่แก้ข้อมูลจริง) แต่ก็ใส่ requireOwner ไว้เหมือนกัน
+  // เพราะเนื้อหารายงาน (เหตุผล/รายละเอียดที่ผู้รายงานกรอก) ไม่ควรให้คนอื่นอ่านได้ตามใจชอบ
+  app.get('/admin/marketplace-reports', requireAuth, requireOwner, (req, res) => {
+    const allReports = listReports();
+    const statusFilter = ['open', 'resolved'].includes(req.query.status) ? req.query.status : 'open';
+    const query = String(req.query.q || '').trim();
+
+    const counts = {
+      all: allReports.length,
+      open: allReports.filter((r) => r.status === 'open').length,
+      resolved: allReports.filter((r) => r.status === 'resolved').length,
+    };
+
+    let visible = statusFilter === 'all' ? allReports : allReports.filter((r) => r.status === statusFilter);
+    if (query) {
+      // ค้นหาแบบ substring ง่ายๆ กับรหัสรายงาน/ประกาศ/Discord ID ของผู้ขาย-ผู้รายงาน — ข้อมูล
+      // พวกนี้เป็นรหัสสั้นๆ ล้วนๆ ไม่จำเป็นต้องมี full-text search ซับซ้อนกว่านี้
+      const q = query.toLowerCase();
+      visible = visible.filter((r) =>
+        r.id.toLowerCase().includes(q)
+        || String(r.listingId || '').toLowerCase().includes(q)
+        || String(r.sellerId || '').toLowerCase().includes(q)
+        || String(r.reporterId || '').toLowerCase().includes(q));
+    }
+
+    // enrich: แนบข้อมูลประกาศ+ผู้ขายปัจจุบันไปด้วย (ไม่ได้เก็บแคชไว้ในตัวรายงานเอง เพราะ
+    // ชื่อร้าน/สถานะระงับอาจเปลี่ยนไปหลังรายงานถูกสร้างแล้ว ต้องอ่านค่า "ล่าสุด" เสมอ)
+    const enriched = visible.map((report) => ({
+      ...report,
+      listing: getListing(report.listingId),
+      seller: report.sellerId ? getSeller(report.sellerId) : null,
+    }));
+
+    res.send(renderAdminReportsDashboardPage({
+      user: req.session.user,
+      botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+      botName: client.user.username,
+      reports: enriched,
+      statusFilter,
+      query,
+      counts,
+      saved: req.query.saved === '1',
+      error: req.query.error || null,
+    }));
+  });
+
+  // POST ปิดเคส — ปุ่ม "ยกเลิกรายงาน (ไม่มีมูล)" หรือ "ยืนยันละเมิดจริง + ระงับทั้งร้าน" บนหน้า
+  // Admin (ดู reportCardHtml() ใน utils/renderAdminReportsDashboard.js) ทำ 2 อย่างแยกกันตั้งใจ
+  // (resolveReport แค่บันทึกผลตัดสินของเคสนี้ / suspendSeller ระงับร้านจริง) เพื่อให้แก้โค้ด
+  // ทีละจุดง่ายๆ ในอนาคตได้ ไม่พันกัน — ดูคอมเมนต์ resolveReport() ที่ marketplaceStorage.js
+  app.post('/admin/marketplace-reports/:id/resolve', requireAuth, requireOwner, express.urlencoded({ extended: false }), (req, res) => {
+    const reportId = String(req.params.id || '').toUpperCase();
+    const outcome = req.body?.outcome === 'violation_confirmed' ? 'violation_confirmed' : 'dismissed';
+    const note = String(req.body?.note || '').trim().slice(0, 500);
+
+    const report = getReport(reportId);
+    if (!report) {
+      return res.redirect(`/admin/marketplace-reports?error=${encodeURIComponent('Report not found.')}`);
+    }
+
+    resolveReport(reportId, { outcome, note, resolvedBy: req.session.user.id });
+
+    if (outcome === 'violation_confirmed' && report.sellerId) {
+      const { closedListingCount } = suspendSeller(report.sellerId, {
+        reason: `ยืนยันละเมิดจากรายงาน #${reportId}${note ? ` — ${note}` : ''}`,
+        suspendedBy: req.session.user.id,
+      });
+      console.log(`[admin] ${req.session.user.username} (${req.session.user.id}) ระงับร้าน ${report.sellerId} จากรายงาน ${reportId} (ปิดประกาศไปด้วย ${closedListingCount} ชิ้น)`);
+    } else {
+      console.log(`[admin] ${req.session.user.username} (${req.session.user.id}) ปิดเคส ${reportId} (${outcome})`);
+    }
+
+    res.redirect('/admin/marketplace-reports?status=resolved&saved=1');
+  });
+
+  // POST "เปิดเคสใหม่อีกครั้ง" — เผื่อเจ้าของบอทกดปิดเคสผิด/เปลี่ยนใจ (ไม่ปลดระงับร้าน
+  // อัตโนมัติ ถ้าเคสนั้นระงับร้านไปแล้ว ต้องกดปุ่ม "ปลดระงับร้านนี้" แยกต่างหากอีกที)
+  app.post('/admin/marketplace-reports/:id/reopen', requireAuth, requireOwner, (req, res) => {
+    const reportId = String(req.params.id || '').toUpperCase();
+    const report = reopenReport(reportId);
+    if (!report) {
+      return res.redirect(`/admin/marketplace-reports?error=${encodeURIComponent('Report not found.')}`);
+    }
+    console.log(`[admin] ${req.session.user.username} (${req.session.user.id}) เปิดเคส ${reportId} กลับมาตรวจสอบใหม่`);
+    res.redirect('/admin/marketplace-reports?status=open&saved=1');
+  });
+
+  // POST "ปลดระงับร้านนี้" — แยกอิสระจากการเปิดเคสใหม่ตั้งใจ (ดูเหตุผลที่หัวไฟล์
+  // utils/marketplaceStorage.js หัวข้อ unsuspendSeller) ไม่เปิดประกาศเดิมที่ถูกปิดไว้ตอน
+  // ระงับกลับมาอัตโนมัติ — ผู้ขายต้องไปกด Reopen เองทีละชิ้นที่หน้า Marketplace ของตัวเอง
+  app.post('/admin/sellers/:id/unsuspend', requireAuth, requireOwner, (req, res) => {
+    const sellerId = String(req.params.id || '');
+    const seller = unsuspendSeller(sellerId);
+    if (!seller) {
+      return res.redirect(`/admin/marketplace-reports?error=${encodeURIComponent('Seller not found.')}`);
+    }
+    console.log(`[admin] ${req.session.user.username} (${req.session.user.id}) ปลดระงับร้าน ${sellerId}`);
+    res.redirect('/admin/marketplace-reports?status=resolved&saved=1');
   });
 
   // ─────────────────────────────────────────────────────────────────────
@@ -1207,6 +1336,12 @@ function createWebhookServer(client) {
 
       const fail = (message) => res.redirect(`/dashboard/${guildId}/marketplace?error=${encodeURIComponent(message)}`);
 
+      // 🆕 [1 พ.ย. 2569] ร้านที่ถูกระงับทั้งร้านลงขายใหม่จากเว็บไม่ได้เหมือนกับฝั่งคำสั่ง
+      // /marketplace sell ในดิสคอร์ด (ดู isSellerSuspended ใน utils/marketplaceStorage.js)
+      if (isSellerSuspended(req.session.user.id)) {
+        return fail('Your shop is currently suspended — you cannot create new listings. Contact the bot owner if you think this is a mistake.');
+      }
+
       const title = String(body.title || '').trim().slice(0, 80);
       const description = String(body.description || '').trim().slice(0, 1000);
       const priceThb = Number(body.price);
@@ -1434,7 +1569,9 @@ function createWebhookServer(client) {
   app.post('/dashboard/:guildId/marketplace/listings/:listingId/reopen', requireAuth, requireGuildAccess, (req, res) => {
     const { guildId, listingId } = req.params;
     const listing = getListing(String(listingId).toUpperCase());
-    if (listing && listing.sellerId === req.session.user.id) {
+    // 🆕 [1 พ.ย. 2569] ร้านที่ถูกระงับทั้งร้านเปิดขายประกาศเดิมกลับมาไม่ได้ — กันช่องโหว่
+    // เดียวกับที่เช็คไว้แล้วใน handleSetStatus() ของ commands/marketplace.js (ฝั่งดิสคอร์ด)
+    if (listing && listing.sellerId === req.session.user.id && !isSellerSuspended(req.session.user.id)) {
       setListingStatus(listing.id, 'active');
     }
     res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
@@ -1907,6 +2044,27 @@ function requireAuth(req, res, next) {
     // /auth/login ด้านบน) req.originalUrl คือ URL เต็มๆ ที่ user พยายามเข้าจริง รวม
     // query string ด้วย (เช่น /premium/start เอง หรือ /premium/123456789)
     return res.redirect(`/auth/login?returnTo=${encodeURIComponent(req.originalUrl)}`);
+  }
+  next();
+}
+
+/**
+ * 🆕 [1 พ.ย. 2569] Middleware กันหน้า Admin (เช่น /admin/marketplace-reports) — ต่างจาก
+ * requireGuildAccess ด้านบน (เช็คสิทธิ์ "Manage Server" ของเซิร์ฟใดเซิร์ฟหนึ่ง) ตัวนี้เช็คว่า
+ * "เป็นเจ้าของบอทคนเดียวเท่านั้นไหม" (เทียบ Discord user ID กับ OWNER_ID ใน .env) — ใช้
+ * หลักการเดียวกับฝั่งคำสั่งดิสคอร์ด ownerOnly (ดู commands/dev.js / commands/referral.js
+ * และ claude/owner-command-security-hardening.md) แค่ย้ายมาเป็นเวอร์ชันเว็บ
+ *
+ * วิธีใช้: ใส่ต่อจาก requireAuth เสมอ (ต้อง login ก่อนถึงจะรู้ได้ว่า user.id ตรงกับ
+ * OWNER_ID ไหม) เช่น app.get('/admin/xxx', requireAuth, requireOwner, (req, res) => {...})
+ *
+ * ถ้า OWNER_ID ไม่ได้ตั้งไว้ใน .env เลย (ไม่ควรเกิดขึ้นจริงบนโปรดักชัน แต่กันไว้เผื่อ) ปฏิเสธ
+ * ทุกคนหมด (ไม่มีใครผ่านได้) ดีกว่าปล่อยให้ทุกคนผ่านโดยไม่ได้ตั้งใจ (fail-closed)
+ */
+function requireOwner(req, res, next) {
+  if (!process.env.OWNER_ID || req.session.user.id !== process.env.OWNER_ID) {
+    console.warn(`[admin] ${req.session.user?.id} พยายามเข้าหน้า Admin โดยไม่ใช่เจ้าของบอท`);
+    return res.status(403).send('This page is only available to the bot owner.');
   }
   next();
 }

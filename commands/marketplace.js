@@ -26,7 +26,6 @@
  * (ปุ่ม "✅ ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — ดู handleButton ด้านล่าง)
  */
 
-const path = require('path');
 const {
   SlashCommandBuilder,
   MessageFlags,
@@ -34,7 +33,6 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  AttachmentBuilder,
   ChannelType,
   PermissionsBitField,
 } = require('discord.js');
@@ -47,8 +45,8 @@ const {
   getSeller,
   saveSellerPromptPay,
   saveSellerPayment,
-  getSellerPaymentMethod,
   hasPaymentMethodSet,
+  isSellerSuspended,
   createListing,
   getListing,
   resolveListingAssets,
@@ -67,15 +65,20 @@ const { storeImagePermanently } = require('../utils/assetStorage');
 // ปุ่ม "ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — customId รูปแบบ mkt_confirm_<orderId>
 const CONFIRM_BUTTON_PREFIX = 'mkt_confirm_';
 
-// 🆕 [25 ต.ค. 2569] แบนเนอร์รูปสำหรับ DM แจ้งออเดอร์ — น้องหนาวส่งรูปมาเองให้ใช้ตรงนี้
-// (ตัวละคร Milo + ข้อความ "Milo bot") แพทเทิร์นเดียวกับ BANNER_FILENAME/BANNER_PATH ใน
-// utils/referralReportChannel.js: แยกค่าคงที่ "ชื่อไฟล์ตอนแนบ" (BANNER_FILENAME) ออกจาก
-// "ที่อยู่ไฟล์จริงบนดิสก์" (BANNER_PATH) เพราะต้องใช้ 2 ค่านี้คนละจุด — BANNER_PATH ใช้ตอน
-// สร้าง AttachmentBuilder (ต้องรู้ว่าไฟล์จริงอยู่ไหน) ส่วน BANNER_FILENAME ใช้ตอนอ้างอิงใน
-// embed.setImage() ด้วย syntax พิเศษ `attachment://<ชื่อไฟล์>` (Discord ผูกรูปที่แนบมากับ
-// ข้อความเข้ากับ embed ด้วยชื่อไฟล์ ไม่ใช่ path จริงบนเครื่องเรา)
-const ORDER_BANNER_FILENAME = 'milo-marketplace-order-banner.png';
-const ORDER_BANNER_PATH = path.join(__dirname, '..', 'assets', 'marketplace-order-banner.png');
+// 🆕 [25 ต.ค. 2569 รอบ 2] แบนเนอร์รูป DM แจ้งออเดอร์ — เดิมแนบเป็นไฟล์ (AttachmentBuilder +
+// attachment://) เหมือนแบนเนอร์การ์ด /referral แต่น้องหนาวแจ้งว่ารูปมันขึ้น "ซ้อนกัน 2 รูป"
+// ในดิสคอร์ด (รูปใหญ่ขึ้นก่อน 1 รูป แล้วค่อยมีการ์ด embed ตามมาอีกรูป) — ดิสคอร์ดรุ่นใหม่ๆ
+// จะโชว์ไฟล์รูปที่แนบมากับข้อความเป็น "แกลเลอรี่รูปภาพ" ของตัวเองแยกต่างหากเหนือข้อความเสมอ
+// ไม่ว่า embed จะอ้างอิงไฟล์นั้นผ่าน attachment:// ด้วยหรือไม่ก็ตาม (ต่างจากที่เข้าใจไว้แต่แรก)
+// ผลคือเห็นรูปเดียวกันโผล่ 2 รอบ ทางแก้คือเปลี่ยนมาใช้ "ลิงก์ URL ตรงๆ" แทนการแนบไฟล์เลย —
+// ไม่มีไฟล์แนบ = ไม่มีแกลเลอรี่ของดิสคอร์ด เหลือแค่รูปในการ์ด embed รูปเดียวจบ
+//
+// เอารูปไปฝากไว้ให้เว็บเราเสิร์ฟเองแทน (public/images/ — เสิร์ฟผ่าน express.static อยู่แล้ว
+// ดู server.js) แล้วอ้างอิงด้วย URL เต็มของเว็บเรา โดยใช้ PUBLIC_BASE_URL ตัวเดียวกับที่
+// server.js/commands/premium.js ใช้สร้างลิงก์เว็บอยู่แล้ว (อ่านจาก env PUBLIC_BASE_URL ก่อน
+// ถ้าไม่ได้ตั้งค่าไว้ fallback เป็นโดเมนจริงของ Railway)
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://aitao-bot-production.up.railway.app';
+const ORDER_BANNER_URL = `${PUBLIC_BASE_URL}/images/marketplace-order-banner.png`;
 
 function formatThb(amount) {
   return `฿${Number(amount).toLocaleString('th-TH')}`;
@@ -274,6 +277,17 @@ async function handleSell(interaction) {
     return;
   }
 
+  // 🆕 [1 พ.ย. 2569] ร้านที่ถูกระงับทั้งร้าน (เจ้าของบอทยืนยันแล้วว่าละเมิดจริงจากรายงานที่
+  // มีคนแจ้งเข้ามา — ดู suspendSeller() ใน utils/marketplaceStorage.js) ลงขายอะไรเพิ่มไม่ได้
+  // อีกเลย ไม่ว่าจะตั้งช่องทางรับเงินไว้แล้วก็ตาม
+  if (isSellerSuspended(interaction.user.id)) {
+    await interaction.reply({
+      content: '🚫 ร้านของคุณถูกระงับการขายอยู่ตอนนี้ครับ ลงขายสินค้าใหม่ไม่ได้ (ติดต่อแอดมินถ้าคิดว่าเป็นความเข้าใจผิด)',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
   // คำสั่งนี้ต้องรันในเซิร์ฟเวอร์เท่านั้น (ไม่ใช่ DM กับบอท) เพราะต้องมีเซิร์ฟให้เก็บรูป/ไฟล์
   // ไว้ในห้อง asset-storage ถาวร (ดูคอมเมนต์ storeImagePermanently ด้านล่าง)
   if (!interaction.guild) {
@@ -379,6 +393,14 @@ async function handleSetStatus(interaction, newStatus) {
     return;
   }
 
+  // 🆕 [1 พ.ย. 2569] ร้านที่ถูกระงับทั้งร้าน เปิดขายใหม่ (markselling) ไม่ได้ — กันช่องโหว่ที่
+  // จะเอาประกาศที่ suspendSeller() ปิดไปแล้วกลับมาเปิดขายต่อหลบการระงับ (ปิดประกาศตัวเอง
+  // ด้วย /marketplace remove ยังทำได้ตามปกติ ไม่บล็อก เพราะเป็นการ "ปิด" ไม่ใช่ "เปิดขาย")
+  if (newStatus === 'active' && isSellerSuspended(interaction.user.id)) {
+    await interaction.reply({ content: '🚫 ร้านของคุณถูกระงับการขายอยู่ตอนนี้ครับ เปิดขายประกาศนี้กลับมาไม่ได้ (ติดต่อแอดมินถ้าคิดว่าเป็นความเข้าใจผิด)', flags: MessageFlags.Ephemeral });
+    return;
+  }
+
   const updated = setListingStatus(listingId, newStatus);
   const message = newStatus === 'active' ? `✅ เปิดขาย **${updated.title}** อีกครั้งแล้วครับ — กลับไปโชว์บนหน้าเว็บแล้ว` : `✅ ปิดประกาศ **${updated.title}** แล้วครับ — หายไปจากหน้าเว็บแล้ว`;
 
@@ -458,10 +480,6 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     return { notified: false, reason: 'no_payment_method' };
   }
 
-  // ยังต้องรู้ "ช่องทางรับเงิน" อยู่นะครับ (promptpay/link) เพราะข้อความคำแนะนำขั้นตอนถัดไป
-  // (instructionText ด้านล่าง) ใช้ถ้อยคำต่างกันตามช่องทาง — แค่ไม่ต้องสร้าง QR เองในนี้แล้ว
-  const method = getSellerPaymentMethod(seller);
-
   // 🆕 [23 ต.ค. 2569 รอบ 2] สไตล์ "กล่องๆ" ยกเทคนิคมาจากการ์ดรายงานยอดของระบบ /referral
   // (utils/referralReportChannel.js → buildReportEmbed()) 3 อย่าง:
   //
@@ -501,12 +519,9 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
     timeZone: 'Asia/Bangkok',
   });
 
-  // ⚠️ ข้อความแนะนำขั้นตอนเดิมเคยบอกว่า "สแกน QR ด้านล่าง" — ตอนนี้ตัด QR ออกจาก DM นี้แล้ว
-  // (ผู้ซื้อสแกนจากหน้าเว็บไปแล้วตั้งแต่ก่อนข้อความนี้จะถูกส่งด้วยซ้ำ) เลยเปลี่ยนคำใหม่ให้ตรง
-  // ความจริง: ผู้ขายแค่ "รอเงินเข้า" แล้วเช็คยอดเอง ไม่ต้องสแกนอะไรทั้งนั้น
-  const instructionText = method === 'promptpay'
-    ? `รอเงินเข้าบัญชีพร้อมเพย์ของคุณ (ผู้ซื้อสแกน QR จ่ายจากหน้าเว็บไปแล้ว) → เช็คยอดให้ตรงกับ **${formatThb(order.priceThb)}** → แล้วกด **"✅ ยืนยันได้รับเงินแล้ว"**`
-    : `ผู้ซื้อจ่ายผ่านลิงก์ของคุณเอง (${seller.paymentLink}) → เช็คยอดเองว่าเข้าตรงกับ **${formatThb(order.priceThb)}** → แล้วกด **"✅ ยืนยันได้รับเงินแล้ว"**`;
+  // 🆕 [25 ต.ค. 2569 รอบ 2] น้องหนาวขอให้ตัดข้อความแนะนำขั้นตอนแบบยาว (ที่เคยแยกคำพูดตาม
+  // ช่องทางรับเงิน promptpay/link ต่างกัน) เหลือแค่ประโยคเดียวสั้นๆ ใช้ได้กับทุกช่องทางเลย
+  const instructionText = '**กรุณาตรวจสอบวงเงินในบัญชี ค่อยกดยืนยันรับเงินแล้ว**';
 
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71) // 🆕 เขียวนีออนตามที่น้องหนาวขอ
@@ -529,10 +544,10 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
       // ปนอยู่ — code block จะทำให้ตัวหนาไม่ขึ้นเป็นตัวหนาจริง กลายเป็นดอกจันดิบๆแทน)
       { name: '✨ ขั้นตอนต่อไปสำหรับคุณ', value: instructionText, inline: false },
     )
-    // 🆕 [25 ต.ค. 2569] แบนเนอร์รูป Milo bot ที่น้องหนาวส่งมา — แทนที่ตำแหน่งที่เคยเป็น QR
-    // เดิม (ดู ORDER_BANNER_FILENAME/ORDER_BANNER_PATH ที่ประกาศไว้หัวไฟล์ — แพทเทิร์นเดียว
-    // กับแบนเนอร์การ์ด /referral) โชว์เหมือนกันทุกครั้งไม่ว่าช่องทางรับเงินจะเป็นแบบไหน
-    .setImage(`attachment://${ORDER_BANNER_FILENAME}`)
+    // 🆕 [25 ต.ค. 2569 รอบ 2] แบนเนอร์รูป Milo bot — อ้างอิงด้วย URL ตรงๆ (ORDER_BANNER_URL
+    // ที่ประกาศไว้หัวไฟล์) ไม่แนบเป็นไฟล์แล้ว กันปัญหารูปซ้อนกัน 2 รูป (ดูคอมเมนต์อธิบายยาวๆ
+    // ตรง ORDER_BANNER_URL ด้านบนว่าทำไม) โชว์เหมือนกันทุกครั้งไม่ว่าช่องทางรับเงินจะเป็นแบบไหน
+    .setImage(ORDER_BANNER_URL)
     .setFooter({ text: '╰ ꒰ Milo Bot · Marketplace Order ꒱ ╯' });
 
   const row = new ActionRowBuilder().addComponents(
@@ -544,9 +559,10 @@ async function notifySellerNewOrder(client, order, listing, buyerInfo) {
 
   try {
     const sellerUser = await client.users.fetch(order.sellerId);
+    // ไม่มี files ให้ส่งแล้วครับ — แบนเนอร์อ้างอิงด้วย URL ตรงๆ ใน setImage() ด้านบน ไม่ต้อง
+    // แนบไฟล์มากับข้อความอีกต่อไป (เหตุผลเดียวกับที่แก้ปัญหารูปซ้อนกัน)
     const message = await sellerUser.send({
       embeds: [embed],
-      files: [new AttachmentBuilder(ORDER_BANNER_PATH, { name: ORDER_BANNER_FILENAME })],
       components: [row],
     });
     saveOrderNotifyMessage(order.id, message.channelId, message.id);
@@ -580,11 +596,12 @@ async function notifyBuyerMarkedPaid(client, order) {
     const existingEmbed = message.embeds[0];
     if (!existingEmbed) return;
 
+    // 🆕 [25 ต.ค. 2569 รอบ 2] น้องหนาวขอให้ตัดข้อความอธิบายยาวๆ ออก เหลือแค่ประโยคสั้นๆ
+    // ประโยคเดียวกับที่ใช้ใน notifySellerNewOrder() ด้านบน (ชื่อ field ยังคงไว้เหมือนเดิม
+    // เพราะยังมีประโยชน์ — บอกสถานะว่า "ผู้ซื้อกดแจ้งโอนแล้ว" ต่างจาก field คำแนะนำตอนแรก)
     const updatedEmbed = EmbedBuilder.from(existingEmbed).addFields({
       name: '🟡 ผู้ซื้อแจ้งว่าโอนเงินแล้ว',
-      value:
-        'ยังไม่ใช่การยืนยันว่าเงินเข้าจริงนะครับ — เช็คยอดเข้าบัญชีพร้อมเพย์ของคุณก่อน ' +
-        'แล้วค่อยกดปุ่ม "✅ ยืนยันได้รับเงินแล้ว" ด้านล่างทันทีที่เห็นเงินเข้าจริงครับ',
+      value: '**กรุณาตรวจสอบวงเงินในบัญชี ค่อยกดยืนยันรับเงินแล้ว**',
     });
 
     // ไม่ส่ง components ในนี้เลย — discord.js edit() แบบไม่ส่ง field ไหนมา จะ "คงค่าเดิม"
@@ -658,7 +675,12 @@ async function notifyMarketplaceReport(client, report, listing, reporterInfo, at
         { name: 'ผู้รายงาน', value: `${reporterInfo.username} (${reporterInfo.id})` },
         { name: 'เหตุผล', value: report.reasonLabel },
         { name: 'รายละเอียดเพิ่มเติม', value: report.detail || '(ไม่ได้ระบุ)' },
-        { name: 'รหัสรายงาน', value: report.id }
+        { name: 'รหัสรายงาน', value: report.id },
+        // 🆕 [1 พ.ย. 2569] ลิงก์ตรงไปหน้าแดชบอร์ด Admin (/admin/marketplace-reports) ให้กดปิด
+        // เคสนี้ได้เลย ไม่ต้องจำรหัสรายงานไปค้นเองอีกที — ใส่เป็น field (ไม่ใช่ footer) เพราะ
+        // footer เป็นตัวหนังสือล้วนๆ กดไม่ได้ ส่วน field value เรนเดอร์ markdown link ได้จริง
+        // ต้อง login ด้วยบัญชี OWNER_ID ก่อนถึงจะเข้าหน้านี้ได้ (ดู requireOwner ใน server.js)
+        { name: 'แดชบอร์ด Admin', value: `[ดู/ปิดเคสนี้](${PUBLIC_BASE_URL}/admin/marketplace-reports)` }
       )
       .setTimestamp(new Date(report.createdAt));
 

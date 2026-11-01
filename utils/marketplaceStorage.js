@@ -27,6 +27,18 @@
 //                                          https:// เท่านั้น — ดู PAYMENT_LINK_PATTERN
 //       "paymentLinkUpdatedAt": "2026-...",
 //       "displayName": "kittyarts"     ← แคชชื่อ Discord ไว้เฉยๆ ไว้โชว์ไม่ต้อง fetch ใหม่ทุกครั้ง
+//       "suspended": false,             ← 🆕 [1 พ.ย. 2569] true = ร้านนี้ถูกระงับทั้งร้าน ขายอะไร
+//                                          ไม่ได้อีกเลย (ทั้งลงขายใหม่ + ขายของที่ลงไว้เดิม) — ตั้งจาก
+//                                          แดชบอร์ด Admin เท่านั้น (ดู suspendSeller() ด้านล่าง) ตอน
+//                                          เจ้าของบอทยืนยันว่ารายงานที่มีคนร้องเรียนเข้ามาเป็นการ
+//                                          ละเมิดจริง — ไม่มีก็ถือว่า false (ของเก่าก่อนมีฟีเจอร์นี้)
+//       "suspendedAt": "2026-...",       ← เวลาที่ถูกระงับ (null ถ้าไม่เคยถูกระงับ/ปลดระงับไปแล้ว)
+//       "suspendedReason": "...",        ← เหตุผล/สรุปสั้นๆ ที่เจ้าของบอทกรอกตอนระงับ (โชว์ไว้เผื่อ
+//                                          ย้อนดูทีหลังว่าทำไมร้านนี้ถูกระงับ)
+//       "suspendedBy": "111222333",      ← Discord user ID ของเจ้าของบอทที่กดระงับ (เผื่ออนาคตมี
+//                                          แอดมินมากกว่า 1 คน จะรู้ว่าใครตัดสินใจ)
+//       "unsuspendedAt": "2026-..."      ← 🆕 เวลาที่ปลดระงับล่าสุด (ถ้าเคยถูกปลดระงับมาก่อน) — เก็บ
+//                                          ไว้เฉยๆ เป็นประวัติ ไม่ได้ใช้คำนวณอะไรต่อ
 //     }
 //   },
 //   "listings": {
@@ -105,9 +117,21 @@
 //                                            ข้อความแจ้งเตือนในห้องรายงานของเซิร์ฟควบคุมเลย ไม่ได้
 //                                            เก็บ URL ไว้ที่นี่ เพราะดูได้จากห้องนั้นอยู่แล้ว)
 //       "status": "open",                  ← "open" (ยังไม่ตรวจสอบ) | "resolved" (จัดการแล้ว) —
-//                                            ตอนนี้ยังไม่มีปุ่มเปลี่ยนสถานะจากเว็บ ต้องแก้ไฟล์ตรงๆ
-//                                            ถ้าจะปิดเคสในระบบ (เอาไว้ทำปุ่มในแดชบอร์ดทีหลังได้)
-//       "createdAt": "2026-..."
+//                                            🆕 [1 พ.ย. 2569] ตอนนี้เปลี่ยนสถานะได้จริงจากแดชบอร์ด
+//                                            Admin แล้ว (/admin/marketplace-reports) ไม่ต้องแก้ไฟล์
+//                                            ตรงๆ อีกต่อไป — ดู resolveReport()/reopenReport() ด้านล่าง
+//       "createdAt": "2026-...",
+//       "resolution": {                    ← 🆕 [1 พ.ย. 2569] มีค่าเฉพาะตอน status==="resolved"
+//                                            เท่านั้น (null ถ้ายัง "open" อยู่) — บันทึกไว้ว่า
+//                                            "ใครตัดสินแบบไหน" เผื่อย้อนดูประวัติทีหลัง (ความโปร่งใส
+//                                            ของทั้ง 2 ฝ่ายตามที่น้องหนาวขอ)
+//         "outcome": "violation_confirmed", ← "violation_confirmed" (ยืนยันว่าผู้ขายทำผิดจริง —
+//                                            ระงับร้านทั้งร้านไปด้วยอัตโนมัติ ดู suspendSeller())
+//                                            | "dismissed" (ตรวจแล้วไม่มีมูล/ไม่ผิดจริง ไม่ระงับร้าน)
+//         "note": "...",                    ← บันทึกสรุปของเจ้าของบอทตอนปิดเคส (ไม่บังคับ)
+//         "resolvedBy": "111222333",        ← Discord user ID ของเจ้าของบอทที่กดปิดเคส
+//         "resolvedAt": "2026-..."
+//       }
 //     }
 //   }
 // }
@@ -655,9 +679,149 @@ function createReport(info) {
     evidenceCount: info.evidenceCount || 0,
     status: 'open',
     createdAt: new Date().toISOString(),
+    resolution: null,
   };
   writeAll(data);
   return data.reports[id];
+}
+
+/**
+ * 🆕 [1 พ.ย. 2569] รายการรายงานทั้งหมด (หรือกรองตามสถานะ) ไว้ใช้กับหน้าแดชบอร์ด Admin
+ * (/admin/marketplace-reports) — เรียงใหม่สุดขึ้นก่อนเสมอ (เคสใหม่ๆ ต้องเห็นง่ายสุด)
+ * @param {{ status?: 'open'|'resolved' }} filter ไม่ส่ง status มา = เอาทุกสถานะ
+ * @returns {object[]}
+ */
+function listReports(filter = {}) {
+  const data = readAll();
+  let reports = Object.values(data.reports);
+  if (filter.status === 'open' || filter.status === 'resolved') {
+    reports = reports.filter((r) => r.status === filter.status);
+  }
+  return reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+/**
+ * ดึงรายงาน 1 เคส (คืน null ถ้าไม่เจอ)
+ * @param {string} reportId
+ */
+function getReport(reportId) {
+  const data = readAll();
+  return data.reports[reportId] || null;
+}
+
+/**
+ * 🆕 [1 พ.ย. 2569] ปิดเคสรายงาน 1 อัน — เรียกจาก POST /admin/marketplace-reports/:id/resolve
+ * ตอนเจ้าของบอทกดปุ่ม "ยืนยันว่าละเมิดจริง" หรือ "ยกเลิกรายงาน (ไม่มีมูล)" บนแดชบอร์ด
+ * Admin ⚠️ ฟังก์ชันนี้ "ไม่" ระงับร้านเอง แม้ outcome เป็น violation_confirmed ก็ตาม —
+ * ฝั่งที่เรียก (server.js) ต้องเรียก suspendSeller() แยกต่างหากเองอีกที (แยกหน้าที่กันชัดๆ
+ * เผื่ออนาคตอยากปิดเคสแบบ "ยืนยันว่าผิดจริงแต่ยังไม่ระงับร้าน" ก็ทำได้ง่ายๆ ไม่ต้องแก้ที่นี่)
+ * @param {string} reportId
+ * @param {{ outcome: 'violation_confirmed'|'dismissed', note: string, resolvedBy: string }} info
+ * @returns {object|null} รายงานที่ปิดเคสแล้ว หรือ null ถ้าไม่เจอ
+ */
+function resolveReport(reportId, info) {
+  const data = readAll();
+  const report = data.reports[reportId];
+  if (!report) return null;
+  report.status = 'resolved';
+  report.resolution = {
+    outcome: info.outcome,
+    note: info.note || '',
+    resolvedBy: info.resolvedBy,
+    resolvedAt: new Date().toISOString(),
+  };
+  writeAll(data);
+  return report;
+}
+
+/**
+ * 🆕 [1 พ.ย. 2569] เปิดเคสที่ปิดไปแล้วกลับมาใหม่ — เผื่อเจ้าของบอทกดปิดเคสผิด/เปลี่ยนใจ
+ * (ความโปร่งใส: แก้ไขการตัดสินใจเดิมได้ ไม่ใช่ตัดสินทีเดียวแล้วจบเลยแก้ไม่ได้อีก) ⚠️ ไม่ได้
+ * ปลดระงับร้านอัตโนมัติด้วยนะครับ ถ้า resolve ไปแล้วระงับร้านไปแล้ว ต้องกด unsuspendSeller()
+ * แยกต่างหากเองอีกที (เหตุผลเดียวกับที่ resolveReport() ไม่ระงับร้านเองด้านบน)
+ * @param {string} reportId
+ */
+function reopenReport(reportId) {
+  const data = readAll();
+  const report = data.reports[reportId];
+  if (!report) return null;
+  report.status = 'open';
+  report.resolution = null;
+  writeAll(data);
+  return report;
+}
+
+// ── ระงับร้านค้า (seller suspension) ──────────────────────────────────
+
+/**
+ * 🆕 [1 พ.ย. 2569] ระงับร้านทั้งร้าน — เรียกตอนเจ้าของบอทยืนยันจากแดชบอร์ด Admin ว่ารายงาน
+ * ที่มีคนร้องเรียนเข้ามาเป็นการละเมิดจริง (ไม่ใช่แค่ปิด/ลบประกาศชิ้นที่ถูกรายงานชิ้นเดียว —
+ * ตามที่น้องหนาวเลือกไว้ตอนคุยสโคปฟีเจอร์นี้: "ระงับทั้งร้าน ขายต่อไม่ได้เลย")
+ *
+ * ทำ 2 อย่างพร้อมกันในการเขียนไฟล์ครั้งเดียว (กันข้อมูลครึ่งๆ กลางๆ ถ้าเขียนแยก 2 รอบแล้ว
+ * มีอะไรพังกลางทาง):
+ *   1) ตั้ง seller.suspended = true (กัน hasPaymentMethodSet-gated flow ทั้งหมดต่อไปนี้ —
+ *      /marketplace sell ในดิสคอร์ด, ฟอร์มลงขายบนเว็บ, และปุ่มซื้อของผู้ซื้อ — ดูจุดเช็ค
+ *      isSellerSuspended() ใน commands/marketplace.js และ server.js)
+ *   2) ปิดประกาศ "active" ทุกชิ้นของร้านนี้ทันที (status → 'removed') ไม่ให้ยังโผล่ขายอยู่
+ *      บนหน้าเว็บสาธารณะต่อ แม้ยังไม่มีคนมากดซื้อจริงๆ — ประกาศที่ "sold"/"removed" ไปแล้ว
+ *      ก่อนหน้านี้ไม่แตะ (ไม่มีประโยชน์ที่จะไปแก้สถานะที่ปิดอยู่แล้ว)
+ *
+ * @param {string} sellerId Discord user ID ของผู้ขายที่จะระงับ
+ * @param {{ reason: string, suspendedBy: string }} info
+ * @returns {{ seller: object, closedListingCount: number }}
+ */
+function suspendSeller(sellerId, info) {
+  const data = readAll();
+  const existing = data.sellers[sellerId] || {};
+  data.sellers[sellerId] = {
+    ...existing,
+    suspended: true,
+    suspendedAt: new Date().toISOString(),
+    suspendedReason: info.reason || '',
+    suspendedBy: info.suspendedBy,
+  };
+
+  let closedListingCount = 0;
+  for (const listing of Object.values(data.listings)) {
+    if (listing.sellerId === sellerId && listing.status === 'active') {
+      listing.status = 'removed';
+      listing.updatedAt = new Date().toISOString();
+      closedListingCount += 1;
+    }
+  }
+
+  writeAll(data);
+  return { seller: data.sellers[sellerId], closedListingCount };
+}
+
+/**
+ * 🆕 [1 พ.ย. 2569] ปลดระงับร้าน — ให้โอกาสแก้ไขได้ถ้าเจ้าของบอทกดระงับผิด/เปลี่ยนใจทีหลัง
+ * (ความโปร่งใส/ยุติธรรมสำหรับผู้ขายด้วย ไม่ใช่ระงับแล้วจบเลยแก้คืนไม่ได้) ⚠️ "ไม่" เปิด
+ * ประกาศเดิมที่ถูกปิดไปตอนระงับกลับมาอัตโนมัติ — ผู้ขายต้องไปกด "Reopen" เองทีละชิ้นจาก
+ * หน้า Marketplace ของตัวเอง (ตั้งใจแบบนี้ เผื่อบางชิ้นผู้ขายไม่อยากขายต่อแล้วจริงๆ)
+ * @param {string} sellerId
+ * @returns {object|null} ข้อมูลผู้ขายที่ปลดระงับแล้ว หรือ null ถ้าไม่เจอผู้ขายคนนี้เลย
+ */
+function unsuspendSeller(sellerId) {
+  const data = readAll();
+  const seller = data.sellers[sellerId];
+  if (!seller) return null;
+  seller.suspended = false;
+  seller.unsuspendedAt = new Date().toISOString();
+  writeAll(data);
+  return seller;
+}
+
+/**
+ * ตัวช่วยอ่าน — เช็คว่าผู้ขายคนนี้ถูกระงับทั้งร้านอยู่ไหม ใช้ก่อนจะปล่อยให้ลงขาย/ซื้อของจาก
+ * ร้านนี้ได้ทุกจุด (ดูคอมเมนต์ suspendSeller() ด้านบนสำหรับรายชื่อจุดที่ต้องเช็ค)
+ * @param {string|null} sellerId
+ */
+function isSellerSuspended(sellerId) {
+  if (!sellerId) return false;
+  const seller = getSeller(sellerId);
+  return Boolean(seller?.suspended);
 }
 
 module.exports = {
@@ -688,4 +852,11 @@ module.exports = {
   confirmOrder,
   markOrderBuyerPaid,
   createReport,
+  listReports,
+  getReport,
+  resolveReport,
+  reopenReport,
+  suspendSeller,
+  unsuspendSeller,
+  isSellerSuspended,
 };
