@@ -61,6 +61,10 @@ const {
 // attachment.url ตรงๆ แบบเดิม (URL ของ Discord หมดอายุใน ~24 ชม. — ของเดิมเคยมีบั๊กนี้
 // แฝงอยู่โดยไม่รู้ตัว เพิ่งมาเจอตอนทำฟอร์มลงขายบนเว็บ เลยแก้พร้อมกันเลยทั้ง 2 ทาง)
 const { storeImagePermanently } = require('../utils/assetStorage');
+// 🆕 [1 พ.ย. 2569] สวิตช์ "พับฟีเจอร์ไว้ก่อนชั่วคราว" — ดูเหตุผลเต็มๆ ที่หัวไฟล์
+// utils/featureFlags.js (สรุปสั้นๆ: น้องหนาวขอปิดใช้งาน Marketplace ทั้งระบบชั่วคราว
+// เพื่อปรับปรุงเพิ่ม — ยังไม่ลบโค้ดทิ้งสักบรรทัด แค่กันไม่ให้ใครสร้าง/แก้อะไรได้ระหว่างนี้)
+const { MARKETPLACE_PAUSED } = require('../utils/featureFlags');
 
 // ปุ่ม "ยืนยันได้รับเงินแล้ว" ที่ DM ผู้ขาย — customId รูปแบบ mkt_confirm_<orderId>
 const CONFIRM_BUTTON_PREFIX = 'mkt_confirm_';
@@ -191,6 +195,17 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    // 🆕 [1 พ.ย. 2569] พับฟีเจอร์นี้ไว้ก่อนชั่วคราว — เช็คเป็นจุดแรกสุดก่อนแตกไป subcommand
+    // ไหนเลย กันทุกคำสั่งย่อยพร้อมกันทีเดียว (sell/mylistings/remove/markselling/
+    // setpromptpay/setpaymentlink) ไม่ต้องไปเติม guard ซ้ำในแต่ละ handler
+    if (MARKETPLACE_PAUSED) {
+      await interaction.reply({
+        content: '🚧 ตอนนี้ปิดใช้งาน Marketplace ไว้ชั่วคราวเพื่อปรับปรุงเพิ่มเติมครับ จะเปิดให้ใช้งานอีกครั้งเร็วๆ นี้ ขอบคุณที่รอนะครับ 🙏',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
     const sub = interaction.options.getSubcommand();
     if (sub === 'sell') return handleSell(interaction);
     if (sub === 'mylistings') return handleMyListings(interaction);
@@ -203,6 +218,15 @@ module.exports = {
   // เรียกจาก index.js ตอนมีคนกดปุ่มที่ customId ขึ้นต้นด้วย mkt_
   async handleButton(interaction) {
     if (interaction.customId.startsWith(CONFIRM_BUTTON_PREFIX)) {
+      // 🆕 [1 พ.ย. 2569] ช่วงพับฟีเจอร์ไว้ ไม่ควรมีออเดอร์ค้างใหม่เกิดขึ้นอยู่แล้ว (ฝั่งซื้อ/
+      // ลงขายถูกกันไว้หมดแล้วที่ server.js) แต่กันซ้ำไว้อีกชั้นเผื่อมีปุ่มเก่าหลงเหลืออยู่จริงๆ
+      if (MARKETPLACE_PAUSED) {
+        await interaction.reply({
+          content: '🚧 ตอนนี้ปิดใช้งาน Marketplace ไว้ชั่วคราวเพื่อปรับปรุงเพิ่มเติมครับ ติดต่อแอดมินโดยตรงถ้ามีออเดอร์ค้างอยู่นะครับ',
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
       return handleConfirmButton(interaction);
     }
   },

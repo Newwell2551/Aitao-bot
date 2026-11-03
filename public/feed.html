@@ -199,6 +199,35 @@
 </head>
 <body>
 
+  <!-- 🆕 [1 พ.ย. 2569] พับฟีเจอร์ Feed ไว้ก่อนชั่วคราว (ตามที่น้องหนาวขอ: "คนอื่นเห็นได้ แต่
+       ใช้ไม่ได้ หน้าจะเบลอๆ บอกว่า soon") ไม่ได้ลบโค้ดเดิมด้านล่างทิ้งสักบรรทัด — แค่เบลอ +
+       ปิดการคลิก/สโครลด้วย overlay ก้อนนี้ทับไว้เฉยๆ เหมือนกับที่ทำไว้ใน public/marketplace.html
+       เป๊ะๆ (ใช้สีธีม --feed-* ของหน้านี้เองแทน ให้เข้ากับหน้านี้มากกว่า) ฝั่ง backend (API
+       /api/feed/*) ก็ถูกปิดคู่กันไว้แล้วด้วย (ดู FEED_PAUSED ใน utils/featureFlags.js)
+
+       วิธีเปิดกลับมาใช้งานจริงตอนพร้อม: (1) ลบ <style id="feature-paused-style"> กับ
+       <div id="feature-paused-overlay"> ทั้ง 2 ก้อนนี้ทิ้งจากไฟล์นี้ (2) เปลี่ยน FEED_PAUSED
+       เป็น false ที่ utils/featureFlags.js ด้วย — ทำแค่ข้อ (1) อย่างเดียวหน้าเว็บจะดูเหมือน
+       ใช้งานได้ แต่โพสต์/โหวตจริงจะเจอ error เพราะ backend ยังปิดอยู่ -->
+  <style id="feature-paused-style">
+    body > *:not(#feature-paused-overlay) { filter: blur(7px); pointer-events: none; user-select: none; }
+    body { overflow: hidden; }
+    #feature-paused-overlay { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: rgba(13,17,32,0.65); padding: 24px; }
+    #feature-paused-overlay .fp-card { background: var(--feed-card); border: 1px solid var(--feed-border); border-radius: 14px; padding: 36px 40px; max-width: 420px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    #feature-paused-overlay .fp-badge { display: inline-block; padding: 5px 14px; border-radius: 999px; background: rgba(143,123,250,0.18); color: var(--feed-purple); font-weight: 700; font-size: 12px; letter-spacing: 0.04em; margin-bottom: 16px; }
+    #feature-paused-overlay h2 { color: var(--feed-text); font-size: 19px; margin: 0 0 10px; }
+    #feature-paused-overlay p { color: var(--feed-text-muted); font-size: 13.5px; line-height: 1.7; margin: 0 0 20px; }
+    #feature-paused-overlay a { display: inline-block; height: 38px; line-height: 38px; padding: 0 22px; border-radius: 999px; background: linear-gradient(135deg, var(--feed-blurple), var(--feed-purple)); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+  </style>
+  <div id="feature-paused-overlay">
+    <div class="fp-card">
+      <span class="fp-badge">✨ COMING SOON</span>
+      <h2>Feed กำลังปรับปรุงอยู่ครับ</h2>
+      <p>ตอนนี้ปิดใช้งานชั่วคราวเพื่อปรับปรุงเพิ่มเติมครับ จะเปิดให้ใช้งานอีกครั้งเร็วๆ นี้ ขอบคุณที่รอนะครับ 🙏</p>
+      <a href="/">กลับหน้าแรก</a>
+    </div>
+  </div>
+
   <!-- 🔧 [21 ต.ค. 2569 — แก้บั๊ก] 2 จุดที่หน้านี้พลาดไปตอนสร้างครั้งแรก เพราะตอนนั้นใช้
        โค้ดต้นแบบคนละเวอร์ชันกับหน้าอื่นๆ (เมนูมือถือเพิ่งเปลี่ยนจากปุ่มแฮมเบอร์เกอร์มา
        เป็นแถบถาวรขอบซ้าย .mobile-nav-rail ไปแล้วตอนนั้น แต่หน้านี้ไม่รู้เรื่อง):

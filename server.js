@@ -152,6 +152,10 @@ const { renderMarketplaceDashboardPage } = require('./utils/renderMarketplaceDas
 // 🆕 [1 พ.ย. 2569] หน้า Admin · Marketplace Reports (/admin/marketplace-reports) — ดูคอมเมนต์
 // เต็มๆ หัวไฟล์นั้นว่าทำไมฟีเจอร์นี้มาแบบนี้ (ระบบพิพาท/ตรวจสอบ ไม่ใช่ตู้เซฟกลาง)
 const { renderAdminReportsDashboardPage } = require('./utils/renderAdminReportsDashboard');
+// 🆕 [1 พ.ย. 2569] สวิตช์ "พับฟีเจอร์ไว้ก่อนชั่วคราว" — ดูเหตุผลเต็มๆ ที่หัวไฟล์
+// utils/featureFlags.js (น้องหนาวขอปิดใช้งาน Marketplace + Feed ทั้งระบบชั่วคราวเพื่อ
+// ปรับปรุงเพิ่ม — ทุกทางเข้าต้องบล็อกพร้อมกัน ไม่ใช่แค่หน้าเว็บสาธารณะ)
+const { MARKETPLACE_PAUSED, FEED_PAUSED } = require('./utils/featureFlags');
 // 🆕 [21 ต.ค. 2569] หน้า "Marketplace Feed" (public/feed.html) — ฟีดงาน/บริการข้ามเซิร์ฟ
 // ดูคอมเมนต์หัวไฟล์ utils/feedStorage.js สำหรับสเกมา + เหตุผลของทุกจุดที่ตัดสินใจเอง
 const feedStorage = require('./utils/feedStorage');
@@ -515,7 +519,7 @@ function createWebhookServer(client) {
   // แล้ว (ดูคอมเมนต์หัวไฟล์ utils/marketplaceStorage.js) ต้อง resolve ให้เป็น URL สดใหม่
   // ก่อนส่งให้ browser ใช้จริงเสมอ — ทำแบบ Promise.all ให้ resolve หลายชิ้นพร้อมกัน ไม่ใช่
   // ทีละชิ้นทีละชิ้น (เร็วกว่าตอนมีหลายประกาศ)
-  app.get('/api/marketplace/listings', async (req, res) => {
+  app.get('/api/marketplace/listings', blockIfMarketplacePaused, async (req, res) => {
     const listings = await Promise.all(
       listActiveListings().map(async (item) => {
         const seller = getSeller(item.sellerId);
@@ -555,7 +559,7 @@ function createWebhookServer(client) {
   });
 
   // GET /api/marketplace/listings/:id — รายละเอียดประกาศ 1 ชิ้น (หน้า product detail)
-  app.get('/api/marketplace/listings/:id', async (req, res) => {
+  app.get('/api/marketplace/listings/:id', blockIfMarketplacePaused, async (req, res) => {
     const listing = getListing(String(req.params.id || '').toUpperCase());
     if (!listing || listing.status !== 'active') {
       return res.status(404).json({ error: 'listing_not_found' });
@@ -591,7 +595,7 @@ function createWebhookServer(client) {
   // fetch() (fetch จะได้ HTML หน้า login กลับมาแทน JSON ที่ต้องการ) — เช็ค
   // req.session.user เองตรงๆ แล้วตอบ 401 กลับไปเป็น JSON แทน ให้ฝั่งหน้าเว็บเด้งไป
   // /auth/login เองด้วย JavaScript ได้ตามที่ต้องการ
-  app.post('/api/marketplace/listings/:id/buy', async (req, res) => {
+  app.post('/api/marketplace/listings/:id/buy', blockIfMarketplacePaused, async (req, res) => {
     if (!req.session.user) {
       return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/marketplace')}` });
     }
@@ -679,7 +683,7 @@ function createWebhookServer(client) {
   //
   // ไม่ใช้ requireAuth ห่อ (เหมือน /buy ด้านบน) เพราะ endpoint นี้ก็ถูกเรียกด้วย fetch()
   // จากฝั่งเบราว์เซอร์เหมือนกัน เช็ค req.session.user ตรงๆ แล้วตอบ 401 เป็น JSON แทน
-  app.post('/api/marketplace/orders/:id/mark-paid', async (req, res) => {
+  app.post('/api/marketplace/orders/:id/mark-paid', blockIfMarketplacePaused, async (req, res) => {
     if (!req.session.user) {
       return res.status(401).json({ error: 'not_logged_in' });
     }
@@ -723,7 +727,7 @@ function createWebhookServer(client) {
   //
   // ไม่ใช้ requireAuth ห่อ (เหตุผลเดียวกับ /buy, /mark-paid ด้านบน) เช็ค req.session.user
   // ตรงๆ แล้วตอบ 401 เป็น JSON แทน
-  app.post('/api/marketplace/orders/:id/verify-slip', (req, res, next) => {
+  app.post('/api/marketplace/orders/:id/verify-slip', blockIfMarketplacePaused, (req, res, next) => {
     slipUpload.single('slip')(req, res, (error) => {
       if (error) {
         console.warn('[marketplace verify-slip] อัปโหลดรูปสลิปไม่สำเร็จ:', error.message);
@@ -800,7 +804,7 @@ function createWebhookServer(client) {
   //
   // ไม่ใช้ requireAuth ห่อ (เหตุผลเดียวกับ /buy และ /mark-paid ด้านบน) เช็ค
   // req.session.user ตรงๆ แล้วตอบ 401 เป็น JSON แทน
-  app.post('/api/marketplace/reports', express.json({ limit: '15mb' }), async (req, res) => {
+  app.post('/api/marketplace/reports', blockIfMarketplacePaused, express.json({ limit: '15mb' }), async (req, res) => {
     if (!req.session.user) {
       return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/marketplace')}` });
     }
@@ -1012,7 +1016,7 @@ function createWebhookServer(client) {
   // "trending" (แท็กฮิตจริง) + "topContributors" (ผู้โพสต์คะแนนรวมสูงสุดจริง) แนบไปด้วยใน
   // คำตอบเดียวกันเลย ไม่ต้องให้หน้าเว็บยิง request แยกอีกรอบ (ดูคอมเมนต์หัวไฟล์
   // utils/feedStorage.js ข้อ 2 ว่าทำไม topContributors ไม่ใช่ "Verified")
-  app.get('/api/feed/posts', (req, res) => {
+  app.get('/api/feed/posts', blockIfFeedPaused, (req, res) => {
     const type = req.query.type === 'hiring' || req.query.type === 'gigs' ? req.query.type : null;
     const viewerUserId = req.session.user?.id || null;
     const posts = feedStorage.listActivePosts({ type }).map((p) => serializePost(p, viewerUserId));
@@ -1025,7 +1029,7 @@ function createWebhookServer(client) {
 
   // POST /api/feed/posts — สร้างโพสต์ใหม่ (ต้อง login ก่อนเท่านั้น — เช็ค req.session.user
   // ตรงๆ แล้วตอบ 401 เป็น JSON แทน requireAuth เหตุผลเดียวกับ /buy ด้านบน)
-  app.post('/api/feed/posts', express.json({ limit: '32kb' }), (req, res) => {
+  app.post('/api/feed/posts', blockIfFeedPaused, express.json({ limit: '32kb' }), (req, res) => {
     if (!req.session.user) {
       return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/feed')}` });
     }
@@ -1046,7 +1050,7 @@ function createWebhookServer(client) {
   });
 
   // POST /api/feed/posts/:id/vote — โหวตขึ้น/ลง (ต้อง login) body: { direction: 1 | -1 }
-  app.post('/api/feed/posts/:id/vote', express.json({ limit: '2kb' }), (req, res) => {
+  app.post('/api/feed/posts/:id/vote', blockIfFeedPaused, express.json({ limit: '2kb' }), (req, res) => {
     if (!req.session.user) {
       return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/feed')}` });
     }
@@ -1063,7 +1067,7 @@ function createWebhookServer(client) {
 
   // POST /api/feed/posts/:id/close — ปิดโพสต์ของตัวเอง (ต้อง login + ต้องเป็นเจ้าของโพสต์
   // เท่านั้น — เช็คสิทธิ์อยู่ข้างใน feedStorage.closePost() แล้ว)
-  app.post('/api/feed/posts/:id/close', (req, res) => {
+  app.post('/api/feed/posts/:id/close', blockIfFeedPaused, (req, res) => {
     if (!req.session.user) {
       return res.status(401).json({ error: 'not_logged_in', loginUrl: `/auth/login?returnTo=${encodeURIComponent('/feed')}` });
     }
@@ -1239,6 +1243,21 @@ function createWebhookServer(client) {
   app.get('/dashboard/:guildId/marketplace', requireAuth, requireGuildAccess, async (req, res) => {
     const { guildId } = req.params;
     const guild = client.guilds.cache.get(guildId);
+
+    // 🆕 [1 พ.ย. 2569] พับฟีเจอร์นี้ไว้ก่อนชั่วคราว — โชว์หน้า "Coming Soon" แทนของจริงทั้งหมด
+    // (ใช้ renderComingSoonPage ตัวเดียวกับที่เคยใช้ตอนหน้าแดชบอร์ดอื่นยังสร้างไม่เสร็จ — ดู
+    // utils/dashboardShell.js) ไม่ได้ลบ route/โค้ดด้านล่างทิ้งเลย แค่ return ก่อนถึงจุดนั้น
+    if (MARKETPLACE_PAUSED) {
+      return res.send(renderComingSoonPage({
+        pageLabel: 'Marketplace',
+        activeKey: 'marketplace',
+        guild: { id: guildId, name: guild.name, iconUrl: guild.iconURL({ size: 64 }) },
+        user: req.session.user,
+        botAvatarUrl: client.user.displayAvatarURL({ size: 64 }),
+        botName: client.user.username,
+      }));
+    }
+
     const seller = getSeller(req.session.user.id);
     const myListings = listSellerListings(req.session.user.id);
     const listingsWithImages = await Promise.all(
@@ -1286,7 +1305,7 @@ function createWebhookServer(client) {
   // ช่องทาง (payment_method = 'promptpay' | 'link') ตามที่ผู้ขายเลือกจากฟอร์มใน
   // utils/renderMarketplaceDashboard.js — ดูเหตุผลเต็มๆ ที่คอมเมนต์หัวไฟล์
   // utils/marketplaceStorage.js หัวข้อ saveSellerPayment
-  app.post('/dashboard/:guildId/marketplace/payment', requireAuth, requireGuildAccess, express.urlencoded({ extended: false }), (req, res) => {
+  app.post('/dashboard/:guildId/marketplace/payment', requireAuth, requireGuildAccess, blockDashboardPostIfMarketplacePaused, express.urlencoded({ extended: false }), (req, res) => {
     const { guildId } = req.params;
     const method = req.body?.payment_method === 'link' ? 'link' : 'promptpay';
 
@@ -1315,6 +1334,7 @@ function createWebhookServer(client) {
     '/dashboard/:guildId/marketplace/listings',
     requireAuth,
     requireGuildAccess,
+    blockDashboardPostIfMarketplacePaused,
     (req, res, next) => {
       // 🆕 ห่อ marketplaceUpload เองอีกชั้น (ไม่ผูกเป็น middleware ตรงๆ ใน app.post ด้านล่าง)
       // เพื่อจับ error จาก multer เองได้ (เช่นไฟล์ใหญ่เกิน 20MB) แล้ว redirect กลับไปพร้อม
@@ -1443,6 +1463,7 @@ function createWebhookServer(client) {
     '/dashboard/:guildId/marketplace/listings/:listingId/update',
     requireAuth,
     requireGuildAccess,
+    blockDashboardPostIfMarketplacePaused,
     (req, res, next) => {
       marketplaceUpload.fields([{ name: 'image', maxCount: 1 }, { name: 'digitalFile', maxCount: 1 }])(req, res, (error) => {
         if (error) {
@@ -1549,7 +1570,7 @@ function createWebhookServer(client) {
   // 🆕 [15 ต.ค. 2569 — รอบ 11] POST ลบประกาศทิ้งถาวร — เช็คเจ้าของก่อนเสมอ เหมือน close/reopen
   // ต่างจาก close ตรงที่ลบ record ออกจากไฟล์จริงๆ กู้คืนไม่ได้ (ฝั่งหน้าเว็บมี confirm()
   // ก่อนกดปุ่มนี้แล้ว — ดู utils/renderMarketplaceDashboard.js listingCardHtml())
-  app.post('/dashboard/:guildId/marketplace/listings/:listingId/delete', requireAuth, requireGuildAccess, (req, res) => {
+  app.post('/dashboard/:guildId/marketplace/listings/:listingId/delete', requireAuth, requireGuildAccess, blockDashboardPostIfMarketplacePaused, (req, res) => {
     const { guildId, listingId } = req.params;
     deleteListing(String(listingId).toUpperCase(), req.session.user.id);
     res.redirect(`/dashboard/${guildId}/marketplace?deleted=1`);
@@ -1557,7 +1578,7 @@ function createWebhookServer(client) {
 
   // POST ปิด/เปิดขายใหม่ — ตัวเดียวกับ /marketplace remove และ /marketplace markselling
   // เช็คเจ้าของก่อนเสมอ (listing.sellerId ต้องตรงกับคนที่ login อยู่) กันแก้ประกาศของคนอื่น
-  app.post('/dashboard/:guildId/marketplace/listings/:listingId/close', requireAuth, requireGuildAccess, (req, res) => {
+  app.post('/dashboard/:guildId/marketplace/listings/:listingId/close', requireAuth, requireGuildAccess, blockDashboardPostIfMarketplacePaused, (req, res) => {
     const { guildId, listingId } = req.params;
     const listing = getListing(String(listingId).toUpperCase());
     if (listing && listing.sellerId === req.session.user.id) {
@@ -1566,7 +1587,7 @@ function createWebhookServer(client) {
     res.redirect(`/dashboard/${guildId}/marketplace?saved=1`);
   });
 
-  app.post('/dashboard/:guildId/marketplace/listings/:listingId/reopen', requireAuth, requireGuildAccess, (req, res) => {
+  app.post('/dashboard/:guildId/marketplace/listings/:listingId/reopen', requireAuth, requireGuildAccess, blockDashboardPostIfMarketplacePaused, (req, res) => {
     const { guildId, listingId } = req.params;
     const listing = getListing(String(listingId).toUpperCase());
     // 🆕 [1 พ.ย. 2569] ร้านที่ถูกระงับทั้งร้านเปิดขายประกาศเดิมกลับมาไม่ได้ — กันช่องโหว่
@@ -2065,6 +2086,41 @@ function requireOwner(req, res, next) {
   if (!process.env.OWNER_ID || req.session.user.id !== process.env.OWNER_ID) {
     console.warn(`[admin] ${req.session.user?.id} พยายามเข้าหน้า Admin โดยไม่ใช่เจ้าของบอท`);
     return res.status(403).send('This page is only available to the bot owner.');
+  }
+  next();
+}
+
+/**
+ * 🆕 [1 พ.ย. 2569] กันเส้นทาง API ของ Marketplace (/api/marketplace/*) ระหว่างพับฟีเจอร์ไว้
+ * ชั่วคราว (ดู utils/featureFlags.js) — ตอบกลับเป็น JSON เสมอ เพราะเส้นทางพวกนี้ถูกเรียกด้วย
+ * fetch() จากฝั่งเบราว์เซอร์ล้วนๆ ไม่ใช่การนำทางหน้าเว็บตรงๆ (เหตุผลเดียวกับที่ /buy,
+ * /mark-paid ฯลฯ ไม่ใช้ requireAuth ห่อ — ดูคอมเมนต์เดิมที่แต่ละ route ด้านล่าง)
+ */
+function blockIfMarketplacePaused(req, res, next) {
+  if (MARKETPLACE_PAUSED) {
+    return res.status(503).json({ error: 'feature_paused', message: 'Marketplace is temporarily paused for improvements. Please check back soon.' });
+  }
+  next();
+}
+
+/**
+ * เหมือนกันแต่สำหรับ API ของ Feed (/api/feed/*)
+ */
+function blockIfFeedPaused(req, res, next) {
+  if (FEED_PAUSED) {
+    return res.status(503).json({ error: 'feature_paused', message: 'The community feed is temporarily paused for improvements. Please check back soon.' });
+  }
+  next();
+}
+
+/**
+ * กันปุ่มต่างๆ ในหน้าแดชบอร์ด Marketplace (/dashboard/:guildId/marketplace/...) ที่นำทางด้วย
+ * <form method="POST"> ธรรมดา (ไม่ใช่ fetch()) — redirect กลับไปหน้า Marketplace เฉยๆ หน้า
+ * นั้นเองจะโชว์ "Coming Soon" ให้อยู่แล้วจาก guard ที่ GET /dashboard/:guildId/marketplace
+ */
+function blockDashboardPostIfMarketplacePaused(req, res, next) {
+  if (MARKETPLACE_PAUSED) {
+    return res.redirect(`/dashboard/${req.params.guildId}/marketplace`);
   }
   next();
 }
