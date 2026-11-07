@@ -1,4 +1,10 @@
-const { SlashCommandBuilder } = require('discord.js');
+// 🔒 [7 พ.ย. 2569] คำสั่งนี้เป็นเครื่องมือทดสอบของผู้พัฒนาเฉยๆ (โชว์ตัวอย่างการจัดวาง
+// ข้อความด้วย schema ที่ hardcode ไว้) ไม่มีประโยชน์กับผู้ใช้ทั่วไปเลย และก่อนหน้านี้เปิด
+// สาธารณะ 100% ไม่มีการเช็คสิทธิ์อะไรเลย — ล็อกให้เหมือนกับ /dev (ownerOnly + ซ่อนจาก
+// ลิสต์คำสั่งด้วย setDefaultMemberPermissions(0) + เช็ค OWNER_ID ซ้ำอีกชั้นตอน execute)
+// แทนการลบไฟล์ทิ้ง เผื่อยังอยากใช้ทดสอบ layout เองอยู่ (ดู
+// claude/discord-command-security-audit.md — ข้อเสนอของสภา)
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { buildMessageFromSchema } = require('../utils/buildMessageFromSchema');
 
 // ตัวอย่าง schema คงที่ (hardcode) ไว้ทดสอบว่าฟังก์ชันแปลงถูกต้อง
@@ -87,12 +93,25 @@ const exampleSchema = {
 };
 
 module.exports = {
+  // 🔒 ownerOnly: true — เหมือนใน dev.js เป๊ะๆ (ดูคอมเมนต์อธิบายละเอียดในไฟล์นั้น)
+  // กันคำสั่งนี้ไม่ให้ลงทะเบียนแบบ Global และไม่ให้ไปโชว์ที่ discordbotlist.com
+  ownerOnly: true,
+
   data: new SlashCommandBuilder()
     .setName('testlayout')
-    .setDescription('Test buildMessageFromSchema() with a hardcoded sample schema')
-    .setDescriptionLocalizations({ th: 'ทดสอบ buildMessageFromSchema() ด้วย schema ตัวอย่างที่ hardcode ไว้ครับ' }),
+    .setDescription('For development use only.')
+    .setDescriptionLocalizations({ th: 'สำหรับนักพัฒนาเท่านั้นครับ' })
+    .setDefaultMemberPermissions(0),
 
   async execute(interaction) {
+    // ── เช็ค owner-only ก่อนทำอะไรทั้งนั้น (เหมือน dev.js เป๊ะๆ) ──────────────
+    if (interaction.user.id !== process.env.OWNER_ID) {
+      return interaction.reply({
+        content: '❌ คำสั่งนี้ไม่สามารถใช้งานได้ครับ',
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     const message = buildMessageFromSchema(exampleSchema);
     await interaction.reply(message);
   },

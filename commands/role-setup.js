@@ -1138,6 +1138,10 @@ module.exports = {
     .setName('role-setup')
     .setDescription('Set up automatic role assignment (menu / button / reaction)')
     .setDescriptionLocalizations({ th: 'สร้างระบบแจกยศอัตโนมัติครับ (menu / button / reaction)' })
+    // 🔒 [7 พ.ย. 2569] จำกัดสิทธิ์: เฉพาะคนมี Manage Server เท่านั้นถึงจะเห็น/ใช้คำสั่งนี้ได้
+    // (เหมือนกับ /premium, /language) — ระบบแจกยศอัตโนมัติกระทบสมาชิกทั้งเซิร์ฟ ไม่ควร
+    // ให้สมาชิกทั่วไปมาสร้าง/แก้/ลบแทนแอดมินได้ (ดู claude/discord-command-security-audit.md)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(sub => sub.setName('new')
       .setDescription('Create a new role setup')
       .setDescriptionLocalizations({ th: 'สร้าง role setup ใหม่ครับ' })

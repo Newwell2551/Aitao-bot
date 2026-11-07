@@ -41,6 +41,7 @@ const {
   MediaGalleryItemBuilder,
   AttachmentBuilder,
   MessageFlags,
+  PermissionFlagsBits,
 } = require('discord.js');
 
 const { loadGoodbyeConfig, saveGoodbyeConfig }  = require('../utils/goodbyeStorage');
@@ -773,7 +774,11 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('goodbye-setup')
     .setDescription('Set up member farewell cards')
-    .setDescriptionLocalizations({ th: 'ตั้งค่าการ์ดอำลาสมาชิกครับ' }),
+    .setDescriptionLocalizations({ th: 'ตั้งค่าการ์ดอำลาสมาชิกครับ' })
+    // 🔒 [7 พ.ย. 2569] จำกัดสิทธิ์: เฉพาะคนมี Manage Server เท่านั้นถึงจะเห็น/ใช้คำสั่งนี้ได้
+    // (เหมือนกับ /premium, /language) — ตั้งค่าการ์ดอำลาเป็นการตั้งค่าระดับเซิร์ฟ ไม่ควร
+    // ให้สมาชิกทั่วไปมาแก้แทนแอดมินได้ (ดู claude/discord-command-security-audit.md)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   // ══════════════════════════════════════════════════════════════════════════
   // execute: ตอบ panel ครั้งแรก

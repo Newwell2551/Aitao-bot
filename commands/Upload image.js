@@ -84,6 +84,11 @@ module.exports = {
     .setName('upload-image')
     .setDescription('Upload an image to get a permanent link for bot commands')
     .setDescriptionLocalizations({ th: 'อัปโหลดรูปเพื่อเอาลิงก์ถาวรไปใช้กับคำสั่งบอทได้เลยครับ' })
+    // 🔒 [7 พ.ย. 2569] จำกัดสิทธิ์: เฉพาะคนมี Manage Server เท่านั้นถึงจะเห็น/ใช้คำสั่งนี้ได้
+    // (เหมือนกับ /premium, /language) — ไฟล์ที่อัปโหลดเก็บถาวรไว้ใช้กับทั้งเซิร์ฟ (และมีความ
+    // เสี่ยงด้านกฎหมายถ้ามีคนอัปโหลดเนื้อหาไม่เหมาะสม) ไม่ควรให้สมาชิกทั่วไปอัปโหลดได้อิสระ
+    // (ดู claude/discord-command-security-audit.md)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addAttachmentOption((option) =>
       option
         .setName('image')

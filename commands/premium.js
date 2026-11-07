@@ -194,11 +194,23 @@ module.exports = {
         return;
       }
 
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: info.stripeCustomerId,
-        // TODO: เปลี่ยนเป็น URL จริงเหมือนกับ success_url/cancel_url ด้านบน
-        return_url: 'https://example.com/return',
-      });
+      // 🛡️ [7 พ.ย. 2569] ห่อ Stripe call ด้วย try/catch — ก่อนหน้านี้ถ้า Stripe ล่ม/เน็ตมีปัญหา
+      // ระหว่างยิง request ตรงนี้ interaction จะค้างที่ "กำลังคิด..." แล้ว error ดิบๆ
+      // ("This interaction failed") โดยไม่มีคำอธิบายให้ user เลย — ตอนนี้ดักไว้แล้วตอบ
+      // ข้อความที่เข้าใจง่ายแทน ย้ำชัดว่า "ยังไม่มีการตัดเงินเกิดขึ้น" (ดู
+      // claude/discord-command-security-audit.md ข้อเสนอของสภา)
+      let portalSession;
+      try {
+        portalSession = await stripe.billingPortal.sessions.create({
+          customer: info.stripeCustomerId,
+          // TODO: เปลี่ยนเป็น URL จริงเหมือนกับ success_url/cancel_url ด้านบน
+          return_url: 'https://example.com/return',
+        });
+      } catch (error) {
+        console.error('[premium] สร้าง Stripe billing portal session ไม่สำเร็จ:', error.message);
+        await interaction.editReply({ content: t('premium.error.stripe_failed') });
+        return;
+      }
 
       await interaction.editReply({ content: t('premium.manage_link', { url: portalSession.url }) });
       return;
@@ -258,19 +270,29 @@ module.exports = {
       return;
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      line_items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID, quantity: 1 }],
-      // 🔑 จุดต่างจากปุ่มสมัครธรรมดา: แนบส่วนลดเข้าไป "เอง" เลย เพราะเรารู้แล้วว่า
-      // ลูกค้าจะใช้โค้ดไหน (ผ่านการตรวจสอบด้านบนมาแล้วทุกข้อ) ไม่ต้องให้ไปกรอกซ้ำ
-      // อีกทีหน้า Stripe Checkout — ⚠️ ห้ามใส่ allow_promotion_codes: true คู่กับ
-      // discounts พร้อมกันเด็ดขาด Stripe จะโยน error ทันที (เลือกได้ทางเดียว)
-      discounts: [{ promotion_code: codeEntry.stripePromotionCodeId }],
-      success_url: 'https://aitao-bot-production.up.railway.app/success',
-      cancel_url: 'https://aitao-bot-production.up.railway.app/cancel',
-      metadata: { guildId, discordUserId: interaction.user.id, referralCode: rawCode.trim().toUpperCase() },
-      subscription_data: { metadata: { guildId } },
-    });
+    // 🛡️ [7 พ.ย. 2569] ห่อ Stripe call ด้วย try/catch เหมือนกับ handleButton() ด้านบน —
+    // เคสนี้สำคัญกว่าด้วยซ้ำเพราะมีการแนบโค้ดส่วนลดไปด้วย ถ้า Stripe reject (เช่นโค้ดลัก
+    // ผิดเงื่อนไขที่เราเช็คไม่ครบ) ต้องตอบ user ชัดๆ ไม่ใช่ปล่อยให้ error ดิบๆ
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        line_items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID, quantity: 1 }],
+        // 🔑 จุดต่างจากปุ่มสมัครธรรมดา: แนบส่วนลดเข้าไป "เอง" เลย เพราะเรารู้แล้วว่า
+        // ลูกค้าจะใช้โค้ดไหน (ผ่านการตรวจสอบด้านบนมาแล้วทุกข้อ) ไม่ต้องให้ไปกรอกซ้ำ
+        // อีกทีหน้า Stripe Checkout — ⚠️ ห้ามใส่ allow_promotion_codes: true คู่กับ
+        // discounts พร้อมกันเด็ดขาด Stripe จะโยน error ทันที (เลือกได้ทางเดียว)
+        discounts: [{ promotion_code: codeEntry.stripePromotionCodeId }],
+        success_url: 'https://aitao-bot-production.up.railway.app/success',
+        cancel_url: 'https://aitao-bot-production.up.railway.app/cancel',
+        metadata: { guildId, discordUserId: interaction.user.id, referralCode: rawCode.trim().toUpperCase() },
+        subscription_data: { metadata: { guildId } },
+      });
+    } catch (error) {
+      console.error('[premium] สร้าง Stripe checkout session (พร้อมโค้ดส่วนลด) ไม่สำเร็จ:', error.message);
+      await interaction.editReply({ content: t('premium.error.stripe_failed') });
+      return;
+    }
 
     // บันทึก "รอผลชำระเงิน" ไว้ก่อน — ผูกกับ session.id เพื่อให้ webhook (server.js)
     // มาเทียบได้ตอนจ่ายเงินสำเร็จจริง แล้วค่อยนับว่า "ใช้โค้ดนี้ไปแล้ว" + คิดค่าคอม

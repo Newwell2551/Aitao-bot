@@ -14,6 +14,7 @@ const {
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
   MessageFlags,
+  PermissionFlagsBits,
 } = require('discord.js');
 const {
   getDraft,
@@ -1265,6 +1266,10 @@ module.exports = {
     .setName('builder')
     .setDescription('Build custom message layouts')
     .setDescriptionLocalizations({ th: 'สร้างข้อความจัดวางเองได้เลยครับ' })
+    // 🔒 [7 พ.ย. 2569] จำกัดสิทธิ์: เฉพาะคนมี Manage Server เท่านั้นถึงจะเห็น/ใช้คำสั่งนี้ได้
+    // (เหมือนกับ /premium, /language) — เพราะ /builder สร้าง/แก้/ลบ embed ที่โพสต์แทนเซิร์ฟ
+    // ได้ ไม่ควรให้สมาชิกทั่วไปที่ไม่ใช่แอดมินมายุ่งได้ (ดู claude/discord-command-security-audit.md)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand((sub) =>
       sub
         .setName('new')

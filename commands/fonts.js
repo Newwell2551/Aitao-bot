@@ -26,6 +26,7 @@ const {
   StringSelectMenuBuilder,
   TextDisplayBuilder,
   MessageFlags,
+  PermissionFlagsBits,
 } = require('discord.js');
 const { GlobalFonts } = require('@napi-rs/canvas');
 
@@ -98,6 +99,10 @@ module.exports = {
     .setName('fonts')
     .setDescription('View, upload, and manage all fonts available on this server')
     .setDescriptionLocalizations({ th: 'ดู อัปโหลด และจัดการฟอนต์ทั้งหมดของเซิร์ฟนี้ครับ' })
+    // 🔒 [7 พ.ย. 2569] จำกัดสิทธิ์: เฉพาะคนมี Manage Server เท่านั้นถึงจะเห็น/ใช้คำสั่งนี้ได้
+    // (เหมือนกับ /premium, /language) — ฟอนต์ที่อัปโหลดใช้ร่วมกันทั้งเซิร์ฟ ไม่ควรให้
+    // สมาชิกทั่วไปอัปโหลด/ลบแทนคนอื่นได้ (ดู claude/discord-command-security-audit.md)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(sub => sub.setName('list')
       .setDescription('View all fonts (built-in + custom) and delete custom ones')
       .setDescriptionLocalizations({ th: 'ดูฟอนต์ทั้งหมด (มาตรฐาน + อัปโหลดเอง) และเลือกลบได้ครับ' })
